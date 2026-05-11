@@ -11,7 +11,14 @@
  */
 
 class Config {
+    /**
+     * @var Config|null
+     */
     private static $instance = null;
+
+    /**
+     * @var array<string, mixed>
+     */
     private $settings = [];
 
     private function __construct() {
@@ -20,6 +27,8 @@ class Config {
 
     /**
      * Get singleton instance
+     * 
+     * @return Config
      */
     public static function getInstance() {
         if (self::$instance === null) {
@@ -43,7 +52,7 @@ class Config {
 
         // ============ APP ============
         $this->settings['APP_NAME'] = 'Edge Automation';
-        $this->settings['APP_URL'] = getenv('APP_URL') ?: 'http://localhost/CAPSTONE';
+        $this->settings['APP_URL'] = getenv('APP_URL') ?: 'http://localhost/codesamplecaps';
         $this->settings['APP_TIMEZONE'] = 'Asia/Manila';
         // ============ EMAIL/SMTP ============
         $this->settings['MAIL_DRIVER'] = getenv('MAIL_DRIVER') ?: 'smtp';
@@ -57,7 +66,7 @@ class Config {
 
         // ============ SECURITY ============
         $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 60;
-        $this->settings['LOGIN_MAX_ATTEMPTS'] = 5;
+        $this->settings['LOGIN_MAX_ATTEMPTS'] = 10;
         $this->settings['LOGIN_LOCKOUT_MINUTES'] = 15;
 
         // ============ SESSION ============
@@ -88,6 +97,9 @@ class Config {
 
     /**
      * Check if configuration key exists
+     * 
+     * @param string $key Configuration key
+     * @return bool
      */
     public function has($key) {
         return isset($this->settings[$key]);

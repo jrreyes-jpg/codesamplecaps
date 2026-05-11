@@ -1,12 +1,10 @@
 <?php
 require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../controllers/UserController.php';
 
 require_role('super_admin');
 
 $csrfToken = auth_csrf_token('super_admin');
-$userController = new UserController();
 
 $error = "";
 $success = "";
@@ -15,18 +13,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_engineer'])) {
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'super_admin')) {
         $error = "Security check failed. Please try again.";
     } else {
-    $full_name = trim($_POST['full_name']);
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
+    $full_name = trim($_POST['full_name'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
 
     if (empty($full_name) || empty($email) || empty($password)) {
         $error = "Please fill in all fields.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Please enter a valid email address.";
+    } elseif (strlen($password) < 8) {
+        $error = "Temporary password must be at least 8 characters.";
     } else {
-        $result = $userController->findByEmail($email);
+        $checkStmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $checkStmt->bind_param("s", $email);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+
         if ($result && $result->num_rows > 0) {
             $error = "Email already exists.";
         } else {
-            if ($userController->createEngineer($full_name, $email, $password)) {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $createdBy = (int)($_SESSION['user_id'] ?? 0);
+            $createStmt = $conn->prepare(
+                "INSERT INTO users (full_name, email, password, role, status, created_by)
+                 VALUES (?, ?, ?, 'engineer', 'active', ?)"
+            );
+            $createStmt->bind_param("sssi", $full_name, $email, $passwordHash, $createdBy);
+
+            if ($createStmt->execute()) {
                 $success = "Engineer account created successfully!";
                 $_POST = array();
             } else {

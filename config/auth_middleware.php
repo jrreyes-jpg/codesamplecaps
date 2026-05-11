@@ -178,6 +178,7 @@ if (!function_exists('auth_login_user')) {
 
         $_SESSION['user_id'] = (int)$user['id'];
         $_SESSION['name'] = (string)$user['full_name'];
+        $_SESSION['email'] = (string)($user['email'] ?? '');
         $_SESSION['role'] = (string)$user['role'];
         $_SESSION['logged_in_at'] = time();
         $_SESSION['last_activity_at'] = time();

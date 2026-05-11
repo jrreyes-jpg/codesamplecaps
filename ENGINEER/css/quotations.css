@@ -1,0 +1,306 @@
+.quotation-shell {
+    display: grid;
+    gap: 24px;
+    padding: 24px;
+}
+
+.quotation-hero,
+.quotation-panel {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 22px;
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+}
+
+.quotation-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+    padding: 28px;
+    background:
+        radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 34%),
+        linear-gradient(135deg, #f0fdf4, #f8fafc 55%, #ecfeff);
+}
+
+.quotation-hero__eyebrow {
+    margin: 0 0 6px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #0f766e;
+}
+
+.quotation-hero h1,
+.quotation-panel h2 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.quotation-hero p {
+    margin: 10px 0 0;
+    max-width: 760px;
+    color: #475569;
+}
+
+.quotation-panel {
+    padding: 24px;
+}
+
+.quotation-actions,
+.btn-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.btn-primary,
+.btn-secondary {
+    border: 0;
+    border-radius: 14px;
+    padding: 12px 18px;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0f766e, #0f9f93);
+    color: #fff;
+    box-shadow: 0 14px 24px rgba(15, 118, 110, 0.2);
+}
+
+.btn-secondary {
+    background: #ecfeff;
+    color: #155e75;
+    border: 1px solid #bae6fd;
+}
+
+.btn-primary:hover,
+.btn-secondary:hover {
+    transform: translateY(-1px);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.stat-card {
+    border-radius: 18px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.stat-card--draft {
+    border-color: #cbd5e1;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+.stat-card--review {
+    border-color: #fde68a;
+    background: linear-gradient(180deg, #fffbeb, #fef3c7);
+}
+
+.stat-card--approval {
+    border-color: #bfdbfe;
+    background: linear-gradient(180deg, #eff6ff, #dbeafe);
+}
+
+.stat-card--approved {
+    border-color: #bbf7d0;
+    background: linear-gradient(180deg, #f0fdf4, #dcfce7);
+}
+
+.stat-card span {
+    display: block;
+    margin-bottom: 8px;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.stat-card strong {
+    font-size: 2rem;
+    color: #0f172a;
+}
+
+.quotation-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+}
+
+.quotation-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+    background: #fff;
+}
+
+.quotation-table th,
+.quotation-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+    font-size: 0.95rem;
+}
+
+.quotation-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-pill,
+.project-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.status-pill.is-draft { background: #e2e8f0; color: #334155; }
+.status-pill.is-review { background: #fef3c7; color: #92400e; }
+.status-pill.is-approval { background: #dbeafe; color: #1d4ed8; }
+.status-pill.is-approved { background: #dcfce7; color: #166534; }
+.status-pill.is-sent { background: #ede9fe; color: #6d28d9; }
+.status-pill.is-accepted { background: #ccfbf1; color: #115e59; }
+.status-pill.is-rejected { background: #fee2e2; color: #b91c1c; }
+
+.project-status-pill.status-pending,
+.project-status-pill.status-ongoing {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.project-status-pill.status-on-hold {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.project-status-pill.status-completed {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.flash {
+    padding: 14px 16px;
+    border-radius: 16px;
+    font-weight: 700;
+}
+
+.flash.success { background: #dcfce7; color: #166534; }
+.flash.error { background: #fee2e2; color: #b91c1c; }
+
+.empty-state {
+    padding: 32px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 18px;
+    color: #64748b;
+    text-align: center;
+    background: #fff;
+}
+
+.helper-copy {
+    margin: 6px 0 0;
+    color: #64748b;
+}
+
+.project-duration-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #ecfccb;
+    color: #3f6212;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+@media (max-width: 960px) {
+    .quotation-hero {
+        flex-direction: column;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .quotation-shell {
+        padding: 16px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quotation-table-wrap {
+        overflow: visible;
+        border: 0;
+    }
+
+    .quotation-table,
+    .quotation-table thead,
+    .quotation-table tbody,
+    .quotation-table tr,
+    .quotation-table td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .quotation-table thead {
+        display: none;
+    }
+
+    .quotation-table tr {
+        margin-bottom: 14px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .quotation-table td {
+        padding: 10px 0;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .quotation-table td:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .quotation-table td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 4px;
+        color: #64748b;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .quotation-table td .btn-secondary {
+        width: 100%;
+    }
+}

@@ -1,0 +1,62 @@
+﻿.password-strength {
+    height: 5px;
+    background: #dddddd;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.strength {
+    height: 100%;
+    width: 0;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.success-box {
+    background: #d4edda;
+    color: #155724;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    border: 1px solid #c3e6cb;
+}
+
+.success-link {
+    margin-top: 10px;
+}
+
+.success-link a {
+    color: #155724;
+    text-decoration: underline;
+}
+
+.auth-helper-text {
+    margin: 20px 0;
+    font-size: 14px;
+    color: #555555;
+}
+
+.auth-links-spaced {
+    margin-top: 20px;
+}
+
+.password-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.password-wrapper.has-label .togglePassword {
+    top: calc(50% + 14px);
+}
+
+.strength-text {
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 20px;
+    color: #666666;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+}

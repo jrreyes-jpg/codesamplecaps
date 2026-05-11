@@ -1,0 +1,57 @@
+Device name	DESKTOP-LSG6L30
+Processor	Intel(R) Core(TM) i3-8130U CPU @ 2.20GHz (2.21 GHz)
+Installed RAM	8.00 GB (7.90 GB usable)
+Device ID	84A62438-2E80-40B4-AA77-09C7FA5E9FD6
+Product ID	00330-80000-00000-AA305
+System type	64-bit operating system, x64-based processor
+Pen and touch	No pen or touch input is available for this display
+Edition	Windows 11 Pro
+Version	25H2
+Installed on	‎1/‎3/‎2025
+OS build	26200.7922
+Experience	Windows Feature Experience Pack 1000.26100.300.0
+ OS Name	Microsoft Windows 11 Pro
+Version	10.0.26200 Build 26200
+Other OS Description 	Not Available
+OS Manufacturer	Microsoft Corporation
+System Name	DESKTOP-LSG6L30
+System Manufacturer	Dell Inc.
+System Model	Latitude 3490
+System Type	x64-based PC
+System SKU	0839
+Processor	Intel(R) Core(TM) i3-8130U CPU @ 2.20GHz, 2208 Mhz, 2 Core(s), 4 Logical Processor(s)
+BIOS Version/Date	Dell Inc. 1.26.0, 6/13/2023
+SMBIOS Version	3.1
+Embedded Controller Version	255.255
+BIOS Mode	UEFI
+BaseBoard Manufacturer	Dell Inc.
+BaseBoard Product	06NMX7
+BaseBoard Version	A00
+Platform Role	Mobile
+Secure Boot State	Off
+PCR7 Configuration	Elevation Required to View
+Windows Directory	C:\WINDOWS
+System Directory	C:\WINDOWS\system32
+Boot Device	\Device\HarddiskVolume1
+Locale	United States
+Hardware Abstraction Layer	Version = "10.0.26100.1"
+User Name	DESKTOP-LSG6L30\DELL
+Time Zone	Malay Peninsula Standard Time
+Installed Physical Memory (RAM)	8.00 GB
+Total Physical Memory	7.90 GB
+Available Physical Memory	1.29 GB
+Total Virtual Memory	19.4 GB
+Available Virtual Memory	9.54 GB
+Page File Space	11.5 GB
+Page File	C:\pagefile.sys
+Kernel DMA Protection	Off
+Virtualization-based security	Running
+Virtualization-based security Required Security Properties	
+Virtualization-based security Available Security Properties	Base Virtualization Support, DMA Protection, UEFI Code Readonly, Mode Based Execution Control
+Virtualization-based security Services Configured	Hypervisor enforced Code Integrity
+Virtualization-based security Services Running	Hypervisor enforced Code Integrity
+App Control for Business policy	Enforced
+App Control for Business user mode policy	Off
+Automatic Device Encryption Support	Elevation Required to View
+A hypervisor has been detected. Features required for Hyper-V will not be displayed.	
+ 

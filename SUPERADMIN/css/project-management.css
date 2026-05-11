@@ -1,0 +1,35 @@
+﻿.project-card {
+    margin-bottom: 18px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 9px rgba(0, 0, 0, 0.08);
+}
+
+.project-tabs {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.project-tab-button {
+    border: 0;
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.project-tab-button.active {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.project-panel {
+    display: none;
+    margin-top: 10px;
+}
+
+.project-panel.active {
+    display: block;
+}

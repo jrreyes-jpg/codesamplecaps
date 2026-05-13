@@ -6,6 +6,7 @@ This project showcases my skills, projects, and background as a web developer.
 ## 🚀 About the Project
 
 This portfolio was built to highlight:
+
 - My web development skills
 - Sample projects
 - Contact information
@@ -18,5 +19,5 @@ This portfolio was built to highlight:
 - PHP
 - JavaScript
 - Git & GitHub
-## 📂 Project Structure
 
+## 📂 Project Structure

@@ -59,7 +59,7 @@ class Config {
         $this->settings['MAIL_HOST'] = getenv('MAIL_HOST') ?: 'smtp.gmail.com';
         $this->settings['MAIL_PORT'] = getenv('MAIL_PORT') ?: 587;
         $this->settings['MAIL_USERNAME'] = getenv('MAIL_USERNAME') ?: 'jeshowap@gmail.com';
-        $this->settings['MAIL_PASSWORD'] = getenv('MAIL_PASSWORD') ?: 'ypjvvfqfaeddpnil';
+        $this->settings['MAIL_PASSWORD'] = getenv('MAIL_PASSWORD') ?: '';
         $this->settings['MAIL_ENCRYPTION'] = getenv('MAIL_ENCRYPTION') ?: 'tls';
         $this->settings['MAIL_FROM_ADDRESS'] = getenv('MAIL_FROM_ADDRESS') ?: 'jeshowap@gmail.com';
         $this->settings['MAIL_FROM_NAME'] = getenv('MAIL_FROM_NAME') ?: 'Edge Automation';

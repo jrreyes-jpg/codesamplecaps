@@ -8,13 +8,13 @@ session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Edge Automation Technology Services, Co. - Professional engineering automation and technology solutions">
     <title>Edge Automation Technology Services, Co.</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/loader.css">
     <link rel="stylesheet" href="../css/index.css">
     <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
 
 </head>
 <body>
+    <a href="#home" class="skip-link">Skip to content</a>
     <div class="page-loader" id="pageLoader" role="status" aria-live="polite" aria-label="Loading page">
         <div class="page-loader__content">
             <div class="page-loader__scene" aria-hidden="true">
@@ -49,10 +49,10 @@ session_start();
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-logo">
+            <a href="#home" class="nav-logo" aria-label="Edge Automation home">
                 <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo" class="logo-img">
                 <span class="logo-text">EDGE AUTOMATION</span>
-            </div>
+            </a>
             <ul class="nav-menu">
                 <li><a href="#home" class="nav-link">Home</a></li>
                 <li><a href="#about" class="nav-link">About</a></li>
@@ -67,24 +67,26 @@ session_start();
            <div class="nav-actions">
         <a href="login.php" class="btn btn-primary">Login</a>
 </div>
-            <div class="hamburger">
+            <button class="hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
                 <span></span>
                 <span></span>
                 <span></span>
-            </div>
+            </button>
         </div>
     </nav>
 
+    <main>
     <!-- Hero Section -->
     <section id="home" class="hero">
         <div class="hero-content">
-            <h1 class="hero-title">Engineering Innovation at Scale</h1>
-            <p class="hero-subtitle">Specialists in automation, electrical systems, and industrial solutions</p>
+            <span class="hero-kicker">Edge Automation Technology Services, Co.</span>
+            <h1 class="hero-title">Industrial Automation & Engineering Solutions</h1>
+            <p class="hero-subtitle">Electrical, mechanical, controls, and utility systems built for reliable plant operations.</p>
             <div class="cta-buttons">
-<button class="btn btn-primary" id="consultBtn">Request Consultation</button>                <a href="#services" class="btn btn-secondary">View Services</a>
+                <button class="btn btn-primary" id="consultBtn">Request Consultation</button>
+                <a href="#services" class="btn btn-secondary">View Services</a>
             </div>
         </div>
-        <div class="hero-overlay"></div>
     </section>
 
     <!-- About Section -->
@@ -93,10 +95,10 @@ session_start();
             <h2 class="section-title">About Us</h2>
             <div class="about-content">
                 <p class="about-text">
-                    Edge Automation Technology Services, Co. is a leading engineering firm specializing in mechanical engineering, electrical systems, and advanced automation solutions. With years of industry expertise, we deliver turnkey solutions for industrial clients seeking reliable, scalable, and innovative technology deployments.
+                    Edge Automation Technology Services, Co. supports industrial plants and facilities through practical electrical, mechanical, automation, and utility engineering work.
                 </p>
                 <p class="about-text">
-                    We combine deep technical knowledge with practical implementation experience to transform business challenges into competitive advantages through smart automation and systems integration.
+                    Our team focuses on field-ready execution: troubleshooting, installation, commissioning, preventive maintenance, and system improvements that help keep operations reliable.
                 </p>
             </div>
         </div>
@@ -110,9 +112,11 @@ session_start();
                 We engineer field-ready systems that reduce downtime, improve plant visibility, and keep critical operations running with confidence.
             </p>
             <div class="services-grid">
-                <div class="service-card">
+                <article class="service-card">
+                    <span class="service-tag">Plant Utilities</span>
                     <div class="service-icon">&#9881;</div>
                     <h3>Mechanical Engineering</h3>
+                    <p class="service-summary">Utility, HVAC, fire protection, and maintenance support for facilities.</p>
                     <ul class="service-list">
                         <li>Utility Systems (Air, Water, Steam)</li>
                         <li>Fire Protection Systems</li>
@@ -121,11 +125,14 @@ session_start();
                         <li>HVAC Solutions</li>
                         <li>Preventive Maintenance</li>
                     </ul>
-                </div>
+                    <button class="service-more" type="button" aria-expanded="false">View details</button>
+                </article>
 
-                <div class="service-card">
+                <article class="service-card">
+                    <span class="service-tag">Power Systems</span>
                     <div class="service-icon">&#9889;</div>
                     <h3>Electrical Engineering</h3>
+                    <p class="service-summary">Power distribution, analysis, panels, and electrical reliability work.</p>
                     <ul class="service-list">
                         <li>Electrical Power System Analysis</li>
                         <li>Voltage Drop Calculations</li>
@@ -134,11 +141,14 @@ session_start();
                         <li>Transformer Installation</li>
                         <li>Capacitor Banks & Panels</li>
                     </ul>
-                </div>
+                    <button class="service-more" type="button" aria-expanded="false">View details</button>
+                </article>
 
-                <div class="service-card">
+                <article class="service-card">
+                    <span class="service-tag">Automation</span>
                     <div class="service-icon">&#129302;</div>
                     <h3>Electronics & Automation</h3>
+                    <p class="service-summary">Automation, security, cabling, and machine integration support.</p>
                     <ul class="service-list">
                         <li>Factory Automation Systems</li>
                         <li>Building Management Systems</li>
@@ -147,11 +157,14 @@ session_start();
                         <li>Fire Detection & Alarms</li>
                         <li>Production Machine Integration</li>
                     </ul>
-                </div>
+                    <button class="service-more" type="button" aria-expanded="false">View details</button>
+                </article>
 
-                <div class="service-card">
+                <article class="service-card">
+                    <span class="service-tag">Controls</span>
                     <div class="service-icon">&#128187;</div>
                     <h3>PLC, SCADA & Controls</h3>
+                    <p class="service-summary">Controls programming, panels, HMI, SCADA, and commissioning.</p>
                     <ul class="service-list">
                         <li>PLC Programming & Commissioning</li>
                         <li>HMI and SCADA Development</li>
@@ -160,11 +173,14 @@ session_start();
                         <li>Instrumentation Calibration Support</li>
                         <li>Remote Monitoring Dashboards</li>
                     </ul>
-                </div>
+                    <button class="service-more" type="button" aria-expanded="false">View details</button>
+                </article>
 
-                <div class="service-card">
+                <article class="service-card">
+                    <span class="service-tag">Energy</span>
                     <div class="service-icon">&#9728;</div>
                     <h3>Energy & Solar Solutions</h3>
+                    <p class="service-summary">Solar, energy audits, power quality, and backup optimization.</p>
                     <ul class="service-list">
                         <li>Solar PV System Design</li>
                         <li>On-Grid and Hybrid Installations</li>
@@ -173,11 +189,14 @@ session_start();
                         <li>Preventive Solar Maintenance</li>
                         <li>Backup Power Optimization</li>
                     </ul>
-                </div>
+                    <button class="service-more" type="button" aria-expanded="false">View details</button>
+                </article>
 
-                <div class="service-card service-card-highlight">
+                <article class="service-card service-card-highlight">
+                    <span class="service-tag">Modernization</span>
                     <div class="service-icon">&#128295;</div>
                     <h3>Technical Support & Modernization</h3>
+                    <p class="service-summary">Retrofits, troubleshooting, documentation, testing, and turnover.</p>
                     <ul class="service-list">
                         <li>Machine Retrofits and Upgrades</li>
                         <li>Troubleshooting of Critical Systems</li>
@@ -186,7 +205,8 @@ session_start();
                         <li>Preventive and Corrective Maintenance</li>
                         <li>End-to-End Project Execution</li>
                     </ul>
-                </div>
+                    <button class="service-more" type="button" aria-expanded="false">View details</button>
+                </article>
             </div>
         </div>
     </section>
@@ -200,78 +220,85 @@ session_start();
             </p>
             <div class="projects-grid">
                 <article class="project-item">
-                    <img src="../../IMAGES/1b222ae1-9eda-40a8-ab37-a916e4967da3.jpg" alt="Industrial utility equipment and process piping installation">
-                    <div class="project-content">
-                        <span class="project-number">01</span>
-                        <h4>Utility Systems Installation</h4>
-                        <p>Air, water, and process utility setup for reliable plant operations.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/1b222ae1-9eda-40a8-ab37-a916e4967da3.jpg">
+                        <img src="../../IMAGES/1b222ae1-9eda-40a8-ab37-a916e4967da3.jpg" alt="Industrial utility equipment and process piping installation">
+                        <div class="project-content">
+                            <span class="project-number">01</span>
+                            <h4>Utility Systems Installation</h4>
+                            <p>Air, water, and process utility setup for reliable plant operations.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/49f05bef-5847-4f8e-a281-605581193654.jpg" alt="Industrial filtration and water treatment piping system">
-                    <div class="project-content">
-                        <span class="project-number">02</span>
-                        <h4>Water Treatment Systems</h4>
-                        <p>Filtration, tanks, valves, and piping works for process water support.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/49f05bef-5847-4f8e-a281-605581193654.jpg">
+                        <img src="../../IMAGES/49f05bef-5847-4f8e-a281-605581193654.jpg" alt="Industrial filtration and water treatment piping system">
+                        <div class="project-content">
+                            <span class="project-number">02</span>
+                            <h4>Water Treatment Systems</h4>
+                            <p>Filtration, tanks, valves, and piping works for process water support.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/58f07dbc-5a25-4798-86bb-315d23d8b2fc.jpg" alt="Outdoor industrial skid equipment with control cabinet">
-                    <div class="project-content">
-                        <span class="project-number">03</span>
-                        <h4>Skid & Equipment Integration</h4>
-                        <p>Packaged systems, control cabinets, and plant-side equipment installation.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/58f07dbc-5a25-4798-86bb-315d23d8b2fc.jpg">
+                        <img src="../../IMAGES/58f07dbc-5a25-4798-86bb-315d23d8b2fc.jpg" alt="Outdoor industrial skid equipment with control cabinet">
+                        <div class="project-content">
+                            <span class="project-number">03</span>
+                            <h4>Skid & Equipment Integration</h4>
+                            <p>Packaged systems, control cabinets, and plant-side equipment installation.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/8708f0f0-f58a-4913-9686-76237dba2620.jpg" alt="Electrical control panel with industrial piping system">
-                    <div class="project-content">
-                        <span class="project-number">04</span>
-                        <h4>Electrical Controls</h4>
-                        <p>Control panel wiring, commissioning, and automation support.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/8708f0f0-f58a-4913-9686-76237dba2620.jpg">
+                        <img src="../../IMAGES/8708f0f0-f58a-4913-9686-76237dba2620.jpg" alt="Electrical control panel with industrial piping system">
+                        <div class="project-content">
+                            <span class="project-number">04</span>
+                            <h4>Electrical Controls</h4>
+                            <p>Control panel wiring, commissioning, and automation support.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/961699e2-5901-461b-aaef-8696c3f965b7.jpg" alt="Industrial water treatment line with filtration tanks and piping">
-                    <div class="project-content">
-                        <span class="project-number">05</span>
-                        <h4>Process Piping Works</h4>
-                        <p>Clean routing, installation, and improvement of industrial piping lines.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/961699e2-5901-461b-aaef-8696c3f965b7.jpg">
+                        <img src="../../IMAGES/961699e2-5901-461b-aaef-8696c3f965b7.jpg" alt="Industrial water treatment line with filtration tanks and piping">
+                        <div class="project-content">
+                            <span class="project-number">05</span>
+                            <h4>Process Piping Works</h4>
+                            <p>Clean routing, installation, and improvement of industrial piping lines.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/b6b1dc8e-df1d-40e8-b5cc-aa73962d9908.jpg" alt="HVAC ducting installation inside an industrial facility">
-                    <div class="project-content">
-                        <span class="project-number">06</span>
-                        <h4>HVAC & Ducting</h4>
-                        <p>Ventilation, ducting, and environmental support systems for facilities.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/b6b1dc8e-df1d-40e8-b5cc-aa73962d9908.jpg">
+                        <img src="../../IMAGES/b6b1dc8e-df1d-40e8-b5cc-aa73962d9908.jpg" alt="HVAC ducting installation inside an industrial facility">
+                        <div class="project-content">
+                            <span class="project-number">06</span>
+                            <h4>HVAC & Ducting</h4>
+                            <p>Ventilation, ducting, and environmental support systems for facilities.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/c797a630-029b-4486-a1e2-cde9ed4ab8c6.jpg" alt="Industrial water treatment equipment and piping assembly">
-                    <div class="project-content">
-                        <span class="project-number">07</span>
-                        <h4>System Modernization</h4>
-                        <p>Equipment upgrades and integration work for existing production utilities.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/c797a630-029b-4486-a1e2-cde9ed4ab8c6.jpg">
+                        <img src="../../IMAGES/c797a630-029b-4486-a1e2-cde9ed4ab8c6.jpg" alt="Industrial water treatment equipment and piping assembly">
+                        <div class="project-content">
+                            <span class="project-number">07</span>
+                            <h4>System Modernization</h4>
+                            <p>Equipment upgrades and integration work for existing production utilities.</p>
+                        </div>
+                    </a>
                 </article>
                 <article class="project-item">
-                    <img src="../../IMAGES/cc6bd15e-e5fe-4f90-b70d-c41b257f2853.jpg" alt="Industrial control panel with switches and meters">
-                    <div class="project-content">
-                        <span class="project-number">08</span>
-                        <h4>Machine Controls</h4>
-                        <p>Panel controls, instrumentation, and operator-ready machine interfaces.</p>
-                    </div>
+                    <a class="project-link" href="../../IMAGES/cc6bd15e-e5fe-4f90-b70d-c41b257f2853.jpg">
+                        <img src="../../IMAGES/cc6bd15e-e5fe-4f90-b70d-c41b257f2853.jpg" alt="Industrial control panel with switches and meters">
+                        <div class="project-content">
+                            <span class="project-number">08</span>
+                            <h4>Machine Controls</h4>
+                            <p>Panel controls, instrumentation, and operator-ready machine interfaces.</p>
+                        </div>
+                    </a>
                 </article>
-                <div class="projects-summary">
-                    <h3>Solutions We Offer</h3>
-                    <ul>
-                        <li>Machine improvement and troubleshooting</li>
-                        <li>Process optimization and equipment integration</li>
-                        <li>Utility, HVAC, piping, and water treatment systems</li>
-                        <li>Electrical controls, panel works, and automation support</li>
-                    </ul>
-                </div>
             </div>
         </div>
     </section>
@@ -281,36 +308,36 @@ session_start();
         <div class="container">
             <h2 class="section-title">Why Choose Us</h2>
             <div class="features-grid">
-                <div class="feature">
+                <article class="feature">
                     <div class="feature-icon">&#127942;</div>
-                    <h4>Industry Expertise</h4>
-                    <p>Years of proven experience in industrial automation</p>
-                </div>
-                <div class="feature">
+                    <h4>Field Experience</h4>
+                    <p>Practical work across plant utilities, controls, and facility systems.</p>
+                </article>
+                <article class="feature">
                     <div class="feature-icon">&#9989;</div>
-                    <h4>Reliable Systems</h4>
-                    <p>Engineered for stability and long-term performance</p>
-                </div>
-                <div class="feature">
+                    <h4>Reliable Execution</h4>
+                    <p>Solutions planned for stable operation and cleaner turnover.</p>
+                </article>
+                <article class="feature">
                     <div class="feature-icon">&#128200;</div>
                     <h4>Scalable Solutions</h4>
-                    <p>Grow your operations with our flexible systems</p>
-                </div>
-                <div class="feature">
+                    <p>Flexible engineering support for upgrades, expansions, and future plant needs.</p>
+                </article>
+                <article class="feature">
                     <div class="feature-icon">&#128295;</div>
                     <h4>End-to-End Support</h4>
-                    <p>From planning through implementation and beyond</p>
-                </div>
-                <div class="feature">
+                    <p>From troubleshooting and installation to testing and documentation.</p>
+                </article>
+                <article class="feature">
                     <div class="feature-icon">&#128737;</div>
-                    <h4>Preventive Care</h4>
-                    <p>Minimize downtime with proactive maintenance</p>
-                </div>
-                <div class="feature">
+                    <h4>Preventive Maintenance</h4>
+                    <p>Support that helps reduce downtime and recurring equipment issues.</p>
+                </article>
+                <article class="feature">
                     <div class="feature-icon">&#128161;</div>
                     <h4>Innovation</h4>
-                    <p>Cutting-edge technology and best practices</p>
-                </div>
+                    <p>Practical technology improvements matched to real operational problems.</p>
+                </article>
             </div>
         </div>
     </section>
@@ -326,66 +353,120 @@ session_start();
                         Share your plant, facility, or equipment requirement and our team will guide you through the next practical step.
                     </p>
                     <div class="contact-actions">
-                        <a href="tel:+639178789571" class="contact-action contact-action-primary">Call 0917 878 9571</a>
-                        <button class="contact-action" id="consultBtnSecondary" type="button">Request Consultation</button>
+                        <button class="contact-action contact-action-primary" id="consultBtnSecondary" type="button">Request Consultation</button>
                     </div>
                 </div>
 
                 <div class="contact-card contact-card-details">
                     <h3>Contact Information</h3>
-                    <p>
-                        <strong>Company:</strong> Edge Automation Technology Services, Co.<br>
-                        <strong>Location:</strong> Blk 4 Lot 16 Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna<br>
-                        <strong>Specialization:</strong> Industrial Automation & Engineering<br>
-                        <strong>Email:</strong> <a href="mailto:ejimenez.edge@gmail.com">ejimenez.edge@gmail.com</a>
-                    </p>
-
-                    <div class="social-links" id="socialLinks" aria-label="Contact platforms">
-                        <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Facebook Page">
-                            <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="" width="24">
-                        </a>
-                        <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Viber Chat">
-                            <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="" width="24">
-                        </a>
-                        <a href="mailto:ejimenez.edge@gmail.com?subject=Request%20Consultation" class="social-icon" aria-label="Email">
-                            <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="" width="24">
-                        </a>
-                    </div>
+                    <dl class="contact-list">
+                        <div>
+                            <dt>Company</dt>
+                            <dd>Edge Automation Technology Services, Co.</dd>
+                        </div>
+                        <div>
+                            <dt>Location</dt>
+                            <dd>Blk 4 Lot 16 Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna</dd>
+                        </div>
+                        <div>
+                            <dt>Phone</dt>
+                            <dd><a href="tel:+639178789571">0917 878 9571</a></dd>
+                        </div>
+                        <div>
+                            <dt>Email</dt>
+                            <dd><a href="mailto:ejimenez.edge@gmail.com">ejimenez.edge@gmail.com</a></dd>
+                        </div>
+                    </dl>
                 </div>
             </div>
         </div>
     </section>
+    </main>
 
     <div class="mobile-contact-bar" aria-label="Quick contact actions">
         <a href="tel:+639178789571">Call</a>
         <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer">Viber</a>
-        <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer">FB</a>
-        <button id="consultBtnMobile" type="button">Consult</button>
+        <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer">Facebook</a>
+        <button id="consultBtnMobile" type="button">More</button>
     </div>
     <!-- Footer -->
     <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 Edge Automation Technology Services, Co. All rights reserved.</p>
+        <div class="container footer-inner">
+            <div class="footer-brand">
+                <strong>Edge Automation Technology Services, Co.</strong>
+                <p>Project asset inventory, quotation, reporting, and field operations support for industrial engineering work.</p>
+            </div>
+            <div class="footer-column">
+                <h3>Navigation</h3>
+                <nav class="footer-links" aria-label="Footer navigation">
+                    <a href="#home">Home</a>
+                    <a href="#about">About</a>
+                    <a href="#services">Services</a>
+                    <a href="#projects">Projects</a>
+                    <a href="#contact">Contact</a>
+                    <a href="login.php">Login</a>
+                </nav>
+            </div>
+            <div class="footer-column">
+                <h3>Contact</h3>
+                <div class="footer-links">
+                    <a href="tel:+639178789571">0917 878 9571</a>
+                    <a href="mailto:ejimenez.edge@gmail.com">ejimenez.edge@gmail.com</a>
+                </div>
+            </div>
+            <div class="footer-column">
+                <h3>Social</h3>
+                <div class="footer-social" aria-label="Social media links">
+                    <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="">
+                    </a>
+                    <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" aria-label="Viber">
+                        <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="">
+                    </a>
+                    <a href="mailto:ejimenez.edge@gmail.com?subject=Request%20Consultation" aria-label="Email">
+                        <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="">
+                    </a>
+                </div>
+            </div>
+            <p class="footer-copy">&copy; 2026 Group 11. All rights reserved.</p>
         </div>
     </footer>
 
+<div id="projectLightbox" class="project-lightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Project image viewer">
+    <button class="project-lightbox-close" type="button" aria-label="Close project viewer">&times;</button>
+    <button class="project-lightbox-nav project-lightbox-prev" type="button" aria-label="Previous project image">&#8249;</button>
+    <figure class="project-lightbox-figure">
+        <img id="projectLightboxImage" src="" alt="">
+        <figcaption id="projectLightboxCaption"></figcaption>
+    </figure>
+    <button class="project-lightbox-nav project-lightbox-next" type="button" aria-label="Next project image">&#8250;</button>
+</div>
+
 <div id="consultModal" class="consult-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="consultModalTitle">
     <div class="consult-modal-content">
-        <h3 id="consultModalTitle">Request Consultation</h3>
-        <p>Choose your preferred platform:</p>
+        <h3 id="consultModalTitle">How would you like to reach us?</h3>
+        <p>Choose the channel that fits your request.</p>
 
         <div class="consult-buttons">
+            <a href="tel:+639178789571" class="consult-option consult-option-fast" aria-label="Call Edge Automation">
+                <strong>Fastest</strong>
+                <span>Call 0917 878 9571</span>
+            </a>
+
 <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook Messenger">
-                <span>Facebook Page</span>
+                <strong>Facebook</strong>
+                <span>Message the page</span>
             </a>
 
 <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="Viber">
-                <span>Viber Chat</span>
+                <strong>Viber</strong>
+                <span>Start a chat</span>
             </a>
 
 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ejimenez.edge@gmail.com&su=Request%20Consultation&body=Hello%20Edge%20Automation,%20I%20would%20like%20to%20request%20a%20consultation." target="_blank" class="consult-option">
     <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email">
-    <span>Email</span>
+    <strong>Email</strong>
+    <span>Send project details</span>
 </a>      </div>
 
         <button id="closeConsult" class="consult-close" type="button">Close</button>

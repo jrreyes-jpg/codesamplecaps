@@ -9,11 +9,13 @@
     const closeMenu = () => {
         navMenu.classList.remove('active');
         hamburger.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
     };
 
     hamburger.addEventListener('click', () => {
-        navMenu.classList.toggle('active');
-        hamburger.classList.toggle('active');
+        const isOpen = navMenu.classList.toggle('active');
+        hamburger.classList.toggle('active', isOpen);
+        hamburger.setAttribute('aria-expanded', String(isOpen));
     });
 
     document.querySelectorAll('.nav-link').forEach((link) => {
@@ -75,7 +77,7 @@ const initFormHandling = () => {
 };
 
 const initScrollAnimations = () => {
-    const elements = document.querySelectorAll('.service-card, .feature, .project-item, .projects-summary');
+    const elements = document.querySelectorAll('.service-card, .feature, .project-item');
 
     if (elements.length === 0) {
         return;
@@ -163,6 +165,105 @@ const initConsultationModal = () => {
     });
 };
 
+const initServiceCards = () => {
+    document.querySelectorAll('.service-card').forEach((card) => {
+        const button = card.querySelector('.service-more');
+
+        if (!button) {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const isExpanded = card.classList.toggle('is-expanded');
+            button.setAttribute('aria-expanded', String(isExpanded));
+            button.textContent = isExpanded ? 'Show less' : 'View details';
+        });
+    });
+};
+
+const initProjectLightbox = () => {
+    const links = Array.from(document.querySelectorAll('.project-link'));
+    const lightbox = document.getElementById('projectLightbox');
+    const image = document.getElementById('projectLightboxImage');
+    const caption = document.getElementById('projectLightboxCaption');
+    const closeButton = lightbox?.querySelector('.project-lightbox-close');
+    const prevButton = lightbox?.querySelector('.project-lightbox-prev');
+    const nextButton = lightbox?.querySelector('.project-lightbox-next');
+
+    if (!links.length || !lightbox || !image || !caption || !closeButton || !prevButton || !nextButton) {
+        return;
+    }
+
+    const projects = links.map((link) => {
+        const img = link.querySelector('img');
+        const title = link.querySelector('h4')?.textContent?.trim() ?? img?.alt ?? 'Project image';
+
+        return {
+            src: link.getAttribute('href') ?? '',
+            alt: img?.alt ?? title,
+            title,
+        };
+    });
+
+    let activeIndex = 0;
+
+    const showProject = (index) => {
+        activeIndex = (index + projects.length) % projects.length;
+        const project = projects[activeIndex];
+        image.src = project.src;
+        image.alt = project.alt;
+        caption.textContent = project.title;
+    };
+
+    const openLightbox = (index) => {
+        showProject(index);
+        lightbox.classList.add('is-open');
+        lightbox.setAttribute('aria-hidden', 'false');
+        closeButton.focus();
+    };
+
+    const closeLightbox = () => {
+        lightbox.classList.remove('is-open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        image.removeAttribute('src');
+    };
+
+    links.forEach((link, index) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            openLightbox(index);
+        });
+    });
+
+    closeButton.addEventListener('click', closeLightbox);
+    prevButton.addEventListener('click', () => showProject(activeIndex - 1));
+    nextButton.addEventListener('click', () => showProject(activeIndex + 1));
+
+    lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) {
+            closeLightbox();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (!lightbox.classList.contains('is-open')) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closeLightbox();
+        }
+
+        if (event.key === 'ArrowLeft') {
+            showProject(activeIndex - 1);
+        }
+
+        if (event.key === 'ArrowRight') {
+            showProject(activeIndex + 1);
+        }
+    });
+};
+
 
 document.addEventListener('DOMContentLoaded', () => {
     initMobileMenu();
@@ -172,60 +273,25 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavbarScroll();
     initConsultationModal();
     initNewClientTooltip();
+    initServiceCards();
+    initProjectLightbox();
 });
 
-
-function smoothScroll(target, duration = 800) {
-    const targetPosition = target.getBoundingClientRect().top;
-    const startPosition = window.pageYOffset;
-    const navbarHeight = document.querySelector('.navbar').offsetHeight;
-    const offset = targetPosition + startPosition - navbarHeight;
-
-    let startTime = null;
-
-    function animation(currentTime) {
-        if (!startTime) startTime = currentTime;
-        const timeElapsed = currentTime - startTime;
-
-        const run = ease(timeElapsed, startPosition, offset - startPosition, duration);
-        window.scrollTo(0, run);
-
-        if (timeElapsed < duration) requestAnimationFrame(animation);
-    }
-
-    function ease(t, b, c, d) {
-        t /= d / 2;
-        if (t < 1) return c / 2 * t * t + b;
-        t--;
-        return -c / 2 * (t * (t - 2) - 1) + b;
-    }
-
-    requestAnimationFrame(animation);
-}
 
 document.querySelectorAll('.nav-link').forEach((link) => {
     link.addEventListener('click', function (e) {
         const href = this.getAttribute('href') ?? '';
 
-        // Only intercept in-page anchors; allow real page navigation like login.php.
         if (!href.startsWith('#')) {
             return;
         }
 
-        const target = document.querySelector(href);
-        if (!target) {
-            return;
-        }
-
-        e.preventDefault();
-        smoothScroll(target);
-
-        // Close mobile menu kung bukas
         const navMenu = document.querySelector('.nav-menu');
         const hamburger = document.querySelector('.hamburger');
         if (navMenu?.classList.contains('active')) {
             navMenu.classList.remove('active');
             hamburger?.classList.remove('active');
+            hamburger?.setAttribute('aria-expanded', 'false');
         }
     });
 });

@@ -1,0 +1,89 @@
+﻿body {
+    font-family: 'Poppins', sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 20px;
+}
+
+.print-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.print-page__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.print-page__title {
+    margin: 0;
+    font-size: 20px;
+}
+
+.print-button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    background: #2d3a56;
+    color: #ffffff;
+}
+
+.qr-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 18px;
+}
+
+.qr-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+.qr-card h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+}
+
+.qr-card p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #444444;
+}
+
+.qr-image {
+    width: 130px;
+    height: 130px;
+    margin: 10px auto;
+}
+
+.qr-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.qr-scan-value {
+    font-size: 12px;
+    color: #555555;
+}
+
+@media print {
+    body {
+        padding: 0;
+    }
+
+    .print-page__header {
+        display: none;
+    }
+
+    .qr-card {
+        page-break-inside: avoid;
+    }
+}

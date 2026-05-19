@@ -1,0 +1,272 @@
+<?php
+session_start();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Edge Automation Technology Services, Co. - Professional engineering automation and technology solutions">
+    <title>Edge Automation Technology Services, Co.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/index.css">
+<link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo" class="logo-img">
+                <span class="logo-text">EDGE AUTOMATION</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="nav-link">Home</a></li>
+                <li><a href="#about" class="nav-link">About</a></li>
+                <li><a href="#services" class="nav-link">Services</a></li>
+                <li><a href="#projects" class="nav-link">Projects</a></li>
+                <li><a href="#contact" class="nav-link">Contact</a></li>
+                <?php if (empty($_SESSION['user_id'])): ?>
+                    <li class="mobile-only"><a href="login.php" class="nav-link btn btn-primary">Login</a></li>
+                <?php endif; ?>
+            </ul>
+
+           <div class="nav-actions">
+        <a href="login.php" class="btn btn-primary">Login</a>
+</div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Engineering Innovation at Scale</h1>
+            <p class="hero-subtitle">Specialists in automation, electrical systems, and industrial solutions</p>
+            <div class="cta-buttons">
+<button class="btn btn-primary" id="consultBtn">Request Consultation</button>                <a href="#services" class="btn btn-secondary">View Services</a>
+            </div>
+        </div>
+        <div class="hero-overlay"></div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about">
+        <div class="container">
+            <h2 class="section-title">About Us</h2>
+            <div class="about-content">
+                <p class="about-text">
+                    Edge Automation Technology Services, Co. is a leading engineering firm specializing in mechanical engineering, electrical systems, and advanced automation solutions. With years of industry expertise, we deliver turnkey solutions for industrial clients seeking reliable, scalable, and innovative technology deployments.
+                </p>
+                <p class="about-text">
+                    We combine deep technical knowledge with practical implementation experience to transform business challenges into competitive advantages through smart automation and systems integration.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="services">
+        <div class="container">
+            <h2 class="section-title">Our Services</h2>
+            <div class="services-grid">
+                <!-- Mechanical Engineering -->
+                <div class="service-card">
+                    <div class="service-icon">⚙️</div>
+                    <h3>Mechanical Engineering</h3>
+                    <ul class="service-list">
+                        <li>Utility Systems (Air, Water, Steam)</li>
+                        <li>Fire Protection Systems</li>
+                        <li>Diesel Generator Systems</li>
+                        <li>Cleanroom Systems</li>
+                        <li>HVAC Solutions</li>
+                        <li>Preventive Maintenance</li>
+                    </ul>
+                </div>
+
+                <!-- Electrical Engineering -->
+                <div class="service-card">
+                    <div class="service-icon">⚡</div>
+                    <h3>Electrical Engineering</h3>
+                    <ul class="service-list">
+                        <li>Electrical Power System Analysis</li>
+                        <li>Voltage Drop Calculations</li>
+                        <li>Load Distribution Design</li>
+                        <li>Arc Flash Studies</li>
+                        <li>Transformer Installation</li>
+                        <li>Capacitor Banks & Panels</li>
+                    </ul>
+                </div>
+
+                <!-- Electronics & Automation -->
+                <div class="service-card">
+                    <div class="service-icon">🤖</div>
+                    <h3>Electronics & Automation</h3>
+                    <ul class="service-list">
+                        <li>Factory Automation Systems</li>
+                        <li>Building Management Systems</li>
+                        <li>CCTV & Security Solutions</li>
+                        <li>Structured Cabling</li>
+                        <li>Fire Detection & Alarms</li>
+                        <li>Production Machine Integration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Specialized Projects Section -->
+    <section id="projects" class="projects">
+        <div class="container">
+            <h2 class="section-title">Specialized Solutions</h2>
+            <div class="projects-grid">
+                <div class="project-item">
+                    <span class="project-number">01</span>
+                    <h4>Machine Improvement</h4>
+                    <p>Enhance existing machinery performance and reliability</p>
+                </div>
+                <div class="project-item">
+                    <span class="project-number">02</span>
+                    <h4>Process Optimization</h4>
+                    <p>Streamline operations and increase efficiency</p>
+                </div>
+                <div class="project-item">
+                    <span class="project-number">03</span>
+                    <h4>Solar Installation</h4>
+                    <p>Renewable energy solutions for sustainable operations</p>
+                </div>
+                <div class="project-item">
+                    <span class="project-number">04</span>
+                    <h4>Solar Maintenance</h4>
+                    <p>Ongoing support and optimization of solar systems</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="why-choose">
+        <div class="container">
+            <h2 class="section-title">Why Choose Us</h2>
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="feature-icon">🏆</div>
+                    <h4>Industry Expertise</h4>
+                    <p>Years of proven experience in industrial automation</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">✅</div>
+                    <h4>Reliable Systems</h4>
+                    <p>Engineered for stability and long-term performance</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📈</div>
+                    <h4>Scalable Solutions</h4>
+                    <p>Grow your operations with our flexible systems</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔧</div>
+                    <h4>End-to-End Support</h4>
+                    <p>From planning through implementation and beyond</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🛡️</div>
+                    <h4>Preventive Care</h4>
+                    <p>Minimize downtime with proactive maintenance</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">💡</div>
+                    <h4>Innovation</h4>
+                    <p>Cutting-edge technology and best practices</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section (Login-gated) -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <h2 class="section-title">Client & Project Inquiries</h2>
+
+
+           <div class="contact-content">
+              
+
+           <div class="contact-card">
+    <h3>Contact Information</h3>
+    <p>
+        <strong>Company:</strong> Edge Automation Technology Services, Co.<br>
+        <strong>Company Location:</strong> Blk 4 Lot 16 Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna<br>
+        <strong>Specialization:</strong> Industrial Automation & Engineering
+    </p>
+
+  <div class="social-links" id="socialLinks">
+
+    <!-- Social Icons -->
+    <a href="https://www.facebook.com/edgeautomationtsc" target="_blank"
+       class="social-icon">
+        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" width="24">
+    </a>
+
+    <a href="https://invite.viber.com/?number=09178789571" target="_blank"
+       class="social-icon">
+        <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" width="24">
+    </a>
+
+    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ejimenez.edge@gmail.com"
+       target="_blank" class="social-icon">
+        <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" width="24">
+    </a>
+
+    <!-- ✅ POPUP MESSAGE (NOW CORRECT POSITION) -->
+    <div class="social-tooltip" id="newClientTip">
+        <div class="tooltip-arrow"></div>
+        <p>
+            <strong>New client?</strong><br>
+            To request a project consultation, please contact us using one of the platforms below.
+        </p>
+        <button id="dismissTip" type="button">Got it</button>
+    </div>
+
+</div>
+            
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Edge Automation Technology Services, Co. All rights reserved.</p>
+        </div>
+    </footer>
+
+<div id="consultModal" class="consult-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="consultModalTitle">
+    <div class="consult-modal-content">
+        <h3 id="consultModalTitle">Request Consultation</h3>
+        <p>Choose your preferred platform:</p>
+
+        <div class="consult-buttons">
+<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook Messenger">
+                <span>Facebook Page</span>
+            </a>
+
+<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="Viber">
+                <span>Viber Chat</span>
+            </a>
+
+<a href="https://mail.google.com/mail/?view=cm&fs=1&to=ejimenez.edge@gmail.com&su=Request%20Consultation&body=Hello%20Edge%20Automation,%20I%20would%20like%20to%20request%20a%20consultation." target="_blank" class="consult-option">
+    <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email">
+    <span>Email</span>
+</a>      </div>
+
+        <button id="closeConsult" class="consult-close" type="button">Close</button>
+    </div>
+</div>
+    <script src="../js/index.js"></script>
+
+</body>
+
+</html>

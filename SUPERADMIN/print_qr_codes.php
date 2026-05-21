@@ -3,9 +3,6 @@ require_once __DIR__ . '/../config/auth_middleware.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/asset_unit_helpers.php';
 
-use chillerlan\QRCode\QRCode;
-use chillerlan\QRCode\QROptions;
-
 require_role('super_admin');
 
 $qrLibraryReady = false;
@@ -26,7 +23,7 @@ if (is_file($qrAutoloadPath)) {
 
     if (!$missingQrDependency) {
         require_once $qrAutoloadPath;
-        $qrLibraryReady = class_exists(QRCode::class) && class_exists(QROptions::class);
+        $qrLibraryReady = class_exists('chillerlan\\QRCode\\QRCode') && class_exists('chillerlan\\QRCode\\QROptions');
     }
 }
 
@@ -37,12 +34,15 @@ function generateQRDataUri(string $value): string {
         return '';
     }
 
-    $options = new QROptions([
+    $optionsClass = 'chillerlan\\QRCode\\QROptions';
+    $qrClass = 'chillerlan\\QRCode\\QRCode';
+
+    $options = new $optionsClass([
         'outputType' => 'png',
         'scale' => 8
     ]);
 
-    return (new QRCode($options))->render($value);
+    return (new $qrClass($options))->render($value);
 }
 
 function buildAssetQrValue(int $assetId, string $serialNumber = ''): string {

@@ -489,11 +489,27 @@ h4 {
     box-shadow: var(--shadow-sm);
 }
 
+.partners-link {
+    display: block;
+    cursor: zoom-in;
+}
+
+.partners-link:focus-visible {
+    outline: 3px solid rgba(255, 152, 0, 0.82);
+    outline-offset: -3px;
+}
+
 .partners-visual img {
     display: block;
     width: 100%;
     aspect-ratio: 2100 / 837;
     object-fit: cover;
+    transition: filter var(--ease), transform var(--ease);
+}
+
+.partners-link:hover img {
+    filter: saturate(1.05);
+    transform: scale(1.01);
 }
 
 .service-card,
@@ -602,6 +618,10 @@ h4 {
     transition: transform var(--ease), box-shadow var(--ease);
 }
 
+.project-item.is-carousel-clone {
+    display: none;
+}
+
 .project-link {
     display: grid;
     height: 100%;
@@ -653,6 +673,10 @@ h4 {
     margin-top: 0.58rem;
     font-size: var(--text-sm);
     line-height: 1.55;
+}
+
+.projects-carousel-controls {
+    display: none;
 }
 
 .feature {
@@ -1041,11 +1065,20 @@ h4 {
     display: grid;
 }
 
+.project-lightbox.is-single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.project-lightbox.is-single .project-lightbox-nav {
+    display: none;
+}
+
 .project-lightbox-figure {
     display: grid;
     justify-items: center;
     gap: 0.85rem;
     min-width: 0;
+    width: 100%;
     margin: 0;
 }
 
@@ -1065,37 +1098,93 @@ h4 {
 
 .project-lightbox-close,
 .project-lightbox-nav {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-sizing: border-box;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.34);
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px);
     color: #ffffff;
     cursor: pointer;
-    transition: background var(--ease), transform var(--ease);
+    font-size: 0;
+    line-height: 1;
+    padding: 0;
+    transition: background var(--ease), border-color var(--ease), transform var(--ease);
+}
+
+.project-lightbox-close::before,
+.project-lightbox-nav::before {
+    display: block;
+    color: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+}
+
+.project-lightbox-close::before {
+    content: "";
+}
+
+.project-lightbox-close::before,
+.project-lightbox-close::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: #ffffff;
+    transform-origin: center;
+}
+
+.project-lightbox-close::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.project-lightbox-close::after {
+    content: "";
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.project-lightbox-prev::before {
+    content: "\2039";
+    font-size: 2.9rem;
+    transform: translateY(-2px);
+}
+
+.project-lightbox-next::before {
+    content: "\203a";
+    font-size: 2.9rem;
+    transform: translateY(-2px);
 }
 
 .project-lightbox-close:hover,
 .project-lightbox-nav:hover {
     background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.58);
     transform: translateY(-1px);
 }
 
 .project-lightbox-close {
     position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 44px;
-    height: 44px;
-    font-size: 1.7rem;
-    line-height: 1;
+    top: 18px;
+    right: 18px;
+    width: 46px;
+    height: 46px;
+    z-index: 4;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+}
+
+.project-lightbox.is-single .project-lightbox-close {
+    border-color: rgba(255, 255, 255, 0.58);
+    background: rgba(6, 40, 23, 0.82);
 }
 
 .project-lightbox-nav {
-    width: 54px;
-    height: 54px;
-    font-size: 2.5rem;
+    width: 56px;
+    height: 56px;
 }
 
 .notification {
@@ -1304,14 +1393,17 @@ h4 {
 
     .project-lightbox {
         grid-template-columns: 46px minmax(0, 1fr) 46px;
-        gap: 8px;
+        gap: 10px;
         padding: 18px;
     }
 
     .project-lightbox-nav {
-        width: 44px;
+        width: 46px;
         height: 50px;
-        font-size: 2.1rem;
+    }
+
+    .project-lightbox-nav::before {
+        font-size: 2.55rem;
     }
 }
 
@@ -1357,7 +1449,7 @@ h4 {
 
     .why-intro {
         margin-bottom: 1.35rem;
-        text-align: left;
+        text-align: center;
     }
 
     .why-choose .features-grid {
@@ -1429,13 +1521,52 @@ h4 {
         overflow-x: auto;
         padding: 0 var(--page-x) 1rem;
         scroll-padding-left: var(--page-x);
-        scroll-snap-type: x mandatory;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
+        mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+    }
+
+    .projects-grid::-webkit-scrollbar {
+        display: none;
     }
 
     .project-item {
         flex: 0 0 min(84vw, 380px);
         scroll-snap-align: start;
+    }
+
+    .project-item.is-carousel-clone {
+        display: block;
+    }
+
+    .projects-carousel-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 0.2rem;
+    }
+
+    .projects-carousel-dot {
+        width: 8px;
+        height: 8px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(15, 157, 56, 0.24);
+        cursor: pointer;
+        padding: 0;
+        transition: width var(--ease), background var(--ease), transform var(--ease);
+    }
+
+    .projects-carousel-dot.is-active {
+        width: 26px;
+        background: linear-gradient(90deg, var(--green-600), var(--amber-500));
+    }
+
+    .projects-carousel-dot:focus-visible {
+        outline: 3px solid rgba(255, 152, 0, 0.45);
+        outline-offset: 3px;
     }
 
     .project-item p {
@@ -1444,7 +1575,7 @@ h4 {
 
     .partners-intro {
         margin-bottom: 1.25rem;
-        text-align: left;
+        text-align: center;
     }
 
     .partners-visual {
@@ -1582,33 +1713,69 @@ h4 {
     }
 
     .project-lightbox {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         align-content: center;
-        gap: 10px;
-        padding: 16px;
+        justify-items: center;
+        gap: 0;
+        padding: 72px 18px 54px;
     }
 
     .project-lightbox-figure {
-        grid-column: 1 / -1;
-        order: 1;
+        grid-column: 1;
+        width: 100%;
+        max-width: 100%;
     }
 
-    .project-lightbox-prev,
-    .project-lightbox-next {
-        order: 2;
-        width: 100%;
-        height: 44px;
+    .project-lightbox-figure figcaption {
+        max-width: calc(100vw - 36px);
+        font-size: 0.88rem;
+        line-height: 1.35;
     }
 
     .project-lightbox-figure img {
-        max-height: 70vh;
+        max-width: calc(100vw - 36px);
+        max-height: calc(100svh - 170px);
+    }
+
+    .project-lightbox-nav {
+        position: absolute;
+        top: 50%;
+        z-index: 2;
+        width: 42px;
+        height: 48px;
+        transform: translateY(-50%);
+    }
+
+    .project-lightbox-nav::before {
+        font-size: 2.35rem;
+    }
+
+    .project-lightbox-nav:hover {
+        transform: translateY(-50%);
+    }
+
+    .project-lightbox-prev {
+        left: 12px;
+    }
+
+    .project-lightbox-next {
+        right: 12px;
     }
 
     .project-lightbox-close {
-        top: 12px;
-        right: 12px;
-        width: 40px;
-        height: 40px;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        z-index: 3;
+        width: 42px;
+        height: 42px;
+    }
+
+    .project-lightbox-close::before {
+        width: 17px;
+    }
+
+    .project-lightbox-close::after {
+        width: 17px;
     }
 
     .notification {
@@ -1622,6 +1789,36 @@ h4 {
     .logo-text {
         max-width: 72px;
         font-size: 0.78rem;
+    }
+
+    .project-lightbox-nav {
+        width: 38px;
+        height: 44px;
+    }
+
+    .project-lightbox-nav::before {
+        font-size: 2.15rem;
+    }
+
+    .project-lightbox-prev {
+        left: 8px;
+    }
+
+    .project-lightbox-next {
+        right: 8px;
+    }
+
+    .project-lightbox-close {
+        width: 38px;
+        height: 38px;
+    }
+
+    .project-lightbox-close::before {
+        width: 16px;
+    }
+
+    .project-lightbox-close::after {
+        width: 16px;
     }
 
     .mobile-contact-bar a,

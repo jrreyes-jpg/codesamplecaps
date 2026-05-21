@@ -166,7 +166,9 @@ const initConsultationModal = () => {
 };
 
 const initServiceCards = () => {
-    document.querySelectorAll('.service-card').forEach((card) => {
+    const cards = document.querySelectorAll('.service-card');
+
+    cards.forEach((card) => {
         const button = card.querySelector('.service-more');
 
         if (!button) {
@@ -174,7 +176,19 @@ const initServiceCards = () => {
         }
 
         button.addEventListener('click', () => {
-            const isExpanded = card.classList.toggle('is-expanded');
+            const willExpand = !card.classList.contains('is-expanded');
+
+            cards.forEach((serviceCard) => {
+                serviceCard.classList.remove('is-expanded');
+                const serviceButton = serviceCard.querySelector('.service-more');
+                serviceButton?.setAttribute('aria-expanded', 'false');
+                if (serviceButton) {
+                    serviceButton.textContent = 'View details';
+                }
+            });
+
+            card.classList.toggle('is-expanded', willExpand);
+            const isExpanded = card.classList.contains('is-expanded');
             button.setAttribute('aria-expanded', String(isExpanded));
             button.textContent = isExpanded ? 'Hide details' : 'View details';
         });

@@ -1459,12 +1459,20 @@ h4 {
 
     .services .services-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
         gap: 10px;
     }
 
     .services .service-card {
+        display: flex;
+        flex-direction: column;
         min-height: 126px;
         padding: 0.85rem;
+    }
+
+    .services .service-card.is-expanded {
+        grid-column: 1 / -1;
+        min-height: auto;
     }
 
     .service-icon {
@@ -1476,6 +1484,7 @@ h4 {
     }
 
     .services .service-card h3 {
+        min-height: 2.5em;
         font-size: 0.9rem;
         line-height: 1.25;
     }
@@ -1506,7 +1515,7 @@ h4 {
         justify-content: center;
         min-height: 34px;
         width: 100%;
-        margin-top: 0.7rem;
+        margin-top: auto;
         border: 1px solid rgba(15, 157, 56, 0.18);
         border-radius: var(--radius-sm);
         background: var(--surface-soft);

@@ -225,6 +225,24 @@ const initProjectLightbox = () => {
     });
 
     let activeIndex = 0;
+    let lightboxTimer = 0;
+    let lightboxResumeTimer = 0;
+    let lightboxPointerStartX = 0;
+    let lightboxPointerStartY = 0;
+
+    const getNextProjectIndex = (delta) => {
+        let nextIndex = activeIndex;
+
+        for (let step = 0; step < projects.length; step += 1) {
+            nextIndex = (nextIndex + delta + projects.length) % projects.length;
+
+            if (!projects[nextIndex].isSingle) {
+                return nextIndex;
+            }
+        }
+
+        return activeIndex;
+    };
 
     const showProject = (index) => {
         activeIndex = (index + projects.length) % projects.length;
@@ -235,14 +253,45 @@ const initProjectLightbox = () => {
         lightbox.classList.toggle('is-single', project.isSingle);
     };
 
+    const stopLightboxAutoplay = () => {
+        window.clearInterval(lightboxTimer);
+        lightboxTimer = 0;
+    };
+
+    const startLightboxAutoplay = () => {
+        stopLightboxAutoplay();
+
+        if (!lightbox.classList.contains('is-open') || projects[activeIndex]?.isSingle) {
+            return;
+        }
+
+        lightboxTimer = window.setInterval(() => {
+            showProject(getNextProjectIndex(1));
+        }, 3600);
+    };
+
+    const pauseLightboxThenResume = () => {
+        stopLightboxAutoplay();
+        window.clearTimeout(lightboxResumeTimer);
+        lightboxResumeTimer = window.setTimeout(startLightboxAutoplay, 3200);
+    };
+
+    const holdLightboxAutoplay = () => {
+        stopLightboxAutoplay();
+        window.clearTimeout(lightboxResumeTimer);
+    };
+
     const openLightbox = (index) => {
         showProject(index);
         lightbox.classList.add('is-open');
         lightbox.setAttribute('aria-hidden', 'false');
         closeButton.focus();
+        startLightboxAutoplay();
     };
 
     const closeLightbox = () => {
+        stopLightboxAutoplay();
+        window.clearTimeout(lightboxResumeTimer);
         lightbox.classList.remove('is-open');
         lightbox.classList.remove('is-single');
         lightbox.setAttribute('aria-hidden', 'true');
@@ -259,15 +308,41 @@ const initProjectLightbox = () => {
     closeButton.addEventListener('click', closeLightbox);
     prevButton.addEventListener('click', () => {
         if (!projects[activeIndex]?.isSingle) {
-            showProject(activeIndex - 1);
+            showProject(getNextProjectIndex(-1));
+            pauseLightboxThenResume();
         }
     });
 
     nextButton.addEventListener('click', () => {
         if (!projects[activeIndex]?.isSingle) {
-            showProject(activeIndex + 1);
+            showProject(getNextProjectIndex(1));
+            pauseLightboxThenResume();
         }
     });
+
+    image.addEventListener('pointerdown', (event) => {
+        lightboxPointerStartX = event.clientX;
+        lightboxPointerStartY = event.clientY;
+        holdLightboxAutoplay();
+    });
+
+    image.addEventListener('pointerup', (event) => {
+        if (projects[activeIndex]?.isSingle) {
+            return;
+        }
+
+        const deltaX = event.clientX - lightboxPointerStartX;
+        const deltaY = event.clientY - lightboxPointerStartY;
+
+        if (Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            showProject(getNextProjectIndex(deltaX < 0 ? 1 : -1));
+        }
+
+        pauseLightboxThenResume();
+    });
+
+    image.addEventListener('mouseenter', holdLightboxAutoplay);
+    image.addEventListener('mouseleave', startLightboxAutoplay);
 
     lightbox.addEventListener('click', (event) => {
         const clickedControl = event.target.closest('.project-lightbox-close, .project-lightbox-nav');
@@ -288,16 +363,18 @@ const initProjectLightbox = () => {
         }
 
         if (!projects[activeIndex]?.isSingle && event.key === 'ArrowLeft') {
-            showProject(activeIndex - 1);
+            showProject(getNextProjectIndex(-1));
+            pauseLightboxThenResume();
         }
 
         if (!projects[activeIndex]?.isSingle && event.key === 'ArrowRight') {
-            showProject(activeIndex + 1);
+            showProject(getNextProjectIndex(1));
+            pauseLightboxThenResume();
         }
     });
 };
 
-const initMobileProjectCarousel = () => {
+const initProjectCarousel = () => {
     const carousel = document.querySelector('.projects-grid');
     const items = Array.from(carousel?.querySelectorAll('.project-item') ?? []);
 
@@ -305,123 +382,70 @@ const initMobileProjectCarousel = () => {
         return;
     }
 
-    const mobileQuery = window.matchMedia('(max-width: 760px)');
-    const controls = document.createElement('div');
-    controls.className = 'projects-carousel-controls';
-    controls.setAttribute('aria-label', 'Project carousel navigation');
-    const clones = items.map((item, index) => {
-        const clone = item.cloneNode(true);
-        const cloneLink = clone.querySelector('.project-link');
-
-        clone.classList.add('is-carousel-clone');
-        clone.classList.remove('reveal-on-scroll');
-        clone.classList.add('is-visible');
-        clone.setAttribute('aria-hidden', 'true');
-
-        cloneLink?.addEventListener('click', (event) => {
-            event.preventDefault();
-            items[index].querySelector('.project-link')?.dispatchEvent(new MouseEvent('click', {
-                bubbles: true,
-                cancelable: true,
-            }));
-        });
-
-        carousel.appendChild(clone);
-        return clone;
-    });
-    const allItems = [...items, ...clones];
-
-    const dots = items.map((item, index) => {
-        const dot = document.createElement('button');
-        dot.className = 'projects-carousel-dot';
-        dot.type = 'button';
-        dot.setAttribute('aria-label', `Go to project ${index + 1}`);
-        dot.addEventListener('click', () => {
-            scrollToItem(index);
-            pauseThenResume();
-        });
-        controls.appendChild(dot);
-        return dot;
-    });
-
-    carousel.after(controls);
-
     let activeIndex = 0;
-    let animationId = 0;
-    let lastFrameTime = 0;
+    let autoplayTimer = 0;
     let isPaused = false;
     let resumeId = 0;
+    let isDragging = false;
+    let dragStarted = false;
+    let dragStartX = 0;
+    let dragStartScrollLeft = 0;
+    let resizeTick = 0;
 
     const setActive = (index) => {
         activeIndex = (index + items.length) % items.length;
-        dots.forEach((dot, dotIndex) => {
-            dot.classList.toggle('is-active', dotIndex === activeIndex);
+        const prevIndex = (activeIndex - 1 + items.length) % items.length;
+        const nextIndex = (activeIndex + 1) % items.length;
+
+        items.forEach((item, itemIndex) => {
+            item.classList.toggle('is-active-project', itemIndex === activeIndex);
+            item.classList.toggle('is-prev-project', itemIndex === prevIndex);
+            item.classList.toggle('is-next-project', itemIndex === nextIndex);
         });
     };
 
     function scrollToItem(index) {
         const targetIndex = (index + items.length) % items.length;
         const target = items[targetIndex];
-        const left = target.offsetLeft - parseFloat(getComputedStyle(carousel).paddingLeft || '0');
+        const isMobile = window.matchMedia('(max-width: 760px)').matches;
+        const left = isMobile
+            ? target.offsetLeft - ((carousel.clientWidth - target.offsetWidth) / 2)
+            : target.offsetLeft - parseFloat(getComputedStyle(carousel).paddingLeft || '0');
         carousel.scrollTo({ left, behavior: 'smooth' });
         setActive(targetIndex);
     }
 
     const getCenteredIndex = () => {
-        const center = carousel.scrollLeft + carousel.clientWidth / 2;
-        const nearestIndex = allItems.reduce((bestIndex, item, index) => {
-            const itemCenter = item.offsetLeft + item.offsetWidth / 2;
-            const bestCenter = allItems[bestIndex].offsetLeft + allItems[bestIndex].offsetWidth / 2;
-            return Math.abs(itemCenter - center) < Math.abs(bestCenter - center) ? index : bestIndex;
+        const leftEdge = carousel.scrollLeft + parseFloat(getComputedStyle(carousel).paddingLeft || '0');
+        const nearestIndex = items.reduce((bestIndex, item, index) => {
+            return Math.abs(item.offsetLeft - leftEdge) < Math.abs(items[bestIndex].offsetLeft - leftEdge) ? index : bestIndex;
         }, 0);
 
-        return nearestIndex % items.length;
+        return nearestIndex;
     };
 
     const stop = () => {
-        window.cancelAnimationFrame(animationId);
-        animationId = 0;
-        lastFrameTime = 0;
-    };
-
-    const animate = (timestamp) => {
-        if (!mobileQuery.matches || isPaused) {
-            stop();
-            return;
-        }
-
-        if (!lastFrameTime) {
-            lastFrameTime = timestamp;
-        }
-
-        const delta = Math.min(timestamp - lastFrameTime, 48);
-        const loopPoint = clones[0].offsetLeft - parseFloat(getComputedStyle(carousel).paddingLeft || '0');
-        const speed = 34;
-        carousel.scrollLeft += (speed * delta) / 1000;
-
-        if (carousel.scrollLeft >= loopPoint) {
-            carousel.scrollLeft -= loopPoint;
-        }
-
-        setActive(getCenteredIndex());
-        lastFrameTime = timestamp;
-        animationId = window.requestAnimationFrame(animate);
+        window.clearInterval(autoplayTimer);
+        autoplayTimer = 0;
     };
 
     const start = () => {
-        if (!mobileQuery.matches || animationId) {
+        if (autoplayTimer) {
             return;
         }
 
         isPaused = false;
-        animationId = window.requestAnimationFrame(animate);
+        autoplayTimer = window.setInterval(() => {
+            if (!isPaused) {
+                scrollToItem(activeIndex + 1);
+            }
+        }, 4200);
     };
 
-    const pauseThenResume = () => {
+    const holdCarousel = () => {
         isPaused = true;
         stop();
         window.clearTimeout(resumeId);
-        resumeId = window.setTimeout(start, 3800);
     };
 
     let scrollTick = 0;
@@ -430,27 +454,58 @@ const initMobileProjectCarousel = () => {
         scrollTick = window.setTimeout(() => setActive(getCenteredIndex()), 80);
     }, { passive: true });
 
-    ['pointerdown', 'touchstart', 'focusin', 'mouseenter'].forEach((eventName) => {
-        carousel.addEventListener(eventName, pauseThenResume, { passive: true });
+    carousel.addEventListener('pointerdown', (event) => {
+        isDragging = true;
+        dragStarted = false;
+        dragStartX = event.clientX;
+        dragStartScrollLeft = carousel.scrollLeft;
+        carousel.setPointerCapture?.(event.pointerId);
+        carousel.classList.add('is-dragging');
+        holdCarousel();
     });
 
-    carousel.addEventListener('mouseleave', start);
+    carousel.addEventListener('pointermove', (event) => {
+        if (!isDragging) {
+            return;
+        }
 
-    const handleViewportChange = () => {
+        const deltaX = event.clientX - dragStartX;
+
+        if (Math.abs(deltaX) > 6) {
+            dragStarted = true;
+            carousel.scrollLeft = dragStartScrollLeft - deltaX;
+        }
+    });
+
+    const endDrag = (event) => {
+        if (!isDragging) {
+            return;
+        }
+
+        isDragging = false;
+        carousel.releasePointerCapture?.(event.pointerId);
+        carousel.classList.remove('is-dragging');
         stop();
-        isPaused = false;
-        carousel.scrollTo({ left: 0, behavior: 'auto' });
-        setActive(0);
         start();
     };
 
-    if (typeof mobileQuery.addEventListener === 'function') {
-        mobileQuery.addEventListener('change', handleViewportChange);
-    } else if (typeof mobileQuery.addListener === 'function') {
-        mobileQuery.addListener(handleViewportChange);
-    }
+    carousel.addEventListener('pointerup', endDrag);
+    carousel.addEventListener('pointercancel', endDrag);
+    carousel.addEventListener('click', (event) => {
+        if (dragStarted) {
+            event.preventDefault();
+            event.stopPropagation();
+            dragStarted = false;
+        }
+    }, true);
+
+    window.addEventListener('resize', () => {
+        window.clearTimeout(resizeTick);
+        resizeTick = window.setTimeout(() => scrollToItem(activeIndex), 160);
+    });
 
     setActive(0);
+    scrollToItem(0);
     start();
 };
 
@@ -465,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNewClientTooltip();
     initServiceCards();
     initProjectLightbox();
-    initMobileProjectCarousel();
+    initProjectCarousel();
 });
 
 

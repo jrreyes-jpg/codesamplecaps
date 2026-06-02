@@ -446,27 +446,38 @@ const initProjectCarousel = () => {
             return;
         }
 
-        position = ((position % cycleWidth) + cycleWidth) % cycleWidth;
+        while (position >= cycleWidth * 2) {
+            position -= cycleWidth;
+        }
+
+        while (position < cycleWidth) {
+            position += cycleWidth;
+        }
     };
 
-    const addCloneSet = () => {
-        originals.forEach((item, index) => {
-            carousel.append(createClone(item, index));
-        });
+    const createCloneSet = () => originals.map((item, index) => createClone(item, index));
+
+    const appendCloneSet = () => {
+        carousel.append(...createCloneSet());
     };
 
     const buildTrack = () => {
         removeClones();
         carousel.style.transform = 'translate3d(0, 0, 0)';
-        addCloneSet();
+        const beforeSet = createCloneSet();
+        carousel.prepend(...beforeSet);
+        appendCloneSet();
 
-        const firstClone = carousel.querySelector('.is-carousel-clone');
-        cycleWidth = firstClone
-            ? firstClone.offsetLeft - originals[0].offsetLeft
+        cycleWidth = beforeSet[0]
+            ? originals[0].offsetLeft - beforeSet[0].offsetLeft
             : carousel.scrollWidth;
 
-        while (cycleWidth > 0 && carousel.scrollWidth < cycleWidth + shell.clientWidth + 120) {
-            addCloneSet();
+        while (cycleWidth > 0 && carousel.scrollWidth < (cycleWidth * 2) + shell.clientWidth + 120) {
+            appendCloneSet();
+        }
+
+        if (!position) {
+            position = cycleWidth;
         }
 
         normalizePosition();
@@ -482,38 +493,78 @@ const initProjectCarousel = () => {
         lastFrame = time;
 
         if (!isDragging && cycleWidth > 0) {
-            position += (speed * delta) / 1000;
-
             if (nudge) {
                 const progress = Math.min((time - nudge.startedAt) / nudge.duration, 1);
                 const eased = 1 - Math.pow(1 - progress, 3);
-                const currentValue = nudge.distance * eased;
-                position += currentValue - nudge.previousValue;
-                nudge.previousValue = currentValue;
+                position = nudge.from + ((nudge.to - nudge.from) * eased);
 
                 if (progress >= 1) {
                     nudge = null;
+                    normalizePosition();
                 }
+            } else {
+                position += (speed * delta) / 1000;
+                normalizePosition();
             }
 
-            normalizePosition();
             applyPosition();
         }
 
         window.requestAnimationFrame(animate);
     };
 
-    const nudgeByCard = (direction) => {
-        const step = cycleWidth / itemCount;
+    const getCardCenterPosition = (card) => {
+        return card.offsetLeft + (card.offsetWidth / 2) - (shell.clientWidth / 2);
+    };
 
-        if (!step) {
+    const getCenteredCard = () => {
+        const cards = Array.from(carousel.querySelectorAll('.project-item'));
+        const viewportCenter = position + (shell.clientWidth / 2);
+
+        return cards.reduce((bestCard, card) => {
+            const cardCenter = card.offsetLeft + (card.offsetWidth / 2);
+            const bestCenter = bestCard.offsetLeft + (bestCard.offsetWidth / 2);
+            return Math.abs(cardCenter - viewportCenter) < Math.abs(bestCenter - viewportCenter)
+                ? card
+                : bestCard;
+        }, cards[0]);
+    };
+
+    const centerAdjacentCard = (direction) => {
+        const cards = Array.from(carousel.querySelectorAll('.project-item'));
+
+        if (!cards.length || !cycleWidth) {
             return;
         }
 
+        const centeredCard = getCenteredCard();
+        const centeredRealIndex = Number(centeredCard.dataset.realIndex ?? 0);
+        const targetRealIndex = (centeredRealIndex + direction + itemCount) % itemCount;
+        const targetCards = cards.filter((card) => Number(card.dataset.realIndex ?? -1) === targetRealIndex);
+
+        if (!targetCards.length) {
+            return;
+        }
+
+        const targetPositions = targetCards.flatMap((card) => {
+            const cardPosition = getCardCenterPosition(card);
+            return [cardPosition - cycleWidth, cardPosition, cardPosition + cycleWidth];
+        });
+        const directionalTargets = targetPositions.filter((value) => {
+            return direction > 0 ? value > position + 1 : value < position - 1;
+        });
+        const fallbackTargets = targetPositions.length ? targetPositions : [position];
+        const targetPosition = (directionalTargets.length ? directionalTargets : fallbackTargets)
+            .reduce((bestValue, value) => {
+                const bestDistance = Math.abs(bestValue - position);
+                const valueDistance = Math.abs(value - position);
+                return valueDistance < bestDistance ? value : bestValue;
+            });
+
         nudge = {
-            distance: step * direction,
-            duration: 420,
-            previousValue: 0,
+            from: position,
+            to: targetPosition,
+            duration: 480,
             startedAt: performance.now(),
         };
     };
@@ -571,8 +622,8 @@ const initProjectCarousel = () => {
     carousel.addEventListener('pointerup', endDrag);
     carousel.addEventListener('pointercancel', endDrag);
 
-    prevButton.addEventListener('click', () => nudgeByCard(-1));
-    nextButton.addEventListener('click', () => nudgeByCard(1));
+    prevButton.addEventListener('click', () => centerAdjacentCard(-1));
+    nextButton.addEventListener('click', () => centerAdjacentCard(1));
 
     carousel.addEventListener('click', (event) => {
         if (dragMoved) {

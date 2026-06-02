@@ -625,6 +625,22 @@ const initProjectCarousel = () => {
     prevButton.addEventListener('click', () => centerAdjacentCard(-1));
     nextButton.addEventListener('click', () => centerAdjacentCard(1));
 
+    shell.addEventListener('wheel', (event) => {
+        const horizontalDelta = Math.abs(event.deltaX) >= Math.abs(event.deltaY)
+            ? event.deltaX
+            : 0;
+
+        if (!horizontalDelta || !cycleWidth) {
+            return;
+        }
+
+        event.preventDefault();
+        nudge = null;
+        position += horizontalDelta;
+        normalizePosition();
+        applyPosition();
+    }, { passive: false });
+
     carousel.addEventListener('click', (event) => {
         if (dragMoved) {
             event.preventDefault();

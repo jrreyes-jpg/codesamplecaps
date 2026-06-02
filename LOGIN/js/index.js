@@ -299,10 +299,20 @@ const initProjectLightbox = () => {
     };
 
     links.forEach((link, index) => {
+        link.dataset.lightboxIndex = String(index);
         link.addEventListener('click', (event) => {
             event.preventDefault();
             openLightbox(index);
         });
+    });
+
+    document.addEventListener('projectLightbox:open', (event) => {
+        const link = event.detail?.link;
+        const index = Number(link?.dataset.lightboxIndex ?? -1);
+
+        if (index >= 0) {
+            openLightbox(index);
+        }
     });
 
     closeButton.addEventListener('click', closeLightbox);
@@ -376,92 +386,160 @@ const initProjectLightbox = () => {
 
 const initProjectCarousel = () => {
     const carousel = document.querySelector('.projects-grid');
-    const items = Array.from(carousel?.querySelectorAll('.project-item') ?? []);
+    const originals = Array.from(carousel?.querySelectorAll('.project-item') ?? []);
 
-    if (!carousel || items.length < 2) {
+    if (!carousel || originals.length < 2) {
         return;
     }
 
-    let activeIndex = 0;
-    let autoplayTimer = 0;
-    let isPaused = false;
-    let resumeId = 0;
+    const shell = document.createElement('div');
+    shell.className = 'projects-carousel-shell';
+    carousel.before(shell);
+    shell.append(carousel);
+
+    originals.forEach((item, index) => {
+        item.dataset.realIndex = String(index);
+    });
+
+    const itemCount = originals.length;
+    const speed = window.matchMedia('(max-width: 760px)').matches ? 24 : 34;
+    let cycleWidth = 0;
+    let position = 0;
+    let lastFrame = 0;
     let isDragging = false;
-    let dragStarted = false;
+    let dragMoved = false;
     let dragStartX = 0;
-    let dragStartScrollLeft = 0;
+    let dragStartPosition = 0;
     let resizeTick = 0;
+    let nudge = null;
 
-    const setActive = (index) => {
-        activeIndex = (index + items.length) % items.length;
-        const prevIndex = (activeIndex - 1 + items.length) % items.length;
-        const nextIndex = (activeIndex + 1) % items.length;
+    const prevButton = document.createElement('button');
+    const nextButton = document.createElement('button');
+    prevButton.type = 'button';
+    nextButton.type = 'button';
+    prevButton.className = 'project-card-arrow project-card-prev';
+    nextButton.className = 'project-card-arrow project-card-next';
+    prevButton.setAttribute('aria-label', 'Previous project');
+    nextButton.setAttribute('aria-label', 'Next project');
+    shell.append(prevButton, nextButton);
 
-        items.forEach((item, itemIndex) => {
-            item.classList.toggle('is-active-project', itemIndex === activeIndex);
-            item.classList.toggle('is-prev-project', itemIndex === prevIndex);
-            item.classList.toggle('is-next-project', itemIndex === nextIndex);
-        });
+    const createClone = (item, index) => {
+        const clone = item.cloneNode(true);
+        clone.classList.add('is-carousel-clone');
+        clone.classList.remove('reveal-on-scroll');
+        clone.dataset.realIndex = String(index);
+        clone.setAttribute('aria-hidden', 'true');
+        return clone;
     };
 
-    function scrollToItem(index) {
-        const targetIndex = (index + items.length) % items.length;
-        const target = items[targetIndex];
-        const isMobile = window.matchMedia('(max-width: 760px)').matches;
-        const left = isMobile
-            ? target.offsetLeft - ((carousel.clientWidth - target.offsetWidth) / 2)
-            : target.offsetLeft - parseFloat(getComputedStyle(carousel).paddingLeft || '0');
-        carousel.scrollTo({ left, behavior: 'smooth' });
-        setActive(targetIndex);
-    }
-
-    const getCenteredIndex = () => {
-        const leftEdge = carousel.scrollLeft + parseFloat(getComputedStyle(carousel).paddingLeft || '0');
-        const nearestIndex = items.reduce((bestIndex, item, index) => {
-            return Math.abs(item.offsetLeft - leftEdge) < Math.abs(items[bestIndex].offsetLeft - leftEdge) ? index : bestIndex;
-        }, 0);
-
-        return nearestIndex;
+    const removeClones = () => {
+        carousel.querySelectorAll('.is-carousel-clone').forEach((clone) => clone.remove());
     };
 
-    const stop = () => {
-        window.clearInterval(autoplayTimer);
-        autoplayTimer = 0;
+    const applyPosition = () => {
+        carousel.style.transform = `translate3d(${-position}px, 0, 0)`;
     };
 
-    const start = () => {
-        if (autoplayTimer) {
+    const normalizePosition = () => {
+        if (!cycleWidth) {
+            position = 0;
             return;
         }
 
-        isPaused = false;
-        autoplayTimer = window.setInterval(() => {
-            if (!isPaused) {
-                scrollToItem(activeIndex + 1);
+        position = ((position % cycleWidth) + cycleWidth) % cycleWidth;
+    };
+
+    const addCloneSet = () => {
+        originals.forEach((item, index) => {
+            carousel.append(createClone(item, index));
+        });
+    };
+
+    const buildTrack = () => {
+        removeClones();
+        carousel.style.transform = 'translate3d(0, 0, 0)';
+        addCloneSet();
+
+        const firstClone = carousel.querySelector('.is-carousel-clone');
+        cycleWidth = firstClone
+            ? firstClone.offsetLeft - originals[0].offsetLeft
+            : carousel.scrollWidth;
+
+        while (cycleWidth > 0 && carousel.scrollWidth < cycleWidth + shell.clientWidth + 120) {
+            addCloneSet();
+        }
+
+        normalizePosition();
+        applyPosition();
+    };
+
+    const animate = (time) => {
+        if (!lastFrame) {
+            lastFrame = time;
+        }
+
+        const delta = Math.min(time - lastFrame, 48);
+        lastFrame = time;
+
+        if (!isDragging && cycleWidth > 0) {
+            position += (speed * delta) / 1000;
+
+            if (nudge) {
+                const progress = Math.min((time - nudge.startedAt) / nudge.duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const currentValue = nudge.distance * eased;
+                position += currentValue - nudge.previousValue;
+                nudge.previousValue = currentValue;
+
+                if (progress >= 1) {
+                    nudge = null;
+                }
             }
-        }, 4200);
+
+            normalizePosition();
+            applyPosition();
+        }
+
+        window.requestAnimationFrame(animate);
     };
 
-    const holdCarousel = () => {
-        isPaused = true;
-        stop();
-        window.clearTimeout(resumeId);
+    const nudgeByCard = (direction) => {
+        const step = cycleWidth / itemCount;
+
+        if (!step) {
+            return;
+        }
+
+        nudge = {
+            distance: step * direction,
+            duration: 420,
+            previousValue: 0,
+            startedAt: performance.now(),
+        };
     };
 
-    let scrollTick = 0;
-    carousel.addEventListener('scroll', () => {
-        window.clearTimeout(scrollTick);
-        scrollTick = window.setTimeout(() => setActive(getCenteredIndex()), 80);
-    }, { passive: true });
+    const openProjectFromCard = (card) => {
+        const realIndex = Number(card?.dataset.realIndex ?? -1);
+        const sourceLink = Number.isInteger(realIndex)
+            ? originals[realIndex]?.querySelector('.project-link')
+            : null;
+
+        if (!sourceLink) {
+            return;
+        }
+
+        document.dispatchEvent(new CustomEvent('projectLightbox:open', {
+            detail: { link: sourceLink },
+        }));
+    };
 
     carousel.addEventListener('pointerdown', (event) => {
         isDragging = true;
-        dragStarted = false;
+        dragMoved = false;
         dragStartX = event.clientX;
-        dragStartScrollLeft = carousel.scrollLeft;
+        dragStartPosition = position;
         carousel.setPointerCapture?.(event.pointerId);
         carousel.classList.add('is-dragging');
-        holdCarousel();
     });
 
     carousel.addEventListener('pointermove', (event) => {
@@ -471,10 +549,13 @@ const initProjectCarousel = () => {
 
         const deltaX = event.clientX - dragStartX;
 
-        if (Math.abs(deltaX) > 6) {
-            dragStarted = true;
-            carousel.scrollLeft = dragStartScrollLeft - deltaX;
+        if (Math.abs(deltaX) > 8) {
+            dragMoved = true;
         }
+
+        position = dragStartPosition - deltaX;
+        normalizePosition();
+        applyPosition();
     });
 
     const endDrag = (event) => {
@@ -485,28 +566,39 @@ const initProjectCarousel = () => {
         isDragging = false;
         carousel.releasePointerCapture?.(event.pointerId);
         carousel.classList.remove('is-dragging');
-        stop();
-        start();
     };
 
     carousel.addEventListener('pointerup', endDrag);
     carousel.addEventListener('pointercancel', endDrag);
+
+    prevButton.addEventListener('click', () => nudgeByCard(-1));
+    nextButton.addEventListener('click', () => nudgeByCard(1));
+
     carousel.addEventListener('click', (event) => {
-        if (dragStarted) {
+        if (dragMoved) {
             event.preventDefault();
             event.stopPropagation();
-            dragStarted = false;
+            dragMoved = false;
+            return;
+        }
+
+        const clickedLink = event.target.closest('.project-link');
+
+        if (clickedLink) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            openProjectFromCard(clickedLink.closest('.project-item'));
         }
     }, true);
 
     window.addEventListener('resize', () => {
         window.clearTimeout(resizeTick);
-        resizeTick = window.setTimeout(() => scrollToItem(activeIndex), 160);
+        resizeTick = window.setTimeout(buildTrack, 160);
     });
 
-    setActive(0);
-    scrollToItem(0);
-    start();
+    buildTrack();
+    window.requestAnimationFrame(animate);
 };
 
 

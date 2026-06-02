@@ -1669,6 +1669,14 @@ h4 {
 }
 
 @media (max-width: 760px) {
+    .why-choose {
+        padding-block: clamp(2.6rem, 8vw, 3.4rem);
+    }
+
+    .why-choose .section-title {
+        margin-bottom: 1.65rem;
+    }
+
     body {
         padding-bottom: 74px;
     }
@@ -1715,7 +1723,8 @@ h4 {
 
     .why-choose .features-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 8px;
+        counter-reset: whyFeature;
     }
 
     .services .services-grid {
@@ -1897,12 +1906,13 @@ h4 {
     }
 
     .why-choose .feature {
-        display: flex;
-        min-height: 112px;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: flex-start;
-        padding: 0.85rem;
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        min-height: 64px;
+        align-items: center;
+        gap: 0.62rem;
+        padding: 0.68rem 0.72rem;
+        counter-increment: whyFeature;
     }
 
     .why-choose .feature::before {
@@ -1916,9 +1926,19 @@ h4 {
     }
 
     .why-choose .feature-icon {
-        width: 34px;
-        height: 34px;
-        font-size: 1.08rem;
+        width: 30px;
+        height: 30px;
+        grid-row: auto;
+        border-radius: 8px;
+        font-size: 0;
+    }
+
+    .why-choose .feature-icon::before {
+        content: counter(whyFeature, decimal-leading-zero);
+        color: var(--green-800);
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0;
     }
 
     .feature h4 {
@@ -1926,9 +1946,10 @@ h4 {
     }
 
     .why-choose .feature h4 {
-        margin-top: 0.55rem;
-        font-size: 0.9rem;
-        line-height: 1.25;
+        margin-top: 0;
+        font-size: clamp(0.76rem, 0.7rem + 0.25vw, 0.86rem);
+        line-height: 1.18;
+        text-align: left;
     }
 
     .why-choose .feature p {
@@ -2115,6 +2136,27 @@ h4 {
     .logo-text {
         max-width: 72px;
         font-size: 0.78rem;
+    }
+
+    .why-choose .features-grid {
+        gap: 7px;
+    }
+
+    .why-choose .feature {
+        grid-template-columns: 27px minmax(0, 1fr);
+        min-height: 58px;
+        gap: 0.48rem;
+        padding: 0.58rem 0.6rem;
+    }
+
+    .why-choose .feature-icon {
+        width: 27px;
+        height: 27px;
+    }
+
+    .why-choose .feature h4 {
+        font-size: 0.72rem;
+        line-height: 1.16;
     }
 
     .project-lightbox-nav {

@@ -50,12 +50,12 @@ session_start();
     <nav class="navbar">
         <div class="nav-container">
             <a href="#home" class="nav-logo" aria-label="Edge Automation home">
-                <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo" class="logo-img">
+                <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo" class="logo-img" decoding="async">
                 <span class="logo-text">EDGE AUTOMATION</span>
             </a>
-            <ul class="nav-menu">
+            <ul class="nav-menu" id="primaryNav">
                 <li class="mobile-menu-brand" aria-hidden="true">
-                    <img src="../../IMAGES/edge.jpg" alt="">
+                    <img src="../../IMAGES/edge.jpg" alt="" loading="lazy" decoding="async">
                     <span>Edge Automation</span>
                 </li>
                 <li><a href="#home" class="nav-link">Home</a></li>
@@ -71,7 +71,7 @@ session_start();
            <div class="nav-actions">
         <a href="login.php" class="btn btn-primary">Login</a>
 </div>
-            <button class="hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+            <button class="hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="primaryNav">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -225,7 +225,7 @@ session_start();
             <div class="projects-grid">
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/1b222ae1-9eda-40a8-ab37-a916e4967da3.jpg">
-                        <img src="../../IMAGES/1b222ae1-9eda-40a8-ab37-a916e4967da3.jpg" alt="Industrial utility equipment and process piping installation">
+                        <img src="../../IMAGES/1b222ae1-9eda-40a8-ab37-a916e4967da3.jpg" alt="Industrial utility equipment and process piping installation" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">01</span>
                             <h4>Utility Systems Installation</h4>
@@ -235,7 +235,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/49f05bef-5847-4f8e-a281-605581193654.jpg">
-                        <img src="../../IMAGES/49f05bef-5847-4f8e-a281-605581193654.jpg" alt="Industrial filtration and water treatment piping system">
+                        <img src="../../IMAGES/49f05bef-5847-4f8e-a281-605581193654.jpg" alt="Industrial filtration and water treatment piping system" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">02</span>
                             <h4>Water Treatment Systems</h4>
@@ -245,7 +245,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/58f07dbc-5a25-4798-86bb-315d23d8b2fc.jpg">
-                        <img src="../../IMAGES/58f07dbc-5a25-4798-86bb-315d23d8b2fc.jpg" alt="Outdoor industrial skid equipment with control cabinet">
+                        <img src="../../IMAGES/58f07dbc-5a25-4798-86bb-315d23d8b2fc.jpg" alt="Outdoor industrial skid equipment with control cabinet" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">03</span>
                             <h4>Skid & Equipment Integration</h4>
@@ -255,7 +255,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/8708f0f0-f58a-4913-9686-76237dba2620.jpg">
-                        <img src="../../IMAGES/8708f0f0-f58a-4913-9686-76237dba2620.jpg" alt="Electrical control panel with industrial piping system">
+                        <img src="../../IMAGES/8708f0f0-f58a-4913-9686-76237dba2620.jpg" alt="Electrical control panel with industrial piping system" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">04</span>
                             <h4>Electrical Controls</h4>
@@ -265,7 +265,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/961699e2-5901-461b-aaef-8696c3f965b7.jpg">
-                        <img src="../../IMAGES/961699e2-5901-461b-aaef-8696c3f965b7.jpg" alt="Industrial water treatment line with filtration tanks and piping">
+                        <img src="../../IMAGES/961699e2-5901-461b-aaef-8696c3f965b7.jpg" alt="Industrial water treatment line with filtration tanks and piping" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">05</span>
                             <h4>Process Piping Works</h4>
@@ -275,7 +275,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/b6b1dc8e-df1d-40e8-b5cc-aa73962d9908.jpg">
-                        <img src="../../IMAGES/b6b1dc8e-df1d-40e8-b5cc-aa73962d9908.jpg" alt="HVAC ducting installation inside an industrial facility">
+                        <img src="../../IMAGES/b6b1dc8e-df1d-40e8-b5cc-aa73962d9908.jpg" alt="HVAC ducting installation inside an industrial facility" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">06</span>
                             <h4>HVAC & Ducting</h4>
@@ -285,7 +285,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/c797a630-029b-4486-a1e2-cde9ed4ab8c6.jpg">
-                        <img src="../../IMAGES/c797a630-029b-4486-a1e2-cde9ed4ab8c6.jpg" alt="Industrial water treatment equipment and piping assembly">
+                        <img src="../../IMAGES/c797a630-029b-4486-a1e2-cde9ed4ab8c6.jpg" alt="Industrial water treatment equipment and piping assembly" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">07</span>
                             <h4>System Modernization</h4>
@@ -295,7 +295,7 @@ session_start();
                 </article>
                 <article class="project-item">
                     <a class="project-link" href="../../IMAGES/cc6bd15e-e5fe-4f90-b70d-c41b257f2853.jpg">
-                        <img src="../../IMAGES/cc6bd15e-e5fe-4f90-b70d-c41b257f2853.jpg" alt="Industrial control panel with switches and meters">
+                        <img src="../../IMAGES/cc6bd15e-e5fe-4f90-b70d-c41b257f2853.jpg" alt="Industrial control panel with switches and meters" loading="lazy" decoding="async">
                         <div class="project-content">
                             <span class="project-number">08</span>
                             <h4>Machine Controls</h4>
@@ -316,7 +316,7 @@ session_start();
             </p>
             <figure class="partners-visual">
                 <a class="partners-link image-lightbox-link" href="../../IMAGES/Edge Partner.png" data-lightbox-title="Technology Partners" aria-label="View technology partners image">
-                    <img src="../../IMAGES/Edge Partner.png" alt="Edge Automation technology partners including Mitsubishi Electric, Epson, Keyence, and Buhler">
+                    <img src="../../IMAGES/Edge Partner.png" alt="Edge Automation technology partners including Mitsubishi Electric, Epson, Keyence, and Buhler" loading="lazy" decoding="async">
                 </a>
             </figure>
         </div>
@@ -441,13 +441,13 @@ session_start();
                 <h3>Social</h3>
                 <div class="footer-social" aria-label="Social media links">
                     <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="">
+                        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="" loading="lazy" decoding="async">
                     </a>
                     <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" aria-label="Viber">
-                        <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="">
+                        <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="" loading="lazy" decoding="async">
                     </a>
                     <a href="mailto:ejimenez.edge@gmail.com?subject=Request%20Consultation" aria-label="Email">
-                        <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="">
+                        <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="" loading="lazy" decoding="async">
                     </a>
                 </div>
             </div>
@@ -476,18 +476,18 @@ session_start();
                 <span>Call 0917 878 9571</span>
             </a>
 
-<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook Messenger">
+<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook Messenger" loading="lazy" decoding="async">
                 <strong>Facebook</strong>
                 <span>Message the page</span>
             </a>
 
-<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="Viber">
+<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="Viber" loading="lazy" decoding="async">
                 <strong>Viber</strong>
                 <span>Start a chat</span>
             </a>
 
 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ejimenez.edge@gmail.com&su=Request%20Consultation&body=Hello%20Edge%20Automation,%20I%20would%20like%20to%20request%20a%20consultation." target="_blank" class="consult-option">
-    <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email">
+    <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email" loading="lazy" decoding="async">
     <strong>Email</strong>
     <span>Send project details</span>
 </a>      </div>
@@ -495,8 +495,8 @@ session_start();
         <button id="closeConsult" class="consult-close" type="button">Close</button>
     </div>
 </div>
-    <script src="../js/loader.js"></script>
-    <script src="../js/index.js"></script>
+    <script src="../js/loader.js" defer></script>
+    <script src="../js/index.js" defer></script>
 
 </body>
 

@@ -383,6 +383,13 @@ if ($superAdminProfilePhotoUrl === '') {
 $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName);
 ?>
 <?php auth_render_back_button_logout_script(); ?>
+<script>
+try {
+    if (window.innerWidth > 900 && window.localStorage.getItem('edgeSidebarCollapsed') === '1') {
+        document.documentElement.classList.add('superadmin-sidebar-collapsed');
+    }
+} catch (error) {}
+</script>
 <button id="sidebarMobileToggle" class="sidebar-mobile-toggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
     <span></span>
     <span></span>

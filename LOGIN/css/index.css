@@ -1530,20 +1530,23 @@ h4 {
         display: flex;
         grid-column: 1 / -1;
         align-items: center;
-        gap: 10px;
-        min-height: 50px;
-        border: 1px solid rgba(15, 157, 56, 0.14);
+        justify-content: center;
+        gap: 9px;
+        min-height: 44px;
+        border: 1px solid rgba(15, 157, 56, 0.1);
         border-radius: var(--radius-sm);
-        background: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.5);
         color: var(--green-800);
-        font-size: 0.9rem;
+        font-size: clamp(0.78rem, 2.4vw, 0.88rem);
         font-weight: 900;
-        padding: 9px 10px;
+        line-height: 1.15;
+        padding: 7px 9px;
+        text-align: center;
     }
 
     .mobile-menu-brand img {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         flex: 0 0 auto;
         border-radius: var(--radius-sm);
         object-fit: cover;
@@ -2138,6 +2141,23 @@ h4 {
         font-size: 0.78rem;
     }
 
+    .nav-menu {
+        gap: 7px;
+        padding: 10px;
+    }
+
+    .mobile-menu-brand {
+        min-height: 40px;
+        gap: 7px;
+        padding: 6px 8px;
+        font-size: 0.74rem;
+    }
+
+    .mobile-menu-brand img {
+        width: 25px;
+        height: 25px;
+    }
+
     .why-choose .features-grid {
         gap: 7px;
     }
@@ -2609,6 +2629,10 @@ h4 {
         scroll-snap-type: none;
     }
 
+    .projects-carousel-shell {
+        padding-block: 0.2rem 0.45rem;
+    }
+
     .projects-carousel-shell .project-item,
     .projects-carousel-shell .project-item.is-active-project,
     .projects-carousel-shell .project-item.is-prev-project,
@@ -2626,5 +2650,80 @@ h4 {
     .projects-carousel-shell .project-card-arrow {
         width: 42px;
         height: 42px;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 940px) {
+    .projects-carousel-shell {
+        padding-block: 0.25rem 0.6rem;
+    }
+}
+
+/* Laptop and high-density screen fit */
+@media (min-width: 941px) {
+    .projects-carousel-shell .project-item,
+    .projects-carousel-shell .project-item.is-active-project,
+    .projects-carousel-shell .project-item.is-prev-project,
+    .projects-carousel-shell .project-item.is-next-project,
+    .projects-carousel-shell .project-item.is-carousel-clone {
+        flex-basis: clamp(300px, 30vw, 430px);
+        max-width: clamp(300px, 30vw, 430px);
+    }
+
+    .projects-carousel-shell .project-item img,
+    .projects-carousel-shell .project-item.is-active-project img,
+    .projects-carousel-shell .project-item.is-carousel-clone img {
+        min-height: clamp(300px, 27vw, 430px);
+        aspect-ratio: 4 / 3;
+    }
+}
+
+@media (min-width: 941px) and (max-width: 1366px) {
+    :root {
+        --container: 1180px;
+        --page-x: clamp(20px, 2vw, 28px);
+        --section-y: clamp(3.2rem, 5vw, 4.75rem);
+        --card-pad: clamp(1rem, 1.5vw, 1.35rem);
+        --text-hero: clamp(2.8rem, 5vw, 4.65rem);
+    }
+
+    .hero {
+        min-height: min(680px, calc(100svh - var(--nav-height)));
+        padding-block: clamp(4.4rem, 7vw, 6.6rem);
+    }
+
+    .hero-content {
+        top: clamp(-34px, -4vh, -18px);
+    }
+
+    .hero-title {
+        max-width: 880px;
+    }
+
+    .hero-subtitle {
+        max-width: 680px;
+    }
+
+    .services-grid {
+        gap: clamp(14px, 1.3vw, 20px);
+    }
+
+    .service-card h3 {
+        font-size: clamp(1.08rem, 1vw, 1.28rem);
+    }
+
+    .service-list li {
+        line-height: 1.45;
+    }
+
+    .contact-content {
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.86fr);
+    }
+}
+
+@media (min-width: 1181px) and (max-width: 1366px) {
+    .services-grid,
+    .features-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

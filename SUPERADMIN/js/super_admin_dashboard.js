@@ -311,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const syncMainContent = () => {
             const shouldShrink = sidebar.classList.contains('shrink') && !isMobile();
+            document.documentElement.classList.toggle('superadmin-sidebar-collapsed', shouldShrink);
             if (mainContent) {
                 mainContent.classList.toggle('sidebar-shrink', shouldShrink);
             }

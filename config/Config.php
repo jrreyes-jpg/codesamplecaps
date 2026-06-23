@@ -44,7 +44,7 @@ class Config {
     private function loadSettings() {
         // ============ DATABASE ============
         $this->settings['DB_HOST'] = getenv('DB_HOST') ?: '127.0.0.1';
-        $this->settings['DB_PORT'] = getenv('DB_PORT') ?: '3307';
+        $this->settings['DB_PORT'] = getenv('DB_PORT') ?: '3306';
         $this->settings['DB_USER'] = getenv('DB_USER') ?: 'root';
         $this->settings['DB_PASS'] = getenv('DB_PASS') ?: '';
         $this->settings['DB_NAME'] = getenv('DB_NAME') ?: 'edge_project_asset_inventory_db';

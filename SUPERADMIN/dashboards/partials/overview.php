@@ -48,11 +48,6 @@
                     <strong><?php echo $openTasks; ?></strong>
                     <small>Open work</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/scan_history.php" class="metric-tile metric-tile-link metric-tile-scans">
-                    <span>Scans</span>
-                    <strong><?php echo $scansToday; ?></strong>
-                    <small>Today</small>
-                </a>
             </div>
         </section>
 
@@ -84,7 +79,6 @@
         <section class="overview-quick-actions" aria-label="Quick actions">
             <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users">Users</a>
             <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php">Projects</a>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/scan_history.php">Scans</a>
         </section>
 
         <details class="dashboard-panel analytics-panel overview-analytics-details" data-overview-analytics>
@@ -125,11 +119,6 @@
                     <span>7-Day Intake</span>
                     <strong><?php echo $projectsCreatedThisWeek; ?>/<?php echo $tasksCreatedThisWeek; ?></strong>
                     <small><?php echo $projectsCreatedThisWeek; ?> projects and <?php echo $tasksCreatedThisWeek; ?> tasks created this week</small>
-                </article>
-                <article class="mini-overview-card">
-                    <span>Scan Activity</span>
-                    <strong><?php echo $scansThisWeek; ?></strong>
-                    <small>Last 7 days, peak daily scans: <?php echo $scanTrendPeak; ?></small>
                 </article>
             </div>
         </details>

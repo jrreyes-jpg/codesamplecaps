@@ -14,7 +14,6 @@ $isInventory = str_contains($currentPath, '/SUPERADMIN/sidebar/inventory.php');
 $isAssets = str_contains($currentPath, '/SUPERADMIN/sidebar/assets.php');
 $isQuotations = str_contains($currentPath, '/SUPERADMIN/sidebar/quotations.php');
 $isReports = str_contains($currentPath, '/SUPERADMIN/sidebar/reports.php');
-$isScanHistory = str_contains($currentPath, '/SUPERADMIN/sidebar/scan_history.php');
 $isActivityHistory = str_contains($currentPath, '/SUPERADMIN/sidebar/activity_history.php');
 $superAdminProfileName = (string)($_SESSION['name'] ?? 'Super Admin');
 $superAdminProfileRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'super_admin')));
@@ -523,24 +522,6 @@ try {
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/scan_history.php" class="menu-link<?php echo $isScanHistory ? ' active' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M7 4H5a1 1 0 0 0-1 1v2"></path>
-                            <path d="M17 4h2a1 1 0 0 1 1 1v2"></path>
-                            <path d="M20 17v2a1 1 0 0 1-1 1h-2"></path>
-                            <path d="M4 17v2a1 1 0 0 0 1 1h2"></path>
-                            <path d="M7 12h10"></path>
-                            <path d="M12 7v10"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Scan</span>
-                </span>
-                <span class="menu-text">Scan History</span>
-            </a>
-        </li>
-        <li>
             <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="menu-link<?php echo $isActivityHistory ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
@@ -566,9 +547,9 @@ try {
                             <path d="M14 11v5"></path>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">Trash</span>
+                    <span class="menu-mini-label">Arch</span>
                 </span>
-                <span class="menu-text">Trash Bin</span>
+                <span class="menu-text">Archive</span>
             </a>
         </li>
         <li>

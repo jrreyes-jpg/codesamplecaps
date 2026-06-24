@@ -37,15 +37,13 @@ $isWorkers = $currentFile === 'worker_summary.php';
                 </svg>
             </span>
         </button>
-        <div class="sidebar-toggle-title sidebar-toggle-title--brand" aria-hidden="true">
-            <span class="sidebar-toggle-title__eyebrow">Field Ops</span>
-            <span class="sidebar-toggle-title__shine">Foreman Workspace</span>
+        <div class="sidebar-toggle-title" aria-hidden="true">
+            <span class="sidebar-toggle-title__shine">Foreman</span>
         </div>
     </div>
 
     <div class="nav-divider"></div>
 
-    <div class="sidebar-section-label">Workspace</div>
     <ul class="nav-menu">
         <li>
             <a href="/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php" class="menu-link<?php echo $isOverview ? ' active' : ''; ?>">
@@ -165,15 +163,13 @@ $isWorkers = $currentFile === 'worker_summary.php';
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M8 6h8"></path>
-                            <path d="M8 10h8"></path>
-                            <path d="M8 14h5"></path>
-                            <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+                            <path d="M12 8v5l3 2"></path>
+                            <circle cx="12" cy="12" r="8"></circle>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">Logs</span>
+                    <span class="menu-mini-label">Scan</span>
                 </span>
-                <span class="menu-text">Usage Logs</span>
+                <span class="menu-text">Scan Activity</span>
             </a>
         </li>
         <li>
@@ -195,7 +191,6 @@ $isWorkers = $currentFile === 'worker_summary.php';
     </ul>
 
     <div class="nav-divider"></div>
-    <div class="sidebar-section-label">Account</div>
     <ul class="nav-menu nav-menu--utility">
         <li>
             <a href="/codesamplecaps/LOGIN/php/forgot.php" class="menu-link">
@@ -232,10 +227,10 @@ $isWorkers = $currentFile === 'worker_summary.php';
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
 <header class="global-topbar" aria-live="polite">
-    <div class="global-topbar__copy">
+    <a href="/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Foreman overview">
         <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
         <strong>EDGE Automation</strong>
-    </div>
+    </a>
 
     <div class="global-topbar__actions">
         <div class="topbar-notifications" data-notification-root>

@@ -15,6 +15,7 @@ $usageSummary = $dashboardData['usage_summary'];
 $scanSummary = $dashboardData['scan_summary'];
 $supportSummary = $dashboardData['support_summary'];
 $recentUsageLogs = array_slice($dashboardData['recent_usage_logs'], 0, 4);
+$recentScanRows = array_slice($dashboardData['recent_scan_rows'], 0, 5);
 $workerSummaryRows = array_slice($dashboardData['worker_summary_rows'], 0, 4);
 $foremanNotifications = [
     'attention_count' => (int)($assetSummary['maintenance_assets'] ?? 0) + (int)($assetSummary['damaged_assets'] ?? 0),
@@ -153,6 +154,59 @@ $projectRoleSummary = project_role_summary_label('foreman');
                     </div>
                 </div>
             </article>
+        </section>
+
+        <section class="scan-automation-panel" aria-label="Scan activity automation">
+            <div class="scan-automation-panel__lead">
+                <span class="section-badge">Automation</span>
+                <h2>Scan Activity Command Center</h2>
+                <p>Every successful QR log automatically records usage, scan timestamp, unit code, foreman account, and device details for audit review.</p>
+                <div class="scan-automation-panel__actions">
+                    <button class="btn-primary" type="button" data-open-qr-scanner>Run Scan</button>
+                    <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">Open Activity Log</a>
+                </div>
+            </div>
+
+            <div class="scan-automation-panel__metrics" aria-label="Scan automation metrics">
+                <div class="automation-metric">
+                    <span>Scans Today</span>
+                    <strong><?php echo (int)($scanSummary['scans_today'] ?? 0); ?></strong>
+                </div>
+                <div class="automation-metric">
+                    <span>7-Day Scans</span>
+                    <strong><?php echo (int)($scanSummary['scans_last_7_days'] ?? 0); ?></strong>
+                </div>
+                <div class="automation-metric">
+                    <span>Usage Logs Today</span>
+                    <strong><?php echo (int)($usageSummary['logs_today'] ?? 0); ?></strong>
+                </div>
+            </div>
+
+            <div class="scan-automation-panel__stream">
+                <div class="scan-stream-head">
+                    <strong>Latest Scan Events</strong>
+                    <span>Auto-captured by QR workflow</span>
+                </div>
+
+                <?php if (!empty($recentScanRows)): ?>
+                    <div class="scan-timeline">
+                        <?php foreach ($recentScanRows as $scan): ?>
+                            <article class="scan-timeline__item">
+                                <span class="scan-timeline__pulse" aria-hidden="true"></span>
+                                <div>
+                                    <strong><?php echo htmlspecialchars((string)($scan['asset_name'] ?? 'Unknown Asset')); ?></strong>
+                                    <span>
+                                        <?php echo htmlspecialchars((string)($scan['unit_code'] ?? 'General asset QR')); ?>
+                                        | <?php echo htmlspecialchars(foreman_format_datetime($scan['scan_time'] ?? null)); ?>
+                                    </span>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state empty-state--inline">No scan activity yet. Start with Run Scan to capture the first event.</div>
+                <?php endif; ?>
+            </div>
         </section>
 
         <section class="content-grid">

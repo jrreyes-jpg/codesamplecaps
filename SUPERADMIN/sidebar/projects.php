@@ -3215,7 +3215,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
             </section>
 
             <?php if (!$isTrashView): ?>
-            <section class="form-panel">
+            <section class="form-panel" id="create-project">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;">
                     <div>
                         <h6 class="section-title-inline" style="margin-bottom: 4px;">Create Project</h6>

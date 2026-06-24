@@ -393,6 +393,46 @@ function buildAuditSummary(array $entry): array {
     ];
 }
 
+function fetchRecentDashboardActivity(mysqli $conn, int $limit = 5): array {
+    if (!audit_log_table_exists($conn)) {
+        return [];
+    }
+
+    $limit = max(1, min(10, $limit));
+    $result = $conn->query(
+        "SELECT
+            l.action,
+            l.entity_type,
+            l.entity_id,
+            l.old_values,
+            l.new_values,
+            l.created_at,
+            COALESCE(u.full_name, 'System') AS actor_name
+         FROM audit_logs l
+         LEFT JOIN users u ON u.id = l.user_id
+         ORDER BY l.created_at DESC
+         LIMIT {$limit}"
+    );
+
+    if (!$result) {
+        return [];
+    }
+
+    $activities = [];
+    while ($entry = $result->fetch_assoc()) {
+        $summary = buildAuditSummaryClean($entry);
+        $activities[] = [
+            'title' => $summary['title'],
+            'details' => $summary['details'],
+            'badge' => $summary['badge'],
+            'created_at' => $entry['created_at'] ?? null,
+            'relative_time' => formatRelativeDate($entry['created_at'] ?? null),
+        ];
+    }
+
+    return $activities;
+}
+
 function getDeactivationBlockers(mysqli $conn, int $userId, string $role): array {
     $blockers = [];
 
@@ -1040,6 +1080,9 @@ $outOfStockItems = (int)($inventoryMetricRow['out_of_stock_items'] ?? 0);
 $totalAssets = (int)($assetMetricRow['total_assets'] ?? 0);
 $assetsThisMonth = (int)($assetMetricRow['assets_this_month'] ?? 0);
 $scansToday = getScalarInt($conn, "SELECT COUNT(*) FROM asset_scan_history WHERE scan_time >= CURDATE() AND scan_time < (CURDATE() + INTERVAL 1 DAY)");
+$pendingQuotations = hasTable($conn, 'quotations')
+    ? getScalarInt($conn, "SELECT COUNT(*) FROM quotations WHERE status IN ('under_review', 'for_approval')")
+    : 0;
 $activeDeployments = hasTable($conn, 'project_inventory_deployments')
     ? getScalarInt(
         $conn,
@@ -1076,6 +1119,7 @@ $projectsCreatedThisWeek = array_sum(array_map(static fn(array $item): int => (i
 $tasksCreatedThisWeek = array_sum(array_map(static fn(array $item): int => (int)($item['value'] ?? 0), $taskTrend));
 $scansThisWeek = array_sum(array_map(static fn(array $item): int => (int)($item['value'] ?? 0), $scanTrend));
 $scanTrendPeak = !empty($scanTrend) ? getTrendPeak($scanTrend) : 0;
+$recentDashboardActivity = fetchRecentDashboardActivity($conn, 5);
 $userWorkspaceShouldOpenModal = $activeTab === 'create';
 
 ?>

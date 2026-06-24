@@ -8,6 +8,7 @@ require_once __DIR__ . '/../includes/foreman_helpers.php';
 require_role('foreman');
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
+$isArchiveView = in_array((string)($_GET['view'] ?? ''), ['trash', 'archive'], true);
 $foremanProfileName = (string)($_SESSION['name'] ?? 'Foreman');
 $foremanProfile = foreman_fetch_profile($conn, $userId);
 $foremanProfileName = (string)($foremanProfile['full_name'] ?? $foremanProfileName);
@@ -16,7 +17,7 @@ $assetSummary = $dashboardData['asset_summary'];
 $usageSummary = $dashboardData['usage_summary'];
 $scanSummary = $dashboardData['scan_summary'];
 $supportSummary = $dashboardData['support_summary'];
-$assignedProjects = $dashboardData['assigned_projects'];
+$assignedProjects = $isArchiveView ? foreman_fetch_archived_projects($conn, $userId) : $dashboardData['assigned_projects'];
 $foremanNotifications = [
     'attention_count' => (int)($assetSummary['maintenance_assets'] ?? 0) + (int)($assetSummary['damaged_assets'] ?? 0),
     'logs_today' => (int)($usageSummary['logs_today'] ?? 0),
@@ -29,7 +30,7 @@ $projectRoleSummary = project_role_summary_label('foreman');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Foreman Projects - Edge Automation</title>
+    <title><?php echo $isArchiveView ? 'Foreman Archive' : 'Foreman Projects'; ?> - Edge Automation</title>
     <link rel="stylesheet" href="../css/sidebar_foreman.css">
     <link rel="stylesheet" href="../css/foreman_dashboard.css">
     <link rel="stylesheet" href="../css/qr_scanner.css">
@@ -41,15 +42,18 @@ $projectRoleSummary = project_role_summary_label('foreman');
     <div class="page-shell">
         <section class="page-hero">
             <div class="page-hero__content">
-                <span class="page-hero__eyebrow">My Projects</span>
-                <h1 class="page-hero__title">Assigned Field Projects</h1>
+                <span class="page-hero__eyebrow"><?php echo $isArchiveView ? 'Archive' : 'My Projects'; ?></span>
+                <h1 class="page-hero__title"><?php echo $isArchiveView ? 'Archived Field Projects' : 'Assigned Field Projects'; ?></h1>
                 <p class="page-hero__copy">
-                    Read-only project visibility for site coordination. Foreman access stays focused on schedule awareness,
-                    open work, and field follow-through.
+                    <?php echo $isArchiveView
+                        ? 'Read-only archive of projects moved out of active field coordination.'
+                        : 'Read-only project visibility for site coordination. Foreman access stays focused on schedule awareness, open work, and field follow-through.'; ?>
                 </p>
                 <p class="page-hero__copy page-hero__copy--compact"><?php echo htmlspecialchars($projectRoleSummary); ?></p>
                 <div class="hero-actions">
-                    <a class="btn-primary" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">Open Usage Logs</a>
+                    <a class="btn-primary" href="/codesamplecaps/FOREMAN/dashboards/projects.php<?php echo $isArchiveView ? '' : '?view=trash'; ?>">
+                        <?php echo $isArchiveView ? 'Back To Projects' : 'Open Archive'; ?>
+                    </a>
                     <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php">Back To Overview</a>
                 </div>
             </div>
@@ -77,9 +81,9 @@ $projectRoleSummary = project_role_summary_label('foreman');
         <section class="panel-card">
             <div class="section-heading">
                 <div>
-                    <span class="section-badge">Visibility Only</span>
-                    <h2>Project Status And Deadline Watch</h2>
-                    <p>Critical project edits stay with super admin, while engineer handles execution updates.</p>
+                    <span class="section-badge"><?php echo $isArchiveView ? 'Archive' : 'Visibility Only'; ?></span>
+                    <h2><?php echo $isArchiveView ? 'Archived Project Records' : 'Project Status And Deadline Watch'; ?></h2>
+                    <p><?php echo $isArchiveView ? 'These records are no longer part of active field operations.' : 'Critical project edits stay with super admin, while engineer handles execution updates.'; ?></p>
                 </div>
             </div>
 
@@ -142,11 +146,14 @@ $projectRoleSummary = project_role_summary_label('foreman');
                                 </div>
                             </div>
                             <p class="page-hero__copy page-hero__copy--compact"><?php echo htmlspecialchars((string)$projectProgress['hint']); ?></p>
+                            <?php if ($isArchiveView): ?>
+                                <p class="page-hero__copy page-hero__copy--compact">Moved to archive: <?php echo htmlspecialchars(foreman_format_datetime($project['deleted_at'] ?? null)); ?></p>
+                            <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
                 </div>
             <?php else: ?>
-                <div class="empty-state">No assigned projects yet.</div>
+                <div class="empty-state"><?php echo $isArchiveView ? 'No archived projects yet.' : 'No assigned projects yet.'; ?></div>
             <?php endif; ?>
         </section>
     </div>

@@ -237,6 +237,7 @@ function foreman_fetch_profile(mysqli $conn, int $userId): array
 function foreman_fetch_dashboard_data(mysqli $conn, int $userId): array
 {
     $assetStatusExpression = foreman_asset_status_expression($conn, 'assets');
+    $activeProjectFilter = foreman_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NULL' : '';
 
     $data = [
         'asset_summary' => [
@@ -370,7 +371,7 @@ function foreman_fetch_dashboard_data(mysqli $conn, int $userId): array
                  GROUP BY project_id
              ) task_totals ON task_totals.project_id = p.id
              WHERE pa.engineer_id = ?
-             AND p.status <> 'draft'"
+             AND p.status <> 'draft'{$activeProjectFilter}"
         );
 
         if ($supportStatement) {
@@ -414,7 +415,7 @@ function foreman_fetch_dashboard_data(mysqli $conn, int $userId): array
                  GROUP BY project_id
              ) task_totals ON task_totals.project_id = p.id
              WHERE pa.engineer_id = ?
-             AND p.status <> 'draft'
+             AND p.status <> 'draft'{$activeProjectFilter}
              GROUP BY p.id, p.project_name, p.description, p.start_date, p.end_date, p.status, client.full_name, creator.full_name,
                       task_totals.total_tasks, task_totals.completed_tasks, task_totals.open_tasks, task_totals.next_deadline
              ORDER BY
@@ -505,6 +506,66 @@ function foreman_fetch_dashboard_data(mysqli $conn, int $userId): array
     }
 
     return $data;
+}
+
+function foreman_fetch_archived_projects(mysqli $conn, int $userId): array
+{
+    if (
+        !foreman_column_exists($conn, 'projects', 'deleted_at') ||
+        !foreman_table_exists($conn, 'project_assignments') ||
+        !foreman_table_exists($conn, 'projects')
+    ) {
+        return [];
+    }
+
+    $projects = [];
+    $statement = $conn->prepare(
+        "SELECT
+            p.id,
+            p.project_name,
+            p.description,
+            p.start_date,
+            p.end_date,
+            p.status,
+            p.deleted_at,
+            client.full_name AS client_name,
+            creator.full_name AS project_owner_name,
+            COALESCE(task_totals.total_tasks, 0) AS total_tasks,
+            COALESCE(task_totals.completed_tasks, 0) AS completed_tasks,
+            COALESCE(task_totals.open_tasks, 0) AS open_tasks,
+            task_totals.next_deadline
+         FROM project_assignments pa
+         INNER JOIN projects p ON p.id = pa.project_id
+         LEFT JOIN users client ON client.id = p.client_id
+         LEFT JOIN users creator ON creator.id = p.created_by
+         LEFT JOIN (
+             SELECT
+                project_id,
+                COUNT(*) AS total_tasks,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
+                SUM(CASE WHEN status IN ('pending', 'ongoing', 'delayed') THEN 1 ELSE 0 END) AS open_tasks,
+                MIN(CASE WHEN status <> 'completed' AND deadline IS NOT NULL THEN deadline END) AS next_deadline
+             FROM tasks
+             GROUP BY project_id
+         ) task_totals ON task_totals.project_id = p.id
+         WHERE pa.engineer_id = ?
+         AND p.deleted_at IS NOT NULL
+         GROUP BY p.id, p.project_name, p.description, p.start_date, p.end_date, p.status, p.deleted_at, client.full_name, creator.full_name,
+                  task_totals.total_tasks, task_totals.completed_tasks, task_totals.open_tasks, task_totals.next_deadline
+         ORDER BY p.deleted_at DESC, p.id DESC"
+    );
+
+    if ($statement) {
+        $statement->bind_param('i', $userId);
+        $statement->execute();
+        $result = $statement->get_result();
+        if ($result) {
+            $projects = $result->fetch_all(MYSQLI_ASSOC);
+        }
+        $statement->close();
+    }
+
+    return $projects;
 }
 
 function foreman_fetch_reports_data(mysqli $conn, int $userId): array

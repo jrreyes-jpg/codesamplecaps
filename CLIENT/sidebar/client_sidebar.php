@@ -55,6 +55,23 @@ $isClientReports = $currentFile === 'reports.php';
                 </a>
             </li>
             <li>
+                <a href="../dashboards/client_dashboard.php#archive-tab" class="menu-link" data-section-link="archive-tab">
+                    <span class="menu-visual" aria-hidden="true">
+                        <span class="menu-icon">
+                            <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false">
+                                <path d="M5 7h14"></path>
+                                <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path>
+                                <path d="M7 7l.8 11a2 2 0 0 0 2 1.85h4.4a2 2 0 0 0 2-1.85L17 7"></path>
+                                <path d="M10 11v5"></path>
+                                <path d="M14 11v5"></path>
+                            </svg>
+                        </span>
+                        <span class="menu-mini-label">Arch</span>
+                    </span>
+                    <span class="menu-text">Archive</span>
+                </a>
+            </li>
+            <li>
                 <a href="../dashboards/quotations.php" class="menu-link<?php echo $isClientQuotations ? ' active-link active' : ''; ?>">
                     <span class="menu-visual" aria-hidden="true">
                         <span class="menu-icon">

@@ -8,14 +8,16 @@ require_role('engineer');
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 $taskStatusOptions = ['pending', 'ongoing', 'completed', 'delayed'];
+$isArchiveView = in_array((string)($_GET['view'] ?? ''), ['trash', 'archive'], true);
 $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
+$projectRows = $isArchiveView ? engineer_fetch_archived_projects($conn, $userId) : $data['assigned_projects'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineer Projects - Edge Automation</title>
+    <title><?php echo $isArchiveView ? 'Engineer Archive' : 'Engineer Projects'; ?> - Edge Automation</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/engineer-sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
@@ -27,14 +29,21 @@ $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
     <div class="section-heading">
         <div>
             <p class="section-kicker">Projects</p>
-            <h2>Assigned Projects</h2>
-            <p class="section-caption">This page is for project visibility only, not task updates.</p>
+            <h2><?php echo $isArchiveView ? 'Archive' : 'Assigned Projects'; ?></h2>
+            <p class="section-caption">
+                <?php echo $isArchiveView
+                    ? 'Archived project records moved out of your active work queue.'
+                    : 'This page is for project visibility only, not task updates.'; ?>
+            </p>
         </div>
+        <a class="btn-secondary" href="/codesamplecaps/ENGINEER/dashboards/projects.php<?php echo $isArchiveView ? '' : '?view=trash'; ?>">
+            <?php echo $isArchiveView ? 'Back To Projects' : 'Open Archive'; ?>
+        </a>
     </div>
 
     <div class="projects-grid">
-        <?php if (!empty($data['assigned_projects'])): ?>
-            <?php foreach ($data['assigned_projects'] as $project): ?>
+        <?php if (!empty($projectRows)): ?>
+            <?php foreach ($projectRows as $project): ?>
                 <?php
                 $projectProgress = build_role_project_progress($project, 'engineer');
                 $projectDeadlineMeta = engineer_build_deadline_meta($project['next_deadline'] ?? null, (string)($project['status'] ?? 'pending'));
@@ -61,6 +70,9 @@ $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
                         </div>
                     </div>
                     <p class="section-caption"><?php echo htmlspecialchars((string)$projectProgress['hint']); ?></p>
+                    <?php if ($isArchiveView): ?>
+                        <p class="section-caption">Moved to archive: <?php echo htmlspecialchars(engineer_format_project_date($project['deleted_at'] ?? null)); ?></p>
+                    <?php endif; ?>
                     <div class="project-mini-stats">
                         <span>Ongoing: <?php echo (int)($project['ongoing_tasks'] ?? 0); ?></span>
                         <span>Delayed: <?php echo (int)($project['delayed_tasks'] ?? 0); ?></span>
@@ -71,7 +83,9 @@ $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <div class="no-data no-data-full"><p>No assigned projects yet.</p></div>
+            <div class="no-data no-data-full">
+                <p><?php echo $isArchiveView ? 'No archived projects yet.' : 'No assigned projects yet.'; ?></p>
+            </div>
         <?php endif; ?>
     </div>
 </div>

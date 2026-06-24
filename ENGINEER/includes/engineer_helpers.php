@@ -97,6 +97,38 @@ function engineer_consume_flash(): ?array
     return is_array($flash) ? $flash : null;
 }
 
+function engineer_column_exists(mysqli $conn, string $tableName, string $columnName): bool
+{
+    static $cache = [];
+    $key = $tableName . '.' . $columnName;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $statement = $conn->prepare(
+        'SELECT COUNT(*)
+         FROM information_schema.columns
+         WHERE table_schema = DATABASE()
+         AND table_name = ?
+         AND column_name = ?'
+    );
+
+    if (!$statement) {
+        $cache[$key] = false;
+        return false;
+    }
+
+    $statement->bind_param('ss', $tableName, $columnName);
+    $statement->execute();
+    $statement->bind_result($count);
+    $statement->fetch();
+    $statement->close();
+
+    $cache[$key] = (int)$count > 0;
+    return $cache[$key];
+}
+
 function engineer_get_csrf_token(): string
 {
     return auth_csrf_token('engineer_module');
@@ -250,6 +282,7 @@ function engineer_handle_task_update(mysqli $conn, int $userId, array $taskStatu
 function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions): array
 {
     ensure_engineer_task_updates_table($conn);
+    $activeProjectFilter = engineer_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NULL' : '';
 
     $assignedCount = 0;
     $inProgressCount = 0;
@@ -278,7 +311,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
          FROM project_assignments pa
          INNER JOIN projects p ON p.id = pa.project_id
          WHERE pa.engineer_id = ?
-         AND p.status <> 'draft'"
+         AND p.status <> 'draft'{$activeProjectFilter}"
     );
     if ($totalAssigned) {
         $totalAssigned->bind_param('i', $userId);
@@ -292,6 +325,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
         "SELECT COUNT(*)
          FROM projects p
          WHERE p.status = 'ongoing'
+         {$activeProjectFilter}
          AND EXISTS (
              SELECT 1
              FROM project_assignments pe
@@ -311,6 +345,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
         "SELECT COUNT(*)
          FROM projects p
          WHERE p.status = 'completed'
+         {$activeProjectFilter}
          AND EXISTS (
              SELECT 1
              FROM project_assignments pe
@@ -344,7 +379,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
              WHERE pe.project_id = p.id
              AND pe.engineer_id = ?
          )
-         AND p.status <> 'draft'
+         AND p.status <> 'draft'{$activeProjectFilter}
          GROUP BY p.id, p.project_name, p.status, p.description, p.start_date, p.end_date, u.full_name, creator.full_name
          ORDER BY
             CASE p.status
@@ -391,7 +426,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
          LEFT JOIN users project_creator ON project_creator.id = p.created_by
          LEFT JOIN users client ON client.id = p.client_id
          WHERE t.assigned_to = ?
-         AND p.status <> 'draft'
+         AND p.status <> 'draft'{$activeProjectFilter}
          AND EXISTS (
              SELECT 1
              FROM project_assignments pe
@@ -425,7 +460,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
          FROM engineer_task_updates etu
          INNER JOIN tasks t ON t.id = etu.task_id
          INNER JOIN projects p ON p.id = t.project_id
-         WHERE etu.engineer_id = ?
+         WHERE etu.engineer_id = ?{$activeProjectFilter}
          ORDER BY etu.created_at DESC, etu.id DESC
          LIMIT 10"
     );
@@ -536,4 +571,55 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
         'priority_cards' => $priorityCards,
         'engineer_profile' => $engineerProfile,
     ];
+}
+
+function engineer_fetch_archived_projects(mysqli $conn, int $userId): array
+{
+    if (!engineer_column_exists($conn, 'projects', 'deleted_at')) {
+        return [];
+    }
+
+    $projects = [];
+    $projectsStmt = $conn->prepare(
+        "SELECT
+            p.id,
+            p.project_name,
+            p.status,
+            p.description,
+            p.start_date,
+            p.end_date,
+            p.deleted_at,
+            u.full_name AS client_name,
+            creator.full_name AS project_owner_name,
+            COUNT(t.id) AS total_tasks,
+            SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
+            SUM(CASE WHEN t.status = 'ongoing' THEN 1 ELSE 0 END) AS ongoing_tasks,
+            SUM(CASE WHEN t.status = 'delayed' THEN 1 ELSE 0 END) AS delayed_tasks,
+            MIN(CASE WHEN t.status <> 'completed' AND t.deadline IS NOT NULL THEN t.deadline END) AS next_deadline
+         FROM projects p
+         LEFT JOIN users u ON p.client_id = u.id
+         LEFT JOIN users creator ON creator.id = p.created_by
+         LEFT JOIN tasks t ON t.project_id = p.id
+         WHERE EXISTS (
+             SELECT 1
+             FROM project_assignments pe
+             WHERE pe.project_id = p.id
+             AND pe.engineer_id = ?
+         )
+         AND p.deleted_at IS NOT NULL
+         GROUP BY p.id, p.project_name, p.status, p.description, p.start_date, p.end_date, p.deleted_at, u.full_name, creator.full_name
+         ORDER BY p.deleted_at DESC, p.id DESC"
+    );
+
+    if ($projectsStmt) {
+        $projectsStmt->bind_param('i', $userId);
+        $projectsStmt->execute();
+        $projectResult = $projectsStmt->get_result();
+        if ($projectResult) {
+            $projects = $projectResult->fetch_all(MYSQLI_ASSOC);
+        }
+        $projectsStmt->close();
+    }
+
+    return $projects;
 }

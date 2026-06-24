@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/foreman_helpers.php';
 
 $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
+$currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
 $currentFile = basename($currentPath);
 $foremanProfileName = $foremanProfileName ?? (string)($_SESSION['name'] ?? 'Foreman');
 $foremanProfileRole = 'Foreman';
@@ -13,7 +14,8 @@ $foremanNotifications = $foremanNotifications ?? [
 ];
 
 $isOverview = $currentFile === 'foreman_dashboard.php';
-$isProjects = $currentFile === 'projects.php';
+$isArchive = $currentFile === 'projects.php' && (str_contains($currentQuery, 'view=trash') || str_contains($currentQuery, 'view=archive'));
+$isProjects = $currentFile === 'projects.php' && !$isArchive;
 $isReports = in_array($currentFile, ['reports.php', 'report_list.php', 'report_detail.php'], true);
 $isProcurement = $currentFile === 'procurement.php';
 $isQuotations = $currentFile === 'quotation_reviews.php';
@@ -90,6 +92,23 @@ $isWorkers = $currentFile === 'worker_summary.php';
                     <span class="menu-mini-label">Proj</span>
                 </span>
                 <span class="menu-text">My Projects</span>
+            </a>
+        </li>
+        <li>
+            <a href="/codesamplecaps/FOREMAN/dashboards/projects.php?view=trash" class="menu-link<?php echo $isArchive ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M5 7h14"></path>
+                            <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path>
+                            <path d="M7 7l.8 11a2 2 0 0 0 2 1.85h4.4a2 2 0 0 0 2-1.85L17 7"></path>
+                            <path d="M10 11v5"></path>
+                            <path d="M14 11v5"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Arch</span>
+                </span>
+                <span class="menu-text">Archive</span>
             </a>
         </li>
         <li>

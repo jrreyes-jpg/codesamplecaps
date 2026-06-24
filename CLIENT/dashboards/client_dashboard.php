@@ -47,6 +47,38 @@ function client_status_label(string $status): string
     return $labels[$status] ?? ucfirst(str_replace('-', ' ', $status));
 }
 
+function client_column_exists(mysqli $conn, string $tableName, string $columnName): bool
+{
+    static $cache = [];
+    $key = $tableName . '.' . $columnName;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $statement = $conn->prepare(
+        'SELECT COUNT(*)
+         FROM information_schema.columns
+         WHERE table_schema = DATABASE()
+         AND table_name = ?
+         AND column_name = ?'
+    );
+
+    if (!$statement) {
+        $cache[$key] = false;
+        return false;
+    }
+
+    $statement->bind_param('ss', $tableName, $columnName);
+    $statement->execute();
+    $statement->bind_result($count);
+    $statement->fetch();
+    $statement->close();
+
+    $cache[$key] = (int)$count > 0;
+    return $cache[$key];
+}
+
 function client_build_deadline_meta(?string $deadline, string $status): array
 {
     $deadline = trim((string)$deadline);
@@ -96,21 +128,25 @@ function client_build_deadline_meta(?string $deadline, string $status): array
 }
 
 /* PROJECT SUMMARY COUNTS */
-$totalProjectsStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status <> 'draft'");
+$activeProjectFilter = client_column_exists($conn, 'projects', 'deleted_at') ? ' AND deleted_at IS NULL' : '';
+$activeProjectFilterWithAlias = client_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NULL' : '';
+$archiveProjectFilterWithAlias = client_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NOT NULL' : ' AND 1 = 0';
+
+$totalProjectsStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status <> 'draft'{$activeProjectFilter}");
 $totalProjectsStmt->bind_param('i', $userId);
 $totalProjectsStmt->execute();
 $totalProjectsStmt->bind_result($totalCount);
 $totalProjectsStmt->fetch();
 $totalProjectsStmt->close();
 
-$ongoingStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status = 'ongoing'");
+$ongoingStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status = 'ongoing'{$activeProjectFilter}");
 $ongoingStmt->bind_param('i', $userId);
 $ongoingStmt->execute();
 $ongoingStmt->bind_result($ongoingCount);
 $ongoingStmt->fetch();
 $ongoingStmt->close();
 
-$completedStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status = 'completed'");
+$completedStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status = 'completed'{$activeProjectFilter}");
 $completedStmt->bind_param('i', $userId);
 $completedStmt->execute();
 $completedStmt->bind_result($completedCount);
@@ -185,6 +221,7 @@ $projectsStmt = $conn->prepare(
      ) task_totals ON task_totals.project_id = p.id
      WHERE p.client_id = ?
      AND p.status <> 'draft'
+     {$activeProjectFilterWithAlias}
      ORDER BY
         CASE p.status
             WHEN 'ongoing' THEN 1
@@ -201,6 +238,53 @@ $projectsStmt->execute();
 $projectsResult = $projectsStmt->get_result();
 $projectRows = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
 $projectsStmt->close();
+
+$archivedProjectsStmt = $conn->prepare(
+    "SELECT
+        p.id,
+        p.project_name,
+        p.description,
+        p.start_date,
+        p.end_date,
+        p.status,
+        p.deleted_at,
+        engineer.full_name AS engineer_name,
+        COALESCE(task_totals.total_tasks, 0) AS total_tasks,
+        COALESCE(task_totals.completed_tasks, 0) AS completed_tasks,
+        COALESCE(task_totals.ongoing_tasks, 0) AS ongoing_tasks,
+        COALESCE(task_totals.delayed_tasks, 0) AS delayed_tasks,
+        task_totals.next_deadline
+     FROM projects p
+     LEFT JOIN (
+         SELECT pa.project_id, pa.engineer_id
+         FROM project_assignments pa
+         INNER JOIN (
+             SELECT project_id, MAX(id) AS latest_id
+             FROM project_assignments
+             GROUP BY project_id
+         ) latest_assignment ON latest_assignment.latest_id = pa.id
+     ) latest_assignment ON latest_assignment.project_id = p.id
+     LEFT JOIN users engineer ON engineer.id = latest_assignment.engineer_id
+     LEFT JOIN (
+         SELECT
+             project_id,
+             COUNT(*) AS total_tasks,
+             SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
+             SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) AS ongoing_tasks,
+             SUM(CASE WHEN status = 'delayed' THEN 1 ELSE 0 END) AS delayed_tasks,
+             MIN(CASE WHEN status <> 'completed' AND deadline IS NOT NULL THEN deadline END) AS next_deadline
+         FROM tasks
+         GROUP BY project_id
+     ) task_totals ON task_totals.project_id = p.id
+     WHERE p.client_id = ?
+     {$archiveProjectFilterWithAlias}
+     ORDER BY p.deleted_at DESC, p.id DESC"
+);
+$archivedProjectsStmt->bind_param('i', $userId);
+$archivedProjectsStmt->execute();
+$archivedProjectsResult = $archivedProjectsStmt->get_result();
+$archivedProjectRows = $archivedProjectsResult ? $archivedProjectsResult->fetch_all(MYSQLI_ASSOC) : [];
+$archivedProjectsStmt->close();
 
 $pendingCount = 0;
 $onHoldCount = 0;
@@ -319,6 +403,7 @@ $notificationItems = [
                         <div class="topbar-profile__links">
                             <a href="#overview-section">Dashboard</a>
                             <a href="#projects-tab">Projects</a>
+                            <a href="#archive-tab">Archive</a>
                             <a href="#profile-tab">Profile</a>
                             <a href="../../LOGIN/php/logout.php">Logout</a>
                         </div>
@@ -624,6 +709,76 @@ $notificationItems = [
                         </div>
                     </article>
                 </aside>
+            </div>
+        </section>
+
+        <section id="archive-tab" class="tab-content">
+            <div class="section-heading">
+                <div>
+                    <span class="section-badge">Archive</span>
+                    <h2>Archived Projects</h2>
+                    <p>Projects moved out of active delivery stay here for read-only reference.</p>
+                </div>
+            </div>
+
+            <div class="projects-grid">
+                <?php if (!empty($archivedProjectRows)): ?>
+                    <?php foreach ($archivedProjectRows as $project): ?>
+                        <?php
+                        $projectStatus = (string)($project['status'] ?? 'pending');
+                        $projectProgress = build_role_project_progress($project, 'client');
+                        $projectDescription = trim((string)($project['description'] ?? ''));
+                        if ($projectDescription === '') {
+                            $projectDescription = 'Project details were not recorded before this was archived.';
+                        }
+                        ?>
+                        <article class="project-card project-card--archived project-card--<?php echo htmlspecialchars($projectStatus); ?>">
+                            <div class="project-card__header">
+                                <div>
+                                    <span class="project-card__eyebrow">Project #<?php echo (int)($project['id'] ?? 0); ?></span>
+                                    <h3><?php echo htmlspecialchars((string)($project['project_name'] ?? 'Untitled Project')); ?></h3>
+                                </div>
+                                <span class="status-badge status-badge--<?php echo htmlspecialchars($projectStatus); ?>">
+                                    <?php echo htmlspecialchars(client_status_label($projectStatus)); ?>
+                                </span>
+                            </div>
+
+                            <p class="project-card__description"><?php echo htmlspecialchars(substr($projectDescription, 0, 180)); ?></p>
+
+                            <div class="project-card__meta-grid">
+                                <div class="project-meta">
+                                    <span>Assigned Engineer</span>
+                                    <strong><?php echo htmlspecialchars((string)($project['engineer_name'] ?? 'Not assigned')); ?></strong>
+                                </div>
+                                <div class="project-meta">
+                                    <span>Archived</span>
+                                    <strong><?php echo htmlspecialchars(client_format_date($project['deleted_at'] ?? null)); ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="project-progress">
+                                <div class="project-progress__meta">
+                                    <strong><?php echo (int)$projectProgress['percent']; ?>%</strong>
+                                    <span><?php echo htmlspecialchars((string)$projectProgress['summary']); ?></span>
+                                </div>
+                                <div class="project-progress__bar" aria-hidden="true">
+                                    <span style="width: <?php echo (int)$projectProgress['percent']; ?>%;"></span>
+                                </div>
+                            </div>
+
+                            <div class="project-card__footer">
+                                <span class="project-pill"><?php echo (int)($project['ongoing_tasks'] ?? 0); ?> active tasks</span>
+                                <span class="project-pill project-pill--alert"><?php echo (int)($project['delayed_tasks'] ?? 0); ?> delayed</span>
+                                <span class="project-pill">Read-only archive</span>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <h3>No archived projects yet</h3>
+                        <p>Projects moved to archive will appear here for your reference.</p>
+                    </div>
+                <?php endif; ?>
             </div>
         </section>
 

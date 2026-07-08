@@ -1,0 +1,445 @@
+/* Edge Automation shared responsive foundation.
+   This layer protects existing pages from overflow, overlap, and cramped layouts. */
+
+:root {
+    --edge-safe-page-x: clamp(14px, 3vw, 32px);
+    --edge-safe-page-y: clamp(18px, 3vw, 40px);
+    --edge-topbar-height: 78px;
+    --edge-sidebar-width: var(--sidebar-width, 270px);
+    --edge-sidebar-collapsed-width: var(--sidebar-collapsed-width, 78px);
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    min-width: 320px;
+    overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+    max-width: 100%;
+}
+
+img,
+video {
+    height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+    max-width: 100%;
+    font: inherit;
+}
+
+textarea {
+    resize: vertical;
+}
+
+table {
+    width: 100%;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.container,
+.main-content,
+.dashboard-main,
+.page-shell,
+.dashboard-content-grid,
+.content-grid,
+.projects-grid,
+.stats-grid,
+.metrics-grid,
+.status-strip,
+.profile-grid,
+.panel-card,
+.project-card,
+.stat-card,
+.metric-card,
+.form-section,
+.table-wrapper,
+.table-wrap,
+.table-shell {
+    min-width: 0;
+}
+
+.main-content,
+.dashboard-main {
+    max-width: 100%;
+}
+
+.global-topbar {
+    min-width: 0;
+}
+
+.global-topbar__copy,
+.global-topbar__actions,
+.global-topbar__clock,
+.topbar-profile__identity,
+.notification-item__copy,
+.project-card,
+.stat-card,
+.metric-card {
+    min-width: 0;
+}
+
+.global-topbar__copy strong,
+.topbar-profile__identity strong,
+.project-card h1,
+.project-card h2,
+.project-card h3,
+.metric-card strong,
+.stat-card strong,
+.stat-card p {
+    overflow-wrap: anywhere;
+}
+
+.stats-grid,
+.metrics-grid,
+.status-strip,
+.overview-summary-grid,
+.overview-attention-grid,
+.projects-grid,
+.quick-links-grid,
+.content-grid,
+.dashboard-content-grid,
+.profile-grid,
+.project-card__meta-grid,
+.summary-grid,
+.review-action-guide,
+.review-workspace,
+.foreman-form-grid,
+.supplier-form-grid {
+    display: grid;
+    gap: clamp(12px, 2vw, 20px);
+}
+
+.stats-grid,
+.metrics-grid,
+.status-strip,
+.overview-summary-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+}
+
+.projects-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
+}
+
+.content-grid,
+.dashboard-content-grid,
+.profile-grid,
+.review-workspace {
+    grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+}
+
+.section-heading,
+.panel-header,
+.project-card__header,
+.project-card__topline,
+.activity-card__header,
+.worker-card__header,
+.page-hero,
+.procurement-hero,
+.hero-panel {
+    min-width: 0;
+}
+
+.table-wrapper,
+.table-wrap,
+.table-shell,
+.responsive-table-wrap,
+.user-management-table {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.data-table,
+.responsive-table,
+.review-items-table {
+    overflow-wrap: anywhere;
+}
+
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.action-chip,
+.quick-action-btn,
+.project-pill,
+.deadline-flag,
+.status-badge,
+.status-pill {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+.topbar-notifications__dropdown,
+.topbar-profile__dropdown {
+    z-index: 1300;
+}
+
+.edge-live-updated {
+    animation: edgeLivePulse 700ms ease;
+}
+
+.edge-live-error {
+    opacity: 0.75;
+}
+
+@keyframes edgeLivePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.22);
+    }
+    100% {
+        box-shadow: 0 0 0 10px rgba(22, 163, 74, 0);
+    }
+}
+
+@media (max-width: 1180px) {
+    .page-hero,
+    .hero-panel,
+    .procurement-hero,
+    .scan-automation-panel {
+        grid-template-columns: 1fr !important;
+    }
+
+    .section-heading,
+    .panel-header,
+    .project-card__header,
+    .project-card__topline,
+    .activity-card__header,
+    .worker-card__header,
+    .scan-stream-head {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 992px) {
+    body {
+        padding-inline: 0;
+    }
+
+    .sidebar {
+        max-width: min(330px, calc(100vw - 22px));
+    }
+
+    .main-content,
+    .dashboard-main,
+    body.sidebar-collapsed .main-content,
+    body.sidebar-collapsed .dashboard-main,
+    html.engineer-sidebar-shrink .main-content,
+    html.engineer-sidebar-shrink .dashboard-main,
+    .main-content.sidebar-shrink,
+    .main-content.sidebar-collapsed {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: calc(var(--edge-topbar-height) + 20px) var(--edge-safe-page-x) var(--edge-safe-page-y) !important;
+    }
+
+    .global-topbar,
+    body.sidebar-collapsed .global-topbar,
+    .sidebar.shrink ~ .global-topbar,
+    .sidebar.collapsed ~ .global-topbar {
+        left: 0 !important;
+        width: 100% !important;
+        min-height: var(--edge-topbar-height);
+        padding-inline: 64px var(--edge-safe-page-x) !important;
+        gap: 10px;
+    }
+
+    .global-topbar__actions {
+        gap: 8px !important;
+    }
+
+    .global-topbar__clock-label,
+    .global-topbar__date {
+        display: none !important;
+    }
+
+    .topbar-notifications__dropdown,
+    .topbar-profile__dropdown {
+        position: fixed !important;
+        top: calc(var(--edge-topbar-height) + 8px) !important;
+        right: var(--edge-safe-page-x) !important;
+        left: var(--edge-safe-page-x) !important;
+        width: auto !important;
+        max-width: none !important;
+        max-height: calc(100vh - var(--edge-topbar-height) - 24px);
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid,
+    .metrics-grid,
+    .status-strip,
+    .overview-summary-grid,
+    .overview-attention-grid,
+    .projects-grid,
+    .quick-links-grid,
+    .content-grid,
+    .dashboard-content-grid,
+    .profile-grid,
+    .project-card__meta-grid,
+    .summary-grid,
+    .review-action-guide,
+    .review-workspace,
+    .foreman-form-grid,
+    .supplier-form-grid,
+    .task-toolbar,
+    .task-update-fields,
+    .procurement-card-grid,
+    .status-grid,
+    .activity-meta,
+    .scan-meta,
+    .project-meta {
+        grid-template-columns: 1fr !important;
+    }
+
+    .section-heading,
+    .panel-header,
+    .project-card__header,
+    .project-card__topline,
+    .activity-card__header,
+    .worker-card__header,
+    .hero-actions,
+    .profile-actions,
+    .project-card__actions,
+    .task-update-actions,
+    .foreman-form-actions {
+        align-items: stretch !important;
+        flex-direction: column !important;
+    }
+
+    .section-heading > *,
+    .panel-header > *,
+    .hero-actions > *,
+    .profile-actions > *,
+    .project-card__actions > *,
+    .task-update-actions > *,
+    .foreman-form-actions > *,
+    .quick-actions > *,
+    .review-form-actions > * {
+        width: 100%;
+    }
+
+    .panel-card,
+    .project-card,
+    .stat-card,
+    .metric-card,
+    .profile-card,
+    .page-hero,
+    .hero-panel,
+    .procurement-hero,
+    .scan-automation-panel {
+        border-radius: 18px !important;
+        padding: clamp(14px, 4vw, 20px) !important;
+    }
+
+    .global-topbar__brand-logo {
+        width: 38px !important;
+        height: 38px !important;
+    }
+
+    .global-topbar__copy strong {
+        max-width: 34vw;
+        white-space: normal !important;
+        line-height: 1.1;
+    }
+}
+
+@media (max-width: 520px) {
+    :root {
+        --edge-topbar-height: 74px;
+    }
+
+    .global-topbar {
+        padding-left: 60px !important;
+    }
+
+    .global-topbar__copy span,
+    .global-topbar__clock {
+        display: none !important;
+    }
+
+    .topbar-notifications__toggle,
+    .topbar-profile__toggle,
+    .topbar-profile__avatar,
+    .topbar-profile__avatar-shell,
+    .topbar-profile__avatar-image {
+        width: 38px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+    }
+
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-ghost,
+    button[type="submit"] {
+        width: 100%;
+    }
+}
+
+/* Super Admin Overview-specific layout polish */
+[data-superadmin-overview] .overview-summary-grid,
+[data-superadmin-overview] .overview-attention-grid,
+[data-superadmin-overview] .mini-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: clamp(10px, 1.8vw, 16px);
+}
+
+[data-superadmin-overview] .metric-tile,
+[data-superadmin-overview] .overview-attention-card,
+[data-superadmin-overview] .mini-overview-card,
+[data-superadmin-overview] .activity-item {
+    min-width: 0;
+}
+
+[data-superadmin-overview] .metric-tile strong,
+[data-superadmin-overview] .overview-attention-card strong,
+[data-superadmin-overview] .mini-overview-card strong {
+    overflow-wrap: anywhere;
+}
+
+[data-superadmin-overview] .overview-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+    gap: 10px;
+    overflow: visible;
+}
+
+[data-superadmin-overview] .overview-quick-actions a {
+    min-width: 0;
+    width: 100%;
+}
+
+@media (max-width: 760px) {
+    [data-superadmin-overview] .activity-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    [data-superadmin-overview] .activity-item time {
+        grid-column: 2;
+    }
+}

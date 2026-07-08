@@ -3784,7 +3784,8 @@ tbody tr:hover {
         }
 
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-danger {
     border: none;
     border-radius: 12px;
     padding: 12px 18px;
@@ -3805,9 +3806,43 @@ tbody tr:hover {
         }
 
         .btn-secondary {
-            background: rgb(208, 44, 44);
-            color: white;
+            background: #e2e8f0;
+            color: #334155;
         }
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(220, 38, 38, 0.18);
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
+.btn-restore {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.btn-restore:hover {
+    background: #bbf7d0;
+}
+
+.btn-permanent-delete {
+    background: #991b1b;
+    color: #ffffff;
+    border: 1px solid #7f1d1d;
+}
+
+.btn-permanent-delete:hover {
+    background: #7f1d1d;
+}
 
 .btn-status-danger {
     background: #fee2e2;
@@ -4024,10 +4059,14 @@ tbody tr:hover {
     display: grid;
     gap: 8px;
     padding: 14px 16px;
-    border: 1px dashed #f59e0b;
+    border: 1px solid #f59e0b;
     border-radius: 12px;
-    background: #fffbeb;
-    color: #92400e;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.project-trash-panel strong {
+    color: #7c2d12;
 }
 
 .project-card__actions {
@@ -4035,6 +4074,11 @@ tbody tr:hover {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.project-card__actions--trash {
+    padding-top: 12px;
+    border-top: 1px solid #fee2e2;
 }
 
 .project-card__inline-form {
@@ -5557,7 +5601,8 @@ input[data-inline-editable]:disabled {
         }
 
         .projects-content .form-actions .btn-primary,
-        .projects-content .form-actions .btn-secondary {
+        .projects-content .form-actions .btn-secondary,
+        .projects-content .form-actions .btn-danger {
             width: 100%;
         }
 

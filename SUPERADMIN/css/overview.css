@@ -1,0 +1,29 @@
+/* CSS ng Overview page. Dito ilagay ang style na pang overview lang. */
+
+.overview-dashboard {
+    gap: 18px;
+}
+
+.overview-summary-grid .metric-tile,
+.overview-attention-card,
+.mini-overview-card {
+    min-width: 0;
+}
+
+.overview-attention-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.overview-quick-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+    .overview-attention-grid {
+        grid-template-columns: 1fr;
+    }
+}

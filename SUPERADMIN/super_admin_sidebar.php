@@ -5,9 +5,12 @@ $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', P
 $currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
 
 $isDashboardPage = str_contains($currentPath, '/SUPERADMIN/dashboards/super_admin_dashboard.php');
-$isDashboard = $isDashboardPage && ($currentQuery === '' || str_contains($currentQuery, 'tab=dashboard'));
+$isOverviewPage = str_contains($currentPath, '/SUPERADMIN/sidebar/overview.php');
+$isUserManagementPage = str_contains($currentPath, '/SUPERADMIN/sidebar/user_management.php');
+$isDashboard = $isOverviewPage || ($isDashboardPage && ($currentQuery === '' || str_contains($currentQuery, 'tab=dashboard')));
 $isCreate = $isDashboardPage && str_contains($currentQuery, 'tab=create');
-$isUsers = $isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate);
+$isCreate = $isCreate || ($isUserManagementPage && str_contains($currentQuery, 'create=1'));
+$isUsers = $isUserManagementPage || ($isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate));
 $isProjects = str_contains($currentPath, '/SUPERADMIN/sidebar/projects.php');
 $isProjectsTrash = $isProjects && str_contains($currentQuery, 'view=trash');
 $isInventory = str_contains($currentPath, '/SUPERADMIN/sidebar/inventory.php');
@@ -412,7 +415,7 @@ try {
 
     <ul class="nav-menu">
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=dashboard" class="menu-link<?php echo $isDashboard ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/SUPERADMIN/sidebar/overview.php" class="menu-link<?php echo $isDashboard ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -428,7 +431,7 @@ try {
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users" class="menu-link<?php echo $isUsers ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php" class="menu-link<?php echo $isUsers ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -571,7 +574,7 @@ try {
 </nav>
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
 <header class="global-topbar" aria-live="polite">
-    <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=dashboard" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Super Admin overview">
+    <a href="/codesamplecaps/SUPERADMIN/sidebar/overview.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Super Admin overview">
         <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
         <strong>EDGE Automation</strong>
     </a>

@@ -78,7 +78,15 @@ function consumeDashboardFlash(): array {
 
 function redirectToDashboardTab(string $tab): void {
     $location = '/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php';
-    if ($tab !== '') {
+
+    // Mas malinis na URL para sa sidebar pages ng Super Admin.
+    if ($tab === 'dashboard') {
+        $location = '/codesamplecaps/SUPERADMIN/sidebar/overview.php';
+    } elseif ($tab === 'users') {
+        $location = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php';
+    } elseif ($tab === 'create') {
+        $location = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php?create=1';
+    } elseif ($tab !== '') {
         $location .= '?tab=' . rawurlencode($tab);
     }
 
@@ -1130,6 +1138,9 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Dashboard - Edge Automation</title>
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
+    <link rel="stylesheet" href="../css/overview.css">
+    <link rel="stylesheet" href="../css/user-management.css">
+    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
         <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
 
@@ -1144,8 +1155,13 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
-        <?php include __DIR__ . '/partials/overview.php'; ?>
-        <?php include __DIR__ . '/partials/user_management.php'; ?>
+        <?php
+        // Dito naka-include ang hiwalay na sidebar pages para hindi magulo ang main dashboard file.
+        define('SUPERADMIN_RENDER_OVERVIEW_PARTIAL', true);
+        define('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL', true);
+        include __DIR__ . '/../sidebar/overview.php';
+        include __DIR__ . '/../sidebar/user_management.php';
+        ?>
 
         <div id="profile" class="tab-content <?php echo $activeTab === 'profile' ? 'active' : ''; ?>">
               
@@ -1252,5 +1268,8 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
 </div>
 
 <script src="../js/super_admin_dashboard.js"></script>
+<script src="../js/overview.js"></script>
+<script src="../js/user-management.js"></script>
+<script src="/codesamplecaps/assets/js/realtime-updates.js" defer></script>
 </body>
 </html>

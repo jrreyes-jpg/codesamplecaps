@@ -1,10 +1,10 @@
 <?php
-// Lumang partial path ito. Pinapadaan na sa bagong sidebar overview file.
+// Kapag binuksan ito direkta sa sidebar, gamitin pa rin ang main dashboard shell.
 if (!defined('SUPERADMIN_RENDER_OVERVIEW_PARTIAL')) {
-    define('SUPERADMIN_RENDER_OVERVIEW_PARTIAL', true);
+    $_GET['tab'] = 'dashboard';
+    require __DIR__ . '/../dashboards/super_admin_dashboard.php';
+    return;
 }
-include __DIR__ . '/../../sidebar/overview.php';
-return;
 
 /** @var string $activeTab */
 /** @var int $totalUsers */
@@ -34,8 +34,6 @@ return;
 $activeProjectCount = $ongoingProjects + $pendingProjects + $onHoldProjects;
 $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClientCount;
 ?>
-<link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
-<script src="/codesamplecaps/assets/js/realtime-updates.js" defer></script>
 <div id="dashboard" class="tab-content <?php echo $activeTab === 'dashboard' ? 'active' : ''; ?>">
     <section class="dashboard-grid overview-dashboard" data-superadmin-overview>
         <section class="dashboard-panel summary-panel">
@@ -172,7 +170,7 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
 
         <section class="overview-quick-actions" aria-label="Quick actions">
             <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php#create-project">Create Project</a>
-            <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=create">Add User</a>
+            <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?create=1">Add User</a>
             <a href="/codesamplecaps/SUPERADMIN/sidebar/assets.php">Add Asset</a>
             <a href="/codesamplecaps/SUPERADMIN/sidebar/quotations.php">Review Quotations</a>
         </section>

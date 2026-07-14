@@ -1,10 +1,10 @@
 <?php
-// Lumang partial path ito. Pinapadaan na sa bagong sidebar user management file.
+// Kapag binuksan ito direkta sa sidebar, gamitin pa rin ang main dashboard shell.
 if (!defined('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL')) {
-    define('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL', true);
+    $_GET['tab'] = isset($_GET['create']) ? 'create' : 'users';
+    require __DIR__ . '/../dashboards/super_admin_dashboard.php';
+    return;
 }
-include __DIR__ . '/../../sidebar/user_management.php';
-return;
 
 /** @var bool $isUserWorkspaceTab */
 /** @var bool $userWorkspaceShouldOpenModal */
@@ -29,9 +29,9 @@ return;
             </div>
 
             <div class="dashboard-actions user-filters">
-                <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users" class="action-chip<?php echo $userStatusFilter === '' ? ' active-chip' : ''; ?>">All Users</a>
-                <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users&amp;status=active" class="action-chip<?php echo $userStatusFilter === 'active' ? ' active-chip' : ''; ?>">Active</a>
-                <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users&amp;status=inactive" class="action-chip<?php echo $userStatusFilter === 'inactive' ? ' active-chip' : ''; ?>">Inactive</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php" class="action-chip<?php echo $userStatusFilter === '' ? ' active-chip' : ''; ?>">All Users</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?status=active" class="action-chip<?php echo $userStatusFilter === 'active' ? ' active-chip' : ''; ?>">Active</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?status=inactive" class="action-chip<?php echo $userStatusFilter === 'inactive' ? ' active-chip' : ''; ?>">Inactive</a>
             </div>
 
             <div class="users-table user-management-table">

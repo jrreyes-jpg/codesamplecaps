@@ -307,7 +307,7 @@ $portfolioProgress = $totalProjects > 0
             <h2>Core reports for Super Admin</h2>
             <p>Each card matches a real admin reporting responsibility in your system.</p>
             <div class="report-links-grid">
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users">
+                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php">
                     <h3>User activity reports</h3>
                     <p>Monitor user base, role distribution, and account-level visibility across Engineer, Foreman, and Client users.</p>
                     <div class="report-link-card__meta">

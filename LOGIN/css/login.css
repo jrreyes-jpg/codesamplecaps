@@ -192,6 +192,11 @@ button:hover{
     text-decoration:underline;
 }
 
+.login-help-text{
+    color:#4b5563;
+    font-weight:600;
+}
+
 @media(max-width:900px){
     .container{
         flex-direction:column;
@@ -330,7 +335,7 @@ background:#0f9d38;
 transform:translateY(-2px);
 }
 
-/* WARNING (8-9 attempts) */
+/* WARNING malapit na ma-lock ang login */
 .error-warning{
     background:#fff3cd;
     color:#856404;

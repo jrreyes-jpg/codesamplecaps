@@ -66,7 +66,7 @@ class Config {
 
         // ============ SECURITY ============
         $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 60;
-        $this->settings['LOGIN_MAX_ATTEMPTS'] = 10;
+        $this->settings['LOGIN_MAX_ATTEMPTS'] = 5;
         $this->settings['LOGIN_LOCKOUT_MINUTES'] = 15;
 
         // ============ SESSION ============

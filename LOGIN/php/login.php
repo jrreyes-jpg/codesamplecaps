@@ -6,7 +6,7 @@ auth_start_session();
 auth_apply_no_cache_headers();
 
 $config = Config::getInstance();
-$max_attempts = (int)$config->get('LOGIN_MAX_ATTEMPTS', 10);
+$max_attempts = (int)$config->get('LOGIN_MAX_ATTEMPTS', 5);
 $lockout_minutes = (int)$config->get('LOGIN_LOCKOUT_MINUTES', 15);
 $lockout_time = $lockout_minutes * 60;
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -15,6 +15,7 @@ $error = '';
 $failed_attempts_display = '';
 $attempts = 0;
 $error_class = '';
+$login_flash = login_consume_flash();
 
 if (isset($_GET['timeout'])) {
     $error = 'Your session expired after 15 minutes of inactivity. Please log in again.';
@@ -22,6 +23,35 @@ if (isset($_GET['timeout'])) {
     $error = 'You have been logged out successfully.';
 } else {
     auth_redirect_authenticated_user();
+    if ($login_flash['error'] !== '') {
+        $error = $login_flash['error'];
+        $failed_attempts_display = $login_flash['attempts_display'];
+        $error_class = $login_flash['class'];
+    }
+}
+
+function login_set_flash(string $error, string $attemptsDisplay = '', string $class = ''): void
+{
+    $_SESSION['login_flash'] = [
+        'error' => $error,
+        'attempts_display' => $attemptsDisplay,
+        'class' => $class,
+    ];
+}
+
+function login_consume_flash(): array
+{
+    $flash = $_SESSION['login_flash'] ?? [];
+
+    if (!is_array($flash)) {
+        return ['error' => '', 'attempts_display' => '', 'class' => ''];
+    }
+
+    return [
+        'error' => (string)($flash['error'] ?? ''),
+        'attempts_display' => (string)($flash['attempts_display'] ?? ''),
+        'class' => (string)($flash['class'] ?? ''),
+    ];
 }
 
 function login_get_attempt(mysqli $conn, string $email, string $ipAddress): ?array
@@ -76,6 +106,7 @@ function login_remaining_minutes(?string $lastAttempt, int $lockoutTime): int
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim((string)($_POST['email'] ?? '')));
     $password = (string)($_POST['password'] ?? '');
+    $_SESSION['last_login_email'] = $email;
 
     if ($email === '' || $password === '') {
         $error = 'Please fill in all fields.';
@@ -90,8 +121,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $remaining_minutes = login_remaining_minutes($last_attempt, $lockout_time);
 
             if ($remaining_minutes > 0) {
-                $error = "Too many failed login attempts.<br><br>Your login is temporarily paused for security reasons.";
-                $failed_attempts_display = "Attempt $attempts of $max_attempts.<br>Try again in about $remaining_minutes minute(s).";
+                // Kapag locked na, huwag sabihin kung valid ba ang email para mas safe.
+                $error = 'Too many attempts. Try again later or contact admin.';
+                $failed_attempts_display = "Try again in about $remaining_minutes minute(s).";
                 $error_class = 'error-locked';
             } else {
                 login_clear_attempts($conn, $email, $ip_address);
@@ -135,6 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Your account is inactive. Please contact the administrator.';
                 } else {
                     login_clear_attempts($conn, $email, $ip_address);
+                    unset($_SESSION['login_flash'], $_SESSION['last_login_email']);
 
                     $dashboardPath = auth_dashboard_path_for_role($user['role'] ?? null);
                     if ($dashboardPath === null) {
@@ -146,21 +179,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } else {
+                // Same message lagi kahit mali password, ibang account, o walang account.
                 $attempts++;
                 login_save_attempt($conn, $email, $ip_address, $attempts);
 
                 if ($attempts >= $max_attempts) {
-                    $error = "Too many failed login attempts.<br><br>Your login is temporarily paused for $lockout_minutes minutes.";
-                    $failed_attempts_display = "Attempt $attempts of $max_attempts.<br>Try again in about $lockout_minutes minute(s).";
+                    $error = 'Too many attempts. Try again later or contact admin.';
+                    $failed_attempts_display = "Try again in about $lockout_minutes minute(s).";
                     $error_class = 'error-locked';
                 } else {
                     $remaining = $max_attempts - $attempts;
                     $error = 'Invalid email or password.';
-                    $failed_attempts_display = "Failed attempts: $attempts / $max_attempts. Remaining: $remaining.";
+                    $failed_attempts_display = "Attempts left: $remaining";
                     $error_class = $attempts >= ($max_attempts - 2) ? 'error-warning' : '';
                 }
             }
         }
+    }
+
+    if ($error !== '') {
+        // Redirect after failed login para refresh ay hindi magdadagdag ng attempt.
+        login_set_flash($error, $failed_attempts_display, $error_class);
+        header('Location: /codesamplecaps/LOGIN/php/login.php');
+        exit();
     }
 }
 ?>
@@ -204,10 +245,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <?php if ($error): ?>
                         <div class="error-box <?php echo htmlspecialchars($error_class, ENT_QUOTES, 'UTF-8'); ?>">
-                            <?php echo $error; ?>
+                            <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
                             <?php if ($failed_attempts_display !== ''): ?>
                                 <div style="margin-top:5px; font-size:13px; color:#800000;">
-                                    <?php echo $failed_attempts_display; ?>
+                                    <?php echo htmlspecialchars($failed_attempts_display, ENT_QUOTES, 'UTF-8'); ?>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -224,6 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/forgot.php">Forgot Password?</a>
+                        <a href="/codesamplecaps/LOGIN/php/index.php#contact" class="login-help-text">No account yet? Contact Admin.</a>
                     </div>
                 </form>
             </div>

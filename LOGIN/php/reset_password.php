@@ -61,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
 
         <div class="right-panel">
             <div class="form active">
-                <form method="POST">
+                <form method="POST" action="?token=<?php echo urlencode($token); ?>">
                     <h2>Create New Password</h2>
 
                     <?php if($error): ?>

@@ -35,13 +35,21 @@ class EmailService {
         
         try {
             $mailConfig = $this->config->getMailConfig();
+
+            if (trim((string)$mailConfig['password']) === '') {
+                $this->error = 'Email service is not configured. Add a Gmail app password in .env.';
+                return;
+            }
             
             $this->mailer->isSMTP();
             $this->mailer->Host = $mailConfig['host'];
             $this->mailer->SMTPAuth = true;
             $this->mailer->Username = $mailConfig['username'];
             $this->mailer->Password = $mailConfig['password'];
-            $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            // Gamitin ang encryption na nasa config para hindi hardcoded.
+            $this->mailer->SMTPSecure = $mailConfig['encryption'] === 'ssl'
+                ? PHPMailer::ENCRYPTION_SMTPS
+                : PHPMailer::ENCRYPTION_STARTTLS;
             $this->mailer->Port = $mailConfig['port'];
             
             $this->mailer->setFrom($mailConfig['from_address'], $mailConfig['from_name']);
@@ -61,6 +69,10 @@ class EmailService {
      */
     public function sendPasswordReset($recipientEmail, $recipientName, $resetToken, $expiryMinutes = 60) {
         try {
+            if ($this->error !== '') {
+                return false;
+            }
+
             $this->mailer->clearAddresses();
             $this->mailer->addAddress($recipientEmail);
             
@@ -78,7 +90,7 @@ class EmailService {
             return true;
             
         } catch (Exception $e) {
-            $this->error = "Error sending email: " . $this->mailer->ErrorInfo;
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
             return false;
         }
     }
@@ -93,6 +105,10 @@ class EmailService {
      */
     public function sendAccountCreated($recipientEmail, $recipientName, $role) {
         try {
+            if ($this->error !== '') {
+                return false;
+            }
+
             $this->mailer->clearAddresses();
             $this->mailer->addAddress($recipientEmail);
             
@@ -107,7 +123,7 @@ class EmailService {
             return true;
             
         } catch (Exception $e) {
-            $this->error = "Error sending email: " . $this->mailer->ErrorInfo;
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
             return false;
         }
     }
@@ -117,6 +133,10 @@ class EmailService {
      */
     public function sendStatusChange($recipientEmail, $recipientName, $newStatus) {
         try {
+            if ($this->error !== '') {
+                return false;
+            }
+
             $this->mailer->clearAddresses();
             $this->mailer->addAddress($recipientEmail);
             
@@ -132,7 +152,7 @@ class EmailService {
             return true;
             
         } catch (Exception $e) {
-            $this->error = "Error sending email: " . $this->mailer->ErrorInfo;
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
             return false;
         }
     }

@@ -256,7 +256,7 @@ if ($user && !empty($user['reset_requested_at'])) {
 
         // Send reset email
         if (!$this->emailService->sendPasswordReset($email, $user['full_name'], $resetToken, $expiryMinutes)) {
-            return ['success' => false, 'error' => 'Failed to send reset email. ' . $this->emailService->getError()];
+            return ['success' => false, 'error' => $this->emailService->getError() ?: 'Email service cannot send right now.'];
         }
 
         return ['success' => true, 'message' => 'Password reset link sent to your email.'];
@@ -282,13 +282,25 @@ if ($user && !empty($user['reset_requested_at'])) {
             return ['success' => false, 'error' => 'Password must be at least 8 characters.'];
         }
 
-        // Find user with valid (non-expired) token
-        $user = $this->userRepo->findByResetToken($token);
+      // Find user with valid (non-expired) token
+$user = $this->userRepo->findByResetToken($token);
 
-        if (!$user) {
-            return ['success' => false, 'error' => 'Invalid or expired reset link.'];
-        }
+if (!$user) {
+    return ['success' => false, 'error' => 'Invalid or expired reset link.'];
+}
 
+// Hash new password
+$passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+
+// Update password and clear token
+if (!$this->userRepo->updatePassword($user['id'], $passwordHash)) {
+    return ['success' => false, 'error' => 'Failed to reset password.'];
+}
+
+return [
+    'success' => true,
+    'message' => 'Password reset successfully. You can now login.'
+];
         // Hash new password
         $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
 

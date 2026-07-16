@@ -95,8 +95,8 @@ private function env($key, $default = null)
 
         // ============ SECURITY ============
         $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 60;
-        $this->settings['LOGIN_MAX_ATTEMPTS'] = 5;
-        $this->settings['LOGIN_LOCKOUT_MINUTES'] = 15;
+        $this->settings['LOGIN_MAX_ATTEMPTS'] = 1;
+        $this->settings['LOGIN_LOCKOUT_MINUTES'] = 1;
 
         // ============ SESSION ============
         $this->settings['SESSION_TIMEOUT_MINUTES'] = 60;

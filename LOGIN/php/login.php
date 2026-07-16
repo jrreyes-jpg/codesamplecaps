@@ -6,8 +6,8 @@ auth_start_session();
 auth_apply_no_cache_headers();
 
 $config = Config::getInstance();
-$max_attempts = (int)$config->get('LOGIN_MAX_ATTEMPTS', 5);
-$lockout_minutes = (int)$config->get('LOGIN_LOCKOUT_MINUTES', 15);
+$max_attempts = (int)$config->get('LOGIN_MAX_ATTEMPTS', 1);
+$lockout_minutes = (int)$config->get('LOGIN_LOCKOUT_MINUTES', 1);
 $lockout_time = $lockout_minutes * 60;
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
 
@@ -41,11 +41,13 @@ function login_set_flash(string $error, string $attemptsDisplay = '', string $cl
 
 function login_consume_flash(): array
 {
-    $flash = $_SESSION['login_flash'] ?? [];
+    $flash = $_SESSION['login_flash'] ?? [
+        'error' => '',
+        'attempts_display' => '',
+        'class' => '',
+    ];
 
-    if (!is_array($flash)) {
-        return ['error' => '', 'attempts_display' => '', 'class' => ''];
-    }
+    unset($_SESSION['login_flash']); // <-- Ito ang kulang
 
     return [
         'error' => (string)($flash['error'] ?? ''),
@@ -53,7 +55,6 @@ function login_consume_flash(): array
         'class' => (string)($flash['class'] ?? ''),
     ];
 }
-
 function login_get_attempt(mysqli $conn, string $email, string $ipAddress): ?array
 {
     $stmt = $conn->prepare(
@@ -119,7 +120,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($attempts >= $max_attempts) {
             $remaining_minutes = login_remaining_minutes($last_attempt, $lockout_time);
-
             if ($remaining_minutes > 0) {
                 // Kapag locked na, huwag sabihin kung valid ba ang email para mas safe.
                 $error = 'Too many attempts. Try again later or contact admin.';

@@ -17,6 +17,7 @@ $attempts = 0;
 $error_class = '';
 $login_flash = login_consume_flash();
 
+
 if (isset($_GET['timeout'])) {
     $error = 'Your session expired after 15 minutes of inactivity. Please log in again.';
 } elseif (isset($_GET['logout'])) {

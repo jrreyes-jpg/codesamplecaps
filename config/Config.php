@@ -94,9 +94,9 @@ private function env($key, $default = null)
         $this->settings['MAIL_FROM_NAME'] = $this->env('MAIL_FROM_NAME') ?: 'Edge Automation';
 
         // ============ SECURITY ============
-        $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 60;
-        $this->settings['LOGIN_MAX_ATTEMPTS'] = 1;
-        $this->settings['LOGIN_LOCKOUT_MINUTES'] = 1;
+        $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 1;
+        $this->settings['LOGIN_MAX_ATTEMPTS'] = 5;
+        $this->settings['LOGIN_LOCKOUT_MINUTES'] = 15;
 
         // ============ SESSION ============
         $this->settings['SESSION_TIMEOUT_MINUTES'] = 60;

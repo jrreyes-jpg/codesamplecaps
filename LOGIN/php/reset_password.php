@@ -1,16 +1,61 @@
 <?php
 date_default_timezone_set('Asia/Manila');
-session_start();
 
+require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 
+// Start secure session
+auth_start_session();
 $error = "";
 $success = "";
+
 $token = trim($_GET['token'] ?? '');
+
 $authService = new AuthService();
 
+/*
+|--------------------------------------------------------------------------
+| Validate the reset token immediately
+|--------------------------------------------------------------------------
+| We check the token before showing the reset form.
+| If the token is missing, expired, or already used,
+| the user will not be allowed to continue.
+*/
 if (empty($token)) {
     $error = "Invalid or missing reset link.";
+} else {
+
+    // Access the UserRepository
+    $userRepo = new UserRepository();
+
+    // Check if the token exists and is still valid
+    $user = $userRepo->findByResetToken($token);
+
+    if (!$user) {
+
+    /*
+    |--------------------------------------------------------------------------
+    | SECURITY
+    |--------------------------------------------------------------------------
+    | Destroy any active login session.
+    |
+    | Scenario:
+    | The user may already be logged in on this browser.
+    | If we do not destroy the session, clicking
+    | "Back to Login" can automatically redirect
+    | the user to the dashboard.
+    |
+    | By destroying the session here, the browser
+    | must go back to the login page.
+    |--------------------------------------------------------------------------
+    */
+    auth_destroy_session();
+
+    $error = "Invalid or expired reset link.";
+
+    // Hide the reset form
+    $token = "";
+}
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {

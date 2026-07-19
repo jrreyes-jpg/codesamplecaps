@@ -250,6 +250,14 @@ function login_clear_ip_attempts(mysqli $conn, string $ipAddress): void
     $stmt->execute();
 }
 
+function login_clear_expired_ip_attempts(mysqli $conn, string $ipAddress, int $lockoutTime): void
+{
+    // Kapag walang activity for lockout time, burahin na ang lumang failed attempts ng device.
+    $stmt = $conn->prepare('DELETE FROM login_attempts WHERE ip_address = ? AND last_attempt < DATE_SUB(NOW(), INTERVAL ? SECOND)');
+    $stmt->bind_param('si', $ipAddress, $lockoutTime);
+    $stmt->execute();
+}
+
 function login_clear_attempts(mysqli $conn, string $email, string $ipAddress): void
 {
     $stmt = $conn->prepare('DELETE FROM login_attempts WHERE email = ? AND ip_address = ?');
@@ -303,6 +311,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim((string)($_POST['email'] ?? '')));
     $password = (string)($_POST['password'] ?? '');
     $_SESSION['last_login_email'] = $email;
+
+    login_clear_expired_ip_attempts($conn, $ip_address, $lockout_time);
 
     if ($email === '' || $password === '') {
         $error = 'Please fill in all fields.';
@@ -400,6 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $error = 'Your account is inactive. Please contact the administrator.';
                         } else {
                             login_clear_attempts($conn, $email, $ip_address);
+                            login_clear_ip_attempts($conn, $ip_address);
                             unset($_SESSION['login_flash'], $_SESSION['last_login_email']);
                             login_clear_remembered_email();
 

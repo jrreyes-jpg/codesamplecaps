@@ -250,10 +250,10 @@ button:hover{
     font-weight: bold;
 }
 .error-box{
-    background-color:#ffe6e6;
-    color:#c80000;
+    background-color:#eef8f0;
+    color:#087f23;
     padding:12px 18px;
-    border-left:5px solid #c80000;
+    border-left:5px solid #0f9d38;
     border-radius:8px;
     margin-bottom:15px;
     font-size:14px;
@@ -321,6 +321,36 @@ transition:0.3s;
 z-index:100;
 }
 
+.error-danger{
+    background:#ffe6e6;
+    color:#c80000;
+    border-left-color:#c80000;
+}
+
+.error-attempt-4{
+    background:#e8f5e9;
+    color:#2E7D32;
+    border-left-color:#2E7D32;
+}
+
+.error-attempt-3{
+    background:#fff8e1;
+    color:#F9A825;
+    border-left-color:#F9A825;
+}
+
+.error-attempt-2{
+    background:#fff3e0;
+    color:#EF6C00;
+    border-left-color:#EF6C00;
+}
+
+.error-attempt-1{
+    background:#ffebee;
+    color:#D32F2F;
+    border-left-color:#D32F2F;
+}
+
 .back-home {
     font-size: 0;
 }
@@ -339,14 +369,52 @@ transform:translateY(-2px);
 .error-warning{
     background:#fff3cd;
     color:#856404;
-    border-left:5px solid #ff9800;
+    border-left-color:#ff9800;
 }
 
 /* LOCKED ACCOUNT */
 .error-locked{
     background:#ffd6d6;
     color:#8b0000;
-    border-left:5px solid #8b0000;
+    border-left-color:#8b0000;
+}
+
+.lockout-countdown{
+    margin-top:8px;
+    font-size:18px;
+    font-weight:800;
+    color:#800000;
+    letter-spacing:0;
+}
+
+.attempt-status{
+    margin-top:6px;
+    font-size:13px;
+    font-weight:700;
+}
+
+.error-danger .attempt-status{
+    color:#9f1239;
+}
+
+.error-warning .attempt-status{
+    color:#92400e;
+}
+
+.error-attempt-4 .attempt-status{
+    color:#2E7D32;
+}
+
+.error-attempt-3 .attempt-status{
+    color:#F9A825;
+}
+
+.error-attempt-2 .attempt-status{
+    color:#EF6C00;
+}
+
+.error-attempt-1 .attempt-status{
+    color:#D32F2F;
 }
 .form-intro {
     margin: 20px 0;

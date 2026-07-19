@@ -123,10 +123,92 @@ const initLoadingButtons = () => {
         });
     });
 };
+/*
+|--------------------------------------------------------------------------
+| Live Lockout Countdown
+|--------------------------------------------------------------------------
+| Shows a real-time countdown while the login form is locked.
+| Format:
+| 15:00
+| 14:59
+| 14:58
+|--------------------------------------------------------------------------
+*/
 
+const initLockoutCountdown = () => {
+
+    // Get the remaining lockout time from login.php
+    const LOCKOUT_SECONDS = window.lockoutConfig?.seconds ?? 0;
+    const lockType = window.lockoutConfig?.lockType ?? '';
+
+    if (LOCKOUT_SECONDS <= 0) {
+        return;
+    }
+
+    const countdown = document.getElementById('lockoutCountdown');
+
+    if (!countdown) {
+        return;
+    }
+
+    const email = document.querySelector('input[name="email"]');
+    const password = document.querySelector('input[name="password"]');
+    const loginButton = document.querySelector('button[type="submit"]');
+    const showButton = document.querySelector('.togglePassword');
+
+    if (lockType === 'email' && email) {
+        email.addEventListener('input', () => {
+            const hasNewEmail = email.value.trim() !== '';
+
+            if (password) password.disabled = !hasNewEmail;
+            if (loginButton) loginButton.disabled = !hasNewEmail;
+            if (showButton) showButton.disabled = !hasNewEmail;
+        });
+    }
+
+    let seconds = LOCKOUT_SECONDS;
+
+    const update = () => {
+
+        const minutes = Math.floor(seconds / 60);
+        const remaining = seconds % 60;
+
+        const timeLeft = `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
+        countdown.textContent = lockType === 'ip'
+            ? `Time remaining: ${timeLeft}`
+            : `Please try again in ${timeLeft}`;
+
+        if (seconds <= 0) {
+
+            countdown.textContent = "";
+
+            if (lockType === 'ip') {
+                if (email) email.disabled = false;
+                if (password) password.disabled = false;
+                if (loginButton) loginButton.disabled = false;
+                if (showButton) showButton.disabled = false;
+            }
+
+            location.reload();
+
+            return;
+        }
+
+        seconds--;
+
+        setTimeout(update, 1000);
+    };
+
+    update();
+
+};
 document.addEventListener('DOMContentLoaded', () => {
     initParticleCanvas();
     initPasswordToggles();
     initLoadingButtons();
+
+    // Start the live lockout countdown if the login form is locked.
+    initLockoutCountdown();
+
     document.body.classList.add('page-loaded');
 });

@@ -22,9 +22,11 @@ class UserRepository {
      * Find user by email
      */
     public function findByEmail($email) {
+        $this->ensureResetRequestedAtColumn();
+
         $stmt = $this->conn->prepare(
             "SELECT id, full_name, email, password, role, status, 
-                    failed_attempts, last_failed_login 
+                    failed_attempts, last_failed_login, reset_requested_at 
              FROM users WHERE email = ? LIMIT 1"
         );
         $stmt->bind_param("s", $email);
@@ -95,12 +97,40 @@ class UserRepository {
      * Set password reset token
      */
     public function setResetToken($userId, $token, $expiryMinutes = 60) {
+        $this->ensureResetRequestedAtColumn();
+
         $expiry = date("Y-m-d H:i:s", strtotime("+$expiryMinutes minutes"));
         $stmt = $this->conn->prepare(
-            "UPDATE users SET reset_token = ?, token_expiry = ? WHERE id = ?"
+            "UPDATE users SET reset_token = ?, token_expiry = ?, reset_requested_at = NOW() WHERE id = ?"
         );
         $stmt->bind_param("ssi", $token, $expiry, $userId);
         return $stmt->execute();
+    }
+
+    /**
+     * Siguraduhin na may cooldown column ang forgot password.
+     */
+    private function ensureResetRequestedAtColumn() {
+        static $checked = false;
+
+        if ($checked) {
+            return;
+        }
+
+        $result = $this->conn->query(
+            "SELECT 1
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'users'
+             AND COLUMN_NAME = 'reset_requested_at'
+             LIMIT 1"
+        );
+
+        if ($result && $result->num_rows === 0) {
+            $this->conn->query("ALTER TABLE users ADD COLUMN reset_requested_at DATETIME DEFAULT NULL AFTER token_expiry");
+        }
+
+        $checked = true;
     }
 
     /**

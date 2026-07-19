@@ -228,16 +228,22 @@ class AuthService {
 
         $user = $this->userRepo->findByEmail($email);
 
-        // Prevent reset spam (60 seconds cooldown)
-if ($user && !empty($user['reset_requested_at'])) {
-    $lastRequest = strtotime($user['reset_requested_at']);
-    if ((time() - $lastRequest) < 60) {
-        return [
-            'success' => false,
-            'error' => 'Please wait before requesting another reset link.'
-        ];
-    }
-}
+        // Cooldown para hindi ma-spam ang reset password email.
+        $resetCooldownSeconds = 5 * 60;
+        if ($user && !empty($user['reset_requested_at'])) {
+            $lastRequest = strtotime($user['reset_requested_at']);
+            $remainingCooldown = $lastRequest !== false
+                ? $resetCooldownSeconds - (time() - $lastRequest)
+                : 0;
+
+            if ($remainingCooldown > 0) {
+                $remainingMinutes = max(1, (int)ceil($remainingCooldown / 60));
+                return [
+                    'success' => false,
+                    'error' => "Please wait $remainingMinutes minute(s) before requesting another reset link."
+                ];
+            }
+        }
 
 
         if (!$user) {

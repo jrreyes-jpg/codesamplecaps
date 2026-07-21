@@ -123,6 +123,150 @@ const initLoadingButtons = () => {
         });
     });
 };
+
+const initEmailLockStatus = () => {
+    const statusUrl = window.lockoutConfig?.statusUrl;
+    const currentLockType = window.lockoutConfig?.lockType ?? '';
+
+    if (!statusUrl || currentLockType === 'ip') {
+        return;
+    }
+
+    const email = document.querySelector('input[name="email"]');
+    const password = document.querySelector('input[name="password"]');
+    const loginButton = document.querySelector('button[type="submit"]');
+    const showButton = document.querySelector('.togglePassword');
+    const statusBox = document.getElementById('emailLockStatus');
+    const serverError = document.querySelector('.error-box');
+
+    if (!email || !password || !loginButton || !statusBox) {
+        return;
+    }
+
+    let timerId = null;
+    let countdownId = null;
+    let activeUnlockAtMs = 0;
+    let requestId = 0;
+
+    const setLoginControls = (isLocked) => {
+        password.disabled = isLocked;
+        loginButton.disabled = isLocked;
+        if (showButton) showButton.disabled = isLocked;
+    };
+
+    const hideStatus = () => {
+        if (countdownId) {
+            clearTimeout(countdownId);
+            countdownId = null;
+        }
+
+        activeUnlockAtMs = 0;
+        statusBox.className = 'client-lock-status is-hidden';
+        statusBox.textContent = '';
+    };
+
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remaining = seconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
+    };
+
+    const showCountdown = (message, seconds, lockType, unlockAt = 0) => {
+        const nextUnlockAtMs = unlockAt > 0
+            ? unlockAt * 1000
+            : Date.now() + (seconds * 1000);
+
+        // Huwag hayaang tumaas ulit ang oras kapag may bagong status check.
+        activeUnlockAtMs = activeUnlockAtMs > 0
+            ? Math.min(activeUnlockAtMs, nextUnlockAtMs)
+            : nextUnlockAtMs;
+
+        statusBox.className = 'client-lock-status error-locked';
+
+        const tick = () => {
+            const timeLeft = Math.max(0, Math.ceil((activeUnlockAtMs - Date.now()) / 1000));
+            statusBox.textContent = `${message} Time remaining: ${formatTime(timeLeft)}`;
+
+            if (timeLeft <= 0) {
+                hideStatus();
+                setLoginControls(false);
+                if (lockType === 'ip') {
+                    email.disabled = false;
+                    location.reload();
+                }
+                return;
+            }
+
+            countdownId = setTimeout(tick, 1000);
+        };
+
+        if (lockType === 'ip') {
+            email.disabled = true;
+        }
+
+        setLoginControls(true);
+        tick();
+    };
+
+    const checkEmail = async () => {
+        const typedEmail = email.value.trim();
+        const thisRequest = ++requestId;
+
+        hideStatus();
+        setLoginControls(false);
+
+        if (serverError) {
+            serverError.classList.add('is-hidden');
+        }
+
+        if (typedEmail === '') {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${statusUrl}?email=${encodeURIComponent(typedEmail)}`, {
+                headers: { 'Accept': 'application/json' },
+            });
+            const data = await response.json();
+
+            if (thisRequest !== requestId) {
+                return;
+            }
+
+            if (data.locked && data.type === 'ip') {
+                email.disabled = true;
+                setLoginControls(true);
+                showCountdown(
+                    data.message || 'This device has been temporarily locked due to multiple failed login attempts.',
+                    Number(data.seconds) || 0,
+                    'ip',
+                    Number(data.unlockAt) || 0
+                );
+                return;
+            }
+
+            if (data.locked && data.type === 'email') {
+                showCountdown(
+                    data.message || 'This login is temporarily locked.',
+                    Number(data.seconds) || 0,
+                    'email',
+                    Number(data.unlockAt) || 0
+                );
+            }
+        } catch (error) {
+            hideStatus();
+            setLoginControls(false);
+        }
+    };
+
+    email.addEventListener('input', () => {
+        if (timerId) {
+            clearTimeout(timerId);
+        }
+
+        timerId = setTimeout(checkEmail, 350);
+    });
+};
 /*
 |--------------------------------------------------------------------------
 | Live Lockout Countdown
@@ -139,6 +283,7 @@ const initLockoutCountdown = () => {
 
     // Get the remaining lockout time from login.php
     const LOCKOUT_SECONDS = window.lockoutConfig?.seconds ?? 0;
+    const unlockAt = window.lockoutConfig?.unlockAt ?? 0;
     const lockType = window.lockoutConfig?.lockType ?? '';
 
     if (LOCKOUT_SECONDS <= 0) {
@@ -158,17 +303,19 @@ const initLockoutCountdown = () => {
 
     if (lockType === 'email' && email) {
         email.addEventListener('input', () => {
-            const hasNewEmail = email.value.trim() !== '';
-
-            if (password) password.disabled = !hasNewEmail;
-            if (loginButton) loginButton.disabled = !hasNewEmail;
-            if (showButton) showButton.disabled = !hasNewEmail;
+            if (password) password.disabled = true;
+            if (loginButton) loginButton.disabled = true;
+            if (showButton) showButton.disabled = true;
+            countdown.closest('.error-box')?.classList.add('is-hidden');
         });
     }
 
-    let seconds = LOCKOUT_SECONDS;
+    const unlockAtMs = unlockAt > 0
+        ? unlockAt * 1000
+        : Date.now() + (LOCKOUT_SECONDS * 1000);
 
     const update = () => {
+        const seconds = Math.max(0, Math.ceil((unlockAtMs - Date.now()) / 1000));
 
         const minutes = Math.floor(seconds / 60);
         const remaining = seconds % 60;
@@ -194,8 +341,6 @@ const initLockoutCountdown = () => {
             return;
         }
 
-        seconds--;
-
         setTimeout(update, 1000);
     };
 
@@ -209,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start the live lockout countdown if the login form is locked.
     initLockoutCountdown();
+    initEmailLockStatus();
 
     document.body.classList.add('page-loaded');
 });

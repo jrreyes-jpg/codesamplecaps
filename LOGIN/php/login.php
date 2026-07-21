@@ -543,6 +543,8 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
                         </div>
                     <?php endif; ?>
 
+                    <div id="emailLockStatus" class="client-lock-status is-hidden" aria-live="polite"></div>
+
 <input
     type="email"
     name="email"
@@ -590,7 +592,9 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 <script>
 window.lockoutConfig = {
     seconds: <?php echo (int)$remaining_seconds; ?>,
-    lockType: <?php echo json_encode($lock_type); ?>
+    unlockAt: <?php echo (int)(time() + (int)$remaining_seconds); ?>,
+    lockType: <?php echo json_encode($lock_type); ?>,
+    statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php'
 };
 </script>
     <script src="../js/login.js"></script>

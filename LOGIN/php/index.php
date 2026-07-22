@@ -441,13 +441,13 @@ session_start();
                 <h3>Social</h3>
                 <div class="footer-social" aria-label="Social media links">
                     <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="" loading="lazy" decoding="async">
+                        <img src="../../IMAGES/fb.png" alt="" loading="lazy" decoding="async">
                     </a>
                     <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" aria-label="Viber">
-                        <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="" loading="lazy" decoding="async">
+                        <img src="../../IMAGES/viber.jpg" alt="" loading="lazy" decoding="async">
                     </a>
                     <a href="mailto:ejimenez.edge@gmail.com?subject=Request%20Consultation" aria-label="Email">
-                        <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="" loading="lazy" decoding="async">
+                        <img src="../../IMAGES/gmail.jpg" alt="" loading="lazy" decoding="async">
                     </a>
                 </div>
             </div>
@@ -476,18 +476,18 @@ session_start();
                 <span>Call 0917 878 9571</span>
             </a>
 
-<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook Messenger" loading="lazy" decoding="async">
+<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="../../IMAGES/social-facebook.svg" alt="Facebook Messenger" loading="lazy" decoding="async">
                 <strong>Facebook</strong>
                 <span>Message the page</span>
             </a>
 
-<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="https://cdn-icons-png.flaticon.com/512/3670/3670059.png" alt="Viber" loading="lazy" decoding="async">
+<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="../../IMAGES/social-viber.svg" alt="Viber" loading="lazy" decoding="async">
                 <strong>Viber</strong>
                 <span>Start a chat</span>
             </a>
 
 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ejimenez.edge@gmail.com&su=Request%20Consultation&body=Hello%20Edge%20Automation,%20I%20would%20like%20to%20request%20a%20consultation." target="_blank" class="consult-option">
-    <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email" loading="lazy" decoding="async">
+    <img src="../../IMAGES/social-email.svg" alt="Email" loading="lazy" decoding="async">
     <strong>Email</strong>
     <span>Send project details</span>
 </a>      </div>

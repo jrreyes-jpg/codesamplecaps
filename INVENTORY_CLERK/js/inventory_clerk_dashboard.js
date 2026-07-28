@@ -59,6 +59,55 @@ if (canvas) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    const shouldReplaceSuperAdminHistory = function (event, link) {
+        if (!link || event.defaultPrevented) {
+            return false;
+        }
+
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return false;
+        }
+
+        if (link.target && link.target.toLowerCase() !== '_self') {
+            return false;
+        }
+
+        if (link.hasAttribute('download')) {
+            return false;
+        }
+
+        let destination;
+        try {
+            destination = new URL(link.href, window.location.href);
+        } catch (error) {
+            return false;
+        }
+
+        if (destination.origin !== window.location.origin) {
+            return false;
+        }
+
+        const isSuperAdminPath = destination.pathname.startsWith('/codesamplecaps/SUPERADMIN/');
+        const isLogoutPath = destination.pathname === '/codesamplecaps/LOGIN/php/logout.php';
+        const isSamePageHashOnly = destination.pathname === window.location.pathname
+            && destination.search === window.location.search
+            && destination.hash !== ''
+            && destination.hash !== window.location.hash;
+
+        return (isSuperAdminPath || isLogoutPath) && !isSamePageHashOnly;
+    };
+
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest && event.target.closest('a[href]');
+
+        if (!shouldReplaceSuperAdminHistory(event, link)) {
+            return;
+        }
+
+        event.preventDefault();
+        window.location.replace(link.href);
+    }, true);
+
     const phTime = document.querySelector('[data-ph-time]');
     const phDate = document.querySelector('[data-ph-date]');
     const notificationRoot = document.querySelector('[data-notification-root]');

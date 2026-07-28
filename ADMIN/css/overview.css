@@ -4,6 +4,14 @@
     gap: 18px;
 }
 
+.admin-dashboard-content {
+    min-height: 100vh;
+}
+
+.admin-dashboard-content .tab-content.active {
+    display: block;
+}
+
 .overview-summary-grid .metric-tile,
 .overview-attention-card,
 .mini-overview-card {

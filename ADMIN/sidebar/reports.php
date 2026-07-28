@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/project_progress.php';
 require_once __DIR__ . '/../../config/quotation_module.php';
 
-require_role('super_admin');
+require_role('admin');
 
 function super_admin_reports_table_exists(mysqli $conn, string $tableName): bool
 {
@@ -98,8 +98,8 @@ $portfolioProgress = $totalProjects > 0
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports Hub - Super Admin</title>
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/super_admin_dashboard.css">
+    <title>Reports Hub - Admin</title>
+    <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/super_admin_dashboard.css">
     <style>
         .reports-shell {
             display: grid;
@@ -251,7 +251,7 @@ $portfolioProgress = $totalProjects > 0
     </style>
 </head>
 <body>
-<?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
+<?php include __DIR__ . '/../admin_sidebar.php'; ?>
 
 <main class="main-content">
     <div class="reports-shell">
@@ -259,7 +259,7 @@ $portfolioProgress = $totalProjects > 0
             <div>
                 <p class="reports-kicker">Reports Hub</p>
                 <h1>System-wide reporting for decisions, approvals, and audit visibility.</h1>
-                <p>Super Admin sees the full reporting layer: all projects, all user activity, quotation approvals, inventory signals, procurement approvals, and audit history.</p>
+                <p>Admin sees the full reporting layer: all projects, all user activity, quotation approvals, inventory signals, procurement approvals, and audit history.</p>
                 <div class="reports-chip-row">
                     <div class="reports-chip">
                         <span>Operational Coverage</span>
@@ -304,10 +304,10 @@ $portfolioProgress = $totalProjects > 0
         </section>
 
         <section class="reports-card">
-            <h2>Core reports for Super Admin</h2>
+            <h2>Core reports for Admin</h2>
             <p>Each card matches a real admin reporting responsibility in your system.</p>
             <div class="report-links-grid">
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/user_management.php">
                     <h3>User activity reports</h3>
                     <p>Monitor user base, role distribution, and account-level visibility across Engineer, Foreman, and Client users.</p>
                     <div class="report-link-card__meta">
@@ -315,7 +315,7 @@ $portfolioProgress = $totalProjects > 0
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/projects.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/projects.php">
                     <h3>All project reports</h3>
                     <p>Track project pipeline, active execution, completed delivery, and overall workload across the system.</p>
                     <div class="report-link-card__meta">
@@ -323,7 +323,7 @@ $portfolioProgress = $totalProjects > 0
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/quotations.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/quotations.php">
                     <h3>Quotation and approval reports</h3>
                     <p>Review all quotations, approval states, and commercial records tied to project delivery.</p>
                     <div class="report-link-card__meta">
@@ -331,7 +331,7 @@ $portfolioProgress = $totalProjects > 0
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/procurement.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/procurement.php">
                     <h3>Financial and procurement summary</h3>
                     <p>Use purchase-order approval counts as the current admin-level financial checkpoint inside the system.</p>
                     <div class="report-link-card__meta">
@@ -339,7 +339,7 @@ $portfolioProgress = $totalProjects > 0
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/inventory.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/inventory.php">
                     <h3>Inventory and asset reports</h3>
                     <p>Watch stock pressure and asset movement that may affect delivery schedules and procurement needs.</p>
                     <div class="report-link-card__meta">
@@ -347,7 +347,7 @@ $portfolioProgress = $totalProjects > 0
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/activity_history.php">
                     <h3>Audit logs and traceability</h3>
                     <p>Check system history, approvals, changes, and accountability trails when you need full oversight.</p>
                     <div class="report-link-card__meta">
@@ -360,6 +360,6 @@ $portfolioProgress = $totalProjects > 0
     </div>
 </main>
 
-<script src="/codesamplecaps/SUPERADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 </body>
 </html>

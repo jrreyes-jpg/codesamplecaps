@@ -1,0 +1,21 @@
+/* CSS ng User Management page. Dito ilagay ang style na pang users lang. */
+
+.user-management-shell {
+    display: block;
+}
+
+.user-table-toolbar {
+    align-items: center;
+}
+
+.user-management-table {
+    width: 100%;
+}
+
+.user-create-modal[hidden] {
+    display: none;
+}
+
+.user-create-modal.is-open {
+    display: flex;
+}

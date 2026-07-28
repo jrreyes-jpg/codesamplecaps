@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../config/asset_unit_helpers.php';
 require_once __DIR__ . '/../../config/project_progress.php';
 require_once __DIR__ . '/project_search_support.php';
 
-require_role('super_admin');
+require_role('admin');
 
 function get_column_type(mysqli $conn, string $tableName, string $columnName): ?string {
     static $cache = [];
@@ -505,11 +505,11 @@ function get_projects_redirect_target(): string {
     $redirectTo = $_POST['redirect_to'] ?? $_GET['redirect_to'] ?? '';
     $redirectTo = is_string($redirectTo) ? trim($redirectTo) : '';
 
-    if ($redirectTo !== '' && str_starts_with($redirectTo, '/codesamplecaps/SUPERADMIN/sidebar/')) {
+    if ($redirectTo !== '' && str_starts_with($redirectTo, '/codesamplecaps/ADMIN/sidebar/')) {
         return $redirectTo;
     }
 
-    return '/codesamplecaps/SUPERADMIN/sidebar/projects.php';
+    return '/codesamplecaps/ADMIN/sidebar/projects.php';
 }
 
 function redirect_projects_page(): void {
@@ -1130,7 +1130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header('Location: /codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash');
+        header('Location: /codesamplecaps/ADMIN/sidebar/projects.php?view=trash');
         exit;
     }
 
@@ -1202,7 +1202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header('Location: /codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash');
+        header('Location: /codesamplecaps/ADMIN/sidebar/projects.php?view=trash');
         exit;
     }
 
@@ -3215,7 +3215,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Management - Super Admin</title>
+    <title>Project Management - Admin</title>
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -3252,7 +3252,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
 
     <main class="main-content projects-content">
         <div class="page-stack">
@@ -3613,7 +3613,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
             <section
                 class="page-stack"
                 id="projects-list-section"
-                data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/projects.php<?php
+                data-reset-url="/codesamplecaps/ADMIN/sidebar/projects.php<?php
                     $resetParams = [];
                     if ($statusFilter !== '') {
                         $resetParams['status'] = $statusFilter;
@@ -3623,7 +3623,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                     }
                     echo $resetParams ? '?' . http_build_query($resetParams) : '';
                 ?>"
-                data-search-endpoint="/codesamplecaps/SUPERADMIN/sidebar/project_search_api.php"
+                data-search-endpoint="/codesamplecaps/ADMIN/sidebar/project_search_api.php"
             >
                 
                 <div class="project-controls">
@@ -3642,7 +3642,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                 if ($chipValue !== '') {
                                     $chipParams['status'] = $chipValue;
                                 }
-                                $chipLink = '/codesamplecaps/SUPERADMIN/sidebar/projects.php' . ($chipParams ? '?' . http_build_query($chipParams) : '');
+                                $chipLink = '/codesamplecaps/ADMIN/sidebar/projects.php' . ($chipParams ? '?' . http_build_query($chipParams) : '');
                                 $isActiveChip = $statusFilter === $chipValue;
                                 $chipTone = $chipValue === '' ? 'all' : str_replace('_', '-', $chipValue);
                             ?>
@@ -3767,7 +3767,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                         $projectAdditionalInfoSearchText,
                                         $project['status'] ?? '',
                                     ])));
-                                    $detailsPath = '/codesamplecaps/SUPERADMIN/sidebar/project_details.php?id=' . (int)$project['id'];
+                                    $detailsPath = '/codesamplecaps/ADMIN/sidebar/project_details.php?id=' . (int)$project['id'];
                                     ?>
                                     <article class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>" data-project-card data-status="<?php echo htmlspecialchars($project['status']); ?>" data-search="<?php echo htmlspecialchars($searchText); ?>" data-title="<?php echo htmlspecialchars($project['project_name']); ?>" data-link="<?php echo htmlspecialchars($detailsPath); ?>" data-client="<?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?>" data-engineer="<?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?>">
                                         <div class="card-split">
@@ -3797,14 +3797,14 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_project">
                                                 <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
                                             <form method="POST" class="project-card__inline-form" onsubmit="return confirm('Permanently delete this project? This cannot be undone.');">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="permanently_delete_project">
                                                 <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                 <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                             </form>
                                         </div>
@@ -3827,7 +3827,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                             $pageParams['view'] = 'trash';
                                         }
                                         $pageParams['page'] = $page;
-                                        $pageLink = '/codesamplecaps/SUPERADMIN/sidebar/projects.php?' . http_build_query($pageParams);
+                                        $pageLink = '/codesamplecaps/ADMIN/sidebar/projects.php?' . http_build_query($pageParams);
                                         ?>
                                         <a href="<?php echo htmlspecialchars($pageLink); ?>" class="pagination-link<?php echo $page === $currentPage ? ' is-active' : ''; ?>">
                                             <?php echo $page; ?>
@@ -3917,7 +3917,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_purchase_request">
                                                 <input type="hidden" name="purchase_request_id" value="<?php echo (int)$trashedRequest['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
                                             <?php if ((int)($trashedRequest['linked_purchase_orders'] ?? 0) > 0): ?>
@@ -3927,7 +3927,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_purchase_request">
                                                     <input type="hidden" name="purchase_request_id" value="<?php echo (int)$trashedRequest['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                                 </form>
                                             <?php endif; ?>
@@ -3972,7 +3972,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_supplier">
                                                 <input type="hidden" name="supplier_id" value="<?php echo (int)$trashedSupplier['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
                                             <?php if ((int)($trashedSupplier['linked_purchase_orders'] ?? 0) > 0): ?>
@@ -3982,7 +3982,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_supplier">
                                                     <input type="hidden" name="supplier_id" value="<?php echo (int)$trashedSupplier['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                                 </form>
                                             <?php endif; ?>
@@ -4019,18 +4019,18 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                             </div>
                                         </div>
                                         <div class="form-actions project-card__actions project-card__actions--trash">
-                                            <form method="POST" action="/codesamplecaps/SUPERADMIN/sidebar/assets.php" class="project-card__inline-form" onsubmit="return confirm('Restore this asset from trash?');">
+                                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/assets.php" class="project-card__inline-form" onsubmit="return confirm('Restore this asset from trash?');">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_asset">
                                                 <input type="hidden" name="asset_id" value="<?php echo (int)$trashedAsset['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
-                                            <form method="POST" action="/codesamplecaps/SUPERADMIN/sidebar/assets.php" class="project-card__inline-form" onsubmit="return confirm('Permanently delete this asset? This cannot be undone.');">
+                                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/assets.php" class="project-card__inline-form" onsubmit="return confirm('Permanently delete this asset? This cannot be undone.');">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="permanently_delete_asset">
                                                 <input type="hidden" name="asset_id" value="<?php echo (int)$trashedAsset['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                 <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                             </form>
                                         </div>
@@ -4260,7 +4260,7 @@ function initProjectSearchUI() {
         }
 
         const queryString = params.toString();
-        return '/codesamplecaps/SUPERADMIN/sidebar/projects.php' + (queryString ? '?' + queryString : '');
+        return '/codesamplecaps/ADMIN/sidebar/projects.php' + (queryString ? '?' + queryString : '');
     }
 
     function triggerSearchRefresh(immediate) {
@@ -4358,7 +4358,7 @@ function initProjectSearchUI() {
                 window.clearTimeout(searchDebounceId);
             }
 
-            const resetUrl = section?.getAttribute('data-reset-url') || searchClear.getAttribute('href') || '/codesamplecaps/SUPERADMIN/sidebar/projects.php';
+            const resetUrl = section?.getAttribute('data-reset-url') || searchClear.getAttribute('href') || '/codesamplecaps/ADMIN/sidebar/projects.php';
             refreshProjectsSection(resetUrl);
         });
     }

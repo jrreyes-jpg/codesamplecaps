@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 
-require_role('super_admin');
+require_role('admin');
 
 function procurement_get_csrf_token(): string
 {
@@ -17,7 +17,7 @@ function procurement_is_valid_csrf_token(?string $token): bool
 
 function procurement_redirect(): void
 {
-    header('Location: /codesamplecaps/SUPERADMIN/sidebar/procurement.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/procurement.php');
     exit();
 }
 
@@ -278,13 +278,13 @@ if ($statsResult) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procurement Approval - Super Admin</title>
+    <title>Procurement Approval - Admin</title>
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-stack">
@@ -311,7 +311,7 @@ if ($statsResult) {
 
             <section class="form-panel">
                 <h1 class="section-title-inline">Procurement Approval</h1>
-                <div class="lock-note">Engineers now manage suppliers and create purchase orders. Super Admin only reviews and approves the final procurement package here.</div>
+                <div class="lock-note">Engineers now manage suppliers and create purchase orders. Admin only reviews and approves the final procurement package here.</div>
             </section>
 
             <section class="page-stack">

@@ -1,14 +1,18 @@
 <?php
-define('AUTH_REQUIRED_ROLE', 'super_admin');
-require_once __DIR__ . '/../../config/auth_check.php';
+require_once __DIR__ . '/../includes/admin_auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/project_progress.php';
 require_once __DIR__ . '/../../config/profile_photo_storage.php';
+require_once __DIR__ . '/../services/admin_metrics.php';
+require_once __DIR__ . '/../services/admin_profile.php';
 
 $message = '';
 $error = '';
 $activeTab = $_GET['tab'] ?? 'dashboard';
+if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
+    $activeTab = 'dashboard';
+}
 $allowedRoles = ['engineer', 'foreman', 'client'];
 $allowedStatuses = ['active', 'inactive'];
 $action = '';
@@ -19,7 +23,7 @@ $old = [
     'role' => ''
 ];
 
-ensureUserProfilePhotoColumn($conn);
+admin_ensure_user_profile_photo_column($conn);
 $dashboardFlash = consumeDashboardFlash();
 if ($dashboardFlash['type'] === 'success') {
     $message = $dashboardFlash['text'];
@@ -77,15 +81,13 @@ function consumeDashboardFlash(): array {
 }
 
 function redirectToDashboardTab(string $tab): void {
-    $location = '/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php';
+    $location = '/codesamplecaps/ADMIN/dashboards/admin_dashboard.php';
 
-    // Mas malinis na URL para sa sidebar pages ng Super Admin.
+    // Mas malinis na URL para sa sidebar pages ng Admin.
     if ($tab === 'dashboard') {
-        $location = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php';
-    } elseif ($tab === 'users') {
-        $location = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php';
-    } elseif ($tab === 'create') {
-        $location = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php?create=1';
+        $location = '/codesamplecaps/ADMIN/dashboards/admin_dashboard.php';
+    } elseif ($tab === 'users' || $tab === 'create') {
+        $location = '/codesamplecaps/ADMIN/dashboards/admin_dashboard.php';
     } elseif ($tab !== '') {
         $location .= '?tab=' . rawurlencode($tab);
     }
@@ -115,14 +117,6 @@ function hasColumn(mysqli $conn, string $tableName, string $columnName): bool {
     return (bool)($result && $result->fetch_assoc());
 }
 
-function ensureUserProfilePhotoColumn(mysqli $conn): void {
-    if (hasColumn($conn, 'users', 'profile_photo_path')) {
-        return;
-    }
-
-    $conn->query("ALTER TABLE users ADD COLUMN profile_photo_path VARCHAR(255) DEFAULT NULL AFTER token_expiry");
-}
-
 if (!function_exists('build_default_profile_avatar_data_uri')) {
     function build_default_profile_avatar_data_uri(): string {
         $relativePath = '/codesamplecaps/IMAGES/nodp.jpg';
@@ -148,26 +142,6 @@ SVG;
 
         return 'data:image/svg+xml;utf8,' . rawurlencode($svg);
     }
-}
-
-function getUserById(mysqli $conn, int $userId): ?array {
-    $selectPhoto = hasColumn($conn, 'users', 'profile_photo_path')
-        ? ', profile_photo_path'
-        : ', NULL AS profile_photo_path';
-    $stmt = $conn->prepare("SELECT id, full_name, email, phone, role, status, created_at{$selectPhoto} FROM users WHERE id = ? LIMIT 1");
-    if (!$stmt) {
-        return null;
-    }
-
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    return $result ? $result->fetch_assoc() : null;
-}
-
-function storeProfilePhotoUpload(array $file, int $userId): array {
-    return profile_photo_store_upload($file, $userId);
 }
 
 function getUserForStatusChange(mysqli $conn, int $userId): ?array {
@@ -843,7 +817,7 @@ $old['role'] = $role;
         $email = trim($_POST['email'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
         $profilePhotoUpload = $_FILES['profile_photo'] ?? null;
-        $currentUser = $userId > 0 ? getUserById($conn, $userId) : null;
+        $currentUser = $userId > 0 ? admin_get_user_by_id($conn, $userId) : null;
 
         if ($userId <= 0 || !$currentUser) {
             $error = 'Unable to load your admin account.';
@@ -865,7 +839,7 @@ $old['role'] = $role;
                 $error = 'Full name, email, and phone must stay unique.';
             } else {
                 $uploadedPhoto = ($supportsProfilePhoto && $profilePhotoUpload)
-                    ? storeProfilePhotoUpload($profilePhotoUpload, $userId)
+                    ? admin_store_profile_photo_upload($profilePhotoUpload, $userId)
                     : ['path' => null, 'error' => null];
 
                 if ($uploadedPhoto['error'] !== null) {
@@ -930,7 +904,7 @@ $old['role'] = $role;
         $currentPassword = (string)($_POST['current_password'] ?? '');
         $newPassword = (string)($_POST['new_password'] ?? '');
         $confirmPassword = (string)($_POST['confirm_password'] ?? '');
-        $currentUser = $userId > 0 ? getUserById($conn, $userId) : null;
+        $currentUser = $userId > 0 ? admin_get_user_by_id($conn, $userId) : null;
 
         if ($userId <= 0 || !$currentUser) {
             $error = 'Unable to load your admin account.';
@@ -1012,7 +986,7 @@ usort($managedUsers, 'compareUsersForTable');
 $activeUsersAll = count(fetchUsersByRoles($conn, ['engineer', 'foreman', 'foremen', 'client'], 'active', false));
 $trashedUsersCount = count(fetchUsersByRoles($conn, ['engineer', 'foreman', 'foremen', 'client'], '', true));
 $csrfToken = getCsrfToken();
-$currentAdmin = getUserById($conn, (int)($_SESSION['user_id'] ?? 0));
+$currentAdmin = admin_get_user_by_id($conn, (int)($_SESSION['user_id'] ?? 0));
 if ($supportsProfilePhoto && $currentAdmin) {
     $currentAdmin['profile_photo_path'] = profile_photo_migrate_legacy_reference(
         $conn,
@@ -1020,7 +994,7 @@ if ($supportsProfilePhoto && $currentAdmin) {
         $currentAdmin['profile_photo_path'] ?? null
     );
 }
-$currentAdminName = (string)($currentAdmin['full_name'] ?? ($_SESSION['name'] ?? 'Super Admin'));
+$currentAdminName = (string)($currentAdmin['full_name'] ?? ($_SESSION['name'] ?? 'Admin'));
 $currentAdminEmail = (string)($currentAdmin['email'] ?? '');
 $currentAdminPhone = (string)($currentAdmin['phone'] ?? '');
 $currentAdminRole = ucwords(str_replace('_', ' ', (string)($currentAdmin['role'] ?? 'super_admin')));
@@ -1032,123 +1006,25 @@ $currentAdminPhotoUrl = $currentAdminPhoto !== ''
     ? profile_photo_public_url($currentAdminPhoto)
     : '';
 $currentAdminPhotoPreviewUrl = $currentAdminPhotoUrl !== '' ? $currentAdminPhotoUrl : $defaultAdminPhotoUrl;
-$projectVisibilitySql = hasColumn($conn, 'projects', 'deleted_at') ? ' WHERE deleted_at IS NULL' : '';
+$adminMetrics = admin_load_dashboard_metrics($conn, $engineers, $foremen, $clients);
+foreach ($adminMetrics as $metricName => $metricValue) {
+    ${$metricName} = $metricValue;
+}
 
-$projectMetrics = $conn->query(
-    "SELECT
-        COUNT(*) AS total_projects,
-        SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) AS ongoing_projects,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_projects,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_projects,
-        SUM(CASE WHEN status = 'on-hold' THEN 1 ELSE 0 END) AS on_hold_projects
-     FROM projects" . $projectVisibilitySql
-);
-$projectMetricRow = $projectMetrics ? $projectMetrics->fetch_assoc() : [];
-
-$taskMetrics = $conn->query(
-    "SELECT
-        COUNT(*) AS total_tasks,
-        SUM(CASE WHEN status IN ('pending', 'ongoing', 'delayed') THEN 1 ELSE 0 END) AS open_tasks,
-        SUM(CASE WHEN status = 'delayed' THEN 1 ELSE 0 END) AS delayed_tasks
-     FROM tasks"
-);
-$taskMetricRow = $taskMetrics ? $taskMetrics->fetch_assoc() : [];
-
-$inventoryMetrics = $conn->query(
-    "SELECT
-        COUNT(*) AS inventory_items,
-        COALESCE(SUM(quantity), 0) AS total_units,
-        SUM(CASE WHEN status = 'low-stock' THEN 1 ELSE 0 END) AS low_stock_items,
-        SUM(CASE WHEN status = 'out-of-stock' THEN 1 ELSE 0 END) AS out_of_stock_items
-     FROM inventory"
-);
-$inventoryMetricRow = $inventoryMetrics ? $inventoryMetrics->fetch_assoc() : [];
-
-$assetMetrics = $conn->query(
-    "SELECT
-        COUNT(*) AS total_assets,
-        SUM(CASE WHEN created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN 1 ELSE 0 END) AS assets_this_month,
-        SUM(CASE WHEN serial_number IS NULL OR TRIM(serial_number) = '' THEN 1 ELSE 0 END) AS assets_missing_serial
-     FROM assets"
-);
-$assetMetricRow = $assetMetrics ? $assetMetrics->fetch_assoc() : [];
-
-$totalProjects = (int)($projectMetricRow['total_projects'] ?? 0);
-$ongoingProjects = (int)($projectMetricRow['ongoing_projects'] ?? 0);
-$completedProjects = (int)($projectMetricRow['completed_projects'] ?? 0);
-$pendingProjects = (int)($projectMetricRow['pending_projects'] ?? 0);
-$onHoldProjects = (int)($projectMetricRow['on_hold_projects'] ?? 0);
-$totalTasks = (int)($taskMetricRow['total_tasks'] ?? 0);
-$openTasks = (int)($taskMetricRow['open_tasks'] ?? 0);
-$delayedTasks = (int)($taskMetricRow['delayed_tasks'] ?? 0);
-$inventoryItems = (int)($inventoryMetricRow['inventory_items'] ?? 0);
-$totalUnits = (int)($inventoryMetricRow['total_units'] ?? 0);
-$lowStockItems = (int)($inventoryMetricRow['low_stock_items'] ?? 0);
-$outOfStockItems = (int)($inventoryMetricRow['out_of_stock_items'] ?? 0);
-$totalAssets = (int)($assetMetricRow['total_assets'] ?? 0);
-$assetsThisMonth = (int)($assetMetricRow['assets_this_month'] ?? 0);
-$scansToday = getScalarInt($conn, "SELECT COUNT(*) FROM asset_scan_history WHERE scan_time >= CURDATE() AND scan_time < (CURDATE() + INTERVAL 1 DAY)");
-$pendingQuotations = hasTable($conn, 'quotations')
-    ? getScalarInt($conn, "SELECT COUNT(*) FROM quotations WHERE status IN ('under_review', 'for_approval')")
-    : 0;
-$activeDeployments = hasTable($conn, 'project_inventory_deployments')
-    ? getScalarInt(
-        $conn,
-        "SELECT COUNT(*)
-         FROM (
-             SELECT pid.id
-             FROM project_inventory_deployments pid
-             LEFT JOIN (
-                 SELECT deployment_id, SUM(quantity) AS returned_quantity
-                 FROM project_inventory_return_logs
-                 GROUP BY deployment_id
-             ) returns ON returns.deployment_id = pid.id
-             WHERE (pid.quantity - COALESCE(returns.returned_quantity, 0)) > 0
-         ) active_deployments"
-    )
-    : 0;
-$activeEngineerCount = count(array_filter($engineers, static fn(array $user): bool => ($user['status'] ?? 'inactive') === 'active'));
-$activeForemanCount = count(array_filter($foremen, static fn(array $user): bool => ($user['status'] ?? 'inactive') === 'active'));
-$activeClientCount = count(array_filter($clients, static fn(array $user): bool => ($user['status'] ?? 'inactive') === 'active'));
-$projectCompletionRate = $totalProjects > 0
-    ? project_progress_clamp(
-        (($completedProjects / $totalProjects) * 100)
-        + (($ongoingProjects / $totalProjects) * 35)
-        - (($onHoldProjects / $totalProjects) * 10)
-    )
-    : 0;
-$taskDelayRate = $totalTasks > 0 ? (int)round(($delayedTasks / $totalTasks) * 100) : 0;
-$inventoryAlertCount = $lowStockItems + $outOfStockItems;
-$inventoryAlertRate = $inventoryItems > 0 ? (int)round(($inventoryAlertCount / $inventoryItems) * 100) : 0;
-$projectTrend = getDateRangeTrend($conn, 'projects', 'created_at', 7);
-$taskTrend = hasTable($conn, 'tasks') ? getDateRangeTrend($conn, 'tasks', 'created_at', 7) : [];
-$scanTrend = hasTable($conn, 'asset_scan_history') ? getDateRangeTrend($conn, 'asset_scan_history', 'scan_time', 7) : [];
-$projectsCreatedThisWeek = array_sum(array_map(static fn(array $item): int => (int)($item['value'] ?? 0), $projectTrend));
-$tasksCreatedThisWeek = array_sum(array_map(static fn(array $item): int => (int)($item['value'] ?? 0), $taskTrend));
-$scansThisWeek = array_sum(array_map(static fn(array $item): int => (int)($item['value'] ?? 0), $scanTrend));
-$scanTrendPeak = !empty($scanTrend) ? getTrendPeak($scanTrend) : 0;
-$recentDashboardActivity = fetchRecentDashboardActivity($conn, 5);
-$userWorkspaceShouldOpenModal = $activeTab === 'create';
+if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
+    // Admin wala nang User Management tab; balik sa overview para walang white screen.
+    $activeTab = 'dashboard';
+}
+$userWorkspaceShouldOpenModal = false;
 
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Dashboard - Edge Automation</title>
-    <link rel="stylesheet" href="../css/super_admin_dashboard.css">
-    <link rel="stylesheet" href="../css/user-management.css">
-    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-        <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
+<?php
+$adminPageTitle = 'Admin Dashboard - Edge Automation';
+include __DIR__ . '/../layout/header.php';
+include __DIR__ . '/../admin_sidebar.php';
+?>
 
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
-
-    <main class="main-content">
+    <main class="main-content admin-dashboard-content">
      
 
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
@@ -1156,8 +1032,8 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
 
         <?php
         // Dito naka-include ang hiwalay na sidebar pages para hindi magulo ang main dashboard file.
-        define('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL', true);
-        include __DIR__ . '/../sidebar/user_management.php';
+        define('ADMIN_RENDER_OVERVIEW_PARTIAL', true);
+        include __DIR__ . '/../sidebar/overview.php';
         ?>
 
         <div id="profile" class="tab-content <?php echo $activeTab === 'profile' ? 'active' : ''; ?>">
@@ -1260,12 +1136,5 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
                 </div>
             </section>
         </div>
-</div>
     </main>
-</div>
-
-<script src="../js/super_admin_dashboard.js"></script>
-<script src="../js/user-management.js"></script>
-<script src="/codesamplecaps/assets/js/realtime-updates.js" defer></script>
-</body>
-</html>
+<?php include __DIR__ . '/../layout/footer.php'; ?>

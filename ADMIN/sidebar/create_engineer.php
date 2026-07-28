@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 
-require_role('super_admin');
+require_role('admin');
 
 $csrfToken = auth_csrf_token('super_admin');
 
@@ -59,7 +59,7 @@ $engineers_result = $conn->query("SELECT id AS user_id, full_name, email, create
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Create Engineer Account - Super Admin</title>
+<title>Create Engineer Account - Admin</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
     body {
@@ -197,9 +197,9 @@ $engineers_result = $conn->query("SELECT id AS user_id, full_name, email, create
 
 <div class="admin-container">
     <div class="sidebar">
-        <h3>Super Admin Menu</h3>
+        <h3>Admin Menu</h3>
         <a href="../dashboards/create_engineer.php">Create Engineer</a>
-        <a href="../dashboards/super_admin_dashboard.php">Dashboard</a>
+        <a href="../dashboards/admin_dashboard.php">Dashboard</a>
         <a href="../../LOGIN/php/logout.php">Logout</a>
     </div>
     
@@ -266,6 +266,6 @@ $engineers_result = $conn->query("SELECT id AS user_id, full_name, email, create
     </div>
 </div>
 
-<script src="/codesamplecaps/SUPERADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 </body>
 </html>

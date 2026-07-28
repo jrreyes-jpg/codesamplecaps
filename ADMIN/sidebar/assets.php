@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../config/asset_unit_helpers.php';
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions as QRCodeOptions;
 
-require_role('super_admin');
+require_role('admin');
 $csrfToken = auth_csrf_token('super_admin');
 
 $message = '';
@@ -27,9 +27,9 @@ function assets_get_redirect_target(): string {
     $redirectTo = is_string($redirectTo) ? trim($redirectTo) : '';
 
     $allowedPrefixes = [
-        '/codesamplecaps/SUPERADMIN/sidebar/assets.php',
-        '/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash',
-        '/codesamplecaps/SUPERADMIN/sidebar/projects.php',
+        '/codesamplecaps/ADMIN/sidebar/assets.php',
+        '/codesamplecaps/ADMIN/sidebar/projects.php?view=trash',
+        '/codesamplecaps/ADMIN/sidebar/projects.php',
     ];
 
     foreach ($allowedPrefixes as $allowedPrefix) {
@@ -38,7 +38,7 @@ function assets_get_redirect_target(): string {
         }
     }
 
-    return '/codesamplecaps/SUPERADMIN/sidebar/assets.php';
+    return '/codesamplecaps/ADMIN/sidebar/assets.php';
 }
 
 function redirect_assets_page(): void {
@@ -1322,14 +1322,14 @@ if ($createdAssetId > 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assets & QR Codes - Super Admin</title>
+    <title>Assets & QR Codes - Admin</title>
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
     <link rel="stylesheet" href="../css/assets.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
 
     <main class="main-content assets-content">
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
@@ -1363,7 +1363,7 @@ if ($createdAssetId > 0) {
                         <p>Asset ID: <strong><?php echo htmlspecialchars((string)$createdAssetId); ?></strong></p>
                         <p>Generated labels: <strong><?php echo count($createdAssetPreviewRows); ?></strong></p>
                         <?php if ($qrLibraryReady): ?>
-                            <a href="/codesamplecaps/SUPERADMIN/print_qr_codes.php?asset_id=<?php echo $createdAssetId; ?>" target="_blank" class="btn-secondary" rel="noreferrer noopener">Print This Asset Labels</a>
+                            <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $createdAssetId; ?>" target="_blank" class="btn-secondary" rel="noreferrer noopener">Print This Asset Labels</a>
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
@@ -1468,7 +1468,7 @@ if ($createdAssetId > 0) {
                 </div>
                 <div class="asset-section-actions">
                     <?php if ($qrLibraryReady && !$isTrashView): ?>
-                        <a href="/codesamplecaps/SUPERADMIN/print_qr_codes.php" target="_blank" class="btn-secondary">Print QR Codes</a>
+                        <a href="/codesamplecaps/ADMIN/print_qr_codes.php" target="_blank" class="btn-secondary">Print QR Codes</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1591,7 +1591,7 @@ if ($createdAssetId > 0) {
                                             <?php if (!$isTrashView && !empty($asset['qr_code_value'])): ?>
                                                 <?php if ($qrLibraryReady): ?>
                                                     <button type="button" onclick="showAssetQrGallery(<?php echo (int)$asset['id']; ?>)" class="btn-secondary">Preview</button>
-                                                    <a href="/codesamplecaps/SUPERADMIN/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print</a>
+                                                    <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print</a>
                                                 <?php else: ?>
                                                     <span class="asset-inline-note">QR unavailable</span>
                                                 <?php endif; ?>
@@ -1610,14 +1610,14 @@ if ($createdAssetId > 0) {
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="restore_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                     <button type="submit" class="btn-secondary">Restore</button>
                                                 </form>
                                                 <form method="POST" class="asset-inline-form" onsubmit="return confirm('Permanently delete this asset from trash bin?');">
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/SUPERADMIN/sidebar/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger">Delete Permanently</button>
                                                 </form>
                                             <?php else: ?>

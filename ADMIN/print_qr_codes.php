@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config/auth_middleware.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/asset_unit_helpers.php';
 
-require_role('super_admin');
+require_role('admin');
 
 $qrLibraryReady = false;
 $qrAutoloadPath = __DIR__ . '/../vendor/autoload.php';

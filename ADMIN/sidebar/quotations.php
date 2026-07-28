@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/quotation_module.php';
 
-require_role('super_admin');
+require_role('admin');
 
 $flash = quotation_module_consume_flash();
 $csrfToken = quotation_module_csrf_token();
@@ -270,7 +270,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
 </head>
 <body>
 <div class="container">
-<?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
+<?php include __DIR__ . '/../admin_sidebar.php'; ?>
 <main class="main-content">
     <div class="quotation-shell">
         <?php if ($flash): ?><div class="flash <?php echo htmlspecialchars((string)$flash['type']); ?>"><?php echo htmlspecialchars((string)$flash['message']); ?></div><?php endif; ?>
@@ -289,7 +289,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
                         <?php if (!empty($quotations)): ?>
                             <?php foreach ($quotations as $quotation): ?>
                                 <article class="queue-card <?php echo $selectedQuotation && (int)$selectedQuotation['id'] === (int)$quotation['id'] ? 'active' : ''; ?>">
-                                    <a href="/codesamplecaps/SUPERADMIN/sidebar/quotations.php?id=<?php echo (int)$quotation['id']; ?>">
+                                    <a href="/codesamplecaps/ADMIN/sidebar/quotations.php?id=<?php echo (int)$quotation['id']; ?>">
                                         <strong><?php echo htmlspecialchars((string)$quotation['quotation_no']); ?></strong>
                                         <span><?php echo htmlspecialchars((string)$quotation['project_name']); ?></span>
                                         <span><?php echo htmlspecialchars((string)$quotation['engineer_name']); ?></span>

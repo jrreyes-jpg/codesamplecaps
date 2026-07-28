@@ -4,19 +4,21 @@ require_once __DIR__ . '/../config/profile_photo_storage.php';
 $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
 $currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
 
-$isDashboardPage = str_contains($currentPath, '/SUPERADMIN/dashboards/super_admin_dashboard.php');
+$isDashboardPage = str_contains($currentPath, '/ADMIN/dashboards/admin_dashboard.php');
 $isOverviewPage = false;
-$isUserManagementPage = str_contains($currentPath, '/SUPERADMIN/sidebar/user_management.php');
-$isDashboard = false;
+$isUserManagementPage = str_contains($currentPath, '/ADMIN/sidebar/user_management.php');
+$isDashboard = $isOverviewPage || ($isDashboardPage && ($currentQuery === '' || str_contains($currentQuery, 'tab=dashboard')));
 $isCreate = $isDashboardPage && str_contains($currentQuery, 'tab=create');
 $isCreate = $isCreate || ($isUserManagementPage && str_contains($currentQuery, 'create=1'));
 $isUsers = $isUserManagementPage || ($isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate));
-$isActivityHistory = str_contains($currentPath, '/SUPERADMIN/sidebar/activity_history.php');
-$isRolesPermissions = str_contains($currentPath, '/SUPERADMIN/sidebar/roles_permissions.php');
-$isSecuritySettings = str_contains($currentPath, '/SUPERADMIN/sidebar/security_settings.php');
-$isSystemSettings = str_contains($currentPath, '/SUPERADMIN/sidebar/system_settings.php');
-$isBackupRestore = str_contains($currentPath, '/SUPERADMIN/sidebar/backup_restore.php');
-$superAdminProfileName = (string)($_SESSION['name'] ?? 'Super Admin');
+$isProjects = str_contains($currentPath, '/ADMIN/sidebar/projects.php');
+$isProjectsTrash = $isProjects && str_contains($currentQuery, 'view=trash');
+$isInventory = str_contains($currentPath, '/ADMIN/sidebar/inventory.php');
+$isAssets = str_contains($currentPath, '/ADMIN/sidebar/assets.php');
+$isQuotations = str_contains($currentPath, '/ADMIN/sidebar/quotations.php');
+$isReports = str_contains($currentPath, '/ADMIN/sidebar/reports.php');
+$isActivityHistory = str_contains($currentPath, '/ADMIN/sidebar/activity_history.php');
+$superAdminProfileName = (string)($_SESSION['name'] ?? 'Admin');
 $superAdminProfileRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'super_admin')));
 $superAdminProfilePhotoUrl = '';
 $superAdminProfileInitials = '';
@@ -404,7 +406,7 @@ try {
             </span>
         </button>
         <div class="sidebar-toggle-title" aria-hidden="true">
-            <span class="sidebar-toggle-title__shine">Super Admin</span>
+            <span class="sidebar-toggle-title__shine">Admin</span>
         </div>
     </div>
 
@@ -412,23 +414,84 @@ try {
 
     <ul class="nav-menu">
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php" class="menu-link<?php echo $isUsers ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php" class="menu-link<?php echo $isDashboard ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M16 20a4 4 0 0 0-8 0"></path>
-                            <circle cx="12" cy="9" r="3.5"></circle>
-                            <path d="M19 20a3 3 0 0 0-3-3"></path>
-                            <path d="M5 20a3 3 0 0 1 3-3"></path>
+                            <rect x="3" y="3" width="7" height="7" rx="2"></rect>
+                            <rect x="14" y="3" width="7" height="5" rx="2"></rect>
+                            <rect x="14" y="10" width="7" height="11" rx="2"></rect>
+                            <rect x="3" y="12" width="7" height="9" rx="2"></rect>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">Users</span>
+                    <span class="menu-mini-label">Home</span>
                 </span>
-                <span class="menu-text">User Management</span>
+                <span class="menu-text">Overview</span>
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="menu-link<?php echo $isActivityHistory ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/ADMIN/sidebar/projects.php" class="menu-link<?php echo $isProjects && !$isProjectsTrash ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M3.5 7.5a2 2 0 0 1 2-2h4l1.6 1.8H18.5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"></path>
+                            <path d="M3.5 10.5h17"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Proj</span>
+                </span>
+                <span class="menu-text">Projects</span>
+            </a>
+        </li>
+        <li>
+            <a href="/codesamplecaps/ADMIN/sidebar/assets.php" class="menu-link<?php echo $isAssets ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M4 19h16"></path>
+                            <path d="M6 19V9l6-4 6 4v10"></path>
+                            <path d="M9 19v-4h6v4"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Asset</span>
+                </span>
+                <span class="menu-text">Assets</span>
+            </a>
+        </li>
+        <li>
+            <a href="/codesamplecaps/ADMIN/sidebar/quotations.php" class="menu-link<?php echo $isQuotations ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M7 4h10"></path>
+                            <path d="M7 8h10"></path>
+                            <path d="M7 12h6"></path>
+                            <path d="M6 20h12a2 2 0 0 0 2-2V6l-4-4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Quote</span>
+                </span>
+                <span class="menu-text">Quotations</span>
+            </a>
+        </li>
+        <li>
+            <a href="/codesamplecaps/ADMIN/sidebar/reports.php" class="menu-link<?php echo $isReports ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M5 19h14"></path>
+                            <path d="M7 16V9"></path>
+                            <path d="M12 16V5"></path>
+                            <path d="M17 16v-4"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Rpt</span>
+                </span>
+                <span class="menu-text">Reports</span>
+            </a>
+        </li>
+        <li>
+            <a href="/codesamplecaps/ADMIN/sidebar/activity_history.php" class="menu-link<?php echo $isActivityHistory ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -438,43 +501,24 @@ try {
                     </span>
                     <span class="menu-mini-label">Audit</span>
                 </span>
-                <span class="menu-text">Audit Logs</span>
+                <span class="menu-text">Activity History</span>
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/roles_permissions.php" class="menu-link<?php echo $isRolesPermissions ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash" class="menu-link<?php echo $isProjectsTrash ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"></path><path d="M9 12l2 2 4-4"></path></svg></span>
-                    <span class="menu-mini-label">Role</span>
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M5 7h14"></path>
+                            <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path>
+                            <path d="M7 7l.8 11a2 2 0 0 0 2 1.85h4.4a2 2 0 0 0 2-1.85L17 7"></path>
+                            <path d="M10 11v5"></path>
+                            <path d="M14 11v5"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Arch</span>
                 </span>
-                <span class="menu-text">Roles & Permissions</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/security_settings.php" class="menu-link<?php echo $isSecuritySettings ? ' active' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span>
-                    <span class="menu-mini-label">Sec</span>
-                </span>
-                <span class="menu-text">Security Settings</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/system_settings.php" class="menu-link<?php echo $isSystemSettings ? ' active' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.05.05-2.12 2.12-.05-.05a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.66V20h-3v-.08A1.8 1.8 0 0 0 10.4 18.3a1.8 1.8 0 0 0-2 .36l-.05.05-2.12-2.12.05-.05a1.8 1.8 0 0 0 .36-2A1.8 1.8 0 0 0 5 13.5H4v-3h1a1.8 1.8 0 0 0 1.66-1.1 1.8 1.8 0 0 0-.36-2l-.05-.05 2.12-2.12.05.05a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 11.5 4h3a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 2-.36l.05-.05 2.12 2.12-.05.05a1.8 1.8 0 0 0-.36 2A1.8 1.8 0 0 0 21 10.5h1v3h-1A1.8 1.8 0 0 0 19.4 15z"></path></svg></span>
-                    <span class="menu-mini-label">Sys</span>
-                </span>
-                <span class="menu-text">System Settings</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/backup_restore.php" class="menu-link<?php echo $isBackupRestore ? ' active' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M4 7h16v12H4z"></path><path d="M8 7V5h8v2"></path><path d="M12 11v5"></path><path d="M9.5 13.5 12 16l2.5-2.5"></path></svg></span>
-                    <span class="menu-mini-label">Bak</span>
-                </span>
-                <span class="menu-text">Backup & Restore</span>
+                <span class="menu-text">Archive</span>
             </a>
         </li>
         <li>
@@ -496,7 +540,7 @@ try {
 </nav>
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
 <header class="global-topbar" aria-live="polite">
-    <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Super Admin user management">
+    <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Admin overview">
         <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
         <strong>EDGE Automation</strong>
     </a>
@@ -536,8 +580,8 @@ try {
                     </div>
                 </div>
                 <div class="topbar-profile__links">
-                    <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=profile">Profile</a>
-                    <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=profile#security-settings">Settings</a>
+                    <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php?tab=profile">Profile</a>
+                    <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php?tab=profile#security-settings">Settings</a>
                     <a href="/codesamplecaps/LOGIN/php/logout.php">Logout</a>
                 </div>
             </div>
@@ -577,7 +621,7 @@ try {
 
                 <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
                     <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="notification-summary-chip notification-summary-chip--danger">
+                        <a href="/codesamplecaps/ADMIN/sidebar/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
                             <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
                             <span>Project risks</span>
                         </a>
@@ -592,7 +636,7 @@ try {
                         </div>
                     <?php else: ?>
                         <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                            <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="notification-item notification-item--danger">
+                            <a href="/codesamplecaps/ADMIN/sidebar/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
                                 <span class="notification-item__dot"></span>
                                 <div class="notification-item__copy">
                                     <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>

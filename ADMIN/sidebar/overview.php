@@ -1,10 +1,9 @@
 <?php
-// Lumang partial path ito. Pinapadaan na sa bagong sidebar overview file.
-if (!defined('SUPERADMIN_RENDER_OVERVIEW_PARTIAL')) {
-    define('SUPERADMIN_RENDER_OVERVIEW_PARTIAL', true);
+// Kapag binuksan ito direkta sa sidebar, gamitin pa rin ang main dashboard shell.
+if (!defined('ADMIN_RENDER_OVERVIEW_PARTIAL')) {
+    header('Location: /codesamplecaps/ADMIN/dashboards/admin_dashboard.php');
+    exit;
 }
-include __DIR__ . '/../../sidebar/overview.php';
-return;
 
 /** @var string $activeTab */
 /** @var int $totalUsers */
@@ -34,8 +33,6 @@ return;
 $activeProjectCount = $ongoingProjects + $pendingProjects + $onHoldProjects;
 $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClientCount;
 ?>
-<link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
-<script src="/codesamplecaps/assets/js/realtime-updates.js" defer></script>
 <div id="dashboard" class="tab-content <?php echo $activeTab === 'dashboard' ? 'active' : ''; ?>">
     <section class="dashboard-grid overview-dashboard" data-superadmin-overview>
         <section class="dashboard-panel summary-panel">
@@ -45,22 +42,22 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
                 </div>
             </div>
             <div class="metric-strip metric-strip-compact overview-summary-grid">
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-projects">
+                <a href="/codesamplecaps/ADMIN/sidebar/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-projects">
                     <span>Active Projects</span>
                     <strong data-live-metric="active_projects"><?php echo $activeProjectCount; ?></strong>
                     <small><?php echo $ongoingProjects; ?> ongoing, <?php echo $pendingProjects; ?> pending</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-tasks">
+                <a href="/codesamplecaps/ADMIN/sidebar/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-tasks">
                     <span>Open Tasks</span>
                     <strong data-live-metric="open_tasks"><?php echo $openTasks; ?></strong>
                     <small><?php echo $delayedTasks; ?> delayed</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/quotations.php" class="metric-tile metric-tile-link metric-tile-quotations">
+                <a href="/codesamplecaps/ADMIN/sidebar/quotations.php" class="metric-tile metric-tile-link metric-tile-quotations">
                     <span>Pending Quotations</span>
                     <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                     <small>Need approval</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/scan_history.php" class="metric-tile metric-tile-link metric-tile-assets">
+                <a href="/codesamplecaps/ADMIN/sidebar/scan_history.php" class="metric-tile metric-tile-link metric-tile-assets">
                     <span>Scans Today</span>
                     <strong data-live-metric="scans_today"><?php echo $scansToday; ?></strong>
                     <small>Asset activity</small>
@@ -75,22 +72,22 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
                 </div>
             </div>
             <div class="overview-attention-grid">
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php?status=active" class="overview-attention-card overview-attention-card--danger<?php echo $delayedTasks > 0 ? ' is-active' : ' is-clear'; ?>">
+                <a href="/codesamplecaps/ADMIN/sidebar/projects.php?status=active" class="overview-attention-card overview-attention-card--danger<?php echo $delayedTasks > 0 ? ' is-active' : ' is-clear'; ?>">
                     <span>Delayed Tasks</span>
                     <strong data-live-metric="delayed_tasks"><?php echo $delayedTasks; ?></strong>
                     <small><?php echo $totalTasks; ?> total tasks</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/inventory.php" class="overview-attention-card overview-attention-card--warning<?php echo $inventoryAlertCount > 0 ? ' is-active' : ' is-clear'; ?>">
+                <a href="/codesamplecaps/ADMIN/sidebar/inventory.php" class="overview-attention-card overview-attention-card--warning<?php echo $inventoryAlertCount > 0 ? ' is-active' : ' is-clear'; ?>">
                     <span>Inventory Alerts</span>
                     <strong data-live-metric="inventory_alerts"><?php echo $inventoryAlertCount; ?></strong>
                     <small><?php echo $lowStockItems; ?> low, <?php echo $outOfStockItems; ?> out</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php?status=on-hold" class="overview-attention-card overview-attention-card--neutral<?php echo $onHoldProjects > 0 ? ' is-active' : ' is-clear'; ?>">
+                <a href="/codesamplecaps/ADMIN/sidebar/projects.php?status=on-hold" class="overview-attention-card overview-attention-card--neutral<?php echo $onHoldProjects > 0 ? ' is-active' : ' is-clear'; ?>">
                     <span>On-Hold Projects</span>
                     <strong data-live-metric="on_hold_projects"><?php echo $onHoldProjects; ?></strong>
                     <small>Needs follow-up</small>
                 </a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/quotations.php" class="overview-attention-card overview-attention-card--neutral<?php echo $pendingQuotations > 0 ? ' is-active' : ' is-clear'; ?>">
+                <a href="/codesamplecaps/ADMIN/sidebar/quotations.php" class="overview-attention-card overview-attention-card--neutral<?php echo $pendingQuotations > 0 ? ' is-active' : ' is-clear'; ?>">
                     <span>Pending Approvals</span>
                     <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                     <small>Quotation review queue</small>
@@ -103,7 +100,7 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
                 <div>
                     <h2 class="dashboard-section-title">Recent Activity</h2>
                 </div>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="action-chip">View all</a>
+                <a href="/codesamplecaps/ADMIN/sidebar/activity_history.php" class="action-chip">View all</a>
             </div>
             <div class="activity-feed activity-feed-compact" data-live-activity-feed>
                 <?php if (empty($recentDashboardActivity)): ?>
@@ -171,10 +168,10 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
         </details>
 
         <section class="overview-quick-actions" aria-label="Quick actions">
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/projects.php#create-project">Create Project</a>
-            <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=create">Add User</a>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/assets.php">Add Asset</a>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/quotations.php">Review Quotations</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/projects.php#create-project">Create Project</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/user_management.php?create=1">Add User</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/assets.php">Add Asset</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/quotations.php">Review Quotations</a>
         </section>
     </section>
 </div>

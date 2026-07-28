@@ -85,7 +85,9 @@ if (!function_exists('auth_dashboard_path_for_role')) {
     function auth_dashboard_path_for_role(?string $role): ?string
     {
         $dashboardPaths = [
-            'super_admin' => '/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php',
+            'super_admin' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php',
+            'admin' => '/codesamplecaps/ADMIN/dashboards/admin_dashboard.php',
+            'inventory_clerk' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory_clerk_dashboard.php',
             'engineer' => '/codesamplecaps/ENGINEER/dashboards/engineer_dashboard.php',
             'foreman' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php',
             'client' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
@@ -105,7 +107,14 @@ if (!function_exists('auth_redirect_authenticated_user')) {
 
         if (
             $dashboardPath !== null
-            && auth_session_is_valid_for_roles(['super_admin', 'engineer', 'foreman', 'client'])
+            && auth_session_is_valid_for_roles([
+                'super_admin',
+                'admin',
+                'inventory_clerk',
+                'engineer',
+                'foreman',
+                'client'
+            ])
         ) {
             header('Location: ' . $dashboardPath);
             exit();
@@ -210,6 +219,14 @@ if (!function_exists('require_role')) {
         auth_enforce_activity_timeout();
 
         if (!auth_session_is_valid_for_roles([(string)$role])) {
+            $currentRole = $_SESSION['role'] ?? null;
+            $dashboardPath = auth_dashboard_path_for_role(is_string($currentRole) ? $currentRole : null);
+
+            if ($dashboardPath !== null) {
+                header('Location: ' . $dashboardPath);
+                exit();
+            }
+
             auth_destroy_session();
             auth_redirect_to_login();
         }
@@ -224,6 +241,14 @@ if (!function_exists('require_any_role')) {
         auth_enforce_activity_timeout();
 
         if (!auth_session_is_valid_for_roles($roles)) {
+            $currentRole = $_SESSION['role'] ?? null;
+            $dashboardPath = auth_dashboard_path_for_role(is_string($currentRole) ? $currentRole : null);
+
+            if ($dashboardPath !== null) {
+                header('Location: ' . $dashboardPath);
+                exit();
+            }
+
             auth_destroy_session();
             auth_redirect_to_login();
         }

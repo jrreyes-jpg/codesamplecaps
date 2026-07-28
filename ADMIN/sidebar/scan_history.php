@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/asset_unit_helpers.php';
 
-require_role('super_admin');
+require_role('admin');
 
 function scan_history_table_exists(mysqli $conn, string $table): bool {
     $safeTable = preg_replace('/[^A-Za-z0-9_]/', '', $table);
@@ -151,7 +151,7 @@ if ($hasScanHistoryTable) {
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
 
     <main class="main-content scan-history-content">
         <div class="header page-header-card">

@@ -68,21 +68,52 @@ document.addEventListener('DOMContentLoaded', function () {
     const profileToggle = document.getElementById('topbarProfileToggle');
     const profileDropdown = document.getElementById('topbarProfileDropdown');
     const idleTimeoutMs = 15 * 60 * 1000;
+    let lastActivityAt = Date.now();
     let idleTimerId = null;
+
+    const redirectIfIdle = function () {
+        const idleFor = Date.now() - lastActivityAt;
+
+        if (idleFor >= idleTimeoutMs) {
+            window.location.replace('/codesamplecaps/LOGIN/php/logout.php?timeout=1');
+            return;
+        }
+
+        scheduleIdleLogout();
+    };
 
     const scheduleIdleLogout = function () {
         if (idleTimerId) {
             window.clearTimeout(idleTimerId);
         }
 
+        const remainingMs = Math.max(1000, idleTimeoutMs - (Date.now() - lastActivityAt));
         idleTimerId = window.setTimeout(function () {
-            window.location.href = '/codesamplecaps/LOGIN/php/logout.php?timeout=1';
-        }, idleTimeoutMs);
+            // Huwag mag-auto logout habang nasa ibang tab para hindi biglang login form sa Alt-Tab.
+            if (document.hidden) {
+                return;
+            }
+
+            redirectIfIdle();
+        }, remainingMs);
+    };
+
+    const markActive = function () {
+        lastActivityAt = Date.now();
+        scheduleIdleLogout();
     };
 
     ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(function (eventName) {
-        document.addEventListener(eventName, scheduleIdleLogout, { passive: true });
+        document.addEventListener(eventName, markActive, { passive: true });
     });
+
+    window.addEventListener('focus', redirectIfIdle);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            redirectIfIdle();
+        }
+    });
+
     scheduleIdleLogout();
 
     if (phTime && phDate) {
@@ -455,3 +486,4 @@ document.addEventListener('DOMContentLoaded', function () {
         statusField.addEventListener('change', syncCreateProjectFields);
     }
 });
+

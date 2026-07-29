@@ -210,6 +210,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activity History - Edge Automation</title>
+    <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
 </head>
 <body>
@@ -296,3 +297,5 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
 <script src="../js/super_admin_dashboard.js"></script>
 </body>
 </html>
+
+

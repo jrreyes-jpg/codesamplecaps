@@ -113,15 +113,67 @@ const initLoadingButtons = () => {
             return;
         }
 
-        form.addEventListener('submit', () => {
+        let isSubmitting = false;
+
+        form.addEventListener('submit', (event) => {
             if (!form.checkValidity()) {
                 return;
             }
 
+            if (isSubmitting) {
+                event.preventDefault();
+                return;
+            }
+
+            isSubmitting = true;
             button.disabled = true;
             button.textContent = button.dataset.loadingText ?? 'Processing...';
         });
     });
+};
+
+const initLoggedInLoginPageGuard = () => {
+    const authStatusUrl = window.lockoutConfig?.authStatusUrl;
+
+    if (!authStatusUrl) {
+        return;
+    }
+
+    let isChecking = false;
+
+    const checkSession = async () => {
+        if (isChecking) {
+            return;
+        }
+
+        isChecking = true;
+
+        try {
+            const response = await fetch(authStatusUrl, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            });
+            const data = await response.json();
+
+            if (data.authenticated && data.dashboard) {
+                // Kapag lumang login window ito, palitan lang ito ng dashboard.
+                window.location.replace(data.dashboard);
+            }
+        } catch (error) {
+            // Silent lang para hindi masira login kapag offline o may local server hiccup.
+        } finally {
+            isChecking = false;
+        }
+    };
+
+    window.addEventListener('focus', checkSession);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            checkSession();
+        }
+    });
+
+    checkSession();
 };
 
 const initEmailLockStatus = () => {
@@ -351,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initParticleCanvas();
     initPasswordToggles();
     initLoadingButtons();
+    initLoggedInLoginPageGuard();
 
     // Start the live lockout countdown if the login form is locked.
     initLockoutCountdown();

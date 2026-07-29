@@ -14,6 +14,7 @@ function superadmin_render_simple_page(string $title, string $copy): void
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> - Super Admin</title>
+    <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
     <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
     <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
@@ -37,3 +38,5 @@ function superadmin_render_simple_page(string $title, string $copy): void
 </html>
     <?php
 }
+
+

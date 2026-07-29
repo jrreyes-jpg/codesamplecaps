@@ -1,49 +1,183 @@
 <?php
-// Sidebar ng Inventory Clerk. Inventory lang muna ang access niya.
+// Shared admin UI classes ang gamit dito para same design sa Super Admin.
 $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
-$isDashboard = str_contains($currentPath, '/INVENTORY_CLERK/dashboards/inventory_clerk_dashboard.php');
+$isDashboard = str_contains($currentPath, '/INVENTORY_CLERK/sidebar/dashboard.php')
+    || str_contains($currentPath, '/INVENTORY_CLERK/dashboards/inventory_clerk_dashboard.php');
 $isInventory = str_contains($currentPath, '/INVENTORY_CLERK/sidebar/inventory.php');
 $isStockIn = str_contains($currentPath, '/INVENTORY_CLERK/sidebar/stock_in.php');
 $isStockOut = str_contains($currentPath, '/INVENTORY_CLERK/sidebar/stock_out.php');
 $isStockHistory = str_contains($currentPath, '/INVENTORY_CLERK/sidebar/stock_history.php');
+$inventoryClerkName = (string)($_SESSION['name'] ?? 'Inventory Clerk');
+$inventoryClerkRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'inventory_clerk')));
+$initials = '';
+foreach (preg_split('/\s+/', trim($inventoryClerkName)) as $namePart) {
+    if ($namePart !== '') {
+        $initials .= strtoupper(substr($namePart, 0, 1));
+    }
+}
+$initials = substr($initials !== '' ? $initials : 'IC', 0, 2);
 ?>
+<script>
+try {
+    if (window.innerWidth > 900 && window.localStorage.getItem('edgeSidebarCollapsed') === '1') {
+        document.documentElement.classList.add('superadmin-sidebar-collapsed');
+    }
+} catch (error) {}
+</script>
+<button id="sidebarMobileToggle" class="sidebar-mobile-toggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-toggle-row">
-        <div class="sidebar-toggle-title">
+        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
+            <span id="toggleIcon" class="sidebar-toggle-icon" aria-hidden="true">
+                <svg class="sidebar-toggle-svg" viewBox="0 0 20 20" focusable="false" aria-hidden="true">
+                    <path d="M11.75 4.75L6.5 10l5.25 5.25"></path>
+                </svg>
+            </span>
+        </button>
+        <div class="sidebar-toggle-title" aria-hidden="true">
             <span class="sidebar-toggle-title__shine">Inventory Clerk</span>
         </div>
     </div>
+
     <div class="nav-divider"></div>
+
     <ul class="nav-menu">
         <li>
-            <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory_clerk_dashboard.php" class="menu-link<?php echo $isDashboard ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php" class="menu-link<?php echo $isDashboard ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24"><path d="M4 13h6V4H4z"></path><path d="M14 20h6V4h-6z"></path><path d="M4 20h6v-3H4z"></path></svg></span>
+                    <span class="menu-mini-label">Dash</span>
+                </span>
                 <span class="menu-text">Dashboard</span>
             </a>
         </li>
         <li>
             <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php" class="menu-link<?php echo $isInventory ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"></path><path d="M4 7l3-4h10l3 4"></path><path d="M9 12h6"></path></svg></span>
+                    <span class="menu-mini-label">Inv</span>
+                </span>
                 <span class="menu-text">Inventory</span>
             </a>
         </li>
         <li>
             <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_in.php" class="menu-link<?php echo $isStockIn ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M7 10l5-5 5 5"></path><path d="M5 19h14"></path></svg></span>
+                    <span class="menu-mini-label">In</span>
+                </span>
                 <span class="menu-text">Stock In</span>
             </a>
         </li>
         <li>
             <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_out.php" class="menu-link<?php echo $isStockOut ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M7 14l5 5 5-5"></path><path d="M5 5h14"></path></svg></span>
+                    <span class="menu-mini-label">Out</span>
+                </span>
                 <span class="menu-text">Stock Out</span>
             </a>
         </li>
         <li>
             <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_history.php" class="menu-link<?php echo $isStockHistory ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24"><path d="M12 8v5l3 2"></path><circle cx="12" cy="12" r="8"></circle></svg></span>
+                    <span class="menu-mini-label">Hist</span>
+                </span>
                 <span class="menu-text">Stock History</span>
             </a>
         </li>
         <li>
             <a href="/codesamplecaps/LOGIN/php/logout.php" class="menu-link logout">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon"><svg class="menu-icon-svg" viewBox="0 0 24 24"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"></path><path d="M13 8l4 4-4 4"></path><path d="M9 12h8"></path></svg></span>
+                    <span class="menu-mini-label">Exit</span>
+                </span>
                 <span class="menu-text">Logout</span>
             </a>
         </li>
     </ul>
 </nav>
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<header class="global-topbar" aria-live="polite">
+    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Inventory Clerk dashboard">
+        <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
+        <strong>EDGE Automation</strong>
+    </a>
+    <div class="global-topbar__actions">
+        <div class="topbar-profile" data-profile-root>
+            <button
+                title="Account"
+                id="topbarProfileToggle"
+                class="topbar-profile__toggle"
+                type="button"
+                aria-label="Open profile menu"
+                aria-controls="topbarProfileDropdown"
+                aria-expanded="false"
+            >
+                <span class="topbar-profile__avatar-shell" aria-hidden="true">
+                    <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($initials, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="topbar-profile__chevron-badge">
+                        <span class="topbar-profile__chevron" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" focusable="false">
+                                <path d="M5 7.5 10 12.5 15 7.5"></path>
+                            </svg>
+                        </span>
+                    </span>
+                </span>
+            </button>
+
+            <div id="topbarProfileDropdown" class="topbar-profile__dropdown" hidden>
+                <div class="topbar-profile__panel-head">
+                    <span class="topbar-profile__avatar-shell topbar-profile__avatar-shell--panel" aria-hidden="true">
+                        <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($initials, ENT_QUOTES, 'UTF-8'); ?></span>
+                    </span>
+                    <div>
+                        <strong><?php echo htmlspecialchars($inventoryClerkName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                        <span><?php echo htmlspecialchars($inventoryClerkRole, ENT_QUOTES, 'UTF-8'); ?></span>
+                    </div>
+                </div>
+                <div class="topbar-profile__links">
+                    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php">Dashboard</a>
+                    <a href="/codesamplecaps/LOGIN/php/logout.php">Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="topbar-notifications" data-notification-root>
+            <button
+                title="Notifications"
+                id="topbarNotificationToggle"
+                class="topbar-notifications__toggle"
+                type="button"
+                aria-label="Open notifications"
+                aria-controls="topbarNotificationDropdown"
+                aria-expanded="false"
+            >
+                <span class="topbar-notifications__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
+                    </svg>
+                </span>
+            </button>
+
+            <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
+                <div class="topbar-notifications__panel-head">
+                    <div>
+                        <strong>Notifications</strong>
+                        <span>No new alerts</span>
+                    </div>
+                </div>
+                <div class="topbar-notifications__empty">No inventory alerts right now.</div>
+            </div>
+        </div>
+        <div class="global-topbar__clock">
+            <span class="global-topbar__clock-label">Philippines Time</span>
+            <strong class="global-topbar__time" data-ph-time>--:--:--</strong>
+            <span class="global-topbar__date" data-ph-date>Loading date</span>
+        </div>
+    </div>
+</header>

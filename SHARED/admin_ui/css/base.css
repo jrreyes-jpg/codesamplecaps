@@ -1,0 +1,40 @@
+/* =========================================================
+   SHARED ADMIN UI - BASE CSS
+   Sakop: colors, fonts, CSS variables, reset, body defaults,
+   common buttons, alerts, forms, and common table basics.
+   Paalala: dito ang pinaka-basic/shared design tokens.
+========================================================= */
+
+:root {
+    --primary: #16a34a;
+    --primary-dark: #15803d;
+    --primary-light: #22c55e;
+    --danger: #dc2626;
+    --warning: #f59e0b;
+    --bg-gradient: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    --glass: rgba(255, 255, 255, 0.7);
+    --text-dark: #1f2937;
+    --text-light: #6b7280;
+    --shadow-soft: 0 8px 25px rgba(0, 0, 0, 0.05);
+    --shadow-hover: 0 15px 40px rgba(0, 0, 0, 0.08);
+    --sidebar-width: 270px;
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --transition-fast: 0.3s ease;
+    --transition-slow: 0.4s cubic-bezier(.4, 0, .2, 1);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-dark);
+    opacity: 1;
+}
+
+

@@ -23,7 +23,12 @@ if ($result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock History</title>
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
     <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
 </head>
 <body>
 <div class="container">

@@ -1130,12 +1130,6 @@ $scanTrendPeak = !empty($scanTrend) ? getTrendPeak($scanTrend) : 0;
 $recentDashboardActivity = fetchRecentDashboardActivity($conn, 5);
 $userWorkspaceShouldOpenModal = $activeTab === 'create';
 
-// Para magamit ng standalone User Management page ang existing logic/data,
-// pero hindi na niya kailangan i-render ang lumang dashboard shell.
-if (defined('SUPERADMIN_USER_MANAGEMENT_DATA_ONLY')) {
-    return;
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -23,6 +23,38 @@
     --transition-slow: 0.4s cubic-bezier(.4, 0, .2, 1);
 }
 
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+    text-align: left;
+    vertical-align: top;
+    font-size: 0.9rem;
+}
+
+.data-table th {
+    background: rgba(6, 95, 70, 0.1);
+    color: #064e3b;
+    font-weight: 700;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
 * {
     box-sizing: border-box;
 }

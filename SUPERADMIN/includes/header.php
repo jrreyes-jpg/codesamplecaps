@@ -13,12 +13,12 @@ if (!isset($pageStyles) || !is_array($pageStyles)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?> - Super Admin</title>
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/base.css">
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/notifications.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
     <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/super_admin_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/layout.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
     <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/footer.css">
     <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
     <?php foreach ($pageStyles as $stylePath): ?>

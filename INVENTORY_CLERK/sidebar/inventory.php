@@ -418,16 +418,25 @@ foreach ($inventoryItems as $item) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management - Super Admin</title>
+    <title>Inventory Management</title>
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
     <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
+    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/chrome-final.css">
+    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../sidebar/inventory_clerk_sidebar.php'; ?>
+    <?php include __DIR__ . '/inventory_clerk_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-stack">
+        <section class="form-panel">
+            <h1 class="section-title-inline">Inventory Management</h1>
             <section class="metrics-grid">
                 <div class="metric-card">
                     <span>Inventory Items</span>
@@ -446,6 +455,13 @@ foreach ($inventoryItems as $item) {
                     <strong><?php echo $outOfStockItems; ?></strong>
                 </div>
             </section>
+            <div class="dashboard-actions">
+                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php" class="action-chip">Overview</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php" class="action-chip active-chip">Inventory Records</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_in.php" class="action-chip">Stock In</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_out.php" class="action-chip">Stock Out</a>
+            </div>
+        </section>
 
             <?php if ($flash): ?>
                 <div class="alert <?php echo $flash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>">
@@ -454,7 +470,7 @@ foreach ($inventoryItems as $item) {
             <?php endif; ?>
 
             <section class="form-panel">
-                <h2 class="section-title-inline">Add Inventory Record</h2>
+                <h1 class="section-title-inline">Add Inventory Record</h1>
 
                 <?php if (empty($assetsWithoutInventory)): ?>
                     <div class="empty-state">All assets already have inventory records.</div>
@@ -502,8 +518,8 @@ foreach ($inventoryItems as $item) {
                 <?php endif; ?>
             </section>
 
-            <section class="page-stack">
-                <h2 class="section-title-inline">Inventory Items</h2>
+            <section class="form-panel">
+                <h1 class="section-title-inline">Inventory Items</h1>
                 <div class="dashboard-actions">
                     <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
                     <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>

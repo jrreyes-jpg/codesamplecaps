@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/asset_unit_helpers.php';
 
 require_role('inventory_clerk');
-$csrfToken = auth_csrf_token('super_admin');
+$csrfToken = auth_csrf_token('inventory_clerk');
 
 function determine_inventory_status_for_page(int $quantity, ?int $minStock): string {
     if ($quantity <= 0) {
@@ -66,7 +66,7 @@ ensure_asset_unit_tracking_schema($conn);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'super_admin')) {
+    if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'inventory_clerk')) {
         set_inventory_flash('error', 'Security check failed. Please try again.');
         redirect_inventory_page();
     }

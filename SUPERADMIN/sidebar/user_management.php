@@ -3,9 +3,18 @@
 // para pareho ang header/sidebar design sa ibang Super Admin pages.
 if (!defined('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL')) {
     $_GET['tab'] = isset($_GET['create']) ? 'create' : 'users';
-    define('SUPERADMIN_USER_MANAGEMENT_DATA_ONLY', true);
-    require __DIR__ . '/../dashboards/super_admin_dashboard.php';
     require_once __DIR__ . '/../includes/page_shell.php';
+    require_once __DIR__ . '/../includes/user_management_actions.php';
+
+    $userManagementContext = superadmin_user_context($conn);
+    $message = $userManagementContext['message'];
+    $error = $userManagementContext['error'];
+    $isUserWorkspaceTab = $userManagementContext['isUserWorkspaceTab'];
+    $userWorkspaceShouldOpenModal = $userManagementContext['userWorkspaceShouldOpenModal'];
+    $userStatusFilter = $userManagementContext['userStatusFilter'];
+    $csrfToken = $userManagementContext['csrfToken'];
+    $old = $userManagementContext['old'];
+    $managedUsers = $userManagementContext['managedUsers'];
 
     superadmin_render_page(
         'User Management',
@@ -40,6 +49,8 @@ $usersWrapperClass = $isStandaloneUserManagement
     : 'tab-content ' . ($isUserWorkspaceTab ? 'active' : '');
 ?>
 <div id="users" class="<?php echo htmlspecialchars($usersWrapperClass, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php if (!empty($message)): ?><div class="alert alert-success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+    <?php if (!empty($error)): ?><div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
     <section class="user-management-shell" data-user-management-shell data-create-modal-default-open="<?php echo $userWorkspaceShouldOpenModal ? 'true' : 'false'; ?>">
         <section class="dashboard-panel user-management-panel">
             <div class="user-table-toolbar">
@@ -153,6 +164,8 @@ $usersWrapperClass = $isStandaloneUserManagement
                             <label for="role">Role <span class="required-indicator">*</span></label>
                             <select id="role" name="role" required>
                                 <option value="">Select a role</option>
+                                <option value="admin" <?php echo $old['role']=='admin'?'selected':''; ?>>Admin</option>
+                                <option value="inventory_clerk" <?php echo $old['role']=='inventory_clerk'?'selected':''; ?>>Inventory Clerk</option>
                                 <option value="engineer" <?php echo $old['role']=='engineer'?'selected':''; ?>>Engineer</option>
                                 <option value="foreman" <?php echo $old['role']=='foreman'?'selected':''; ?>>Foreman</option>
                                 <option value="client" <?php echo $old['role']=='client'?'selected':''; ?>>Client</option>

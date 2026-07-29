@@ -1,4 +1,9 @@
-/* CSS ng User Management page. Dito ilagay ang style na pang users lang. */
+/* =========================================================
+   SUPERADMIN USER MANAGEMENT CSS
+   Sakop: user table, search/filter controls, create/edit modal,
+   user forms, action buttons, role badges, and status badges.
+   Paalala: user management page lang, hindi sidebar/header.
+========================================================= */
 
 .user-management-shell {
     display: block;
@@ -19,3 +24,636 @@
 .user-create-modal.is-open {
     display: flex;
 }
+
+body:has([data-user-management-shell]) .main-content {
+    padding-top: 110px;
+}
+
+.main-content.superadmin-user-management-page {
+    padding-top: 120px;
+}
+
+body:has([data-user-management-shell]) .tab-content.active {
+    display: block;
+    min-height: 0;
+}
+
+.main-content.superadmin-user-management-page #users.tab-content,
+.main-content.superadmin-user-management-page #users.tab-content.active,
+.main-content.superadmin-user-management-page .user-management-content {
+    display: block;
+    min-height: 0;
+}
+
+body:has([data-user-management-shell]) .user-management-shell {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.main-content.superadmin-user-management-page .user-management-shell {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+body:has([data-user-management-shell]) .user-management-panel {
+    margin-top: 0;
+    transform: none;
+}
+
+.main-content.superadmin-user-management-page .user-management-panel {
+    margin-top: 0;
+    transform: none;
+}
+
+body:has([data-user-management-shell]) .dashboard-panel {
+    margin-top: 0;
+}
+
+.main-content.superadmin-user-management-page .dashboard-panel {
+    margin-top: 0;
+}
+
+body:has([data-user-management-shell]) {
+    min-height: 100vh;
+}
+
+body:has([data-user-management-shell]) .main-content {
+    display: block;
+    padding: 112px clamp(24px, 3vw, 44px) 40px;
+}
+
+body:has([data-user-management-shell]) #users.tab-content.active {
+    display: block;
+    padding: 0;
+    margin: 0;
+}
+
+.main-content.superadmin-user-management-page #users.tab-content {
+    display: block;
+    padding: 0;
+    margin: 0;
+}
+
+.main-content.superadmin-user-management-page .user-management-content {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+body:has([data-user-management-shell]) .user-management-shell,
+body:has([data-user-management-shell]) .user-management-panel {
+    position: static;
+    inset: auto;
+    width: 100%;
+    max-width: none;
+}
+
+@media (max-width: 768px) {
+    body:has([data-user-management-shell]) .main-content {
+        padding: 118px 18px 20px;
+    }
+}
+
+/* Desktop guard: ito ang pinaka-huling panalo para hindi bumaba sa ilalim ang users panel. */
+@media (min-width: 769px) {
+    body:has([data-user-management-shell]) .main-content {
+        padding-top: 112px !important;
+    }
+
+    .main-content.superadmin-user-management-page {
+        padding-top: 112px !important;
+    }
+
+    body:has([data-user-management-shell]) #users,
+    body:has([data-user-management-shell]) .user-management-shell,
+    body:has([data-user-management-shell]) .user-management-panel,
+    .main-content.superadmin-user-management-page #users,
+    .main-content.superadmin-user-management-page .user-management-shell,
+    .main-content.superadmin-user-management-page .user-management-panel {
+        margin-top: 0 !important;
+        padding-top: 0;
+        transform: none !important;
+    }
+}
+
+.users-table {
+    background: var(--glass);
+    border-radius: 18px;
+    overflow-x: auto;
+    overflow-y: auto;
+    box-shadow: var(--shadow-soft);
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.action-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.action-btn.edit {
+    background: var(--primary);
+    color: #fff;
+}
+
+.action-btn.edit:hover {
+    background: var(--primary-dark);
+}
+
+.table-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #ffffff;
+    font: inherit;
+}
+
+.table-input[readonly] {
+    border-color: transparent;
+    background: transparent;
+    padding-inline: 0;
+}
+
+.inline-action-form {
+    margin: 0;
+}
+
+.action-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.action-btn.save,
+.action-btn.activate {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.action-btn.cancel {
+    background: #94a3b8;
+    color: #ffffff;
+}
+
+.action-btn.delete,
+.action-btn.deactivate {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.user-management-shell {
+    display: grid;
+    gap: 24px;
+}
+
+.user-management-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 28px;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 32%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(236, 253, 245, 0.94));
+    border: 1px solid rgba(22, 163, 74, 0.12);
+    box-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
+}
+
+.user-management-copy {
+    max-width: 720px;
+}
+
+.user-management-trigger {
+    white-space: nowrap;
+}
+
+.user-management-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.user-stat-card span,
+.user-search-field span {
+    display: block;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.user-management-panel {
+    margin-top: 0;
+    padding: 24px;
+    overflow: hidden;
+    display: grid;
+    gap: 18px;
+}
+
+.user-table-toolbar {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(360px, 560px) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 0;
+}
+
+.user-table-toolbar__copy {
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+}
+
+.user-table-toolbar__copy .dashboard-section-title {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.user-table-toolbar__controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    width: 100%;
+}
+
+.user-search-field {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    max-width: 560px;
+    min-width: 0;
+    margin: 0;
+    justify-self: center;
+    position: relative;
+    left: -100px;
+}
+
+.user-search-field input {
+    width: 100%;
+    min-height: 46px;
+    padding: 12px 14px;
+    border: 1px solid #d7dee7;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #0f172a;
+    font: inherit;
+}
+
+.user-search-field span {
+    text-align: center;
+    line-height: 1.2;
+}
+
+.user-management-trigger {
+    min-height: 46px;
+    align-self: center;
+}
+
+.user-search-field input:focus {
+    outline: none;
+    border-color: #16a34a;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+
+.user-management-table {
+    width: 100%;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.user-management-table__col-name {
+    width: 22%;
+}
+
+.user-management-table__col-email {
+    width: 24%;
+}
+
+.user-management-table__col-phone {
+    width: 16%;
+}
+
+.user-management-table__col-role {
+    width: 12%;
+}
+
+.user-management-table__col-status {
+    width: 10%;
+}
+
+.user-management-table__col-actions {
+    width: 16%;
+}
+
+.user-management-table .responsive-table thead {
+    background: #f8fafc;
+}
+
+.user-management-table .responsive-table th {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.user-management-table .responsive-table td {
+    vertical-align: middle;
+}
+
+.hidden-save-form {
+    display: none;
+}
+
+.user-table-empty {
+    padding: 28px;
+    text-align: center;
+    color: #64748b;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.role-badge-engineer {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.role-badge-foreman {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.role-badge-client {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.user-create-modal {
+    padding: 24px;
+}
+
+.user-create-modal__panel {
+    width: min(760px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    padding: 28px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.97));
+    box-shadow: 0 28px 56px rgba(15, 23, 42, 0.24);
+}
+
+.user-create-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.user-create-modal__actions {
+    margin-top: 22px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+@media (max-width: 1080px) {
+    .user-management-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .user-table-toolbar {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .user-table-toolbar__copy,
+    .user-table-toolbar__controls {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .user-search-field {
+        max-width: none;
+    }
+
+    .user-management-trigger {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .user-management-header {
+        padding: 22px;
+        flex-direction: column;
+    }
+
+    .user-management-trigger {
+        width: 100%;
+    }
+
+    .user-filters,
+    .user-table-toolbar {
+        padding-inline: 18px;
+    }
+
+    .user-create-modal {
+        padding: 16px;
+    }
+
+    .user-create-modal__panel {
+        padding: 22px 18px;
+        max-height: calc(100vh - 32px);
+    }
+
+    .user-create-modal__actions {
+        flex-direction: column-reverse;
+    }
+
+    .user-create-modal__actions .btn-primary,
+    .user-create-modal__actions .btn-secondary {
+        width: 100%;
+    }
+}
+
+.password-tip,
+.pass-indicator {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.pass-indicator.weak {
+    color: #dc2626;
+}
+
+.pass-indicator.medium {
+    color: #d97706;
+}
+
+.pass-indicator.strong,
+.pass-indicator.super-strong {
+    color: #15803d;
+}
+
+.weak-border {
+    border-color: #dc2626 !important;
+}
+
+.medium-border {
+    border-color: #d97706 !important;
+}
+
+.strong-border {
+    border-color: #15803d !important;
+}
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 1200;
+}
+
+.modal-backdrop.is-open {
+    display: flex;
+}
+
+.search-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.search-status-badge.status-draft {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.search-status-badge.status-pending {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+.search-status-badge.status-ongoing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.search-status-badge.status-completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.search-status-badge.status-on-hold {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.search-status-badge.status-cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.search-status-badge.status-archived {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.user-search-field {
+    left: 0;
+}
+
+.user-management-panel {
+    min-width: 0;
+}
+
+.user-management-table .responsive-table {
+    min-width: 900px;
+}
+
+.user-management-table .table-input {
+    min-width: 0;
+}
+
+.user-management-table td,
+.user-management-table th,
+.mobile-card-table td,
+.mobile-card-table th {
+    overflow-wrap: anywhere;
+}
+
+.user-filters {
+    margin: 0;
+    padding: 0 0 4px;
+}
+
+/* Final alignment guard: para hindi bumaba o mag-overlap ang User Management page. */
+.main-content.superadmin-user-management-page {
+    display: block !important;
+    align-content: start !important;
+    align-items: start !important;
+    min-height: calc(100vh - 88px) !important;
+    padding-top: 112px !important;
+    padding-bottom: 32px !important;
+}
+
+.main-content.superadmin-user-management-page #users,
+.main-content.superadmin-user-management-page .user-management-content,
+.main-content.superadmin-user-management-page .user-management-shell,
+.main-content.superadmin-user-management-page .user-management-panel {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    margin-top: 0 !important;
+    transform: none !important;
+}
+
+.main-content.superadmin-user-management-page .user-management-panel {
+    margin-bottom: 0 !important;
+}
+
+.main-content.superadmin-user-management-page .users-table {
+    max-height: calc(100vh - 260px);
+}
+
+@media (max-width: 900px) {
+    .main-content.superadmin-user-management-page {
+        min-height: auto !important;
+        padding-top: 118px !important;
+    }
+
+    .main-content.superadmin-user-management-page .users-table {
+        max-height: none;
+    }
+}
+
+

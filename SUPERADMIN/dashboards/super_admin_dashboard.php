@@ -1130,6 +1130,12 @@ $scanTrendPeak = !empty($scanTrend) ? getTrendPeak($scanTrend) : 0;
 $recentDashboardActivity = fetchRecentDashboardActivity($conn, 5);
 $userWorkspaceShouldOpenModal = $activeTab === 'create';
 
+// Para magamit ng standalone User Management page ang existing logic/data,
+// pero hindi na niya kailangan i-render ang lumang dashboard shell.
+if (defined('SUPERADMIN_USER_MANAGEMENT_DATA_ONLY')) {
+    return;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1137,15 +1143,19 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Dashboard - Edge Automation</title>
+    <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/sidebar.css">
+    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="../css/notifications.css">
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/footer.css">
     <link rel="stylesheet" href="../css/user-management.css">
-    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
         <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
 
 </head>
-<body>
+<body class="<?php echo $isUserWorkspaceTab ? 'superadmin-user-management-page' : ''; ?>">
 <div class="container">
     <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
 

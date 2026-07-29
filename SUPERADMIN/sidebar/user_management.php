@@ -1,8 +1,30 @@
 <?php
-// Kapag binuksan ito direkta sa sidebar, gamitin pa rin ang main dashboard shell.
+// Kapag binuksan ito direkta sa sidebar, gamitin ang shared page shell
+// para pareho ang header/sidebar design sa ibang Super Admin pages.
 if (!defined('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL')) {
     $_GET['tab'] = isset($_GET['create']) ? 'create' : 'users';
+    define('SUPERADMIN_USER_MANAGEMENT_DATA_ONLY', true);
     require __DIR__ . '/../dashboards/super_admin_dashboard.php';
+    require_once __DIR__ . '/../includes/page_shell.php';
+
+    superadmin_render_page(
+        'User Management',
+        function () use (
+            $isUserWorkspaceTab,
+            $userWorkspaceShouldOpenModal,
+            $userStatusFilter,
+            $csrfToken,
+            $old,
+            $managedUsers
+        ): void {
+            define('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL', true);
+            define('SUPERADMIN_USER_MANAGEMENT_STANDALONE', true);
+            include __FILE__;
+        },
+        ['/codesamplecaps/SUPERADMIN/css/user-management.css'],
+        ['/codesamplecaps/SUPERADMIN/js/user-management.js'],
+        'superadmin-user-management-page'
+    );
     return;
 }
 
@@ -12,8 +34,12 @@ if (!defined('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL')) {
 /** @var string $csrfToken */
 /** @var array<string, string> $old */
 /** @var array<int, array<string, mixed>> $managedUsers */
+$isStandaloneUserManagement = defined('SUPERADMIN_USER_MANAGEMENT_STANDALONE');
+$usersWrapperClass = $isStandaloneUserManagement
+    ? 'user-management-content active'
+    : 'tab-content ' . ($isUserWorkspaceTab ? 'active' : '');
 ?>
-<div id="users" class="tab-content <?php echo $isUserWorkspaceTab ? 'active' : ''; ?>">
+<div id="users" class="<?php echo htmlspecialchars($usersWrapperClass, ENT_QUOTES, 'UTF-8'); ?>">
     <section class="user-management-shell" data-user-management-shell data-create-modal-default-open="<?php echo $userWorkspaceShouldOpenModal ? 'true' : 'false'; ?>">
         <section class="dashboard-panel user-management-panel">
             <div class="user-table-toolbar">

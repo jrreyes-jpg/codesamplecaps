@@ -4,25 +4,34 @@ require_once __DIR__ . '/../../config/database.php';
 
 require_role('super_admin');
 
-function superadmin_render_simple_page(string $title, string $copy): void
+function superadmin_render_page(
+    string $title,
+    callable $contentRenderer,
+    array $pageStyles = [],
+    array $pageScripts = [],
+    string $mainClass = ''
+): void
 {
-    // Shared shell ito para hindi paulit-ulit ang HTML ng simple Super Admin pages.
+    // Isang layout lang para pare-pareho ang header, sidebar, footer, CSS, at JS.
+    $pageTitle = $title;
+    $mainClassAttr = trim('main-content ' . $mainClass);
+
+    require __DIR__ . '/header.php';
     ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> - Super Admin</title>
-    <link rel="stylesheet" href="../css/sidebar.css">
-    <link rel="stylesheet" href="../css/super_admin_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
-    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
-</head>
-<body>
 <div class="container">
     <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
-    <main class="main-content">
+    <main class="<?php echo htmlspecialchars($mainClassAttr, ENT_QUOTES, 'UTF-8'); ?>">
+        <?php $contentRenderer(); ?>
+    </main>
+</div>
+    <?php
+    require __DIR__ . '/footer.php';
+}
+
+function superadmin_render_simple_page(string $title, string $copy): void
+{
+    superadmin_render_page($title, function () use ($title, $copy): void {
+        ?>
         <section class="dashboard-panel">
             <div class="panel-heading">
                 <div>
@@ -31,12 +40,7 @@ function superadmin_render_simple_page(string $title, string $copy): void
                 </div>
             </div>
         </section>
-    </main>
-</div>
-<script src="../js/super_admin_dashboard.js"></script>
-</body>
-</html>
-    <?php
+        <?php
+    });
 }
-
 

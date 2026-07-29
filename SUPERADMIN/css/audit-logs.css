@@ -1,0 +1,95 @@
+/* =========================================================
+   SUPERADMIN AUDIT LOGS CSS
+   Sakop: audit logs page header, search field, filters,
+   audit table, empty state, and audit logs responsive layout.
+   Paalala: audit logs page lang, hindi sidebar/header.
+========================================================= */
+
+.audit-logs-content .page-header-card {
+    margin-bottom: 18px;
+}
+
+.audit-logs-panel {
+    overflow: hidden;
+}
+
+.audit-logs-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.audit-logs-toolbar__search,
+.audit-logs-toolbar__filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.audit-logs-smart-field {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0 12px;
+}
+
+.audit-logs-smart-field:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.audit-logs-smart-field__icon {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.audit-logs-smart-field input,
+.audit-logs-smart-field select {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font: inherit;
+    color: #0f172a;
+}
+
+.audit-logs-toolbar__filters .audit-logs-smart-field {
+    min-width: 180px;
+}
+
+.audit-logs-panel .table-wrapper {
+    overflow-x: auto;
+}
+
+.audit-logs-panel .responsive-table {
+    min-width: 820px;
+}
+
+@media (max-width: 900px) {
+    .audit-logs-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .audit-logs-toolbar__filters {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 640px) {
+    .audit-logs-toolbar__search,
+    .audit-logs-toolbar__filters,
+    .audit-logs-smart-field,
+    .audit-logs-toolbar__filters .btn-primary,
+    .audit-logs-toolbar__filters .btn-secondary {
+        width: 100%;
+    }
+}
+
+

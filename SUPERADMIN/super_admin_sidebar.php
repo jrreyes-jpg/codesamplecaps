@@ -11,7 +11,7 @@ $isDashboard = false;
 $isCreate = $isDashboardPage && str_contains($currentQuery, 'tab=create');
 $isCreate = $isCreate || ($isUserManagementPage && str_contains($currentQuery, 'create=1'));
 $isUsers = $isUserManagementPage || ($isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate));
-$isActivityHistory = str_contains($currentPath, '/SUPERADMIN/sidebar/activity_history.php');
+$isActivityHistory = str_contains($currentPath, '/SUPERADMIN/sidebar/audit_logs.php');
 $isRolesPermissions = str_contains($currentPath, '/SUPERADMIN/sidebar/roles_permissions.php');
 $isSecuritySettings = str_contains($currentPath, '/SUPERADMIN/sidebar/security_settings.php');
 $isSystemSettings = str_contains($currentPath, '/SUPERADMIN/sidebar/system_settings.php');
@@ -110,7 +110,7 @@ try {
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="menu-link<?php echo $isActivityHistory ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="menu-link<?php echo $isActivityHistory ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -259,7 +259,7 @@ try {
 
                 <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
                     <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="notification-summary-chip notification-summary-chip--danger">
+                        <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="notification-summary-chip notification-summary-chip--danger">
                             <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
                             <span>Project risks</span>
                         </a>
@@ -274,7 +274,7 @@ try {
                         </div>
                     <?php else: ?>
                         <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                            <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="notification-item notification-item--danger">
+                            <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="notification-item notification-item--danger">
                                 <span class="notification-item__dot"></span>
                                 <div class="notification-item__copy">
                                     <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>
@@ -303,4 +303,5 @@ try {
         </div>
     </div>
 </header>
+
 

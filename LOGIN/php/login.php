@@ -478,8 +478,7 @@ window.lockoutConfig = {
     seconds: <?php echo (int)$remaining_seconds; ?>,
     unlockAt: <?php echo (int)(time() + (int)$remaining_seconds); ?>,
     lockType: <?php echo json_encode($lock_type); ?>,
-    statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php',
-    authStatusUrl: '/codesamplecaps/LOGIN/php/auth_status.php'
+    statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php'
 };
 </script>
     <script src="../js/login.js"></script>

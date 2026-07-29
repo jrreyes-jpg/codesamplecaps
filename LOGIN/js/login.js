@@ -132,48 +132,44 @@ const initLoadingButtons = () => {
     });
 };
 
-const initLoggedInLoginPageGuard = () => {
-    const authStatusUrl = window.lockoutConfig?.authStatusUrl;
+const initStaleLoginWindowGuard = () => {
+    const form = document.querySelector('#loginForm form');
 
-    if (!authStatusUrl) {
+    if (!form || window.location.search.includes('logout=1')) {
         return;
     }
 
-    let isChecking = false;
+    const disableStaleLogin = () => {
+        form.querySelectorAll('input, button').forEach((control) => {
+            control.disabled = true;
+        });
 
-    const checkSession = async () => {
-        if (isChecking) {
+        if (form.querySelector('[data-stale-login-message]')) {
             return;
         }
 
-        isChecking = true;
-
-        try {
-            const response = await fetch(authStatusUrl, {
-                headers: { 'Accept': 'application/json' },
-                cache: 'no-store',
-            });
-            const data = await response.json();
-
-            if (data.authenticated && data.dashboard) {
-                // Kapag lumang login window ito, palitan lang ito ng dashboard.
-                window.location.replace(data.dashboard);
-            }
-        } catch (error) {
-            // Silent lang para hindi masira login kapag offline o may local server hiccup.
-        } finally {
-            isChecking = false;
-        }
+        const message = document.createElement('div');
+        message.className = 'error-box error-danger';
+        message.dataset.staleLoginMessage = 'true';
+        message.textContent = 'This old login window is inactive. Please use your current dashboard window.';
+        form.prepend(message);
     };
 
-    window.addEventListener('focus', checkSession);
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-            checkSession();
+    window.addEventListener('storage', (event) => {
+        if (event.key !== 'edge_auth_state' || !event.newValue) {
+            return;
+        }
+
+        try {
+            const state = JSON.parse(event.newValue);
+            if (state.status === 'logged-in') {
+                // Kapag lumang login window ito, huwag gawing dashboard para hindi dumami ang login windows after logout.
+                disableStaleLogin();
+            }
+        } catch (error) {
+            // Ignore invalid localStorage data.
         }
     });
-
-    checkSession();
 };
 
 const initEmailLockStatus = () => {
@@ -403,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initParticleCanvas();
     initPasswordToggles();
     initLoadingButtons();
-    initLoggedInLoginPageGuard();
+    initStaleLoginWindowGuard();
 
     // Start the live lockout countdown if the login form is locked.
     initLockoutCountdown();

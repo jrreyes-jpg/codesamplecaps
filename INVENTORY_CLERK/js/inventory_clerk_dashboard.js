@@ -59,6 +59,15 @@ if (canvas) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    try {
+        localStorage.setItem('edge_auth_state', JSON.stringify({
+            status: 'logged-in',
+            at: Date.now(),
+        }));
+    } catch (error) {
+        // Okay lang kahit blocked ang localStorage; normal login flow pa rin.
+    }
+
     const shouldReplaceSuperAdminHistory = function (event, link) {
         if (!link || event.defaultPrevented) {
             return false;

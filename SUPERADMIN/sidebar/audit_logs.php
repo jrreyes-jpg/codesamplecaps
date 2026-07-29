@@ -1,11 +1,8 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../includes/page_shell.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 
-require_role('super_admin');
-
-function activity_history_relative_time(?string $dateTime): string {
+function audit_logs_relative_time(?string $dateTime): string {
     if (!$dateTime) {
         return 'Unknown time';
     }
@@ -37,7 +34,7 @@ function activity_history_relative_time(?string $dateTime): string {
     }
 }
 
-function activity_history_decode_payload(?string $payload): array {
+function audit_logs_decode_payload(?string $payload): array {
     if (!$payload) {
         return [];
     }
@@ -47,16 +44,16 @@ function activity_history_decode_payload(?string $payload): array {
     return is_array($decoded) ? $decoded : [];
 }
 
-function activity_history_action_label(string $action): string {
+function audit_logs_action_label(string $action): string {
     return ucwords(str_replace('_', ' ', $action));
 }
 
-function activity_history_build_details(array $entry): string {
+function audit_logs_build_details(array $entry): string {
     $action = (string)($entry['action'] ?? 'activity');
     $entityType = (string)($entry['entity_type'] ?? 'record');
     $actorName = (string)($entry['actor_name'] ?? 'System');
-    $oldValues = activity_history_decode_payload($entry['old_values'] ?? null);
-    $newValues = activity_history_decode_payload($entry['new_values'] ?? null);
+    $oldValues = audit_logs_decode_payload($entry['old_values'] ?? null);
+    $newValues = audit_logs_decode_payload($entry['new_values'] ?? null);
 
     if ($action === 'create_user') {
         return ($newValues['full_name'] ?? 'Unknown user') . ' | ' . ucwords(str_replace('_', ' ', (string)($newValues['role'] ?? 'user')));
@@ -203,41 +200,30 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
         }
     }
 }
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity History - Edge Automation</title>
-    <link rel="stylesheet" href="../css/sidebar.css">
-    <link rel="stylesheet" href="../css/super_admin_dashboard.css">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
-
-    <main class="main-content scan-history-content">
+superadmin_render_page(
+    'Audit Logs',
+    function () use ($search, $entityFilter, $activityRows): void {
+        ?>
         <div class="header page-header-card">
             <div class="header-copy">
-                <h1>Activity History</h1>
+                <h1>Audit Logs</h1>
             </div>
         </div>
 
-        <section class="dashboard-panel activity-history-panel">
-            <form method="GET" class="activity-history-toolbar">
-                <div class="activity-history-toolbar__search">
-                    <label class="activity-history-smart-field">
-                        <span class="activity-history-smart-field__icon" aria-hidden="true">&#128269;</span>
-                        <span class="sr-only">Search activity history</span>
+        <section class="dashboard-panel audit-logs-panel">
+            <form method="GET" class="audit-logs-toolbar">
+                <div class="audit-logs-toolbar__search">
+                    <label class="audit-logs-smart-field">
+                        <span class="audit-logs-smart-field__icon" aria-hidden="true">&#128269;</span>
+                        <span class="sr-only">Search audit logs</span>
                         <input type="search" name="q" value="<?php echo htmlspecialchars($search); ?>" placeholder="Smart search actor, action, type, details, or ID" autocomplete="off">
                     </label>
                 </div>
-                <div class="activity-history-toolbar__filters">
-                    <label class="activity-history-smart-field activity-history-smart-field--select">
-                        <span class="activity-history-smart-field__icon" aria-hidden="true">&#9881;</span>
+                <div class="audit-logs-toolbar__filters">
+                    <label class="audit-logs-smart-field audit-logs-smart-field--select">
+                        <span class="audit-logs-smart-field__icon" aria-hidden="true">&#9881;</span>
                         <span class="sr-only">Filter activity type</span>
-                        <select name="entity">
+                        <select name="entity" data-audit-entity-filter>
                             <option value="">All types</option>
                             <option value="user" <?php echo $entityFilter === 'user' ? 'selected' : ''; ?>>Users</option>
                             <option value="project" <?php echo $entityFilter === 'project' ? 'selected' : ''; ?>>Projects</option>
@@ -247,7 +233,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
                         </select>
                     </label>
                     <button type="submit" class="btn-primary">Filter</button>
-                    <a href="/codesamplecaps/SUPERADMIN/sidebar/activity_history.php" class="btn-secondary">Reset</a>
+                    <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="btn-secondary">Reset</a>
                 </div>
             </form>
 
@@ -265,18 +251,18 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
                     <tbody>
                         <?php if (count($activityRows) === 0): ?>
                             <tr>
-                                <td colspan="5" class="table-empty-cell">No activity history matched your filters.</td>
+                                <td colspan="5" class="table-empty-cell">No audit logs matched your filters.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($activityRows as $row): ?>
                                 <tr>
                                     <td data-label="Time">
-                                        <strong><?php echo htmlspecialchars(activity_history_relative_time((string)($row['created_at'] ?? ''))); ?></strong><br>
+                                        <strong><?php echo htmlspecialchars(audit_logs_relative_time((string)($row['created_at'] ?? ''))); ?></strong><br>
                                         <small><?php echo htmlspecialchars((string)($row['created_at'] ?? '')); ?></small>
                                     </td>
                                     <td data-label="Actor"><?php echo htmlspecialchars((string)($row['actor_name'] ?: 'System')); ?></td>
                                     <td data-label="Action">
-                                        <strong><?php echo htmlspecialchars(activity_history_action_label((string)($row['action'] ?? 'activity'))); ?></strong>
+                                        <strong><?php echo htmlspecialchars(audit_logs_action_label((string)($row['action'] ?? 'activity'))); ?></strong>
                                     </td>
                                     <td data-label="Target">
                                         <span><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string)($row['entity_type'] ?? 'Record')))); ?></span><br>
@@ -284,7 +270,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
                                             <?php echo !empty($row['entity_id']) ? 'ID #' . (int)$row['entity_id'] : 'No linked ID'; ?>
                                         </small>
                                     </td>
-                                    <td data-label="Details"><?php echo htmlspecialchars(activity_history_build_details($row)); ?></td>
+                                    <td data-label="Details"><?php echo htmlspecialchars(audit_logs_build_details($row)); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -292,10 +278,11 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
                 </table>
             </div>
         </section>
-    </main>
-</div>
-<script src="../js/super_admin_dashboard.js"></script>
-</body>
-</html>
+        <?php
+    },
+    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css'],
+    ['/codesamplecaps/SUPERADMIN/js/audit-logs.js'],
+    'audit-logs-content'
+);
 
 

@@ -37,4 +37,8 @@ body {
     opacity: 1;
 }
 
+html {
+    scrollbar-gutter: stable;
+}
+
 

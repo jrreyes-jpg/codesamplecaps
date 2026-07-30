@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../includes/page_shell.php';
 
 require_role('inventory_clerk');
 $csrfToken = auth_csrf_token('inventory_clerk');
@@ -412,28 +413,10 @@ foreach ($inventoryItems as $item) {
         $outOfStockItems++;
     }
 }
+inventory_clerk_render_page(
+    'Inventory Management',
+    function () use ($totalInventoryItems, $totalUnits, $lowStockItems, $outOfStockItems, $flash, $assetsWithoutInventory, $csrfToken, $inventoryItems, $statusFilter): void {
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management</title>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
-    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/chrome-final.css">
-    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/inventory_clerk_sidebar.php'; ?>
-
-    <main class="main-content">
         <div class="page-stack">
         <section class="form-panel">
             <h1 class="section-title-inline">Inventory Management</h1>
@@ -629,8 +612,8 @@ foreach ($inventoryItems as $item) {
                 <?php endif; ?>
             </section>
         </div>
-    </main>
-</div>
-<script src="../js/inventory_clerk_dashboard.js"></script>
-</body>
-</html>
+<?php
+    },
+    ['/codesamplecaps/INVENTORY_CLERK/css/inventory-page.css'],
+    'inventory-page'
+);

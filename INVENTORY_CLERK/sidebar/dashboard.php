@@ -2,6 +2,7 @@
 define('AUTH_REQUIRED_ROLE', 'inventory_clerk');
 require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../includes/page_shell.php';
 
 $metricResult = $conn->query(
     "SELECT
@@ -13,27 +14,8 @@ $metricResult = $conn->query(
      FROM inventory"
 );
 $metrics = $metricResult ? $metricResult->fetch_assoc() : [];
+inventory_clerk_render_page('Inventory Overview', function () use ($metrics): void {
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Overview</title>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
-    <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/chrome-final.css">
-    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/inventory_clerk_sidebar.php'; ?>
-    <main class="main-content">
         <section class="dashboard-panel">
             <div class="panel-heading">
                 <div>
@@ -53,8 +35,5 @@ $metrics = $metricResult ? $metricResult->fetch_assoc() : [];
                 <a class="action-chip" href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=attention">View Alerts</a>
             </div>
         </section>
-    </main>
-</div>
-<script src="../js/inventory_clerk_dashboard.js"></script>
-</body>
-</html>
+<?php
+});

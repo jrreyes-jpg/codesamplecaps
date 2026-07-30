@@ -1,0 +1,53 @@
+/* =========================================================
+   INVENTORY PAGE CSS
+   Sakop: inventory.php content only.
+   Paalala: hindi nito gagalawin ang shared sidebar/header design.
+========================================================= */
+
+.inventory-page {
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.inventory-page .page-stack,
+.inventory-page .form-panel,
+.inventory-page .metrics-grid,
+.inventory-page .projects-grid,
+.inventory-page .project-card,
+.inventory-page .card-split,
+.inventory-page .project-meta,
+.inventory-page .mini-form {
+    min-width: 0;
+}
+
+.inventory-page .projects-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.inventory-page .project-card {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.inventory-page .card-split,
+.inventory-page .project-meta {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.inventory-page .dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.inventory-page .metrics-grid {
+    margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .inventory-page .projects-grid {
+        grid-template-columns: 1fr;
+    }
+}

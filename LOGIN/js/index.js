@@ -133,6 +133,9 @@ const initConsultationModal = () => {
     const openButtons = document.querySelectorAll('#consultBtn, #consultBtnSecondary, #consultBtnMobile');
     const closeButton = document.getElementById('closeConsult');
     const modal = document.getElementById('consultModal');
+    const openInquiryButton = document.getElementById('openInquiryModal');
+    const inquiryModal = document.getElementById('inquiryModal');
+    const closeInquiryButton = document.getElementById('closeInquiryModal');
 
     if (openButtons.length === 0 || !closeButton || !modal) {
         return;
@@ -141,6 +144,26 @@ const initConsultationModal = () => {
     const closeModal = () => {
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
+    };
+
+    const openInquiryModal = () => {
+        closeModal();
+        if (!inquiryModal) {
+            window.location.href = '#contact';
+            return;
+        }
+
+        inquiryModal.classList.add('is-open');
+        inquiryModal.setAttribute('aria-hidden', 'false');
+    };
+
+    const closeInquiryModal = () => {
+        if (!inquiryModal) {
+            return;
+        }
+
+        inquiryModal.classList.remove('is-open');
+        inquiryModal.setAttribute('aria-hidden', 'true');
     };
 
     openButtons.forEach((button) => {
@@ -152,17 +175,41 @@ const initConsultationModal = () => {
 
     closeButton.addEventListener('click', closeModal);
 
+    if (openInquiryButton) {
+        openInquiryButton.addEventListener('click', openInquiryModal);
+    }
+
+    if (closeInquiryButton) {
+        closeInquiryButton.addEventListener('click', closeInquiryModal);
+    }
+
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
             closeModal();
         }
     });
 
+    if (inquiryModal) {
+        inquiryModal.addEventListener('click', (event) => {
+            if (event.target === inquiryModal) {
+                closeInquiryModal();
+            }
+        });
+    }
+
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && modal.classList.contains('is-open')) {
             closeModal();
         }
+
+        if (event.key === 'Escape' && inquiryModal?.classList.contains('is-open')) {
+            closeInquiryModal();
+        }
     });
+
+    if (new URLSearchParams(window.location.search).has('inquiry')) {
+        openInquiryModal();
+    }
 };
 
 const initServiceCards = () => {
@@ -191,6 +238,47 @@ const initServiceCards = () => {
             const isExpanded = card.classList.contains('is-expanded');
             button.setAttribute('aria-expanded', String(isExpanded));
             button.textContent = isExpanded ? 'Hide details' : 'View details';
+        });
+    });
+};
+
+const initInquiryForm = () => {
+    const inquiryForms = document.querySelectorAll('.js-inquiry-form');
+
+    if (inquiryForms.length === 0) {
+        return;
+    }
+
+    const phonePattern = /^(09|\+639)\d{9}$/;
+
+    inquiryForms.forEach((inquiryForm) => {
+        const contactInput = inquiryForm.querySelector('.js-inquiry-contact');
+        const message = inquiryForm.querySelector('.js-inquiry-message');
+
+        if (!contactInput || !message) {
+            return;
+        }
+
+        inquiryForm.addEventListener('submit', (event) => {
+            const phone = contactInput.value.trim();
+
+            message.textContent = '';
+            message.classList.remove('is-error');
+
+            if (!phonePattern.test(phone)) {
+                event.preventDefault();
+                message.textContent = 'Please enter a valid contact number like 09171234567 or +639171234567.';
+                message.classList.add('is-error');
+                contactInput.focus();
+                return;
+            }
+
+            if (!inquiryForm.checkValidity()) {
+                event.preventDefault();
+                message.textContent = 'Please fill in all required fields.';
+                message.classList.add('is-error');
+                inquiryForm.reportValidity();
+            }
         });
     });
 };
@@ -673,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileMenu();
     // initNavHighlight();
     initFormHandling();
+    initInquiryForm();
     initScrollAnimations();
     initNavbarScroll();
     initConsultationModal();

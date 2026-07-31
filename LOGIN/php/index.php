@@ -505,6 +505,7 @@ session_start();
 
 <div id="inquiryModal" class="consult-modal inquiry-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle">
     <div class="consult-modal-content inquiry-modal-content">
+        <button id="closeInquiryModalX" class="modal-x-button" type="button" aria-label="Close inquiry form">&times;</button>
         <div class="inquiry-modal-head">
             <span class="section-kicker">Quotation Request</span>
             <h3 id="inquiryModalTitle">Inquiry and Quotation Request</h3>
@@ -529,53 +530,68 @@ session_start();
 
             <div class="inquiry-grid">
                 <label>
-                    <span>Full Name *</span>
-                    <input type="text" name="client_name" required autocomplete="name">
+                    <span>Full Name <b class="required-mark">*</b></span>
+                    <input type="text" name="client_name" data-label="Full Name" required autocomplete="name">
+                    <small class="field-error"></small>
                 </label>
 
                 <label>
                     <span>Company Name</span>
                     <input type="text" name="company_name" autocomplete="organization">
+                    <small class="field-error"></small>
                 </label>
 
                 <label>
-                    <span>Email Address *</span>
-                    <input type="email" name="email" required autocomplete="email">
+                    <span>Email Address <b class="required-mark">*</b></span>
+                    <input type="email" name="email" data-label="Email Address" required autocomplete="email">
+                    <small class="field-error"></small>
                 </label>
 
                 <label>
-                    <span>Contact Number *</span>
-                    <input type="tel" class="js-inquiry-contact" name="contact_no" required placeholder="09171234567" autocomplete="tel">
-                    <small>Use 09XXXXXXXXX or +639XXXXXXXXX.</small>
+                    <span>Contact Number <b class="required-mark">*</b></span>
+                    <input type="tel" class="js-inquiry-contact" name="contact_no" data-label="Contact Number" required value="09" maxlength="11" inputmode="numeric" autocomplete="tel">
+                    <small class="field-error"></small>
                 </label>
             </div>
 
             <label>
-                <span>Project Site Address *</span>
-                <textarea name="site_address" rows="3" required></textarea>
+                <span>Project Site Address <b class="required-mark">*</b></span>
+                <textarea name="site_address" data-label="Project Site Address" rows="3" required></textarea>
+                <small class="field-error"></small>
             </label>
 
             <div class="inquiry-grid">
                 <label>
-                    <span>Service Category *</span>
-                    <select name="service_category" required>
+                    <span>Service Category <b class="required-mark">*</b></span>
+                    <select name="service_category" data-label="Service Category" required>
                         <option value="">Select service</option>
                         <option>New Automation Installation</option>
                         <option>System Upgrade/Retrofitting</option>
                         <option>Preventive Maintenance</option>
                         <option>Emergency Troubleshooting</option>
+                        <option>Other / Not sure yet</option>
                     </select>
+                    <small class="field-error"></small>
                 </label>
 
                 <label>
-                    <span>Target Inspection Date</span>
-                    <input type="date" name="preferred_inspection_date">
+                    <span>Preferred Inspection Date</span>
+                    <input type="date" class="js-inspection-date" name="preferred_inspection_date" data-label="Target Inspection Date">
+                    <small class="field-help">Final schedule is subject to confirmation.</small>
+                    <small class="field-error"></small>
                 </label>
             </div>
 
+            <label class="other-service-field is-hidden">
+                <span>Other Service Details</span>
+                <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed">
+                <small class="field-error"></small>
+            </label>
+
             <label>
-                <span>Project Description *</span>
-                <textarea name="description" rows="4" required placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <span>Project Description <b class="required-mark">*</b></span>
+                <textarea name="description" data-label="Project Description" rows="4" required minlength="20" placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <small class="field-error"></small>
             </label>
 
             <p class="inquiry-form-message js-inquiry-message" aria-live="polite"></p>

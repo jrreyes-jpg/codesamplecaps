@@ -476,23 +476,114 @@ session_start();
                 <span>Call 0917 878 9571</span>
             </a>
 
-<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="../../IMAGES/social-facebook.svg" alt="Facebook Messenger" loading="lazy" decoding="async">
+<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="../../IMAGES/fb.png" alt="Facebook Messenger" loading="lazy" decoding="async">
                 <strong>Facebook</strong>
                 <span>Message the page</span>
             </a>
 
-<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="../../IMAGES/social-viber.svg" alt="Viber" loading="lazy" decoding="async">
+<a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Viber">                <img src="../../IMAGES/viber.jpg" alt="Viber" loading="lazy" decoding="async">
                 <strong>Viber</strong>
                 <span>Start a chat</span>
             </a>
 
 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ejimenez.edge@gmail.com&su=Request%20Consultation&body=Hello%20Edge%20Automation,%20I%20would%20like%20to%20request%20a%20consultation." target="_blank" class="consult-option">
-    <img src="../../IMAGES/social-email.svg" alt="Email" loading="lazy" decoding="async">
+    <img src="../../IMAGES/gmail.jpg" alt="Email" loading="lazy" decoding="async">
     <strong>Email</strong>
     <span>Send project details</span>
-</a>      </div>
+</a>
+
+            <button id="openInquiryModal" class="consult-option consult-option-button" type="button">
+                <img src="../../IMAGES/edge.jpg" alt="" loading="lazy" decoding="async">
+                <strong>Inquiry</strong>
+                <span>Fill out quotation request</span>
+            </button>
+        </div>
 
         <button id="closeConsult" class="consult-close" type="button">Close</button>
+    </div>
+</div>
+
+<div id="inquiryModal" class="consult-modal inquiry-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle">
+    <div class="consult-modal-content inquiry-modal-content">
+        <div class="inquiry-modal-head">
+            <span class="section-kicker">Quotation Request</span>
+            <h3 id="inquiryModalTitle">Inquiry and Quotation Request</h3>
+            <p>Send your site details so Edge Automation can review your request.</p>
+        </div>
+
+        <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate>
+            <?php if (isset($_GET['inquiry'])): ?>
+                <?php
+                    $inquiryStatus = (string)$_GET['inquiry'];
+                    $isInquirySuccess = $inquiryStatus === 'success';
+                    $inquiryMessage = $isInquirySuccess
+                        ? 'Your inquiry was sent. We will contact you soon.'
+                        : ($inquiryStatus === 'invalid'
+                            ? 'Please check the form and try again.'
+                            : 'Sorry, the inquiry service had a problem. Please try again later.');
+                ?>
+                <div class="inquiry-alert <?php echo $isInquirySuccess ? 'inquiry-alert-success' : 'inquiry-alert-error'; ?>">
+                    <?php echo htmlspecialchars($inquiryMessage, ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="inquiry-grid">
+                <label>
+                    <span>Full Name *</span>
+                    <input type="text" name="client_name" required autocomplete="name">
+                </label>
+
+                <label>
+                    <span>Company Name</span>
+                    <input type="text" name="company_name" autocomplete="organization">
+                </label>
+
+                <label>
+                    <span>Email Address *</span>
+                    <input type="email" name="email" required autocomplete="email">
+                </label>
+
+                <label>
+                    <span>Contact Number *</span>
+                    <input type="tel" class="js-inquiry-contact" name="contact_no" required placeholder="09171234567" autocomplete="tel">
+                    <small>Use 09XXXXXXXXX or +639XXXXXXXXX.</small>
+                </label>
+            </div>
+
+            <label>
+                <span>Project Site Address *</span>
+                <textarea name="site_address" rows="3" required></textarea>
+            </label>
+
+            <div class="inquiry-grid">
+                <label>
+                    <span>Service Category *</span>
+                    <select name="service_category" required>
+                        <option value="">Select service</option>
+                        <option>New Automation Installation</option>
+                        <option>System Upgrade/Retrofitting</option>
+                        <option>Preventive Maintenance</option>
+                        <option>Emergency Troubleshooting</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Target Inspection Date</span>
+                    <input type="date" name="preferred_inspection_date">
+                </label>
+            </div>
+
+            <label>
+                <span>Project Description *</span>
+                <textarea name="description" rows="4" required placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+            </label>
+
+            <p class="inquiry-form-message js-inquiry-message" aria-live="polite"></p>
+            <div class="inquiry-modal-actions">
+                <button type="submit" class="btn btn-primary inquiry-submit">Submit Inquiry</button>
+                <button id="closeInquiryModal" class="consult-close" type="button">Close</button>
+            </div>
+        </form>
     </div>
 </div>
     <script src="../js/loader.js" defer></script>

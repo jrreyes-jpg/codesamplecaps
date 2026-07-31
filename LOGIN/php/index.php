@@ -575,9 +575,17 @@ session_start();
                 </label>
 
                 <label>
-                    <span>Preferred Inspection Date</span>
-                    <input type="date" class="js-inspection-date" name="preferred_inspection_date" data-label="Target Inspection Date">
-                    <small class="field-help">Final schedule is subject to confirmation.</small>
+                    <span class="field-label-with-info">
+                        Preferred Inspection Date
+                        <span class="field-info-wrap">
+                            <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
+                            <small class="field-tooltip js-date-tooltip">Final schedule is subject to confirmation.</small>
+                        </span>
+                    </span>
+                    <span class="date-input-wrap">
+                        <input type="date" class="js-inspection-date" name="preferred_inspection_date" data-label="Target Inspection Date">
+                        <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
+                    </span>
                     <small class="field-error"></small>
                 </label>
             </div>

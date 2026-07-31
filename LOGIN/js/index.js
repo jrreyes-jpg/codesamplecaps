@@ -293,6 +293,9 @@ const initInquiryForm = () => {
     inquiryForms.forEach((inquiryForm) => {
         const contactInput = inquiryForm.querySelector('.js-inquiry-contact');
         const inspectionDateInput = inquiryForm.querySelector('.js-inspection-date');
+        const datePickerButton = inquiryForm.querySelector('.js-date-picker-button');
+        const dateInfoButton = inquiryForm.querySelector('.js-date-info-button');
+        const dateTooltip = inquiryForm.querySelector('.js-date-tooltip');
         const serviceSelect = inquiryForm.querySelector('select[name="service_category"]');
         const otherServiceField = inquiryForm.querySelector('.other-service-field');
         const otherServiceInput = inquiryForm.querySelector('input[name="other_service_details"]');
@@ -307,6 +310,45 @@ const initInquiryForm = () => {
         if (inspectionDateInput) {
             inspectionDateInput.min = tomorrowDate;
         }
+
+        const hideDateTooltip = () => {
+            dateTooltip?.classList.remove('is-visible');
+            datePickerButton?.classList.remove('is-active');
+            if (inspectionDateInput) {
+                inspectionDateInput.dataset.pickerOpen = '0';
+            }
+        };
+
+        dateInfoButton?.addEventListener('click', (event) => {
+            event.preventDefault();
+            dateTooltip?.classList.toggle('is-visible');
+        });
+
+        datePickerButton?.addEventListener('click', () => {
+            if (!inspectionDateInput) {
+                return;
+            }
+
+            const isOpen = inspectionDateInput.dataset.pickerOpen === '1';
+
+            if (isOpen) {
+                hideDateTooltip();
+                inspectionDateInput.blur();
+                return;
+            }
+
+            inspectionDateInput.dataset.pickerOpen = '1';
+            dateTooltip?.classList.add('is-visible');
+            datePickerButton.classList.add('is-active');
+
+            if (typeof inspectionDateInput.showPicker === 'function') {
+                inspectionDateInput.showPicker();
+            } else {
+                inspectionDateInput.focus();
+            }
+        });
+        inspectionDateInput?.addEventListener('change', hideDateTooltip);
+        inspectionDateInput?.addEventListener('blur', hideDateTooltip);
 
         const syncOtherServiceField = () => {
             const shouldShow = serviceSelect?.value === 'Other / Not sure yet';

@@ -17,6 +17,7 @@ $allowedCategories = [
     'System Upgrade/Retrofitting',
     'Preventive Maintenance',
     'Emergency Troubleshooting',
+    'Other / Not sure yet',
 ];
 
 $clientName = trim((string)($_POST['client_name'] ?? ''));
@@ -25,6 +26,7 @@ $email = trim((string)($_POST['email'] ?? ''));
 $contactNo = trim((string)($_POST['contact_no'] ?? ''));
 $siteAddress = trim((string)($_POST['site_address'] ?? ''));
 $serviceCategory = trim((string)($_POST['service_category'] ?? ''));
+$otherServiceDetails = trim((string)($_POST['other_service_details'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $preferredInspectionDate = trim((string)($_POST['preferred_inspection_date'] ?? ''));
 
@@ -36,9 +38,11 @@ if (
     $siteAddress === '' ||
     $serviceCategory === '' ||
     $description === '' ||
+    strlen($description) < 20 ||
     !filter_var($email, FILTER_VALIDATE_EMAIL) ||
     !preg_match('/^09\d{9}$/', $contactNo) ||
-    !in_array($serviceCategory, $allowedCategories, true)
+    !in_array($serviceCategory, $allowedCategories, true) ||
+    ($serviceCategory === 'Other / Not sure yet' && $otherServiceDetails === '')
 ) {
     header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=invalid#contact');
     exit();
@@ -46,8 +50,8 @@ if (
 
 if ($preferredInspectionDate !== '') {
     $dateParts = date_parse($preferredInspectionDate);
-    $today = date('Y-m-d');
-    if (!$dateParts || $dateParts['error_count'] > 0 || $preferredInspectionDate < $today) {
+    $tomorrow = date('Y-m-d', strtotime('+1 day'));
+    if (!$dateParts || $dateParts['error_count'] > 0 || $preferredInspectionDate < $tomorrow) {
         header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=invalid#contact');
         exit();
     }
@@ -63,6 +67,11 @@ $contactNo = htmlspecialchars($contactNo, ENT_QUOTES, 'UTF-8');
 $siteAddress = htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8');
 $serviceCategory = htmlspecialchars($serviceCategory, ENT_QUOTES, 'UTF-8');
 $description = htmlspecialchars($description, ENT_QUOTES, 'UTF-8');
+
+if ($otherServiceDetails !== '') {
+    $otherServiceDetails = htmlspecialchars($otherServiceDetails, ENT_QUOTES, 'UTF-8');
+    $description .= "\n\nOther service details: " . $otherServiceDetails;
+}
 
 $stmt = $conn->prepare(
     'INSERT INTO service_inquiries

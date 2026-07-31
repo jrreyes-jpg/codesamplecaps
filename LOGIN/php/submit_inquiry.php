@@ -37,7 +37,7 @@ if (
     $serviceCategory === '' ||
     $description === '' ||
     !filter_var($email, FILTER_VALIDATE_EMAIL) ||
-    !preg_match('/^(09|\+639)\d{9}$/', $contactNo) ||
+    !preg_match('/^09\d{9}$/', $contactNo) ||
     !in_array($serviceCategory, $allowedCategories, true)
 ) {
     header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=invalid#contact');
@@ -46,7 +46,8 @@ if (
 
 if ($preferredInspectionDate !== '') {
     $dateParts = date_parse($preferredInspectionDate);
-    if (!$dateParts || $dateParts['error_count'] > 0) {
+    $today = date('Y-m-d');
+    if (!$dateParts || $dateParts['error_count'] > 0 || $preferredInspectionDate < $today) {
         header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=invalid#contact');
         exit();
     }

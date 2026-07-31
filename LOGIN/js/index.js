@@ -136,6 +136,7 @@ const initConsultationModal = () => {
     const openInquiryButton = document.getElementById('openInquiryModal');
     const inquiryModal = document.getElementById('inquiryModal');
     const closeInquiryButton = document.getElementById('closeInquiryModal');
+    const closeInquiryXButton = document.getElementById('closeInquiryModalX');
 
     if (openButtons.length === 0 || !closeButton || !modal) {
         return;
@@ -181,6 +182,10 @@ const initConsultationModal = () => {
 
     if (closeInquiryButton) {
         closeInquiryButton.addEventListener('click', closeInquiryModal);
+    }
+
+    if (closeInquiryXButton) {
+        closeInquiryXButton.addEventListener('click', closeInquiryModal);
     }
 
     modal.addEventListener('click', (event) => {
@@ -249,35 +254,132 @@ const initInquiryForm = () => {
         return;
     }
 
-    const phonePattern = /^(09|\+639)\d{9}$/;
+    const phonePattern = /^09\d{9}$/;
+    const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDate = tomorrow.toISOString().slice(0, 10);
+
+    const clearFieldError = (field) => {
+        field.classList.remove('is-invalid');
+        const error = field.closest('label')?.querySelector('.field-error');
+        if (error) {
+            error.textContent = '';
+            error.classList.remove('is-visible');
+        }
+    };
+
+    const setFieldError = (field, text) => {
+        field.classList.add('is-invalid');
+        const error = field.closest('label')?.querySelector('.field-error');
+        if (error) {
+            error.textContent = text;
+            error.classList.add('is-visible');
+        }
+    };
+
+    const normalizeContactNumber = (field) => {
+        let digits = field.value.replace(/\D/g, '');
+
+        if (digits.startsWith('639')) {
+            digits = '09' + digits.slice(3);
+        } else if (!digits.startsWith('09')) {
+            digits = '09' + digits.replace(/^0+/, '').replace(/^9?/, '');
+        }
+
+        field.value = digits.slice(0, 11);
+    };
 
     inquiryForms.forEach((inquiryForm) => {
         const contactInput = inquiryForm.querySelector('.js-inquiry-contact');
+        const inspectionDateInput = inquiryForm.querySelector('.js-inspection-date');
+        const serviceSelect = inquiryForm.querySelector('select[name="service_category"]');
+        const otherServiceField = inquiryForm.querySelector('.other-service-field');
+        const otherServiceInput = inquiryForm.querySelector('input[name="other_service_details"]');
         const message = inquiryForm.querySelector('.js-inquiry-message');
 
         if (!contactInput || !message) {
             return;
         }
 
+        normalizeContactNumber(contactInput);
+
+        if (inspectionDateInput) {
+            inspectionDateInput.min = tomorrowDate;
+        }
+
+        const syncOtherServiceField = () => {
+            const shouldShow = serviceSelect?.value === 'Other / Not sure yet';
+            otherServiceField?.classList.toggle('is-hidden', !shouldShow);
+            if (otherServiceInput) {
+                otherServiceInput.required = shouldShow;
+                if (!shouldShow) {
+                    otherServiceInput.value = '';
+                    clearFieldError(otherServiceInput);
+                }
+            }
+        };
+
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', syncOtherServiceField);
+            syncOtherServiceField();
+        }
+
+        contactInput.addEventListener('input', () => {
+            normalizeContactNumber(contactInput);
+            clearFieldError(contactInput);
+        });
+
+        inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {
+            field.addEventListener('input', () => clearFieldError(field));
+            field.addEventListener('change', () => clearFieldError(field));
+        });
+
         inquiryForm.addEventListener('submit', (event) => {
-            const phone = contactInput.value.trim();
+            normalizeContactNumber(contactInput);
+            const fields = Array.from(inquiryForm.querySelectorAll('input, select, textarea'));
+            let firstInvalidField = null;
 
             message.textContent = '';
             message.classList.remove('is-error');
+            fields.forEach(clearFieldError);
 
-            if (!phonePattern.test(phone)) {
-                event.preventDefault();
-                message.textContent = 'Please enter a valid contact number like 09171234567 or +639171234567.';
-                message.classList.add('is-error');
-                contactInput.focus();
-                return;
+            for (const field of fields) {
+                const label = field.dataset.label || 'This field';
+                const value = field.value.trim();
+
+                if (field.required && value === '') {
+                    setFieldError(field, `${label} is required.`);
+                    firstInvalidField = firstInvalidField || field;
+                    continue;
+                }
+
+                if (field.type === 'email' && value !== '' && !emailPattern.test(value)) {
+                    setFieldError(field, 'Please enter a valid email address.');
+                    firstInvalidField = firstInvalidField || field;
+                }
+
+                if (field.type === 'date' && value !== '' && value < tomorrowDate) {
+                    setFieldError(field, 'Preferred inspection date must be tomorrow or later.');
+                    firstInvalidField = firstInvalidField || field;
+                }
+
+                if (field.name === 'description' && value !== '' && value.length < 20) {
+                    setFieldError(field, 'Project description must be at least 20 characters.');
+                    firstInvalidField = firstInvalidField || field;
+                }
             }
 
-            if (!inquiryForm.checkValidity()) {
+            if (!phonePattern.test(contactInput.value.trim())) {
+                setFieldError(contactInput, 'Contact number must start with 09 and have 11 digits.');
+                firstInvalidField = firstInvalidField || contactInput;
+            }
+
+            if (firstInvalidField) {
                 event.preventDefault();
-                message.textContent = 'Please fill in all required fields.';
+                message.textContent = 'Please fix the highlighted fields.';
                 message.classList.add('is-error');
-                inquiryForm.reportValidity();
+                firstInvalidField.focus();
             }
         });
     });

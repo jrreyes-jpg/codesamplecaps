@@ -12,9 +12,11 @@ if (!defined('ADMIN_RENDER_OVERVIEW_PARTIAL')) {
 /** @var int $ongoingProjects */
 /** @var int $openTasks */
 /** @var int $pendingQuotations */
+/** @var int $pendingInquiries */
 /** @var int $delayedTasks */
 /** @var int $onHoldProjects */
 /** @var int $inventoryAlertCount */
+/** @var string $csrfToken */
 /** @var int $lowStockItems */
 /** @var int $outOfStockItems */
 /** @var int $projectCompletionRate */
@@ -32,6 +34,8 @@ if (!defined('ADMIN_RENDER_OVERVIEW_PARTIAL')) {
 /** @var array<int, array<string, mixed>> $recentDashboardActivity */
 $activeProjectCount = $ongoingProjects + $pendingProjects + $onHoldProjects;
 $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClientCount;
+$pendingInquiries = $pendingInquiries ?? 0;
+$csrfToken = $csrfToken ?? '';
 ?>
 <div id="dashboard" class="tab-content <?php echo $activeTab === 'dashboard' ? 'active' : ''; ?>">
     <section class="dashboard-grid overview-dashboard" data-superadmin-overview>
@@ -56,6 +60,11 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
                     <span>Pending Quotations</span>
                     <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                     <small>Need approval</small>
+                </a>
+                <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php" class="metric-tile metric-tile-link metric-tile-alerts">
+                    <span>New Inquiries</span>
+                    <strong data-live-metric="pending_inquiries"><?php echo $pendingInquiries ?? 0; ?></strong>
+                    <small>Pending review</small>
                 </a>
                 <a href="/codesamplecaps/ADMIN/sidebar/scan_history.php" class="metric-tile metric-tile-link metric-tile-assets">
                     <span>Scans Today</span>
@@ -118,6 +127,73 @@ $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClie
                             </span>
                             <time datetime="<?php echo htmlspecialchars((string)($activity['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                 <span class="activity-time-relative"><?php echo htmlspecialchars((string)($activity['relative_time'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </time>
+                        </article>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <section class="dashboard-panel overview-inquiries-panel">
+            <div class="panel-heading">
+                <div>
+                    <h2 class="dashboard-section-title">Latest Inquiries</h2>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <span class="action-chip" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;">Pending review</span>
+                    <?php if (($pendingInquiries ?? 0) > 0): ?>
+                        <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.7rem; border-radius:999px; background:#dc2626; color:#fff; font-weight:700; font-size:0.78rem;">
+                            <span style="width:7px; height:7px; border-radius:999px; background:#fff; display:inline-block;"></span>
+                            <?php echo (int)$pendingInquiries; ?> new
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="activity-feed activity-feed-compact">
+                <?php if (empty($inquiryRows)): ?>
+                    <div class="alert-empty">No inquiries yet.</div>
+                <?php else: ?>
+                    <?php foreach ($inquiryRows as $inquiry): ?>
+                        <article class="activity-item">
+                            <span class="activity-badge activity-quotations">
+                                <?php echo htmlspecialchars(substr((string)($inquiry['status'] ?? 'Pending Review'), 0, 1), ENT_QUOTES, 'UTF-8'); ?>
+                            </span>
+                            <span class="activity-copy">
+                                <strong><?php echo htmlspecialchars((string)($inquiry['client_name'] ?? 'Unknown'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <span><?php echo htmlspecialchars((string)($inquiry['service_category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> • <?php echo htmlspecialchars((string)($inquiry['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                            <div class="activity-item-actions">
+                                <?php if ((string)($inquiry['status'] ?? 'Pending Review') === 'Pending Review'): ?>
+                                    <form method="POST" class="inline-action-form" style="display:inline-flex; gap:0.5rem; margin-top:0.75rem;">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="action" value="update_inquiry_status">
+                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                        <input type="hidden" name="status" value="Verified Lead">
+                                        <button type="submit" class="btn-secondary">Verify Lead</button>
+                                    </form>
+                                    <form method="POST" class="inline-action-form" style="display:inline-flex; gap:0.5rem; margin-top:0.75rem;" onsubmit="return confirm('Reject this inquiry?');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="action" value="update_inquiry_status">
+                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                        <input type="hidden" name="status" value="Not Qualified">
+                                        <button type="submit" class="btn-danger">Not Qualified</button>
+                                    </form>
+                                <?php else: ?>
+                                    <span class="activity-status-pill"><?php echo htmlspecialchars((string)($inquiry['status']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <details style="margin-top:0.75rem; color:#4b5563;">
+                                <summary style="cursor:pointer; font-weight:600; color:#2563eb;">View details</summary>
+                                <div style="margin-top:0.6rem; padding:0.75rem; border-left:3px solid #2563eb; background:#f8fafc; border-radius:0.5rem;">
+                                    <div style="margin-bottom:0.35rem;"><strong>Company:</strong> <?php echo htmlspecialchars((string)($inquiry['company_name'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div style="margin-bottom:0.35rem;"><strong>Contact:</strong> <?php echo htmlspecialchars((string)($inquiry['contact_no'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div style="margin-bottom:0.35rem;"><strong>Site Address:</strong> <?php echo htmlspecialchars((string)($inquiry['site_address'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div style="margin-bottom:0.35rem;"><strong>Preferred Inspection Date:</strong> <?php echo htmlspecialchars((string)($inquiry['preferred_inspection_date'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div><strong>Message:</strong><br><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?? '—'), ENT_QUOTES, 'UTF-8')); ?></div>
+                                </div>
+                            </details>
+                            <time datetime="<?php echo htmlspecialchars((string)($inquiry['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                <span class="activity-time-relative"><?php echo htmlspecialchars((string)($inquiry['status'] ?? 'Pending Review'), ENT_QUOTES, 'UTF-8'); ?></span>
                             </time>
                         </article>
                     <?php endforeach; ?>

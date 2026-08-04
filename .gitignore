@@ -70,5 +70,40 @@ Provide a cleared template or reports for project management
 
 Provide a cleared template or reports for project management
 
+Name sa project management kay admin ayusin sabi ni maam gigi
 
+yung sa project code pala lagyan mo siya na dapat pede malagyan ng ganitnog sign -
 
+# =========================================================
+# ROADMAP: INQUIRY TO QUOTATION WORKFLOW
+# Sakop: client inquiry, admin lead filtering, engineer inspection/costing,
+# automatic quotation computation, admin approval, and client sending.
+# =========================================================
+
+# 1. NEXT TASK: Site Inspection Scheduling
+# - Add DB table: site_inspections
+# - Link each schedule to service_inquiries.id
+# - Admin chooses engineer, inspection date/time, site notes, and status
+# - Status flow: For Inspection -> Scheduled -> Inspected -> Ready for Costing
+# - Engineer sees only assigned inspection schedules
+
+# 2. Engineer Inspection & Costing Workspace
+# - Engineer opens assigned inspection
+# - Engineer adds materials from Inventory
+# - Engineer adds labor cost, equipment/asset needs, remarks, and duration
+# - System saves costing draft linked to inquiry/project
+
+# 3. Quotation Auto-Generation
+# - System computes material total, labor total, other cost, markup, VAT if needed
+# - Generate quotation record and PDF
+# - Keep quotation status: Draft -> For Admin Approval -> Approved -> Sent to Client
+
+# 4. Admin Quotation Approval
+# - Admin reviews generated quotation
+# - Admin approves, rejects, or sends back to Engineer for revision
+# - Log all actions in audit logs
+
+# 5. Client Sending & Tracking
+# - Admin marks quotation as sent to client
+# - Track client response: Pending, Accepted, Rejected, Revision Requested
+# - If accepted, convert inquiry/quotation into project record

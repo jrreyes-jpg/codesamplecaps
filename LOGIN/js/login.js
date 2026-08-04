@@ -139,20 +139,13 @@ const initStaleLoginWindowGuard = () => {
         return;
     }
 
-    const disableStaleLogin = () => {
-        form.querySelectorAll('input, button').forEach((control) => {
-            control.disabled = true;
-        });
-
-        if (form.querySelector('[data-stale-login-message]')) {
+    const redirectStaleLogin = (dashboardPath) => {
+        if (!dashboardPath || !dashboardPath.startsWith('/codesamplecaps/')) {
             return;
         }
 
-        const message = document.createElement('div');
-        message.className = 'error-box error-danger';
-        message.dataset.staleLoginMessage = 'true';
-        message.textContent = 'This old login window is inactive. Please use your current dashboard window.';
-        form.prepend(message);
+        // Kapag lumang login tab ito, dalhin na siya sa dashboard para hindi lumabas ulit na login sa Alt-Tab.
+        window.location.replace(dashboardPath);
     };
 
     window.addEventListener('storage', (event) => {
@@ -163,8 +156,7 @@ const initStaleLoginWindowGuard = () => {
         try {
             const state = JSON.parse(event.newValue);
             if (state.status === 'logged-in') {
-                // Kapag lumang login window ito, huwag gawing dashboard para hindi dumami ang login windows after logout.
-                disableStaleLogin();
+                redirectStaleLogin(String(state.dashboardPath || ''));
             }
         } catch (error) {
             // Ignore invalid localStorage data.

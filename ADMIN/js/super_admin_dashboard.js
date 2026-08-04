@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('edge_auth_state', JSON.stringify({
             status: 'logged-in',
             at: Date.now(),
+            dashboardPath: window.location.pathname + window.location.search,
         }));
     } catch (error) {
         // Okay lang kahit blocked ang localStorage; normal login flow pa rin.
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const notificationRoot = document.querySelector('[data-notification-root]');
     const notificationToggle = document.getElementById('topbarNotificationToggle');
     const notificationDropdown = document.getElementById('topbarNotificationDropdown');
+    const inquiryNoticeModal = document.getElementById('inquiryModalNotice');
     const profileRoot = document.querySelector('[data-profile-root]');
     const profileToggle = document.getElementById('topbarProfileToggle');
     const profileDropdown = document.getElementById('topbarProfileDropdown');
@@ -153,9 +155,49 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (notificationRoot && notificationToggle && notificationDropdown) {
+        const inquiryNoticeClose = inquiryNoticeModal
+            ? inquiryNoticeModal.querySelector('[data-inquiry-notice-close]')
+            : null;
+        const inquiryNoticeLinkCard = inquiryNoticeModal
+            ? inquiryNoticeModal.querySelector('[data-inquiry-modal-link]')
+            : null;
+        const inquiryNoticeCount = inquiryNoticeModal
+            ? Number(inquiryNoticeModal.getAttribute('data-inquiry-count') || '0')
+            : 0;
+        const inquiryNoticeStorageKey = 'edgeInquiryNoticeDismissedCount';
+
         const setNotificationState = function (isOpen) {
             notificationToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             notificationDropdown.hidden = !isOpen;
+        };
+
+        const isInquiryNoticeDismissed = function () {
+            try {
+                return localStorage.getItem(inquiryNoticeStorageKey) === String(inquiryNoticeCount);
+            } catch (error) {
+                return false;
+            }
+        };
+
+        const showInquiryNotice = function () {
+            if (!inquiryNoticeModal || inquiryNoticeCount <= 0 || isInquiryNoticeDismissed()) {
+                return;
+            }
+            inquiryNoticeModal.hidden = false;
+            inquiryNoticeModal.setAttribute('role', 'dialog');
+            inquiryNoticeModal.setAttribute('aria-modal', 'true');
+        };
+
+        const hideInquiryNotice = function () {
+            if (!inquiryNoticeModal) {
+                return;
+            }
+            inquiryNoticeModal.hidden = true;
+            try {
+                localStorage.setItem(inquiryNoticeStorageKey, String(inquiryNoticeCount));
+            } catch (error) {
+                // Okay lang kahit blocked ang localStorage; close pa rin ang modal.
+            }
         };
 
         notificationToggle.addEventListener('click', function (event) {
@@ -163,11 +205,42 @@ document.addEventListener('DOMContentLoaded', function () {
             const isOpen = notificationToggle.getAttribute('aria-expanded') === 'true';
             setNotificationState(!isOpen);
 
+            if (isOpen && inquiryNoticeModal) {
+                hideInquiryNotice();
+            } else if (inquiryNoticeModal) {
+                showInquiryNotice();
+            }
+
             if (profileToggle && profileDropdown) {
                 profileToggle.setAttribute('aria-expanded', 'false');
                 profileDropdown.hidden = true;
             }
         });
+
+        if (inquiryNoticeModal) {
+            inquiryNoticeModal.addEventListener('click', function (event) {
+                if (event.target === inquiryNoticeModal) {
+                    hideInquiryNotice();
+                }
+            });
+        }
+
+        if (inquiryNoticeClose) {
+            inquiryNoticeClose.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                hideInquiryNotice();
+            });
+        }
+
+        if (inquiryNoticeLinkCard) {
+            inquiryNoticeLinkCard.addEventListener('click', function () {
+                const targetUrl = inquiryNoticeLinkCard.getAttribute('data-inquiry-modal-link');
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                }
+            });
+        }
 
         document.addEventListener('click', function (event) {
             if (!notificationRoot.contains(event.target)) {
@@ -178,6 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 setNotificationState(false);
+                hideInquiryNotice();
             }
         });
     }

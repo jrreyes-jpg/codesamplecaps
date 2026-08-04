@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('edge_auth_state', JSON.stringify({
             status: 'logged-in',
             at: Date.now(),
+            dashboardPath: window.location.pathname + window.location.search,
         }));
     } catch (error) {
         // Okay lang kahit blocked ang localStorage; normal login flow pa rin.

@@ -18,6 +18,7 @@ $isAssets = str_contains($currentPath, '/ADMIN/sidebar/assets.php');
 $isQuotations = str_contains($currentPath, '/ADMIN/sidebar/quotations.php');
 $isReports = str_contains($currentPath, '/ADMIN/sidebar/reports.php');
 $isActivityHistory = str_contains($currentPath, '/ADMIN/sidebar/activity_history.php');
+$isInquiries = str_contains($currentPath, '/ADMIN/sidebar/inquiries.php');
 $superAdminProfileName = (string)($_SESSION['name'] ?? 'Admin');
 $superAdminProfileRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'super_admin')));
 $superAdminProfilePhotoUrl = '';
@@ -238,6 +239,36 @@ if (!function_exists('super_admin_fetch_notification_data')) {
             $stockAlerts = $stockResult->fetch_all(MYSQLI_ASSOC);
         }
 
+        $inquiryCount = 0;
+        $inquiryAlerts = [];
+        if (super_admin_sidebar_table_exists($conn, 'service_inquiries')) {
+            if (!super_admin_sidebar_column_exists($conn, 'service_inquiries', 'viewed_at')) {
+                $conn->query('ALTER TABLE service_inquiries ADD COLUMN viewed_at TIMESTAMP NULL AFTER reviewed_at');
+            }
+
+            $inquiryCountResult = $conn->query(
+                "SELECT COUNT(*) AS total
+                 FROM service_inquiries
+                 WHERE status = 'Pending Review'
+                 AND viewed_at IS NULL"
+            );
+            if ($inquiryCountResult) {
+                $inquiryCount = (int)(($inquiryCountResult->fetch_assoc()['total'] ?? 0));
+            }
+
+            $inquiryAlertResult = $conn->query(
+                "SELECT id, client_name, service_category, created_at
+                 FROM service_inquiries
+                 WHERE status = 'Pending Review'
+                 AND viewed_at IS NULL
+                 ORDER BY created_at DESC
+                 LIMIT 4"
+            );
+            if ($inquiryAlertResult) {
+                $inquiryAlerts = $inquiryAlertResult->fetch_all(MYSQLI_ASSOC);
+            }
+        }
+
         $inactiveCountResult = $conn->query(
             "SELECT COUNT(*) AS total
              FROM (
@@ -300,10 +331,12 @@ if (!function_exists('super_admin_fetch_notification_data')) {
             'project_risk_count' => $projectRiskCount,
             'stock_alert_count' => $stockAlertCount,
             'inactive_assignment_count' => $inactiveAssignmentCount,
-            'urgent_count' => $projectRiskCount,
+            'inquiry_count' => $inquiryCount,
+            'urgent_count' => $projectRiskCount + $inquiryCount,
             'project_risk_alerts' => $projectRiskAlerts,
             'stock_alerts' => $stockAlerts,
             'inactive_assignment_alerts' => $inactiveAssignmentAlerts,
+            'inquiry_alerts' => $inquiryAlerts,
             'recent_activity' => $recentActivity,
         ];
 
@@ -322,10 +355,12 @@ $superAdminNotificationData = isset($conn) && $conn instanceof mysqli
         'project_risk_count' => 0,
         'stock_alert_count' => 0,
         'inactive_assignment_count' => 0,
+        'inquiry_count' => 0,
         'urgent_count' => 0,
         'project_risk_alerts' => [],
         'stock_alerts' => [],
         'inactive_assignment_alerts' => [],
+        'inquiry_alerts' => [],
         'recent_activity' => [],
     ];
 
@@ -475,6 +510,23 @@ try {
             </a>
         </li>
         <li>
+            <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="menu-link<?php echo $isInquiries ? ' active' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M5 6h14"></path>
+                            <path d="M5 10h14"></path>
+                            <path d="M5 14h8"></path>
+                            <path d="M5 18h10"></path>
+                            <path d="M17 16l2 2 3-4"></path>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Inq</span>
+                </span>
+                <span class="menu-text">Inquiries</span>
+            </a>
+        </li>
+        <li>
             <a href="/codesamplecaps/ADMIN/sidebar/reports.php" class="menu-link<?php echo $isReports ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
@@ -609,6 +661,20 @@ try {
                 <?php endif; ?>
             </button>
 
+            <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
+                <div id="inquiryModalNotice" class="topbar-notifications__modal" data-inquiry-count="<?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?>" hidden>
+                    <div class="topbar-notifications__modal-card topbar-notifications__modal-card--link" data-inquiry-modal-link="/codesamplecaps/ADMIN/sidebar/inquiries.php">
+                        <button type="button" class="topbar-notifications__modal-close" data-inquiry-notice-close aria-label="Close inquiry notice">&times;</button>
+                        <div class="topbar-notifications__modal-icon">✉️</div>
+                        <div>
+                            <strong>New inquiry received</strong>
+                            <p>You have <?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?> new inquiry<?php echo ((int)($superAdminNotificationData['inquiry_count'] ?? 0) === 1) ? '' : 'ies'; ?> pending review.</p>
+                        </div>
+                        <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="topbar-notifications__modal-action">Open inquiries</a>
+                    </div>
+                </div>
+            <?php endif; ?>
+
                 <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
                 <div class="topbar-notifications__panel-head">
                     <div>
@@ -627,12 +693,20 @@ try {
                         </a>
                     </div>
                 <?php endif; ?>
+                <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
+                    <div class="topbar-notifications__summary">
+                        <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="notification-summary-chip notification-summary-chip--danger">
+                            <strong><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?></strong>
+                            <span>New inquiries</span>
+                        </a>
+                    </div>
+                <?php endif; ?>
 
                 <div class="topbar-notifications__section">
                     <div class="topbar-notifications__section-title">Needs attention</div>
                     <?php if (($superAdminNotificationData['urgent_count'] ?? 0) === 0): ?>
                         <div class="topbar-notifications__empty">
-                            No project alerts right now.
+                            No urgent alerts right now.
                         </div>
                     <?php else: ?>
                         <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
@@ -644,11 +718,20 @@ try {
                                         <?php
                                         $parts = [];
                                         if ((int)($projectAlert['delayed_tasks'] ?? 0) > 0) {
-                                            $parts[] = (int)$projectAlert['delayed_tasks'] . ' delayed task(s)';
+                                            $parts[] = (int)($projectAlert['delayed_tasks'] . ' delayed task(s)');
                                         }
                                         echo htmlspecialchars(implode(' | ', $parts) ?: 'Needs checking');
                                         ?>
                                     </span>
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
+                        <?php foreach ($superAdminNotificationData['inquiry_alerts'] as $inquiryAlert): ?>
+                            <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed">
+                                <span class="notification-item__dot"></span>
+                                <div class="notification-item__copy">
+                                    <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>
+                                    <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> • New inquiry</span>
                                 </div>
                             </a>
                         <?php endforeach; ?>

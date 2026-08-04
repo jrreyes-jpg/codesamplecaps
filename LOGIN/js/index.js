@@ -256,9 +256,20 @@ const initInquiryForm = () => {
 
     const phonePattern = /^09\d{9}$/;
     const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDate = tomorrow.toISOString().slice(0, 10);
+    const formatLocalDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    const now = new Date();
+    const todayDate = formatLocalDate(now);
+    const tomorrowDate = (() => {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return formatLocalDate(tomorrow);
+    })();
+    const preferredDateMin = now.getHours() >= 17 ? tomorrowDate : todayDate;
 
     const clearFieldError = (field) => {
         field.classList.remove('is-invalid');
@@ -297,9 +308,14 @@ const initInquiryForm = () => {
         const dateInfoButton = inquiryForm.querySelector('.js-date-info-button');
         const dateTooltip = inquiryForm.querySelector('.js-date-tooltip');
         const serviceSelect = inquiryForm.querySelector('select[name="service_category"]');
+        const provinceSelect = inquiryForm.querySelector('.js-inquiry-province');
+        const citySelect = inquiryForm.querySelector('.js-inquiry-city');
+        const barangayInput = inquiryForm.querySelector('.js-inquiry-barangay');
         const otherServiceField = inquiryForm.querySelector('.other-service-field');
         const otherServiceInput = inquiryForm.querySelector('input[name="other_service_details"]');
         const message = inquiryForm.querySelector('.js-inquiry-message');
+        const clearDraftButton = inquiryForm.querySelector('.js-clear-inquiry-draft');
+        const draftKey = 'edgeInquiryFormDraft';
 
         if (!contactInput || !message) {
             return;
@@ -308,8 +324,165 @@ const initInquiryForm = () => {
         normalizeContactNumber(contactInput);
 
         if (inspectionDateInput) {
-            inspectionDateInput.min = tomorrowDate;
+            inspectionDateInput.min = preferredDateMin;
+            if (inspectionDateInput.value && inspectionDateInput.value < preferredDateMin) {
+                inspectionDateInput.value = '';
+            }
         }
+
+        const closeCombobox = (input) => {
+            const box = input?.closest('[data-combobox]');
+            box?.classList.remove('is-open');
+            const list = box?.querySelector('[data-combobox-list]');
+            if (list) {
+                list.innerHTML = '';
+            }
+        };
+
+        const closeOtherComboboxes = (activeInput) => {
+            inquiryForm.querySelectorAll('[data-combobox]').forEach((box) => {
+                if (box !== activeInput?.closest('[data-combobox]')) {
+                    box.classList.remove('is-open');
+                }
+            });
+        };
+
+        const renderComboboxOptions = (input, options, showAll = false) => {
+            const box = input?.closest('[data-combobox]');
+            const list = box?.querySelector('[data-combobox-list]');
+            if (!input || !list) {
+                return;
+            }
+
+            closeOtherComboboxes(input);
+            const search = showAll ? '' : input.value.trim().toLowerCase();
+            const matches = options.filter((option) => option.toLowerCase().includes(search)).slice(0, 80);
+            list.innerHTML = '';
+            list.scrollTop = 0;
+
+            if (matches.length === 0) {
+                const empty = document.createElement('span');
+                empty.className = 'inquiry-combobox-empty';
+                empty.textContent = 'No match. You can type it manually.';
+                list.appendChild(empty);
+            } else {
+                matches.forEach((option) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.textContent = option;
+                    button.addEventListener('click', () => {
+                        input.value = option;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        closeCombobox(input);
+                    });
+                    list.appendChild(button);
+                });
+            }
+
+            box?.classList.add('is-open');
+            list.scrollTop = 0;
+        };
+
+        const bindCombobox = (input, getOptions) => {
+            if (!input) {
+                return;
+            }
+
+            const button = input.closest('[data-combobox]')?.querySelector('[data-combobox-toggle]');
+            const showOptions = () => {
+                if (!input.disabled) {
+                    renderComboboxOptions(input, getOptions());
+                }
+            };
+
+            input.addEventListener('input', showOptions);
+            input.addEventListener('focus', showOptions);
+            button?.addEventListener('click', () => {
+                if (input.closest('[data-combobox]')?.classList.contains('is-open')) {
+                    closeCombobox(input);
+                    return;
+                }
+
+                input.focus();
+                renderComboboxOptions(input, getOptions(), true);
+            });
+        };
+
+        const isValidProvince = () => Boolean(window.edgeServiceAreas?.[provinceSelect?.value]);
+        const isValidCity = () => {
+            const cities = window.edgeServiceAreas?.[provinceSelect?.value] || [];
+            return cities.includes(citySelect?.value || '');
+        };
+        let lastValidCity = '';
+
+        const getBarangaySuggestions = () => {
+            if (!isValidCity()) {
+                return [];
+            }
+
+            return window.edgeServiceBarangays?.[provinceSelect.value]?.[citySelect.value] || [];
+        };
+
+        const syncBarangayState = () => {
+            if (!barangayInput) {
+                return;
+            }
+
+            const currentCity = isValidCity() ? citySelect.value : '';
+            const barangays = getBarangaySuggestions();
+            barangayInput.disabled = !isValidCity();
+            barangayInput.placeholder = !isValidCity()
+                ? 'Select city first'
+                : (barangays.length === 0 ? 'Barangay list not imported yet' : 'Search or select barangay');
+
+            if (!isValidCity() || barangays.length === 0 || currentCity !== lastValidCity) {
+                barangayInput.value = '';
+                closeCombobox(barangayInput);
+            }
+
+            barangayInput.disabled = !isValidCity() || barangays.length === 0;
+
+            lastValidCity = currentCity;
+        };
+
+        const syncCityOptions = () => {
+            if (!provinceSelect || !citySelect) {
+                return;
+            }
+
+            const cities = window.edgeServiceAreas?.[provinceSelect.value] || [];
+            citySelect.disabled = cities.length === 0;
+            citySelect.placeholder = cities.length === 0 ? 'Select province first' : 'Search or select city / municipality';
+            citySelect.value = '';
+            closeCombobox(citySelect);
+            syncBarangayState();
+        };
+
+        bindCombobox(provinceSelect, () => Object.keys(window.edgeServiceAreas || {}));
+        provinceSelect?.addEventListener('input', () => {
+            syncCityOptions();
+        });
+        provinceSelect?.addEventListener('change', () => {
+            syncCityOptions();
+            clearFieldError(provinceSelect);
+            if (citySelect) clearFieldError(citySelect);
+        });
+        syncCityOptions();
+        bindCombobox(citySelect, () => window.edgeServiceAreas?.[provinceSelect?.value] || []);
+        bindCombobox(barangayInput, getBarangaySuggestions);
+        citySelect?.addEventListener('input', syncBarangayState);
+        citySelect?.addEventListener('change', () => {
+            syncBarangayState();
+            clearFieldError(citySelect);
+            if (barangayInput) clearFieldError(barangayInput);
+        });
+        syncBarangayState();
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('[data-combobox]')) {
+                inquiryForm.querySelectorAll('[data-combobox]').forEach((box) => box.classList.remove('is-open'));
+            }
+        });
 
         const hideDateTooltip = () => {
             dateTooltip?.classList.remove('is-visible');
@@ -367,15 +540,79 @@ const initInquiryForm = () => {
             syncOtherServiceField();
         }
 
+        const saveInquiryDraft = () => {
+            const draft = {};
+            inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
+                draft[field.name] = field.value;
+            });
+            localStorage.setItem(draftKey, JSON.stringify(draft));
+        };
+
+        const restoreInquiryDraft = () => {
+            let draft = {};
+            try {
+                draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+            } catch (error) {
+                localStorage.removeItem(draftKey);
+                return;
+            }
+
+            if (Object.keys(draft).length === 0) {
+                return;
+            }
+
+            inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
+                if (Object.prototype.hasOwnProperty.call(draft, field.name)) {
+                    field.value = draft[field.name];
+                }
+            });
+
+            syncCityOptions();
+            if (citySelect && draft.city_municipality) {
+                citySelect.value = draft.city_municipality;
+            }
+            syncBarangayState();
+            if (barangayInput && draft.barangay) {
+                barangayInput.value = draft.barangay;
+            }
+            syncOtherServiceField();
+
+            const inquiryModal = document.getElementById('inquiryModal');
+            if (inquiryModal) {
+                inquiryModal.classList.add('is-open');
+                inquiryModal.setAttribute('aria-hidden', 'false');
+            }
+        };
+
         contactInput.addEventListener('input', () => {
             normalizeContactNumber(contactInput);
             clearFieldError(contactInput);
         });
 
         inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {
-            field.addEventListener('input', () => clearFieldError(field));
-            field.addEventListener('change', () => clearFieldError(field));
+            field.addEventListener('input', () => {
+                clearFieldError(field);
+                saveInquiryDraft();
+            });
+            field.addEventListener('change', () => {
+                clearFieldError(field);
+                saveInquiryDraft();
+            });
         });
+
+        clearDraftButton?.addEventListener('click', () => {
+            localStorage.removeItem(draftKey);
+            inquiryForm.reset();
+            contactInput.value = '09';
+            syncCityOptions();
+            syncBarangayState();
+            syncOtherServiceField();
+            inquiryForm.querySelectorAll('.is-invalid').forEach((field) => clearFieldError(field));
+            message.textContent = '';
+            message.classList.remove('is-error');
+        });
+
+        restoreInquiryDraft();
 
         inquiryForm.addEventListener('submit', (event) => {
             normalizeContactNumber(contactInput);
@@ -401,13 +638,15 @@ const initInquiryForm = () => {
                     firstInvalidField = firstInvalidField || field;
                 }
 
-                if (field.type === 'date' && value !== '' && value < tomorrowDate) {
-                    setFieldError(field, 'Preferred inspection date must be tomorrow or later.');
+                if (field.type === 'date' && value !== '' && value < preferredDateMin) {
+                    setFieldError(field, now.getHours() >= 17
+                        ? 'Please choose tomorrow or later because working hours are done today.'
+                        : 'Preferred inspection date cannot be in the past.');
                     firstInvalidField = firstInvalidField || field;
                 }
 
-                if (field.name === 'description' && value !== '' && value.length < 20) {
-                    setFieldError(field, 'Project description must be at least 20 characters.');
+                if (field.name === 'description' && value !== '' && value.length < 10) {
+                    setFieldError(field, 'Project description must be at least 10 characters.');
                     firstInvalidField = firstInvalidField || field;
                 }
             }
@@ -417,11 +656,34 @@ const initInquiryForm = () => {
                 firstInvalidField = firstInvalidField || contactInput;
             }
 
+            if (provinceSelect && citySelect) {
+                const allowedCities = window.edgeServiceAreas?.[provinceSelect.value] || [];
+                if (!isValidProvince()) {
+                    setFieldError(provinceSelect, 'Please select a province in our service area.');
+                    firstInvalidField = firstInvalidField || provinceSelect;
+                }
+
+                if (!allowedCities.includes(citySelect.value)) {
+                    setFieldError(citySelect, 'Please select a city in our CALABARZON service area.');
+                    firstInvalidField = firstInvalidField || citySelect;
+                }
+            }
+
+            if (barangayInput && !isValidCity()) {
+                setFieldError(barangayInput, 'Please select a valid city first.');
+                firstInvalidField = firstInvalidField || barangayInput;
+            } else if (barangayInput && !getBarangaySuggestions().includes(barangayInput.value.trim())) {
+                setFieldError(barangayInput, 'Please select a barangay under the selected city.');
+                firstInvalidField = firstInvalidField || barangayInput;
+            }
+
             if (firstInvalidField) {
                 event.preventDefault();
                 message.textContent = 'Please fix the highlighted fields.';
                 message.classList.add('is-error');
                 firstInvalidField.focus();
+            } else {
+                localStorage.removeItem(draftKey);
             }
         });
     });

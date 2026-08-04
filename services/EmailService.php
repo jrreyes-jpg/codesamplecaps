@@ -157,6 +157,39 @@ class EmailService {
         }
     }
 
+    public function sendInquiryOtp(string $recipientEmail, string $recipientName, string $otp, int $expiryMinutes = 10): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($recipientEmail);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Inquiry Verification Code - ' . $this->config->get('APP_NAME');
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#0f766e;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        <h2 style='margin:0'>Verify your inquiry</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeName},</p>
+                        <p>Use this code to confirm your inquiry request:</p>
+                        <p style='font-size:30px;font-weight:800;letter-spacing:6px;color:#0f172a'>{$safeOtp}</p>
+                        <p>This code expires in {$expiryMinutes} minutes.</p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Your inquiry verification code is {$otp}. It expires in {$expiryMinutes} minutes.";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
+            return false;
+        }
+    }
+
     /**
      * Get password reset email HTML template
      */

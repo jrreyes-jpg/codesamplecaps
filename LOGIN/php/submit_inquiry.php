@@ -6,6 +6,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/service_areas.php';
+require_once __DIR__ . '/../../config/service_barangays.php';
+require_once __DIR__ . '/../../config/inquiry_otp.php';
+require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
     'New Automation Installation',
@@ -26,10 +30,32 @@ function normalize_text(?string $value): string
     return trim((string) $value);
 }
 
+function inquiry_column_exists(mysqli $conn, string $columnName): bool
+{
+    $stmt = $conn->prepare(
+        'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = "service_inquiries"
+         AND COLUMN_NAME = ?
+         LIMIT 1'
+    );
+
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('s', $columnName);
+    $stmt->execute();
+    return (bool)$stmt->get_result()->fetch_assoc();
+}
+
 $clientName = normalize_text($_POST['client_name'] ?? '');
 $companyName = normalize_text($_POST['company_name'] ?? '');
 $email = normalize_text($_POST['email'] ?? '');
 $contactNo = normalize_text($_POST['contact_no'] ?? '');
+$province = normalize_text($_POST['province'] ?? '');
+$cityMunicipality = normalize_text($_POST['city_municipality'] ?? '');
+$barangay = normalize_text($_POST['barangay'] ?? '');
 $siteAddress = normalize_text($_POST['site_address'] ?? '');
 $serviceCategory = normalize_text($_POST['service_category'] ?? '');
 $otherServiceDetails = normalize_text($_POST['other_service_details'] ?? '');
@@ -50,6 +76,16 @@ if ($contactNo === '' || !preg_match('/^09\d{9}$/', $contactNo)) {
     $errors[] = 'contact_no';
 }
 
+if (!service_area_is_allowed($province, $cityMunicipality)) {
+    $errors[] = 'city_municipality';
+}
+
+if (!service_barangay_city_has_data($conn, $province, $cityMunicipality)) {
+    $errors[] = 'barangay';
+} elseif (!service_barangay_is_allowed($conn, $province, $cityMunicipality, $barangay)) {
+    $errors[] = 'barangay';
+}
+
 if ($siteAddress === '') {
     $errors[] = 'site_address';
 }
@@ -58,7 +94,7 @@ if ($serviceCategory === '' || !in_array($serviceCategory, $allowedCategories, t
     $errors[] = 'service_category';
 }
 
-if ($description === '' || mb_strlen($description, 'UTF-8') < 20) {
+if ($description === '' || mb_strlen($description, 'UTF-8') < 10) {
     $errors[] = 'description';
 }
 
@@ -67,10 +103,14 @@ if ($serviceCategory === 'Other / Not sure yet' && $otherServiceDetails === '') 
 }
 
 if ($preferredInspectionDate !== '') {
-    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $preferredInspectionDate);
-    $tomorrow = (new DateTimeImmutable('tomorrow'))->setTime(0, 0, 0);
+    $timezone = new DateTimeZone('Asia/Manila');
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $preferredInspectionDate, $timezone);
+    $now = new DateTimeImmutable('now', $timezone);
+    $minimumDate = ((int)$now->format('H') >= 17)
+        ? (new DateTimeImmutable('tomorrow', $timezone))->setTime(0, 0, 0)
+        : (new DateTimeImmutable('today', $timezone))->setTime(0, 0, 0);
 
-    if (!$date || $date->format('Y-m-d') !== $preferredInspectionDate || $date < $tomorrow) {
+    if (!$date || $date->format('Y-m-d') !== $preferredInspectionDate || $date < $minimumDate) {
         $errors[] = 'preferred_inspection_date';
     }
 }
@@ -84,54 +124,41 @@ if ($otherServiceDetails !== '') {
     $description .= "\n\nOther service details: " . $otherServiceDetails;
 }
 
-$conn->query(
-    'CREATE TABLE IF NOT EXISTS service_inquiries (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        client_name VARCHAR(150) NOT NULL,
-        company_name VARCHAR(150) DEFAULT NULL,
-        email VARCHAR(150) NOT NULL,
-        contact_no VARCHAR(30) NOT NULL,
-        site_address TEXT NOT NULL,
-        service_category VARCHAR(80) NOT NULL,
-        description TEXT NOT NULL,
-        preferred_inspection_date DATE DEFAULT NULL,
-        status VARCHAR(50) NOT NULL DEFAULT "Pending Review",
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )'
-);
+inquiry_otp_ensure_table($conn);
+$otp = (string)random_int(100000, 999999);
+$token = bin2hex(random_bytes(32));
+$payload = [
+    'client_name' => $clientName,
+    'company_name' => $companyName,
+    'email' => $email,
+    'contact_no' => $contactNo,
+    'province' => $province,
+    'city_municipality' => $cityMunicipality,
+    'barangay' => $barangay,
+    'site_address' => $siteAddress,
+    'service_category' => $serviceCategory,
+    'description' => $description,
+    'preferred_inspection_date' => $preferredInspectionDate !== '' ? $preferredInspectionDate : null,
+];
 
 $stmt = $conn->prepare(
-    'INSERT INTO service_inquiries (
-        client_name,
-        company_name,
-        email,
-        contact_no,
-        site_address,
-        service_category,
-        description,
-        preferred_inspection_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO pending_service_inquiries (token, otp_hash, payload_json, expires_at)
+     VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))'
 );
-
 if (!$stmt) {
     redirect_to_form('server_error');
 }
 
-$preferredInspectionDateValue = $preferredInspectionDate !== '' ? $preferredInspectionDate : null;
-$stmt->bind_param(
-    'ssssssss',
-    $clientName,
-    $companyName,
-    $email,
-    $contactNo,
-    $siteAddress,
-    $serviceCategory,
-    $description,
-    $preferredInspectionDateValue
-);
-
-if ($stmt->execute()) {
-    redirect_to_form('success');
+$otpHash = password_hash($otp, PASSWORD_DEFAULT);
+$payloadJson = json_encode($payload, JSON_UNESCAPED_SLASHES);
+$stmt->bind_param('sss', $token, $otpHash, $payloadJson);
+if (!$stmt->execute()) {
+    redirect_to_form('server_error');
 }
 
-redirect_to_form('server_error');
+$emailService = new EmailService();
+if (!$emailService->sendInquiryOtp($email, $clientName, $otp, 10)) {
+    redirect_to_form('email_error');
+}
+
+inquiry_otp_redirect('verify', $token);

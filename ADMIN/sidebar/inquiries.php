@@ -83,6 +83,18 @@ function inquiry_center_ensure_review_columns(mysqli $conn): void
     if (!inquiry_center_has_column($conn, 'archive_reason')) {
         $conn->query('ALTER TABLE service_inquiries ADD COLUMN archive_reason TEXT NULL AFTER archived_by');
     }
+
+    if (!inquiry_center_has_column($conn, 'province')) {
+        $conn->query('ALTER TABLE service_inquiries ADD COLUMN province VARCHAR(80) NULL AFTER contact_no');
+    }
+
+    if (!inquiry_center_has_column($conn, 'city_municipality')) {
+        $conn->query('ALTER TABLE service_inquiries ADD COLUMN city_municipality VARCHAR(120) NULL AFTER province');
+    }
+
+    if (!inquiry_center_has_column($conn, 'barangay')) {
+        $conn->query('ALTER TABLE service_inquiries ADD COLUMN barangay VARCHAR(150) NULL AFTER city_municipality');
+    }
 }
 
 function inquiry_center_format_datetime(?string $dateTime): string
@@ -214,9 +226,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $siteNotes = trim((string)($_POST['site_notes'] ?? ''));
         $scheduleTimestamp = $scheduledAt !== '' ? strtotime($scheduledAt) : false;
+        $scheduleTime = $scheduleTimestamp !== false ? date('H:i', $scheduleTimestamp) : '';
+        $allowedInspectionTimes = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
 
         if ($inquiryId <= 0 || $engineerId <= 0 || $scheduleTimestamp === false) {
             $error = 'Please select engineer and valid inspection schedule.';
+        } elseif (!in_array($scheduleTime, $allowedInspectionTimes, true)) {
+            $error = 'Please select a valid working-hour inspection time.';
         } elseif ($scheduleTimestamp < (time() + (30 * 60))) {
             $error = 'Please select an inspection time at least 30 minutes from now.';
         } else {
@@ -380,14 +396,14 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
     if ($search !== '') {
         // Smart search: hanapin sa important fields para mas mabilis ang lead filtering.
-        $where[] = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR site_address LIKE ? OR service_category LIKE ?)';
+        $where[] = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ?)';
         $keyword = '%' . $search . '%';
-        $types .= 'ssssss';
-        array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
+        $types .= 'sssssssss';
+        array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
     }
 
     $sql = 'SELECT id, client_name, company_name, email, contact_no, site_address,
-                   service_category, description, preferred_inspection_date,
+                   province, city_municipality, barangay, service_category, description, preferred_inspection_date,
                    status, admin_notes, reviewed_at, viewed_at, archived_at, archive_reason, created_at
             FROM service_inquiries';
     if (!empty($where)) {
@@ -561,6 +577,9 @@ include __DIR__ . '/../admin_sidebar.php';
                                     <div class="inquiry-section-title">Client and Project Details</div>
                                     <div class="inquiry-details-grid">
                                         <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>Province</span><strong><?php echo htmlspecialchars((string)($inquiry['province'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>City / Municipality</span><strong><?php echo htmlspecialchars((string)($inquiry['city_municipality'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>Barangay / Landmark</span><strong><?php echo htmlspecialchars((string)($inquiry['barangay'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars((string)($inquiry['preferred_inspection_date'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Reviewed</span><strong><?php echo htmlspecialchars(!empty($inquiry['reviewed_at']) ? inquiry_center_format_datetime($inquiry['reviewed_at']) : 'Not yet', ENT_QUOTES, 'UTF-8'); ?></strong></div>

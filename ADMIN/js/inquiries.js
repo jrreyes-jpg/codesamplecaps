@@ -193,9 +193,18 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        const formatLocalDate = function (date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return year + '-' + month + '-' + day;
+        };
+
         const today = new Date();
-        const todayDate = today.toISOString().slice(0, 10);
-        dateInput.min = todayDate;
+        const todayDate = formatLocalDate(today);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const lastWorkingTimeToday = new Date(todayDate + 'T16:00:00');
         let dateNoteTimer = null;
 
         const minimumScheduleBufferMs = 30 * 60 * 1000;
@@ -203,6 +212,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const getMinimumScheduleTime = function () {
             return Date.now() + minimumScheduleBufferMs;
         };
+
+        const hasWorkingTimeToday = function () {
+            return getMinimumScheduleTime() <= lastWorkingTimeToday.getTime();
+        };
+
+        dateInput.min = hasWorkingTimeToday() ? todayDate : formatLocalDate(tomorrow);
+        if (dateInput.value === todayDate && !hasWorkingTimeToday()) {
+            dateInput.value = '';
+            timeInput.value = '';
+        }
 
         const syncTimeOptions = function () {
             const minimumTime = getMinimumScheduleTime();

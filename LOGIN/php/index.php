@@ -1,5 +1,11 @@
 <?php
 session_start();
+require_once __DIR__ . '/../../config/service_areas.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/service_barangays.php';
+
+$serviceAreas = service_area_allowed_locations();
+$serviceBarangays = service_barangays_grouped($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -521,7 +527,11 @@ session_start();
                         ? 'Your inquiry was sent. We will contact you soon.'
                         : ($inquiryStatus === 'invalid'
                             ? 'Please check the form and try again.'
-                            : 'Sorry, the inquiry service had a problem. Please try again later.');
+                            : ($inquiryStatus === 'email_error'
+                                ? 'We could not send the verification code. Please try again later.'
+                                : ($inquiryStatus === 'expired'
+                                    ? 'The verification code expired. Please submit the inquiry again.'
+                                    : 'Sorry, the inquiry service had a problem. Please try again later.')));
                 ?>
                 <div class="inquiry-alert <?php echo $isInquirySuccess ? 'inquiry-alert-success' : 'inquiry-alert-error'; ?>">
                     <?php echo htmlspecialchars($inquiryMessage, ENT_QUOTES, 'UTF-8'); ?>
@@ -536,8 +546,8 @@ session_start();
                 </label>
 
                 <label>
-                    <span>Company Name</span>
-                    <input type="text" name="company_name" autocomplete="organization">
+                    <span>Company / Organization Name</span>
+                    <input type="text" name="company_name" autocomplete="organization" placeholder="Optional, leave blank if individual client">
                     <small class="field-error"></small>
                 </label>
 
@@ -554,9 +564,42 @@ session_start();
                 </label>
             </div>
 
+            <div class="inquiry-grid">
+                <label>
+                    <span>Province <b class="required-mark">*</b></span>
+                    <span class="inquiry-combobox" data-combobox>
+                        <input class="js-inquiry-province" name="province" data-label="Province" required placeholder="Search or select province" autocomplete="off" data-combobox-input>
+                        <button class="inquiry-combobox-button" type="button" aria-label="Show province options" data-combobox-toggle></button>
+                        <span class="inquiry-combobox-list" data-combobox-list></span>
+                    </span>
+                    <small class="field-error"></small>
+                </label>
+
+                <label>
+                    <span>City / Municipality <b class="required-mark">*</b></span>
+                    <span class="inquiry-combobox" data-combobox>
+                        <input class="js-inquiry-city" name="city_municipality" data-label="City / Municipality" required placeholder="Select province first" autocomplete="off" disabled data-combobox-input>
+                        <button class="inquiry-combobox-button" type="button" aria-label="Show city options" data-combobox-toggle></button>
+                        <span class="inquiry-combobox-list" data-combobox-list></span>
+                    </span>
+                    <small class="field-error"></small>
+                </label>
+            </div>
+
             <label>
-                <span>Project Site Address <b class="required-mark">*</b></span>
-                <textarea name="site_address" data-label="Project Site Address" rows="3" required></textarea>
+                <span>Barangay / Landmark Area <b class="required-mark">*</b></span>
+                <span class="inquiry-combobox" data-combobox>
+                    <input class="js-inquiry-barangay" type="text" name="barangay" data-label="Barangay / Landmark Area" required placeholder="Select city first" autocomplete="off" disabled data-combobox-input>
+                    <button class="inquiry-combobox-button" type="button" aria-label="Show barangay suggestions" data-combobox-toggle></button>
+                    <span class="inquiry-combobox-list" data-combobox-list></span>
+                </span>
+                <small class="field-error"></small>
+            </label>
+
+            <label>
+                <span>Exact Site Address <b class="required-mark">*</b></span>
+                <textarea name="site_address" data-label="Exact Site Address" rows="3" required placeholder="House/building no., street, gate, floor, or nearby details"></textarea>
+                <small class="field-help">Service area is limited to Luzon only.</small>
                 <small class="field-error"></small>
             </label>
 
@@ -579,7 +622,7 @@ session_start();
                         Preferred Inspection Date
                         <span class="field-info-wrap">
                             <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
-                            <small class="field-tooltip js-date-tooltip">Final schedule is subject to confirmation.</small>
+                            <small class="field-tooltip js-date-tooltip">This is only your preferred date. We will contact you to confirm the final schedule.</small>
                         </span>
                     </span>
                     <span class="date-input-wrap">
@@ -598,18 +641,24 @@ session_start();
 
             <label>
                 <span>Project Description <b class="required-mark">*</b></span>
-                <textarea name="description" data-label="Project Description" rows="4" required minlength="20" placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <textarea name="description" data-label="Project Description" rows="4" required minlength="10" placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <small class="field-help description-tip">Use at least 10 to 20 characters. Example: equipment, issue, or project scope.</small>
                 <small class="field-error"></small>
             </label>
 
             <p class="inquiry-form-message js-inquiry-message" aria-live="polite"></p>
             <div class="inquiry-modal-actions">
                 <button type="submit" class="btn btn-primary inquiry-submit">Submit Inquiry</button>
+                <button class="consult-close js-clear-inquiry-draft" type="button">Clear form</button>
                 <button id="closeInquiryModal" class="consult-close" type="button">Close</button>
             </div>
         </form>
     </div>
 </div>
+    <script>
+        window.edgeServiceAreas = <?php echo json_encode($serviceAreas, JSON_UNESCAPED_SLASHES); ?>;
+        window.edgeServiceBarangays = <?php echo json_encode($serviceBarangays, JSON_UNESCAPED_SLASHES); ?>;
+    </script>
     <script src="../js/loader.js" defer></script>
     <script src="../js/index.js" defer></script>
 

@@ -7,6 +7,7 @@ $isOverview = $currentFile === 'engineer_dashboard.php';
 $isArchive = $currentFile === 'projects.php' && (str_contains($currentQuery, 'view=trash') || str_contains($currentQuery, 'view=archive'));
 $isProjects = $currentFile === 'projects.php' && !$isArchive;
 $isProcurement = $currentFile === 'procurement.php';
+$isInspections = $currentFile === 'site_inspections.php';
 $isQuotations = in_array($currentFile, ['quotations.php', 'quotation_form.php'], true);
 $isReports = $currentFile === 'reports.php';
 $isTasks = $currentFile === 'tasks.php';
@@ -124,6 +125,20 @@ $isProfile = $currentFile === 'profile.php';
                     <span class="menu-mini-label">PO</span>
                 </span>
                 <span class="menu-text">Procurement</span>
+            </a>
+        </li>
+        <li>
+            <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="menu-link<?php echo $isInspections ? ' active-link' : ''; ?>">
+                <span class="menu-visual" aria-hidden="true">
+                    <span class="menu-icon">
+                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11z"></path>
+                            <circle cx="12" cy="10" r="2"></circle>
+                        </svg>
+                    </span>
+                    <span class="menu-mini-label">Inspect</span>
+                </span>
+                <span class="menu-text">Site Inspections</span>
             </a>
         </li>
         <li>

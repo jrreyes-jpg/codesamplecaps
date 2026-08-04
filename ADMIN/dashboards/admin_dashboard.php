@@ -51,6 +51,10 @@ function isStrongPassword(string $password): bool {
         && preg_match('/[^A-Za-z0-9]/', $password);
 }
 
+function isValidInquiryStatus(string $status): bool {
+    return in_array($status, ['Pending Review', 'Verified Lead', 'Not Qualified', 'For Inspection'], true);
+}
+
 function getCsrfToken(): string {
     return auth_csrf_token('super_admin');
 }
@@ -695,6 +699,53 @@ $old['role'] = $role;
         $activeTab = 'users';
     }
 
+    if ($action === 'update_inquiry_status' && $error === '') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $newStatus = trim((string)($_POST['status'] ?? ''));
+
+        if ($inquiryId <= 0 || !isValidInquiryStatus($newStatus)) {
+            $error = 'Invalid inquiry status update request.';
+        } else {
+            $statusStmt = $conn->prepare('SELECT status FROM service_inquiries WHERE id = ? LIMIT 1');
+            if (!$statusStmt) {
+                $error = 'Unable to load inquiry for update.';
+            } else {
+                $statusStmt->bind_param('i', $inquiryId);
+                $statusStmt->execute();
+                $statusResult = $statusStmt->get_result();
+                $existingInquiry = $statusResult ? $statusResult->fetch_assoc() : null;
+
+                if (!$existingInquiry) {
+                    $error = 'Inquiry not found.';
+                } elseif ((string)($existingInquiry['status'] ?? '') === $newStatus) {
+                    $error = 'Inquiry is already marked as ' . $newStatus . '.';
+                } else {
+                    $updateStmt = $conn->prepare('UPDATE service_inquiries SET status = ? WHERE id = ?');
+                    if (!$updateStmt) {
+                        $error = 'Failed to prepare inquiry update.';
+                    } else {
+                        $updateStmt->bind_param('si', $newStatus, $inquiryId);
+                        if ($updateStmt->execute()) {
+                            audit_log_event(
+                                $conn,
+                                (int)($_SESSION['user_id'] ?? 0),
+                                'update_inquiry_status',
+                                'service_inquiry',
+                                $inquiryId,
+                                ['status' => (string)($existingInquiry['status'] ?? '')],
+                                ['status' => $newStatus]
+                            );
+                            $message = 'Inquiry status updated to ' . $newStatus . '.';
+                        } else {
+                            $error = 'Failed to update inquiry status.';
+                        }
+                    }
+                }
+            }
+        }
+        $activeTab = 'dashboard';
+    }
+
     if ($action === 'edit_user' && $error === '') {
         $userId = (int)($_POST['user_id'] ?? 0);
         $fullName = trim($_POST['edit_full_name'] ?? '');
@@ -1009,6 +1060,34 @@ $currentAdminPhotoPreviewUrl = $currentAdminPhotoUrl !== '' ? $currentAdminPhoto
 $adminMetrics = admin_load_dashboard_metrics($conn, $engineers, $foremen, $clients);
 foreach ($adminMetrics as $metricName => $metricValue) {
     ${$metricName} = $metricValue;
+}
+
+$inquiryRows = [];
+if ($conn->ping()) {
+    $inquiryResult = $conn->query(
+        'SELECT id, client_name, company_name, email, contact_no, site_address, service_category, description, preferred_inspection_date, status, created_at
+         FROM service_inquiries
+         ORDER BY created_at DESC
+         LIMIT 8'
+    );
+
+    if ($inquiryResult) {
+        while ($row = $inquiryResult->fetch_assoc()) {
+            $inquiryRows[] = [
+                'id' => (int)($row['id'] ?? 0),
+                'client_name' => (string)($row['client_name'] ?? ''),
+                'company_name' => (string)($row['company_name'] ?? ''),
+                'email' => (string)($row['email'] ?? ''),
+                'contact_no' => (string)($row['contact_no'] ?? ''),
+                'site_address' => (string)($row['site_address'] ?? ''),
+                'service_category' => (string)($row['service_category'] ?? ''),
+                'description' => (string)($row['description'] ?? ''),
+                'preferred_inspection_date' => (string)($row['preferred_inspection_date'] ?? ''),
+                'status' => (string)($row['status'] ?? 'Pending Review'),
+                'created_at' => (string)($row['created_at'] ?? ''),
+            ];
+        }
+    }
 }
 
 if (!in_array($activeTab, ['dashboard', 'profile'], true)) {

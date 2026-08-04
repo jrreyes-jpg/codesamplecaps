@@ -78,6 +78,9 @@ function admin_load_dashboard_metrics(mysqli $conn, array $engineers, array $for
         'pendingQuotations' => hasTable($conn, 'quotations')
             ? getScalarInt($conn, "SELECT COUNT(*) FROM quotations WHERE status IN ('under_review', 'for_approval')")
             : 0,
+        'pendingInquiries' => hasTable($conn, 'service_inquiries')
+            ? getScalarInt($conn, "SELECT COUNT(*) FROM service_inquiries WHERE status = 'Pending Review'")
+            : 0,
         'activeDeployments' => hasTable($conn, 'project_inventory_deployments')
             ? getScalarInt(
                 $conn,

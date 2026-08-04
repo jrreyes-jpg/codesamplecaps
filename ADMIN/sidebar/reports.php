@@ -3,48 +3,9 @@ require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/project_progress.php';
 require_once __DIR__ . '/../../config/quotation_module.php';
+require_once __DIR__ . '/../includes/db_helpers.php';
 
 require_role('admin');
-
-function super_admin_reports_table_exists(mysqli $conn, string $tableName): bool
-{
-    static $tableCache = [];
-    $cacheKey = $conn->thread_id . ':' . $tableName;
-
-    if (array_key_exists($cacheKey, $tableCache)) {
-        return $tableCache[$cacheKey];
-    }
-
-    $stmt = $conn->prepare(
-        'SELECT 1
-         FROM INFORMATION_SCHEMA.TABLES
-         WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = ?
-         LIMIT 1'
-    );
-
-    if (!$stmt) {
-        return false;
-    }
-
-    $stmt->bind_param('s', $tableName);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $tableCache[$cacheKey] = (bool)($result && $result->fetch_assoc());
-    return $tableCache[$cacheKey];
-}
-
-function super_admin_reports_scalar(mysqli $conn, string $sql): int
-{
-    $result = $conn->query($sql);
-    if (!$result) {
-        return 0;
-    }
-
-    $row = $result->fetch_row();
-    return (int)($row[0] ?? 0);
-}
 
 $userSummaryResult = $conn->query(
     "SELECT
@@ -72,18 +33,18 @@ $activeProjects = (int)($projectSummary['active_projects'] ?? 0);
 $completedProjects = (int)($projectSummary['completed_projects'] ?? 0);
 $ongoingProjects = (int)($projectSummary['ongoing_projects'] ?? 0);
 $onHoldProjects = (int)($projectSummary['on_hold_projects'] ?? 0);
-$taskCount = super_admin_reports_scalar($conn, 'SELECT COUNT(*) FROM tasks');
-$auditLogCount = super_admin_reports_table_exists($conn, 'audit_logs')
-    ? super_admin_reports_scalar($conn, 'SELECT COUNT(*) FROM audit_logs')
+$taskCount = admin_db_scalar_int($conn, 'SELECT COUNT(*) FROM tasks');
+$auditLogCount = admin_db_table_exists($conn, 'audit_logs')
+    ? admin_db_scalar_int($conn, 'SELECT COUNT(*) FROM audit_logs')
     : 0;
 $quotationCount = quotation_module_tables_ready($conn)
     ? count(quotation_module_fetch_quotations($conn, 'super_admin', (int)($_SESSION['user_id'] ?? 0)))
     : 0;
-$pendingPurchaseOrders = super_admin_reports_table_exists($conn, 'purchase_orders')
-    ? super_admin_reports_scalar($conn, "SELECT COUNT(*) FROM purchase_orders WHERE admin_approval_status = 'pending'")
+$pendingPurchaseOrders = admin_db_table_exists($conn, 'purchase_orders')
+    ? admin_db_scalar_int($conn, "SELECT COUNT(*) FROM purchase_orders WHERE admin_approval_status = 'pending'")
     : 0;
-$inventoryAlerts = super_admin_reports_table_exists($conn, 'inventory')
-    ? super_admin_reports_scalar($conn, "SELECT COUNT(*) FROM inventory WHERE status IN ('low-stock', 'out-of-stock')")
+$inventoryAlerts = admin_db_table_exists($conn, 'inventory')
+    ? admin_db_scalar_int($conn, "SELECT COUNT(*) FROM inventory WHERE status IN ('low-stock', 'out-of-stock')")
     : 0;
 $portfolioProgress = $totalProjects > 0
     ? project_progress_clamp(
@@ -92,166 +53,18 @@ $portfolioProgress = $totalProjects > 0
         - (($onHoldProjects / $totalProjects) * 10)
     )
     : 0;
+
+$adminPageTitle = 'Reports Hub - Admin';
+$adminCssFiles = [
+    '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
+    '/codesamplecaps/ADMIN/css/reports.css',
+];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
+];
+include __DIR__ . '/../layout/header.php';
+include __DIR__ . '/../admin_sidebar.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports Hub - Admin</title>
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/super_admin_dashboard.css">
-    <style>
-        .reports-shell {
-            display: grid;
-            gap: 24px;
-        }
-
-        .reports-hero,
-        .reports-card,
-        .report-link-card {
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            background: rgba(255, 255, 255, 0.94);
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-        }
-
-        .reports-hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
-            gap: 20px;
-            padding: 28px;
-            border-radius: 28px;
-        }
-
-        .reports-hero h1,
-        .reports-card h2,
-        .report-link-card h3 {
-            margin: 0;
-            color: #0f172a;
-        }
-
-        .reports-hero p,
-        .reports-card p,
-        .report-link-card p {
-            color: #475569;
-        }
-
-        .reports-kicker {
-            margin: 0 0 10px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: #047857;
-        }
-
-        .reports-hero h1 {
-            font-size: clamp(2rem, 4vw, 2.8rem);
-            line-height: 1.05;
-        }
-
-        .reports-chip-row,
-        .reports-stat-grid,
-        .report-links-grid {
-            display: grid;
-            gap: 16px;
-        }
-
-        .reports-chip-row {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            margin-top: 18px;
-        }
-
-        .reports-chip {
-            padding: 14px 16px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #ecfdf5, #f8fafc);
-            color: #166534;
-            font-weight: 700;
-        }
-
-        .reports-chip span,
-        .report-stat-card span {
-            display: block;
-            font-size: 0.8rem;
-            color: #64748b;
-        }
-
-        .reports-chip strong,
-        .report-stat-card strong {
-            display: block;
-            margin-top: 4px;
-            font-size: 1.6rem;
-            color: #0f172a;
-        }
-
-        .reports-card {
-            padding: 24px;
-            border-radius: 24px;
-        }
-
-        .reports-stat-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .report-stat-card {
-            padding: 18px;
-            border-radius: 20px;
-            background: #f8fafc;
-        }
-
-        .report-links-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .report-link-card {
-            display: grid;
-            gap: 12px;
-            padding: 22px;
-            border-radius: 22px;
-            text-decoration: none;
-            color: inherit;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .report-link-card:hover,
-        .report-link-card:focus-visible {
-            transform: translateY(-3px);
-            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
-            outline: none;
-        }
-
-        .report-link-card__meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            color: #166534;
-            font-weight: 700;
-        }
-
-        @media (max-width: 1200px) {
-            .reports-stat-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (max-width: 900px) {
-            .reports-hero,
-            .report-links-grid,
-            .reports-chip-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .reports-stat-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-<?php include __DIR__ . '/../admin_sidebar.php'; ?>
 
 <main class="main-content">
     <div class="reports-shell">
@@ -360,6 +173,4 @@ $portfolioProgress = $totalProjects > 0
     </div>
 </main>
 
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
-</body>
-</html>
+<?php include __DIR__ . '/../layout/footer.php'; ?>

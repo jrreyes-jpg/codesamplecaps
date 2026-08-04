@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pendingId = (int)$pending['id'];
         $update->bind_param('i', $pendingId);
         $update->execute();
-        $error = 'Wrong code. Please try again.';
+        $error = 'Invalid or expired code. Please try again.';
     } else {
         $payload = json_decode((string)$pending['payload_json'], true);
         if (!is_array($payload)) {
@@ -169,7 +169,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
-                    <input type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="6-digit code" required autofocus>
+                    <label class="floating-field">
+                        <input type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " required autofocus>
+                        <span>6-digit code</span>
+                    </label>
                     <button type="submit">Verify and Submit</button>
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/index.php#contact">Back to Home</a>

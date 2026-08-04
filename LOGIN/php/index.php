@@ -597,9 +597,14 @@ $serviceBarangays = service_barangays_grouped($conn);
             </label>
 
             <label>
-                <span>Exact Site Address <b class="required-mark">*</b></span>
-                <textarea name="site_address" data-label="Exact Site Address" rows="3" required placeholder="House/building no., street, gate, floor, or nearby details"></textarea>
-                <small class="field-help">Service area is limited to Luzon only.</small>
+                <span class="field-label-with-info">
+                    Exact Site Address <b class="required-mark">*</b>
+                    <span class="field-info-wrap">
+                        <button class="field-info-button js-field-info-button" type="button" aria-label="Site address note">i</button>
+                        <small class="field-tooltip js-field-tooltip">Service area is limited to Luzon only.</small>
+                    </span>
+                </span>
+                <textarea name="site_address" data-label="Exact Site Address" rows="3" required data-help-tooltip-target placeholder="House/building no., street, gate, floor, or nearby details"></textarea>
                 <small class="field-error"></small>
             </label>
 
@@ -640,17 +645,24 @@ $serviceBarangays = service_barangays_grouped($conn);
             </label>
 
             <label>
-                <span>Project Description <b class="required-mark">*</b></span>
-                <textarea name="description" data-label="Project Description" rows="4" required minlength="10" placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
-                <small class="field-help description-tip">Use at least 10 to 20 characters. Example: equipment, issue, or project scope.</small>
+                <span class="field-label-with-info">
+                    Project Description <b class="required-mark">*</b>
+                    <span class="field-info-wrap">
+                        <button class="field-info-button js-field-info-button" type="button" aria-label="Project description note">i</button>
+                        <small class="field-tooltip js-field-tooltip">Use at least 10 to 20 characters. Example: equipment, issue, or project scope.</small>
+                    </span>
+                </span>
+                <textarea name="description" data-label="Project Description" rows="4" required minlength="10" data-help-tooltip-target placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
                 <small class="field-error"></small>
             </label>
 
             <p class="inquiry-form-message js-inquiry-message" aria-live="polite"></p>
             <div class="inquiry-modal-actions">
-                <button type="submit" class="btn btn-primary inquiry-submit">Submit Inquiry</button>
-                <button class="consult-close js-clear-inquiry-draft" type="button">Clear form</button>
-                <button id="closeInquiryModal" class="consult-close" type="button">Close</button>
+                <button class="consult-close inquiry-clear-button js-clear-inquiry-draft" type="button">Clear form</button>
+                <span class="inquiry-modal-primary-actions">
+                    <button id="closeInquiryModal" class="consult-close" type="button">Close</button>
+                    <button type="submit" class="btn btn-primary inquiry-submit">Submit Inquiry</button>
+                </span>
             </div>
         </form>
     </div>

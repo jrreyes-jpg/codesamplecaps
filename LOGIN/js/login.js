@@ -162,6 +162,32 @@ const initStaleLoginWindowGuard = () => {
             // Ignore invalid localStorage data.
         }
     });
+
+    const checkAuthStatus = () => {
+        fetch('/codesamplecaps/LOGIN/php/auth_status.php', {
+            cache: 'no-store',
+            credentials: 'same-origin',
+        })
+            .then((response) => response.ok ? response.json() : null)
+            .then((state) => {
+                if (state?.authenticated) {
+                    redirectStaleLogin(String(state.dashboard || ''));
+                }
+            })
+            .catch(() => {});
+    };
+
+    checkAuthStatus();
+    const staleLoginCheckTimer = window.setInterval(checkAuthStatus, 3000);
+    window.addEventListener('focus', checkAuthStatus);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            checkAuthStatus();
+        }
+    });
+    window.addEventListener('beforeunload', () => {
+        window.clearInterval(staleLoginCheckTimer);
+    });
 };
 
 const initEmailLockStatus = () => {

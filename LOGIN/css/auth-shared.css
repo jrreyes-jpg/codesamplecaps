@@ -110,10 +110,44 @@ input {
     outline: none;
     transition: all 0.3s ease;
     margin-bottom: 15px; /* uniform spacing for all inputs */
-}input:focus{
+}
+
+input:focus{
     border-color:#0f9d38;
     background:#ffffff;
     box-shadow:0 0 0 3px rgba(15,157,56,0.15);
+}
+
+/* Floating input label para malinaw pa rin ang field name habang nagta-type. */
+.floating-field {
+    position: relative;
+    display: block;
+    margin-bottom: 15px;
+}
+
+.floating-field input {
+    margin-bottom: 0;
+    padding-top: 14px;
+}
+
+.floating-field span {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 15px;
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.floating-field input:focus + span,
+.floating-field input:not(:placeholder-shown) + span {
+    top: 8px;
+    transform: none;
+    color: #087f23;
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .password-wrapper {

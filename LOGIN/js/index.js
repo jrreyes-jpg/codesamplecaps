@@ -325,10 +325,20 @@ const initInquiryForm = () => {
 
         if (inspectionDateInput) {
             inspectionDateInput.min = preferredDateMin;
-            if (inspectionDateInput.value && inspectionDateInput.value < preferredDateMin) {
-                inspectionDateInput.value = '';
-            }
         }
+
+        const enforcePreferredDateMin = () => {
+            if (!inspectionDateInput) {
+                return;
+            }
+
+            // Kapag manual edit ang date, ibalik agad sa pinaka-maagang allowed date.
+            if (inspectionDateInput.value && inspectionDateInput.value < preferredDateMin) {
+                inspectionDateInput.value = preferredDateMin;
+            }
+        };
+
+        enforcePreferredDateMin();
 
         const closeCombobox = (input) => {
             const box = input?.closest('[data-combobox]');
@@ -497,6 +507,20 @@ const initInquiryForm = () => {
             dateTooltip?.classList.toggle('is-visible');
         });
 
+        inquiryForm.querySelectorAll('.js-field-info-button').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const tooltip = button.closest('.field-info-wrap')?.querySelector('.js-field-tooltip');
+                tooltip?.classList.toggle('is-visible');
+            });
+        });
+
+        inquiryForm.querySelectorAll('[data-help-tooltip-target]').forEach((field) => {
+            const tooltip = field.closest('label')?.querySelector('.js-field-tooltip');
+            field.addEventListener('focus', () => tooltip?.classList.add('is-visible'));
+            field.addEventListener('blur', () => tooltip?.classList.remove('is-visible'));
+        });
+
         datePickerButton?.addEventListener('click', () => {
             if (!inspectionDateInput) {
                 return;
@@ -520,7 +544,11 @@ const initInquiryForm = () => {
                 inspectionDateInput.focus();
             }
         });
-        inspectionDateInput?.addEventListener('change', hideDateTooltip);
+        inspectionDateInput?.addEventListener('input', enforcePreferredDateMin);
+        inspectionDateInput?.addEventListener('change', () => {
+            enforcePreferredDateMin();
+            hideDateTooltip();
+        });
         inspectionDateInput?.addEventListener('blur', hideDateTooltip);
 
         const syncOtherServiceField = () => {
@@ -615,6 +643,7 @@ const initInquiryForm = () => {
         restoreInquiryDraft();
 
         inquiryForm.addEventListener('submit', (event) => {
+            enforcePreferredDateMin();
             normalizeContactNumber(contactInput);
             const fields = Array.from(inquiryForm.querySelectorAll('input, select, textarea'));
             let firstInvalidField = null;

@@ -514,6 +514,8 @@ h4 {
 .inquiry-form label {
     display: grid;
     gap: 8px;
+    justify-items: stretch;
+    text-align: left;
     color: #172033;
     font-weight: 700;
 }
@@ -553,6 +555,7 @@ h4 {
 
 .inquiry-combobox input {
     padding-right: 44px;
+    text-align: left;
 }
 
 .inquiry-combobox-button {
@@ -672,11 +675,6 @@ h4 {
 .field-help {
     color: #64748b;
     font-weight: 500;
-}
-
-.description-tip {
-    display: block;
-    margin-top: 4px;
 }
 
 .field-label-with-info {
@@ -1712,10 +1710,29 @@ h4 {
     justify-content: space-between;
 }
 
+.inquiry-modal-primary-actions {
+    display: inline-flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
 .inquiry-modal-actions .consult-close {
     margin-top: 0;
     background: #e5e7eb;
     color: #111827;
+}
+
+.inquiry-modal-actions .inquiry-clear-button {
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid rgba(234, 88, 12, 0.28);
+}
+
+.inquiry-modal-actions .inquiry-clear-button:hover,
+.inquiry-modal-actions .inquiry-clear-button:focus-visible {
+    background: #ffedd5;
+    color: #7c2d12;
 }
 
 .consult-close {

@@ -166,12 +166,20 @@ class EmailService {
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
             $safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
             $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
+            $logoPath = __DIR__ . '/../IMAGES/edge.jpg';
+            $logoHtml = '';
+            if (is_file($logoPath)) {
+                $this->mailer->addEmbeddedImage($logoPath, 'edgeLogo');
+                $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
+            }
             $this->mailer->isHTML(true);
             $this->mailer->Subject = 'Inquiry Verification Code - ' . $this->config->get('APP_NAME');
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#0f766e;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        {$logoHtml}
                         <h2 style='margin:0'>Verify your inquiry</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>

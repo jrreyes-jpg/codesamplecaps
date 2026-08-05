@@ -76,6 +76,12 @@ document.addEventListener('DOMContentLoaded', function () {
             syncTotal(form);
         });
 
+        form.querySelector('[data-confirm-submit-costing]')?.addEventListener('click', function (event) {
+            if (!window.confirm('Submit this costing to Admin for review?')) {
+                event.preventDefault();
+            }
+        });
+
         syncTotal(form);
     });
 });

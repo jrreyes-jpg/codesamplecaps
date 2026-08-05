@@ -15,6 +15,30 @@ $lockout_time = $lockout_minutes * 60;
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
 $ip_only_attempt_key = '__ip_only__';
 
+function login_debug_log(string $event, array $context = []): void
+{
+    $logDir = __DIR__ . '/../../storage/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+
+    $safeContext = array_merge([
+        'event' => $event,
+        'time' => date('Y-m-d H:i:s'),
+        'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+        'uri' => $_SERVER['REQUEST_URI'] ?? '',
+        'session' => substr(session_id(), 0, 10),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        'user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180),
+    ], $context);
+
+    @file_put_contents(
+        $logDir . '/login_debug.log',
+        json_encode($safeContext, JSON_UNESCAPED_SLASHES) . PHP_EOL,
+        FILE_APPEND | LOCK_EX
+    );
+}
+
 $error = '';
 $failed_attempts_display = '';
 $attempts_left = null;
@@ -40,7 +64,8 @@ if (isset($_GET['timeout'])) {
     $error = 'Your session expired after 15 minutes of inactivity. Please log in again.';
 } elseif (isset($_GET['logout'])) {
     $error = 'You have been logged out successfully.';
-    $error_class = 'error-danger';
+    $error_class = 'login-toast-success';
+    login_debug_log('logout_page_rendered');
 } else {
     auth_redirect_authenticated_user();
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $login_flash['error'] !== '') {
@@ -194,6 +219,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim((string)($_POST['email'] ?? '')));
     $password = (string)($_POST['password'] ?? '');
     $_SESSION['last_login_email'] = $email;
+    login_debug_log('post_received', [
+        'email_hash' => $email !== '' ? hash('sha256', $email) : '',
+    ]);
 
     login_clear_expired_ip_attempts($conn, $ip_address, $lockout_time);
 
@@ -302,6 +330,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $error = 'Your account role is not allowed to access this system.';
                             } else {
                                 auth_login_user($user);
+                                login_debug_log('login_success_redirect', [
+                                    'user_id' => (int)($user['id'] ?? 0),
+                                    'role' => (string)($user['role'] ?? ''),
+                                    'dashboard' => $dashboardPath,
+                                    'email_hash' => hash('sha256', $email),
+                                ]);
                                 header('Location: ' . $dashboardPath);
                                 exit();
                             }
@@ -347,6 +381,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($error !== '') {
+        login_debug_log('login_error_redirect', [
+            'email_hash' => $email !== '' ? hash('sha256', $email) : '',
+            'error_class' => $error_class,
+            'lock_type' => $lock_type,
+        ]);
         login_set_flash(
             $error,
             $failed_attempts_display,
@@ -382,6 +421,12 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <?php if (isset($_GET['logout']) && $error !== ''): ?>
+        <div class="login-toast <?php echo htmlspecialchars($error_class, ENT_QUOTES, 'UTF-8'); ?>" role="status" aria-live="polite">
+            <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+    <?php endif; ?>
+
     <a href="../php/index.php" class="back-home animate__animated animate__fadeInDown">
         &larr; Back to Home
     </a>
@@ -400,7 +445,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 
         <div class="right-panel">
             <div class="form active" id="loginForm">
-                <form method="POST">
+                <form method="POST" autocomplete="off">
                     <div class="mobile-login-brand">
                         <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo">
                         <strong>EDGE Automation</strong>
@@ -408,7 +453,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
                     </div>
                     <h2>Login</h2>
 
-                    <?php if ($error): ?>
+                    <?php if ($error && !isset($_GET['logout'])): ?>
                         <div class="error-box <?php echo htmlspecialchars($error_class, ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
                            <?php if ($error_class === 'error-locked'): ?>
@@ -435,6 +480,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
                             name="email"
                             placeholder=" "
                             value="<?php echo htmlspecialchars($email_input_value, ENT_QUOTES, 'UTF-8'); ?>"
+                            autocomplete="username"
                             required
                             <?= $is_device_locked ? 'disabled' : ''; ?>
                         >
@@ -446,6 +492,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
     type="password"
     name="password"
     placeholder=" "
+    autocomplete="current-password"
     required
     <?= ($is_device_locked || $is_email_locked) ? 'disabled' : ''; ?>
 >
@@ -482,7 +529,8 @@ window.lockoutConfig = {
     seconds: <?php echo (int)$remaining_seconds; ?>,
     unlockAt: <?php echo (int)(time() + (int)$remaining_seconds); ?>,
     lockType: <?php echo json_encode($lock_type); ?>,
-    statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php'
+    statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php',
+    isLogoutPage: <?php echo isset($_GET['logout']) ? 'true' : 'false'; ?>
 };
 </script>
     <script src="../js/login.js"></script>

@@ -175,4 +175,4 @@ if (!$emailService->sendInquiryOtp($email, $clientName, $otp, 10)) {
     redirect_to_form('email_error');
 }
 
-inquiry_otp_redirect('verify', $token);
+inquiry_otp_redirect('verify', $token, ['sent' => '1']);

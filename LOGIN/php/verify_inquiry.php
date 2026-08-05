@@ -12,7 +12,7 @@ $error = '';
 
 function verify_inquiry_redirect_home(string $status): void
 {
-    header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=' . rawurlencode($status) . '#contact');
+    header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=' . rawurlencode($status));
     exit();
 }
 
@@ -161,25 +161,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Inquiry - Edge Automation</title>
+    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
     <link rel="stylesheet" href="../css/auth-shared.css">
 </head>
 <body>
-    <div class="container">
+    <?php if (($_GET['sent'] ?? '') === '1'): ?>
+        <div class="verify-toast verify-toast-success" id="verifySentToast">
+            Verification code sent. Please check your email.
+        </div>
+    <?php endif; ?>
+    <div class="container verify-inquiry-shell">
+        <div class="left-panel verify-inquiry-brand">
+            <div class="logo verify-inquiry-logo">
+                <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo">
+            </div>
+            <h1 class="company-name">EDGE AUTOMATION</h1>
+            <p>Secure inquiry verification</p>
+        </div>
         <div class="right-panel">
-            <div class="form active">
+            <div class="form active verify-inquiry-card">
                 <form method="POST" id="verifyInquiryForm">
                     <h2>Verify Inquiry</h2>
-                    <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it to submit your inquiry.</p>
+                    <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
                     <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
-                    <label class="floating-field">
-                        <input type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " required autofocus>
+                    <label class="floating-field verify-code-field">
+                        <input class="js-otp-code" type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " autocomplete="one-time-code" required autofocus>
                         <span>6-digit code</span>
                     </label>
                     <button type="submit" id="verifyInquiryButton">Verify and Submit</button>
                     <div class="links">
-                        <a href="/codesamplecaps/LOGIN/php/index.php#contact" id="backToHomeLink">Back to Home</a>
+                        <a href="/codesamplecaps/LOGIN/php/index.php" id="backToHomeLink">Back to Home</a>
                     </div>
                 </form>
             </div>
@@ -189,7 +202,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const verifyInquiryForm = document.getElementById('verifyInquiryForm');
         const verifyInquiryButton = document.getElementById('verifyInquiryButton');
         const backToHomeLink = document.getElementById('backToHomeLink');
+        const otpCodeInput = document.querySelector('.js-otp-code');
+        const verifySentToast = document.getElementById('verifySentToast');
         let isVerifyingInquiry = false;
+
+        if (verifySentToast) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('sent');
+            window.history.replaceState({}, document.title, url.toString());
+
+            window.setTimeout(() => {
+                verifySentToast.classList.add('is-closing');
+                window.setTimeout(() => verifySentToast.remove(), 250);
+            }, 4200);
+        }
+
+        otpCodeInput?.addEventListener('input', () => {
+            otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
+        });
 
         verifyInquiryForm?.addEventListener('submit', (event) => {
             if (isVerifyingInquiry) {

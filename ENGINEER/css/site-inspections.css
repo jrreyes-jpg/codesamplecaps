@@ -75,6 +75,16 @@
     font-weight: 900;
 }
 
+.inspection-status[data-status="Submitted to Admin"] {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.inspection-status[data-status="Costing Draft"] {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
 .inspection-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -141,6 +151,23 @@
     padding: 9px 10px;
     font: inherit;
     background: #ffffff;
+}
+
+.costing-row input:disabled,
+.costing-row select:disabled {
+    background: #f1f5f9;
+    color: #475569;
+    cursor: not-allowed;
+}
+
+.inspection-submit-note {
+    padding: 11px 12px;
+    border-radius: 14px;
+    background: #dbeafe;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    color: #1d4ed8;
+    font-size: 0.88rem;
+    font-weight: 800;
 }
 
 .btn-primary,

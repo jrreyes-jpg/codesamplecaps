@@ -50,6 +50,28 @@ const showNotification = (message, type = 'info') => {
     }, 4000);
 };
 
+const initInquiryStatusToast = () => {
+    const status = window.edgeInquiryStatus || '';
+
+    if (!status) {
+        return;
+    }
+
+    const messages = {
+        success: ['Your inquiry was sent. We will contact you soon.', 'success'],
+        invalid: ['Please check the form and try again.', 'error'],
+        email_error: ['We could not send the verification code. Please try again later.', 'error'],
+        expired: ['The verification code expired. Please submit the inquiry again.', 'error'],
+    };
+    const [message, type] = messages[status] || ['Sorry, the inquiry service had a problem. Please try again later.', 'error'];
+
+    showNotification(message, type);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('inquiry');
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+};
+
 const initFormHandling = () => {
     const contactForm = document.getElementById('contactForm');
 
@@ -212,7 +234,7 @@ const initConsultationModal = () => {
         }
     });
 
-    if (new URLSearchParams(window.location.search).has('inquiry')) {
+    if (new URLSearchParams(window.location.search).has('inquiry') && window.edgeInquiryStatus !== 'success') {
         openInquiryModal();
     }
 };
@@ -323,6 +345,25 @@ const initInquiryForm = () => {
             return;
         }
 
+        const inquiryModalContent = inquiryForm.closest('.inquiry-modal-content');
+
+        const gentlyRevealField = (field, center = false) => {
+            if (!field || !inquiryModalContent) {
+                field?.scrollIntoView({ behavior: 'smooth', block: center ? 'center' : 'nearest' });
+                return;
+            }
+
+            const fieldRect = field.getBoundingClientRect();
+            const modalRect = inquiryModalContent.getBoundingClientRect();
+            const isHiddenAbove = fieldRect.top < modalRect.top + 24;
+            const isHiddenBelow = fieldRect.bottom > modalRect.bottom - 24;
+
+            // I-scroll lang kapag hindi kita ang field para hindi hilo ang user habang nagta-tab.
+            if (center || isHiddenAbove || isHiddenBelow) {
+                field.scrollIntoView({ behavior: 'smooth', block: center ? 'center' : 'nearest' });
+            }
+        };
+
         const clearFormMessageIfReady = () => {
             if (!inquiryForm.querySelector('.is-invalid')) {
                 message.textContent = '';
@@ -382,7 +423,7 @@ const initInquiryForm = () => {
             if (matches.length === 0) {
                 const empty = document.createElement('span');
                 empty.className = 'inquiry-combobox-empty';
-                empty.textContent = 'No match. You can type it manually.';
+                empty.textContent = 'No match. Please select from the list.';
                 list.appendChild(empty);
             } else {
                 matches.forEach((option) => {
@@ -427,10 +468,10 @@ const initInquiryForm = () => {
             });
         };
 
-        const isValidProvince = () => Boolean(window.edgeServiceAreas?.[provinceSelect?.value]);
+        const isValidProvince = () => Boolean(window.edgeServiceAreas?.[provinceSelect?.value?.trim()]);
         const isValidCity = () => {
-            const cities = window.edgeServiceAreas?.[provinceSelect?.value] || [];
-            return cities.includes(citySelect?.value || '');
+            const cities = window.edgeServiceAreas?.[provinceSelect?.value?.trim()] || [];
+            return cities.includes(citySelect?.value?.trim() || '');
         };
         let lastValidCity = '';
 
@@ -439,7 +480,7 @@ const initInquiryForm = () => {
                 return [];
             }
 
-            return window.edgeServiceBarangays?.[provinceSelect.value]?.[citySelect.value] || [];
+            return window.edgeServiceBarangays?.[provinceSelect.value.trim()]?.[citySelect.value.trim()] || [];
         };
 
         const syncBarangayState = () => {
@@ -469,7 +510,7 @@ const initInquiryForm = () => {
                 return;
             }
 
-            const cities = window.edgeServiceAreas?.[provinceSelect.value] || [];
+            const cities = window.edgeServiceAreas?.[provinceSelect.value.trim()] || [];
             citySelect.disabled = cities.length === 0;
             citySelect.placeholder = cities.length === 0 ? 'Select province first' : 'Search or select city / municipality';
             citySelect.value = '';
@@ -488,7 +529,7 @@ const initInquiryForm = () => {
             clearFormMessageIfReady();
         });
         syncCityOptions();
-        bindCombobox(citySelect, () => window.edgeServiceAreas?.[provinceSelect?.value] || []);
+        bindCombobox(citySelect, () => window.edgeServiceAreas?.[provinceSelect?.value?.trim()] || []);
         bindCombobox(barangayInput, getBarangaySuggestions);
         citySelect?.addEventListener('input', syncBarangayState);
         citySelect?.addEventListener('change', () => {
@@ -631,6 +672,9 @@ const initInquiryForm = () => {
         });
 
         inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {
+            field.addEventListener('focus', () => {
+                gentlyRevealField(field);
+            });
             field.addEventListener('input', () => {
                 clearFieldError(field);
                 clearFormMessageIfReady();
@@ -706,14 +750,14 @@ const initInquiryForm = () => {
             }
 
             if (provinceSelect && citySelect) {
-                const allowedCities = window.edgeServiceAreas?.[provinceSelect.value] || [];
+                const allowedCities = window.edgeServiceAreas?.[provinceSelect.value.trim()] || [];
                 if (!isValidProvince()) {
-                    setFieldError(provinceSelect, 'Please select a province in our service area.');
+                    setFieldError(provinceSelect, 'Please select a valid Luzon province from the list.');
                     firstInvalidField = firstInvalidField || provinceSelect;
                 }
 
-                if (!allowedCities.includes(citySelect.value)) {
-                    setFieldError(citySelect, 'Please select a city in our CALABARZON service area.');
+                if (!allowedCities.includes(citySelect.value.trim())) {
+                    setFieldError(citySelect, 'Please select a valid city under the selected province.');
                     firstInvalidField = firstInvalidField || citySelect;
                 }
             }
@@ -722,7 +766,7 @@ const initInquiryForm = () => {
                 setFieldError(barangayInput, 'Please select a valid city first.');
                 firstInvalidField = firstInvalidField || barangayInput;
             } else if (barangayInput && !getBarangaySuggestions().includes(barangayInput.value.trim())) {
-                setFieldError(barangayInput, 'Please select a barangay under the selected city.');
+                setFieldError(barangayInput, 'Please select a valid barangay under the selected city.');
                 firstInvalidField = firstInvalidField || barangayInput;
             }
 
@@ -730,6 +774,7 @@ const initInquiryForm = () => {
                 event.preventDefault();
                 message.textContent = 'Please fix the highlighted fields.';
                 message.classList.add('is-error');
+                gentlyRevealField(firstInvalidField, true);
                 firstInvalidField.focus();
                 return;
             }
@@ -1232,6 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initScrollAnimations();
     initNavbarScroll();
     initConsultationModal();
+    initInquiryStatusToast();
     initNewClientTooltip();
     initServiceCards();
     initProjectLightbox();

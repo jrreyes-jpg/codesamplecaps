@@ -39,13 +39,29 @@ function engineer_owns_inspection(mysqli $conn, int $inspectionId, int $engineer
     return (bool)$stmt->get_result()->fetch_assoc();
 }
 
+function engineer_get_inspection_status(mysqli $conn, int $inspectionId, int $engineerId): string
+{
+    $stmt = $conn->prepare('SELECT status FROM site_inspections WHERE id = ? AND engineer_id = ? LIMIT 1');
+    if (!$stmt) {
+        return '';
+    }
+
+    $stmt->bind_param('ii', $inspectionId, $engineerId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return (string)($row['status'] ?? '');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inspectionId = (int)($_POST['inspection_id'] ?? 0);
+    $costingAction = (string)($_POST['costing_action'] ?? 'save_draft');
 
     if (!engineer_inspection_valid_csrf($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request. Please try again.';
     } elseif ($inspectionId <= 0 || !engineer_owns_inspection($conn, $inspectionId, $userId)) {
         $error = 'Inspection not found.';
+    } elseif (engineer_get_inspection_status($conn, $inspectionId, $userId) === 'Submitted to Admin') {
+        $error = 'This costing was already submitted to Admin.';
     } else {
         $itemTypes = $_POST['item_type'] ?? [];
         $inventoryIds = $_POST['inventory_id'] ?? [];
@@ -130,7 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $insertStmt->execute();
                 }
 
-                $status = 'Costing Draft';
+                // Kapag final submit, Admin review na ang next step.
+                $status = $costingAction === 'submit_to_admin' ? 'Submitted to Admin' : 'Costing Draft';
                 $statusStmt = $conn->prepare('UPDATE site_inspections SET status = ? WHERE id = ? AND engineer_id = ?');
                 if (!$statusStmt) {
                     throw new RuntimeException('Failed to update inspection status.');
@@ -139,7 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $statusStmt->execute();
 
                 $conn->commit();
-                $message = 'Inspection costing saved.';
+                $message = $costingAction === 'submit_to_admin'
+                    ? 'Costing submitted to Admin.'
+                    : 'Inspection costing saved.';
             } catch (Throwable $exception) {
                 $conn->rollback();
                 $error = 'Failed to save costing.';
@@ -225,6 +244,8 @@ $csrfToken = engineer_inspection_csrf_token();
                     $inspectionId = (int)$inspection['id'];
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
+                    $inspectionStatus = (string)($inspection['status'] ?? 'Scheduled');
+                    $isSubmittedToAdmin = $inspectionStatus === 'Submitted to Admin';
                     if (empty($costItems)) {
                         $costItems = [[
                             'item_type' => 'material',
@@ -242,7 +263,7 @@ $csrfToken = engineer_inspection_csrf_token();
                                 <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <p class="inspection-meta"><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
                             </div>
-                            <span class="inspection-status"><?php echo htmlspecialchars((string)$inspection['status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="inspection-status" data-status="<?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
                         <div class="inspection-grid">
@@ -263,16 +284,19 @@ $csrfToken = engineer_inspection_csrf_token();
                                 <strong>Costing Draft</strong>
                                 <span>Total: <b data-costing-total><?php echo engineer_format_money($totalCost); ?></b></span>
                             </div>
+                            <?php if ($isSubmittedToAdmin): ?>
+                                <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
+                            <?php endif; ?>
 
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($costItems as $item): ?>
                                     <div class="costing-row">
-                                        <select name="item_type[]" required>
+                                        <select name="item_type[]" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
                                             <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
                                             <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
                                             <option value="other" <?php echo ($item['item_type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
                                         </select>
-                                        <select name="inventory_id[]" data-inventory-picker>
+                                        <select name="inventory_id[]" data-inventory-picker <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
                                             <option value="">No inventory link</option>
                                             <?php foreach ($inventoryOptions as $inventory): ?>
                                                 <option
@@ -284,19 +308,24 @@ $csrfToken = engineer_inspection_csrf_token();
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <input type="text" name="item_name[]" placeholder="Item or labor name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required>
-                                        <input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required>
-                                        <input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required>
-                                        <input type="text" name="notes[]" placeholder="Notes" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                        <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
+                                        <input type="text" name="item_name[]" placeholder="Item or labor name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        <input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        <input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        <input type="text" name="notes[]" placeholder="Notes" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        <?php if (!$isSubmittedToAdmin): ?>
+                                            <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
 
-                            <div class="inspection-actions">
-                                <button type="button" class="btn-secondary" data-add-costing-row>Add item</button>
-                                <button type="submit" class="btn-primary">Save Costing Draft</button>
-                            </div>
+                            <?php if (!$isSubmittedToAdmin): ?>
+                                <div class="inspection-actions">
+                                    <button type="button" class="btn-secondary" data-add-costing-row>Add item</button>
+                                    <button type="submit" name="costing_action" value="save_draft" class="btn-secondary">Save Draft</button>
+                                    <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing>Submit to Admin</button>
+                                </div>
+                            <?php endif; ?>
                         </form>
                     </article>
                 <?php endforeach; ?>

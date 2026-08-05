@@ -524,24 +524,6 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
         <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate>
             <input type="hidden" name="inquiry_form_token" value="<?php echo htmlspecialchars($_SESSION['inquiry_form_token'], ENT_QUOTES, 'UTF-8'); ?>">
-            <?php if (isset($_GET['inquiry'])): ?>
-                <?php
-                    $inquiryStatus = (string)$_GET['inquiry'];
-                    $isInquirySuccess = $inquiryStatus === 'success';
-                    $inquiryMessage = $isInquirySuccess
-                        ? 'Your inquiry was sent. We will contact you soon.'
-                        : ($inquiryStatus === 'invalid'
-                            ? 'Please check the form and try again.'
-                            : ($inquiryStatus === 'email_error'
-                                ? 'We could not send the verification code. Please try again later.'
-                                : ($inquiryStatus === 'expired'
-                                    ? 'The verification code expired. Please submit the inquiry again.'
-                                    : 'Sorry, the inquiry service had a problem. Please try again later.')));
-                ?>
-                <div class="inquiry-alert <?php echo $isInquirySuccess ? 'inquiry-alert-success' : 'inquiry-alert-error'; ?>">
-                    <?php echo htmlspecialchars($inquiryMessage, ENT_QUOTES, 'UTF-8'); ?>
-                </div>
-            <?php endif; ?>
 
             <div class="inquiry-grid">
                 <label>
@@ -609,7 +591,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         <small class="field-tooltip js-field-tooltip">Service area is limited to Luzon only.</small>
                     </span>
                 </span>
-                <textarea name="site_address" data-label="Exact Site Address" rows="3" required data-help-tooltip-target placeholder="House/building no., street, gate, floor, or nearby details"></textarea>
+                <textarea name="site_address" data-label="Exact Site Address" rows="3" required placeholder="House/building no., street, gate, floor, or nearby details"></textarea>
                 <small class="field-error"></small>
             </label>
 
@@ -675,6 +657,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <script>
         window.edgeServiceAreas = <?php echo json_encode($serviceAreas, JSON_UNESCAPED_SLASHES); ?>;
         window.edgeServiceBarangays = <?php echo json_encode($serviceBarangays, JSON_UNESCAPED_SLASHES); ?>;
+        window.edgeInquiryStatus = <?php echo json_encode((string)($_GET['inquiry'] ?? ''), JSON_UNESCAPED_SLASHES); ?>;
     </script>
     <script src="../js/loader.js" defer></script>
     <script src="../js/index.js" defer></script>

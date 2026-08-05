@@ -163,6 +163,15 @@ const initStaleLoginWindowGuard = () => {
         }
     });
 
+    try {
+        const state = JSON.parse(localStorage.getItem('edge_auth_state') || '{}');
+        if (state.status === 'logged-in') {
+            redirectStaleLogin(String(state.dashboardPath || ''));
+        }
+    } catch (error) {
+        // Ignore invalid localStorage data.
+    }
+
     const checkAuthStatus = () => {
         fetch('/codesamplecaps/LOGIN/php/auth_status.php', {
             cache: 'no-store',
@@ -178,7 +187,7 @@ const initStaleLoginWindowGuard = () => {
     };
 
     checkAuthStatus();
-    const staleLoginCheckTimer = window.setInterval(checkAuthStatus, 3000);
+    const staleLoginCheckTimer = window.setInterval(checkAuthStatus, 1000);
     window.addEventListener('focus', checkAuthStatus);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {

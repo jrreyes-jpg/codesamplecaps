@@ -135,6 +135,26 @@ function inquiry_center_can_change_status(string $currentStatus, string $newStat
     return in_array($newStatus, inquiry_center_allowed_next_statuses($currentStatus), true);
 }
 
+function inquiry_center_redirect(string $view, string $message): void
+{
+    $_SESSION['inquiry_center_flash'] = $message;
+    $query = $view === 'archive' ? '?view=archive' : '';
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php' . $query);
+    exit();
+}
+
+function inquiry_center_redirect_back(string $message, string $fallback = '/codesamplecaps/ADMIN/sidebar/inquiries.php'): void
+{
+    $returnUrl = (string)($_POST['return_url'] ?? $fallback);
+    if (!str_starts_with($returnUrl, '/codesamplecaps/ADMIN/sidebar/inquiries.php')) {
+        $returnUrl = $fallback;
+    }
+
+    $_SESSION['inquiry_center_flash'] = $message;
+    header('Location: ' . $returnUrl);
+    exit();
+}
+
 inquiry_center_ensure_review_columns($conn);
 site_inspection_ensure_table($conn);
 $conn->query("UPDATE service_inquiries SET status = 'Verified Lead' WHERE status = 'Verified'");
@@ -187,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         null,
                         ['deleted_from' => 'archive']
                     );
-                    $message = 'Archived inquiry permanently deleted.';
+                    inquiry_center_redirect('archive', 'Archived inquiry permanently deleted.');
                 } else {
                     $error = 'Only archived inquiries can be permanently deleted.';
                 }
@@ -219,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         null,
                         ['restored_to' => 'active_inquiries']
                     );
-                    $message = 'Inquiry restored.';
+                    inquiry_center_redirect('active', 'Inquiry restored.');
                 } else {
                     $error = 'Failed to restore inquiry.';
                 }
@@ -259,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         null,
                         ['archive_reason' => $archiveReason]
                     );
-                    $message = 'Inquiry archived.';
+                    inquiry_center_redirect_back('Inquiry archived.');
                 } else {
                     $error = 'Failed to archive inquiry.';
                 }
@@ -413,6 +433,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$message = (string)($_SESSION['inquiry_center_flash'] ?? $message);
+unset($_SESSION['inquiry_center_flash']);
 
 $engineers = [];
 $engineerResult = $conn->query("SELECT id, full_name FROM users WHERE role = 'engineer' AND status = 'active' ORDER BY full_name ASC");
@@ -579,6 +602,7 @@ include __DIR__ . '/../admin_sidebar.php';
                 <?php foreach ($inquiryRows as $inquiry): ?>
                     <?php $currentStatus = (string)($inquiry['status'] ?? 'Pending Review'); ?>
                     <?php $isViewed = !empty($inquiry['viewed_at']); ?>
+                    <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>">
                         <div class="inquiry-card__head">
                             <div>
@@ -615,9 +639,41 @@ include __DIR__ . '/../admin_sidebar.php';
                                             </span>
                                         </div>
                                     </div>
+                                    <?php if (!empty($inquiry['archived_at'])): ?>
+                                        <div class="inquiry-modal__summary-card inquiry-modal__summary-card--archive">
+                                            <strong>Archived</strong>
+                                            <span><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['archived_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </div>
+                                    <?php elseif ($latestInspection): ?>
+                                        <div class="inquiry-modal__summary-card inquiry-modal__summary-card--schedule">
+                                            <strong>Latest Schedule</strong>
+                                            <span>Engineer: <?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span>Date/Time: <?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="inquiry-modal__tools">
                                         <?php if (empty($inquiry['archived_at'])): ?>
-                                            <button type="button" class="inquiry-modal__archive-icon" data-archive-modal-open="archiveModal<?php echo (int)$inquiry['id']; ?>" aria-label="Archive inquiry">Archive</button>
+                                            <button type="button" class="inquiry-icon-button inquiry-icon-button--archive" data-tooltip="Archive inquiry" data-archive-modal-open="archiveModal<?php echo (int)$inquiry['id']; ?>" aria-label="Archive inquiry">
+                                                <span aria-hidden="true">&#8631;</span>
+                                            </button>
+                                        <?php else: ?>
+                                            <form method="POST" class="inquiry-restore-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="restore_inquiry">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <button type="submit" class="inquiry-icon-button inquiry-icon-button--restore" data-tooltip="Restore inquiry" aria-label="Restore inquiry">
+                                                    <span aria-hidden="true">&#8634;</span>
+                                                </button>
+                                            </form>
+                                            <form method="POST" class="inquiry-delete-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="delete_inquiry">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <button type="submit" class="inquiry-icon-button inquiry-icon-button--delete" data-tooltip="Delete permanently" aria-label="Delete permanently">
+                                                    <span aria-hidden="true">&#128465;</span>
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
                                         <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry review">&times;</button>
                                     </div>
@@ -672,7 +728,6 @@ include __DIR__ . '/../admin_sidebar.php';
                                     </form>
 
                                     <?php if (in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
-                                        <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                                         <form method="POST" class="inquiry-schedule-form">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
@@ -723,14 +778,6 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <button type="button" class="btn-secondary inquiry-clear-inputs" data-inquiry-clear-inputs>Clear inputs</button>
                                             </div>
                                         </form>
-                                        <?php if ($latestInspection): ?>
-                                            <div class="inquiry-schedule-output">
-                                                <strong>Latest Schedule</strong>
-                                                <span>Engineer: <?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                <span>Date/Time: <?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                <span>Status: <?php echo htmlspecialchars((string)$latestInspection['status'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            </div>
-                                        <?php endif; ?>
                                     <?php endif; ?>
                                     <?php endif; ?>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
@@ -738,18 +785,6 @@ include __DIR__ . '/../admin_sidebar.php';
                                             <strong>Archived</strong>
                                             <span><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['archived_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <form method="POST" class="inquiry-restore-form">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="restore_inquiry">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                <button type="submit" class="btn-primary">Restore Inquiry</button>
-                                            </form>
-                                            <form method="POST" class="inquiry-delete-form">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="delete_inquiry">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                <button type="submit" class="btn-secondary inquiry-delete-button">Delete Permanently</button>
-                                            </form>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -770,6 +805,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                         <input type="hidden" name="action" value="archive_inquiry">
                                         <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                        <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ADMIN/sidebar/inquiries.php'), ENT_QUOTES, 'UTF-8'); ?>">
                                         <label>
                                             <span>Archive Reason</span>
                                             <select name="archive_reason" required>

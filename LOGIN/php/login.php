@@ -429,23 +429,27 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 
                     <div id="emailLockStatus" class="client-lock-status is-hidden" aria-live="polite"></div>
 
-<input
-    type="email"
-    name="email"
-    placeholder="Email"
-    value="<?php echo htmlspecialchars($email_input_value, ENT_QUOTES, 'UTF-8'); ?>"
-    required
-    <?= $is_device_locked ? 'disabled' : ''; ?>
->
-                    <div class="password-wrapper">
+                    <label class="floating-field login-floating-field">
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder=" "
+                            value="<?php echo htmlspecialchars($email_input_value, ENT_QUOTES, 'UTF-8'); ?>"
+                            required
+                            <?= $is_device_locked ? 'disabled' : ''; ?>
+                        >
+                        <span>Email</span>
+                    </label>
+                    <label class="password-wrapper floating-field login-floating-field">
                       <input
     id="password"
     type="password"
     name="password"
-    placeholder="Password"
+    placeholder=" "
     required
     <?= ($is_device_locked || $is_email_locked) ? 'disabled' : ''; ?>
 >
+<span>Password</span>
                        <button
     type="button"
     class="togglePassword"
@@ -454,7 +458,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 >
     Show
 </button>
-                    </div>
+                    </label>
 
                    <button
     type="submit"

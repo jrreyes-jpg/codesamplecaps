@@ -368,10 +368,10 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) fit-content(620px) auto;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
     padding: 18px;
     border-bottom: 1px solid #e2e8f0;
     background: rgba(255, 255, 255, 0.96);
@@ -381,6 +381,8 @@
 .inquiry-modal__head h2 {
     margin: 0;
     color: #0f172a;
+    font-size: clamp(1.35rem, 1.8vw, 1.8rem);
+    line-height: 1.15;
 }
 
 .inquiry-modal__meta {
@@ -399,12 +401,48 @@
     border-radius: 999px;
     background: #f1f5f9;
     color: #475569;
-    font-size: 0.78rem;
+    font-size: 0.84rem;
     font-weight: 700;
 }
 
 .inquiry-modal__meta .inquiry-status--modal {
     color: #1d4ed8;
+}
+
+.inquiry-modal__summary-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: fit-content;
+    max-width: 620px;
+    justify-self: end;
+    padding: 8px 10px;
+    border-radius: 14px;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.28;
+    min-height: 0;
+}
+
+.inquiry-modal__summary-card strong {
+    color: #0f172a;
+}
+
+.inquiry-modal__summary-card span {
+    overflow-wrap: anywhere;
+}
+
+.inquiry-modal__summary-card--archive {
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid rgba(234, 88, 12, 0.22);
+}
+
+.inquiry-modal__summary-card--schedule {
+    background: #ecfdf5;
+    color: #166534;
+    border: 1px solid rgba(22, 101, 52, 0.18);
 }
 
 .inquiry-modal__close {
@@ -424,27 +462,87 @@
     display: flex;
     gap: 8px;
     align-items: center;
+    justify-content: flex-end;
+    min-width: 92px;
 }
 
-.inquiry-modal__archive-icon {
-    min-height: 36px;
-    border: 0;
-    border-radius: 999px;
-    padding: 0 12px;
-    background: #fff7ed;
-    color: #9a3412;
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 900;
-}
-
-.inquiry-modal__archive-icon:hover {
-    background: #fed7aa;
+.inquiry-modal__tools form {
+    margin: 0;
 }
 
 .inquiry-modal__close:hover {
     background: #e2e8f0;
     color: #0f172a;
+}
+
+.inquiry-icon-button {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.08rem;
+    font-weight: 900;
+}
+
+.inquiry-icon-button::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 5;
+    width: max-content;
+    max-width: 180px;
+    padding: 7px 9px;
+    border-radius: 9px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.inquiry-icon-button:hover::after,
+.inquiry-icon-button:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.inquiry-icon-button--restore {
+    background: #ecfdf5;
+    color: #166534;
+}
+
+.inquiry-icon-button--restore:hover,
+.inquiry-icon-button--restore:focus-visible {
+    background: #bbf7d0;
+}
+
+.inquiry-icon-button--archive {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.inquiry-icon-button--archive:hover,
+.inquiry-icon-button--archive:focus-visible {
+    background: #fed7aa;
+}
+
+.inquiry-icon-button--delete {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.inquiry-icon-button--delete:hover,
+.inquiry-icon-button--delete:focus-visible {
+    background: #fecaca;
 }
 
 .inquiry-section-title {
@@ -602,6 +700,15 @@ body.inquiry-modal-open {
         width: calc(100vw - 24px);
         max-height: calc(100vh - 24px);
     }
+
+    .inquiry-modal__head {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .inquiry-modal__tools {
+        justify-content: flex-end;
+    }
 }
 
 .inquiry-summary-row {
@@ -660,18 +767,6 @@ body.inquiry-modal-open {
 
 .inquiry-delete-form {
     margin-top: 4px;
-}
-
-.inquiry-delete-button {
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid rgba(185, 28, 28, 0.22);
-}
-
-.inquiry-delete-button:hover,
-.inquiry-delete-button:focus-visible {
-    background: #fecaca;
-    color: #7f1d1d;
 }
 
 .inquiry-review-form textarea,

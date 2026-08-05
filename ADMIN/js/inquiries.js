@@ -435,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
+            sessionStorage.removeItem('edgeOpenInquiryModal');
             showConfirm(form, 'Archive this inquiry? It will move to Archive list.');
         });
     });
@@ -446,6 +447,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
+            sessionStorage.removeItem('edgeOpenInquiryModal');
             showConfirm(form, 'Permanently delete this archived inquiry? This cannot be undone.');
         });
     });
@@ -457,6 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
+            sessionStorage.removeItem('edgeOpenInquiryModal');
             showConfirm(form, 'Restore this inquiry to active list?');
         });
     });
@@ -478,6 +481,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const form = pendingConfirmForm;
         form.dataset.confirmed = '1';
+        sessionStorage.removeItem('edgeOpenInquiryModal');
         closeConfirm();
         form.requestSubmit();
     });

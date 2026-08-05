@@ -107,6 +107,16 @@ function inquiry_center_format_datetime(?string $dateTime): string
     return date('M j, Y, g:ia', $timestamp);
 }
 
+function inquiry_center_format_date(?string $date): string
+{
+    $timestamp = $date ? strtotime($date) : false;
+    if ($timestamp === false) {
+        return 'Not set';
+    }
+
+    return date('M j, Y', $timestamp);
+}
+
 function inquiry_center_allowed_next_statuses(string $currentStatus): array
 {
     // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
@@ -149,6 +159,40 @@ if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_i
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!inquiry_center_is_valid_csrf($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request. Please try again.';
+    } elseif (($_POST['action'] ?? '') === 'delete_inquiry') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+
+        if ($inquiryId <= 0) {
+            $error = 'Invalid delete request.';
+        } else {
+            $inspectionDeleteStmt = $conn->prepare('DELETE FROM site_inspections WHERE inquiry_id = ?');
+            if ($inspectionDeleteStmt) {
+                $inspectionDeleteStmt->bind_param('i', $inquiryId);
+                $inspectionDeleteStmt->execute();
+            }
+
+            $deleteStmt = $conn->prepare('DELETE FROM service_inquiries WHERE id = ? AND archived_at IS NOT NULL');
+
+            if (!$deleteStmt) {
+                $error = 'Failed to prepare delete request.';
+            } else {
+                $deleteStmt->bind_param('i', $inquiryId);
+                if ($deleteStmt->execute() && $deleteStmt->affected_rows > 0) {
+                    audit_log_event(
+                        $conn,
+                        (int)($_SESSION['user_id'] ?? 0),
+                        'delete_archived_inquiry',
+                        'service_inquiry',
+                        $inquiryId,
+                        null,
+                        ['deleted_from' => 'archive']
+                    );
+                    $message = 'Archived inquiry permanently deleted.';
+                } else {
+                    $error = 'Only archived inquiries can be permanently deleted.';
+                }
+            }
+        }
     } elseif (($_POST['action'] ?? '') === 'restore_inquiry') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
 
@@ -184,6 +228,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (($_POST['action'] ?? '') === 'archive_inquiry') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $archiveReason = trim((string)($_POST['archive_reason'] ?? ''));
+        $archiveReasonOther = trim((string)($_POST['archive_reason_other'] ?? ''));
+        if ($archiveReason === 'Other') {
+            $archiveReason = $archiveReasonOther;
+        } elseif ($archiveReasonOther !== '') {
+            $archiveReason .= ' - ' . $archiveReasonOther;
+        }
 
         if ($inquiryId <= 0 || $archiveReason === '') {
             $error = 'Please add archive reason.';
@@ -396,10 +446,10 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
     if ($search !== '') {
         // Smart search: hanapin sa important fields para mas mabilis ang lead filtering.
-        $where[] = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ?)';
+        $where[] = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ? OR status LIKE ? OR description LIKE ? OR admin_notes LIKE ? OR archive_reason LIKE ?)';
         $keyword = '%' . $search . '%';
-        $types .= 'sssssssss';
-        array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
+        $types .= 'sssssssssssss';
+        array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
     }
 
     $sql = 'SELECT id, client_name, company_name, email, contact_no, site_address,
@@ -498,7 +548,7 @@ include __DIR__ . '/../admin_sidebar.php';
 
 
         <form class="inquiry-filter-bar" method="GET">
-            <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, company, email, contact, site, or service">
+            <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, email, contact, status, notes, address, service, or archive reason">
             <select name="status">
                 <option value="">All statuses</option>
                 <?php foreach ($allowedStatuses as $status): ?>
@@ -580,7 +630,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <div class="inquiry-detail"><span>Province</span><strong><?php echo htmlspecialchars((string)($inquiry['province'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>City / Municipality</span><strong><?php echo htmlspecialchars((string)($inquiry['city_municipality'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Barangay / Landmark</span><strong><?php echo htmlspecialchars((string)($inquiry['barangay'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars((string)($inquiry['preferred_inspection_date'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Reviewed</span><strong><?php echo htmlspecialchars(!empty($inquiry['reviewed_at']) ? inquiry_center_format_datetime($inquiry['reviewed_at']) : 'Not yet', ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail inquiry-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)$inquiry['site_address'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
@@ -594,6 +644,11 @@ include __DIR__ . '/../admin_sidebar.php';
 
                                 <div class="inquiry-expanded-actions">
                                     <div class="inquiry-section-title">Admin Actions</div>
+                                    <?php if (!empty($inquiry['archived_at'])): ?>
+                                        <div class="inquiry-readonly-notice">
+                                            This inquiry is archived. Restore it first before changing status, notes, or inspection schedule.
+                                        </div>
+                                    <?php else: ?>
                                     <form method="POST" class="inquiry-review-form">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                         <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
@@ -677,6 +732,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                             </div>
                                         <?php endif; ?>
                                     <?php endif; ?>
+                                    <?php endif; ?>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
                                         <div class="inquiry-archive-output">
                                             <strong>Archived</strong>
@@ -687,6 +743,12 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <input type="hidden" name="action" value="restore_inquiry">
                                                 <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                 <button type="submit" class="btn-primary">Restore Inquiry</button>
+                                            </form>
+                                            <form method="POST" class="inquiry-delete-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="delete_inquiry">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <button type="submit" class="btn-secondary inquiry-delete-button">Delete Permanently</button>
                                             </form>
                                         </div>
                                     <?php endif; ?>
@@ -718,7 +780,12 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <option value="No response from client">No response from client</option>
                                                 <option value="Service not offered">Service not offered</option>
                                                 <option value="Invalid contact details">Invalid contact details</option>
+                                                <option value="Other">Other reason</option>
                                             </select>
+                                        </label>
+                                        <label>
+                                            <span>Manual Reason / Notes <b class="archive-other-required" data-archive-other-required hidden>*</b></span>
+                                            <textarea name="archive_reason_other" rows="2" placeholder="Add custom reason or extra note"></textarea>
                                         </label>
                                         <div class="inquiry-review-actions">
                                             <button type="button" class="btn-secondary" data-archive-modal-close>Cancel</button>

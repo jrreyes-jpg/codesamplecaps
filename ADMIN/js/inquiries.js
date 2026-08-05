@@ -107,7 +107,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     openButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
             const modalId = button.getAttribute('data-inquiry-modal-open');
             lastOpenButton = button;
             openModal(document.getElementById(modalId));
@@ -393,6 +394,27 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.querySelectorAll('.inquiry-archive-form').forEach(function (form) {
+        const reasonSelect = form.querySelector('select[name="archive_reason"]');
+        const manualReason = form.querySelector('textarea[name="archive_reason_other"]');
+        const manualReasonMark = form.querySelector('[data-archive-other-required]');
+
+        const syncArchiveReasonRequirement = function () {
+            if (!reasonSelect || !manualReason) {
+                return;
+            }
+
+            manualReason.required = reasonSelect.value === 'Other';
+            if (manualReasonMark) {
+                manualReasonMark.hidden = reasonSelect.value !== 'Other';
+            }
+            if (reasonSelect.value !== 'Other') {
+                manualReason.classList.remove('is-invalid');
+            }
+        };
+
+        reasonSelect?.addEventListener('change', syncArchiveReasonRequirement);
+        syncArchiveReasonRequirement();
+
         form.querySelectorAll('textarea, input, select').forEach(function (field) {
             field.addEventListener('invalid', function () {
                 field.classList.add('is-invalid');
@@ -414,6 +436,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
             event.preventDefault();
             showConfirm(form, 'Archive this inquiry? It will move to Archive list.');
+        });
+    });
+
+    document.querySelectorAll('.inquiry-delete-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            showConfirm(form, 'Permanently delete this archived inquiry? This cannot be undone.');
         });
     });
 

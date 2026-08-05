@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 // Handle the landing page inquiry form and save the quotation request safely.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /codesamplecaps/LOGIN/php/index.php#contact');
@@ -61,8 +63,20 @@ $serviceCategory = normalize_text($_POST['service_category'] ?? '');
 $otherServiceDetails = normalize_text($_POST['other_service_details'] ?? '');
 $description = normalize_text($_POST['description'] ?? '');
 $preferredInspectionDate = normalize_text($_POST['preferred_inspection_date'] ?? '');
+$submittedToken = normalize_text($_POST['inquiry_form_token'] ?? '');
 
 $errors = [];
+
+if (
+    $submittedToken === ''
+    || empty($_SESSION['inquiry_form_token'])
+    || !hash_equals((string)$_SESSION['inquiry_form_token'], $submittedToken)
+) {
+    redirect_to_form('invalid');
+}
+
+// Isang gamit lang ang token para hindi makapagpadala ng duplicate OTP email.
+unset($_SESSION['inquiry_form_token']);
 
 if ($clientName === '') {
     $errors[] = 'client_name';

@@ -315,11 +315,20 @@ const initInquiryForm = () => {
         const otherServiceInput = inquiryForm.querySelector('input[name="other_service_details"]');
         const message = inquiryForm.querySelector('.js-inquiry-message');
         const clearDraftButton = inquiryForm.querySelector('.js-clear-inquiry-draft');
+        const submitButton = inquiryForm.querySelector('.inquiry-submit');
         const draftKey = 'edgeInquiryFormDraft';
+        let isSubmittingInquiry = false;
 
         if (!contactInput || !message) {
             return;
         }
+
+        const clearFormMessageIfReady = () => {
+            if (!inquiryForm.querySelector('.is-invalid')) {
+                message.textContent = '';
+                message.classList.remove('is-error');
+            }
+        };
 
         normalizeContactNumber(contactInput);
 
@@ -476,6 +485,7 @@ const initInquiryForm = () => {
             syncCityOptions();
             clearFieldError(provinceSelect);
             if (citySelect) clearFieldError(citySelect);
+            clearFormMessageIfReady();
         });
         syncCityOptions();
         bindCombobox(citySelect, () => window.edgeServiceAreas?.[provinceSelect?.value] || []);
@@ -485,6 +495,7 @@ const initInquiryForm = () => {
             syncBarangayState();
             clearFieldError(citySelect);
             if (barangayInput) clearFieldError(barangayInput);
+            clearFormMessageIfReady();
         });
         syncBarangayState();
 
@@ -559,6 +570,7 @@ const initInquiryForm = () => {
                 if (!shouldShow) {
                     otherServiceInput.value = '';
                     clearFieldError(otherServiceInput);
+                    clearFormMessageIfReady();
                 }
             }
         };
@@ -615,15 +627,18 @@ const initInquiryForm = () => {
         contactInput.addEventListener('input', () => {
             normalizeContactNumber(contactInput);
             clearFieldError(contactInput);
+            clearFormMessageIfReady();
         });
 
         inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {
             field.addEventListener('input', () => {
                 clearFieldError(field);
+                clearFormMessageIfReady();
                 saveInquiryDraft();
             });
             field.addEventListener('change', () => {
                 clearFieldError(field);
+                clearFormMessageIfReady();
                 saveInquiryDraft();
             });
         });
@@ -643,6 +658,11 @@ const initInquiryForm = () => {
         restoreInquiryDraft();
 
         inquiryForm.addEventListener('submit', (event) => {
+            if (isSubmittingInquiry) {
+                event.preventDefault();
+                return;
+            }
+
             enforcePreferredDateMin();
             normalizeContactNumber(contactInput);
             const fields = Array.from(inquiryForm.querySelectorAll('input, select, textarea'));
@@ -711,8 +731,20 @@ const initInquiryForm = () => {
                 message.textContent = 'Please fix the highlighted fields.';
                 message.classList.add('is-error');
                 firstInvalidField.focus();
-            } else {
-                localStorage.removeItem(draftKey);
+                return;
+            }
+
+            const confirmed = window.confirm('Submit this inquiry now? We will send a 6-digit code to your email.');
+            if (!confirmed) {
+                event.preventDefault();
+                return;
+            }
+
+            isSubmittingInquiry = true;
+            localStorage.removeItem(draftKey);
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Sending code...';
             }
         });
     });

@@ -108,6 +108,8 @@ const initPasswordToggles = () => {
 const initLoadingButtons = () => {
     document.querySelectorAll('button[data-loading-text]').forEach((button) => {
         const form = button.closest('form');
+        const defaultText = button.textContent;
+        const wasInitiallyDisabled = button.disabled;
 
         if (!form) {
             return;
@@ -116,6 +118,9 @@ const initLoadingButtons = () => {
         let isSubmitting = false;
 
         form.addEventListener('submit', (event) => {
+            form.removeAttribute('target');
+            form.target = '_self';
+
             if (!form.checkValidity()) {
                 return;
             }
@@ -128,16 +133,75 @@ const initLoadingButtons = () => {
             isSubmitting = true;
             button.disabled = true;
             button.textContent = button.dataset.loadingText ?? 'Processing...';
+
+            try {
+                localStorage.setItem('edge_login_flow', JSON.stringify({
+                    status: 'submitting',
+                    at: Date.now(),
+                    source: window.name || 'login',
+                }));
+            } catch (error) {
+                // Okay lang kahit blocked ang localStorage; login submit pa rin.
+            }
+        });
+
+        window.addEventListener('pageshow', () => {
+            isSubmitting = false;
+            button.disabled = wasInitiallyDisabled;
+            button.textContent = defaultText;
         });
     });
 };
 
 const initStaleLoginWindowGuard = () => {
     const form = document.querySelector('#loginForm form');
+    const email = form?.querySelector('input[name="email"]');
+    const password = form?.querySelector('input[name="password"]');
+    const submitButton = form?.querySelector('button[type="submit"]');
+    const defaultSubmitText = submitButton?.textContent || 'Login';
+
+    if (window.lockoutConfig?.isLogoutPage) {
+        localStorage.removeItem('edge_auth_state');
+        try {
+            localStorage.setItem('edge_login_flow', JSON.stringify({
+                status: 'logged-out',
+                at: Date.now(),
+            }));
+        } catch (error) {
+            // Ignore localStorage errors.
+        }
+    }
 
     if (!form || window.location.search.includes('logout=1')) {
+        if (window.lockoutConfig?.isLogoutPage) {
+            form?.reset();
+            if (email) email.value = '';
+            if (password) password.value = '';
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = defaultSubmitText;
+            }
+        }
         return;
     }
+
+    form.removeAttribute('target');
+    form.target = '_self';
+
+    const clearStaleCredentials = () => {
+        if (document.visibilityState === 'hidden') {
+            return;
+        }
+
+        if (password && !password.matches(':focus')) {
+            password.value = '';
+        }
+
+        if (submitButton && submitButton.textContent === (submitButton.dataset.loadingText || 'Logging in...')) {
+            submitButton.disabled = false;
+            submitButton.textContent = defaultSubmitText;
+        }
+    };
 
     const redirectStaleLogin = (dashboardPath) => {
         if (!dashboardPath || !dashboardPath.startsWith('/codesamplecaps/')) {
@@ -157,6 +221,23 @@ const initStaleLoginWindowGuard = () => {
             const state = JSON.parse(event.newValue);
             if (state.status === 'logged-in') {
                 redirectStaleLogin(String(state.dashboardPath || ''));
+            } else if (state.status === 'logged-out') {
+                clearStaleCredentials();
+            }
+        } catch (error) {
+            // Ignore invalid localStorage data.
+        }
+    });
+
+    window.addEventListener('storage', (event) => {
+        if (event.key !== 'edge_login_flow' || !event.newValue) {
+            return;
+        }
+
+        try {
+            const state = JSON.parse(event.newValue);
+            if (state.status === 'logged-out') {
+                clearStaleCredentials();
             }
         } catch (error) {
             // Ignore invalid localStorage data.
@@ -188,15 +269,31 @@ const initStaleLoginWindowGuard = () => {
 
     checkAuthStatus();
     const staleLoginCheckTimer = window.setInterval(checkAuthStatus, 1000);
-    window.addEventListener('focus', checkAuthStatus);
+    window.addEventListener('focus', () => {
+        clearStaleCredentials();
+        checkAuthStatus();
+    });
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
+            clearStaleCredentials();
             checkAuthStatus();
         }
     });
     window.addEventListener('beforeunload', () => {
         window.clearInterval(staleLoginCheckTimer);
     });
+};
+
+const initLoginToast = () => {
+    const toast = document.querySelector('.login-toast');
+    if (!toast) {
+        return;
+    }
+
+    window.setTimeout(() => {
+        toast.classList.add('is-hiding');
+        window.setTimeout(() => toast.remove(), 220);
+    }, 4500);
 };
 
 const initEmailLockStatus = () => {
@@ -426,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initParticleCanvas();
     initPasswordToggles();
     initLoadingButtons();
+    initLoginToast();
     initStaleLoginWindowGuard();
 
     // Start the live lockout countdown if the login form is locked.

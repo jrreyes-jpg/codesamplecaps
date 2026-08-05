@@ -19,9 +19,9 @@ function inquiry_otp_ensure_table(mysqli $conn): void
     );
 }
 
-function inquiry_otp_redirect(string $status, string $token = ''): void
+function inquiry_otp_redirect(string $status, string $token = '', array $extraQuery = []): void
 {
-    $query = ['inquiry' => $status];
+    $query = array_merge(['inquiry' => $status], $extraQuery);
     if ($token !== '') {
         $query['token'] = $token;
     }

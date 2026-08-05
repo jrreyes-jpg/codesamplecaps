@@ -1,3 +1,5 @@
+FLOATING LABEL
+
 Kapag ba ibang email o acc ung binuksan ay magreset ba ung sa attempt o simula ulit sa 5 attempt kada change acc o email ang ginamit
 
 sa email gusto ko ay lalabas dun ung name nung nag req ng reset pass 
@@ -65,6 +67,7 @@ Provide a cleared template or reports for project management
 
 # Runtime session files
 storage/sessions/
+storage/logs/
 
 Provide a cleared template or reports for project management
 
@@ -74,4 +77,7 @@ Name sa project management kay admin ayusin sabi ni maam gigi
 
 yung sa project code pala lagyan mo siya na dapat pede malagyan ng ganitnog sign -
 
-FLOATING LABEL
+# Client Submission: Pupunan ng client ang Inquiry Form sa landing page para sa quotation request.
+# Admin Verification (Lead Filtering): Makikita ni Admin sa system dashboard ang inquiry. Tatawagan o ie-email niya ang client para i-verify kung seryoso ang project.
+Engineer Site Inspection & Costing: Kapag "deal" o interesado ang client, mag-ii-schedule si Admin ng site inspection para kay Engineer. Si Engineer ang magpapasok ng mga kailangang materyales mula sa Inventory System at magtatakda ng labor cost.
+Quotation Generation (The System's Job): Ang System ang awtomatikong magka-compute at gagawa ng PDF Quotation base sa input ni Engineer. Si Admin ang mag-aapruba at magsesend nito sa client.

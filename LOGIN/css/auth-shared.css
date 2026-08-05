@@ -10,7 +10,7 @@ body{
     display:flex;
     justify-content:center;
     align-items:center;
-    background:linear-gradient(135deg,#0a8f2c,#00c853);
+    background:#f7f8f5;
 }
 
 /* MAIN CONTAINER */
@@ -21,7 +21,7 @@ body{
     border-radius:20px;
     overflow:hidden;
     display:flex;
-    box-shadow:0 25px 50px rgba(0,0,0,0.3);
+    box-shadow:0 18px 42px rgba(31,41,55,0.12);
 }
 
 /* LEFT PANEL */
@@ -239,6 +239,176 @@ button:hover{
 .left-panel .company-name{
     font-size: 16px;
     white-space: normal; /* pwede mag-wrap sa mobile */
+}
+
+/* =========================================================
+   VERIFY INQUIRY OTP UI
+   Sakop: logo card, 6-digit code input, at OTP verify page.
+========================================================= */
+.verify-inquiry-shell {
+    min-height: 560px;
+}
+
+.verify-inquiry-brand {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.10), transparent),
+        #285a43;
+}
+
+.verify-inquiry-brand p {
+    margin-top: 12px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.verify-inquiry-logo {
+    width: 132px;
+    height: 132px;
+    margin-bottom: 18px;
+}
+
+.verify-inquiry-logo img {
+    width: 86px;
+}
+
+.verify-inquiry-card h2 {
+    margin-bottom: 8px;
+    color: #20372f;
+    font-size: 30px;
+}
+
+.auth-helper-text {
+    margin-bottom: 20px;
+    color: #66746f;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.verify-code-field {
+    min-height: 58px;
+    margin: 18px 0;
+}
+
+.verify-code-field input {
+    height: 58px;
+    padding: 11px 18px 0;
+    border: 1.5px solid #d7ded8;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #1f2f29;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 8px;
+    text-align: center;
+}
+
+.verify-code-field span {
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.verify-code-field input:placeholder-shown:not(:focus) + span {
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 15px;
+}
+
+.verify-code-field input:focus + span,
+.verify-code-field input:not(:placeholder-shown) + span {
+    top: 0;
+    transform: translateY(-50%);
+    padding: 0 8px;
+    background: #ffffff;
+    color: #2f6b4f;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.verify-code-field input:focus {
+    border-color: #5f8f73;
+    box-shadow: 0 0 0 4px rgba(95, 143, 115, 0.14);
+}
+
+.verify-inquiry-card button[type="submit"] {
+    width: 100%;
+    border-radius: 14px;
+    padding: 14px 18px;
+    font-size: 15px;
+}
+
+.verify-inquiry-card .links {
+    justify-content: center;
+}
+
+.verify-toast {
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    z-index: 1000;
+    max-width: min(360px, calc(100vw - 32px));
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    border-left: 5px solid #16a34a;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
+    font-size: 14px;
+    font-weight: 800;
+    animation: verifyToastIn 0.22s ease both;
+}
+
+.verify-toast.is-closing {
+    animation: verifyToastOut 0.25s ease both;
+}
+
+@keyframes verifyToastIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes verifyToastOut {
+    to {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+@media(max-width:900px) {
+    .verify-inquiry-brand {
+        display: flex;
+        padding: 28px 20px;
+    }
+
+    .verify-inquiry-logo {
+        width: 96px;
+        height: 96px;
+    }
+
+    .verify-inquiry-logo img {
+        width: 64px;
+    }
+
+    .verify-inquiry-card h2 {
+        font-size: 25px;
+    }
 }
 /* PARTICLE BACKGROUND */
 #particles{

@@ -69,7 +69,7 @@ if ($token === '') {
 
 $stmt = $conn->prepare(
     'SELECT * FROM pending_service_inquiries
-     WHERE token = ? AND verified_at IS NULL
+     WHERE token = ?
      LIMIT 1'
 );
 $stmt->bind_param('s', $token);
@@ -78,6 +78,10 @@ $pending = $stmt->get_result()->fetch_assoc();
 
 if (!$pending) {
     verify_inquiry_redirect_home('invalid');
+}
+
+if (!empty($pending['verified_at'])) {
+    verify_inquiry_redirect_home('success');
 }
 
 if (strtotime((string)$pending['expires_at']) < time()) {
@@ -163,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container">
         <div class="right-panel">
             <div class="form active">
-                <form method="POST">
+                <form method="POST" id="verifyInquiryForm">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it to submit your inquiry.</p>
                     <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
@@ -173,13 +177,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " required autofocus>
                         <span>6-digit code</span>
                     </label>
-                    <button type="submit">Verify and Submit</button>
+                    <button type="submit" id="verifyInquiryButton">Verify and Submit</button>
                     <div class="links">
-                        <a href="/codesamplecaps/LOGIN/php/index.php#contact">Back to Home</a>
+                        <a href="/codesamplecaps/LOGIN/php/index.php#contact" id="backToHomeLink">Back to Home</a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+    <script>
+        const verifyInquiryForm = document.getElementById('verifyInquiryForm');
+        const verifyInquiryButton = document.getElementById('verifyInquiryButton');
+        const backToHomeLink = document.getElementById('backToHomeLink');
+        let isVerifyingInquiry = false;
+
+        verifyInquiryForm?.addEventListener('submit', (event) => {
+            if (isVerifyingInquiry) {
+                event.preventDefault();
+                return;
+            }
+
+            isVerifyingInquiry = true;
+            if (verifyInquiryButton) {
+                verifyInquiryButton.disabled = true;
+                verifyInquiryButton.textContent = 'Verifying...';
+            }
+        });
+
+        backToHomeLink?.addEventListener('click', (event) => {
+            if (!window.confirm('Leave verification? Your inquiry is not submitted yet.')) {
+                event.preventDefault();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -6,6 +6,10 @@ require_once __DIR__ . '/../../config/service_barangays.php';
 
 $serviceAreas = service_area_allowed_locations();
 $serviceBarangays = service_barangays_grouped($conn);
+
+if (empty($_SESSION['inquiry_form_token'])) {
+    $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -519,6 +523,7 @@ $serviceBarangays = service_barangays_grouped($conn);
         </div>
 
         <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate>
+            <input type="hidden" name="inquiry_form_token" value="<?php echo htmlspecialchars($_SESSION['inquiry_form_token'], ENT_QUOTES, 'UTF-8'); ?>">
             <?php if (isset($_GET['inquiry'])): ?>
                 <?php
                     $inquiryStatus = (string)$_GET['inquiry'];
@@ -639,7 +644,7 @@ $serviceBarangays = service_barangays_grouped($conn);
             </div>
 
             <label class="other-service-field is-hidden">
-                <span>Other Service Details</span>
+                <span>Other Service Details <b class="required-mark">*</b></span>
                 <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed">
                 <small class="field-error"></small>
             </label>

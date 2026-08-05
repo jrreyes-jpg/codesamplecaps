@@ -643,6 +643,37 @@ body.inquiry-modal-open {
     margin-top: 4px;
 }
 
+.archive-other-required {
+    color: #dc2626;
+    font-weight: 900;
+}
+
+.inquiry-readonly-notice {
+    padding: 12px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    color: #1d4ed8;
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+
+.inquiry-delete-form {
+    margin-top: 4px;
+}
+
+.inquiry-delete-button {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid rgba(185, 28, 28, 0.22);
+}
+
+.inquiry-delete-button:hover,
+.inquiry-delete-button:focus-visible {
+    background: #fecaca;
+    color: #7f1d1d;
+}
+
 .inquiry-review-form textarea,
 .inquiry-schedule-form textarea,
 .inquiry-archive-form textarea {

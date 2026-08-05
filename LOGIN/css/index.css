@@ -172,6 +172,14 @@ h4 {
     box-shadow: 0 12px 28px rgba(240, 127, 0, 0.26);
 }
 
+.btn-primary:disabled,
+.inquiry-submit:disabled {
+    opacity: 0.68;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 .btn-secondary {
     border-color: rgba(255, 255, 255, 0.72);
     background: rgba(255, 255, 255, 0.08);

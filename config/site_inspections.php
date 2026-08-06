@@ -19,6 +19,26 @@ if (!function_exists('site_inspection_table_exists')) {
     }
 }
 
+if (!function_exists('site_inspection_column_exists')) {
+    function site_inspection_column_exists(mysqli $conn, string $columnName): bool
+    {
+        $stmt = $conn->prepare(
+            'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = "site_inspections"
+             AND COLUMN_NAME = ?
+             LIMIT 1'
+        );
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bind_param('s', $columnName);
+        $stmt->execute();
+        return (bool)$stmt->get_result()->fetch_assoc();
+    }
+}
+
 if (!function_exists('site_inspection_ensure_table')) {
     function site_inspection_ensure_table(mysqli $conn): void
     {
@@ -29,6 +49,9 @@ if (!function_exists('site_inspection_ensure_table')) {
                 engineer_id INT NOT NULL,
                 scheduled_at DATETIME NOT NULL,
                 site_notes TEXT NULL,
+                engineer_findings TEXT NULL,
+                risk_notes TEXT NULL,
+                client_requests TEXT NULL,
                 status VARCHAR(40) NOT NULL DEFAULT 'Scheduled',
                 created_by INT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -39,6 +62,19 @@ if (!function_exists('site_inspection_ensure_table')) {
                 KEY idx_site_inspections_scheduled_at (scheduled_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         );
+
+        // Dagdag notes ni Engineer para ready ang costing sa Admin review.
+        $columns = [
+            'engineer_findings' => 'ALTER TABLE site_inspections ADD COLUMN engineer_findings TEXT NULL AFTER site_notes',
+            'risk_notes' => 'ALTER TABLE site_inspections ADD COLUMN risk_notes TEXT NULL AFTER engineer_findings',
+            'client_requests' => 'ALTER TABLE site_inspections ADD COLUMN client_requests TEXT NULL AFTER risk_notes',
+        ];
+
+        foreach ($columns as $column => $sql) {
+            if (!site_inspection_column_exists($conn, $column)) {
+                $conn->query($sql);
+            }
+        }
     }
 }
 

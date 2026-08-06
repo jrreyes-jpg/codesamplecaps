@@ -69,7 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quantities = $_POST['quantity'] ?? [];
         $unitCosts = $_POST['unit_cost'] ?? [];
         $notes = $_POST['notes'] ?? [];
+        $engineerFindings = trim((string)($_POST['engineer_findings'] ?? ''));
+        $riskNotes = trim((string)($_POST['risk_notes'] ?? ''));
+        $clientRequests = trim((string)($_POST['client_requests'] ?? ''));
         $rows = [];
+        $hasMaterial = false;
+        $hasLabor = false;
+        $grandTotal = 0.0;
 
         foreach ($itemNames as $index => $rawName) {
             $itemName = trim((string)$rawName);
@@ -89,19 +95,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
+            if ($costingAction === 'submit_to_admin' && $unitCost <= 0) {
+                $error = 'Unit cost must be greater than 0 before submitting to Admin.';
+                break;
+            }
+
+            $lineTotal = $quantity * $unitCost;
+            $grandTotal += $lineTotal;
+            $hasMaterial = $hasMaterial || $itemType === 'material';
+            $hasLabor = $hasLabor || $itemType === 'labor';
+
             $rows[] = [
                 'item_type' => $itemType,
                 'inventory_id' => $inventoryId > 0 ? $inventoryId : null,
                 'item_name' => $itemName,
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
-                'line_total' => $quantity * $unitCost,
+                'line_total' => $lineTotal,
                 'notes' => trim((string)($notes[$index] ?? '')),
             ];
         }
 
         if ($error === '' && empty($rows)) {
             $error = 'Please add at least one costing item.';
+        }
+
+        if ($error === '' && $costingAction === 'submit_to_admin') {
+            if (mb_strlen($engineerFindings, 'UTF-8') < 10) {
+                $error = 'Please add engineer findings before submitting to Admin.';
+            } elseif (!$hasMaterial) {
+                $error = 'Please add at least one material item before submitting.';
+            } elseif (!$hasLabor) {
+                $error = 'Please add at least one labor item before submitting.';
+            } elseif ($grandTotal <= 0) {
+                $error = 'Total costing must be greater than 0 before submitting.';
+            }
         }
 
         if ($error === '') {
@@ -146,6 +174,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $insertStmt->execute();
                 }
 
+                $notesStmt = $conn->prepare(
+                    'UPDATE site_inspections
+                     SET engineer_findings = ?, risk_notes = ?, client_requests = ?
+                     WHERE id = ? AND engineer_id = ?'
+                );
+                if (!$notesStmt) {
+                    throw new RuntimeException('Failed to prepare engineer notes save.');
+                }
+                $notesStmt->bind_param('sssii', $engineerFindings, $riskNotes, $clientRequests, $inspectionId, $userId);
+                $notesStmt->execute();
+
                 // Kapag final submit, Admin review na ang next step.
                 $status = $costingAction === 'submit_to_admin' ? 'Submitted to Admin' : 'Costing Draft';
                 $statusStmt = $conn->prepare('UPDATE site_inspections SET status = ? WHERE id = ? AND engineer_id = ?');
@@ -185,6 +224,9 @@ $stmt = $conn->prepare(
         si.scheduled_at,
         si.site_notes,
         si.status,
+        si.engineer_findings,
+        si.risk_notes,
+        si.client_requests,
         si.created_at,
         s.client_name,
         s.company_name,
@@ -263,21 +305,38 @@ $csrfToken = engineer_inspection_csrf_token();
                                 <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <p class="inspection-meta"><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
                             </div>
-                            <span class="inspection-status" data-status="<?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <div class="inspection-card__schedule">
+                                <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                            <button type="button" class="btn-primary inspection-view-button" data-inspection-modal-open="inspectionModal<?php echo $inspectionId; ?>">
+                                View Details
+                            </button>
                         </div>
 
-                        <div class="inspection-grid">
-                            <div class="inspection-detail"><span>Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div class="inspection-detail"><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div class="inspection-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div class="inspection-detail inspection-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)$inspection['site_address'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div class="inspection-detail inspection-detail--wide"><span>Admin Notes</span><strong><?php echo htmlspecialchars((string)($inspection['site_notes'] ?: 'None'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                        </div>
+                        <div class="inspection-modal" id="inspectionModal<?php echo $inspectionId; ?>" hidden>
+                            <div class="inspection-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
+                                <div class="inspection-modal__head">
+                                    <div>
+                                        <span class="inspection-modal__eyebrow">Site Inspection</span>
+                                        <h2 id="inspectionModalTitle<?php echo $inspectionId; ?>"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                                        <p><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <span class="inspection-status inspection-status--modal" data-status="<?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </div>
+                                    <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
+                                </div>
 
-                        <p class="inspection-description"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
+                                <div class="inspection-grid">
+                                    <div class="inspection-detail"><span>Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)$inspection['site_address'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--wide"><span>Admin Notes</span><strong><?php echo htmlspecialchars((string)($inspection['site_notes'] ?: 'None'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                </div>
 
-                        <form method="POST" class="inspection-costing-form" data-costing-form>
+                                <p class="inspection-description"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
+
+                                <form method="POST" class="inspection-costing-form" data-costing-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
@@ -287,6 +346,21 @@ $csrfToken = engineer_inspection_csrf_token();
                             <?php if ($isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
                             <?php endif; ?>
+
+                            <div class="inspection-costing-notes">
+                                <label>
+                                    <span>Engineer Findings <b>*</b></span>
+                                    <textarea name="engineer_findings" rows="3" minlength="10" placeholder="Actual problem found, site condition, and recommended scope" <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                </label>
+                                <label>
+                                    <span>Risk / Safety Notes</span>
+                                    <textarea name="risk_notes" rows="2" placeholder="Access issue, electrical risk, working height, downtime risk..." <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['risk_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                </label>
+                                <label>
+                                    <span>Client Requests</span>
+                                    <textarea name="client_requests" rows="2" placeholder="Preferred schedule, brand request, special instruction..." <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['client_requests'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                </label>
+                            </div>
 
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($costItems as $item): ?>
@@ -326,7 +400,9 @@ $csrfToken = engineer_inspection_csrf_token();
                                     <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing>Submit to Admin</button>
                                 </div>
                             <?php endif; ?>
-                        </form>
+                                </form>
+                            </div>
+                        </div>
                     </article>
                 <?php endforeach; ?>
             <?php endif; ?>

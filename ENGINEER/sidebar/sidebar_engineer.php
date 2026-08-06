@@ -3,7 +3,7 @@ $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', P
 $currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
 $currentFile = basename($currentPath);
 
-$isOverview = $currentFile === 'engineer_dashboard.php';
+$isOverview = in_array($currentFile, ['overview.php', 'engineer_dashboard.php'], true);
 $isArchive = $currentFile === 'projects.php' && (str_contains($currentQuery, 'view=trash') || str_contains($currentQuery, 'view=archive'));
 $isProjects = $currentFile === 'projects.php' && !$isArchive;
 $isProcurement = $currentFile === 'procurement.php';
@@ -15,6 +15,18 @@ $isUpdates = $currentFile === 'progress_updates.php';
 $isProfile = $currentFile === 'profile.php';
 ?>
 <?php auth_render_back_button_logout_script(); ?>
+<script>
+    // I-apply agad ang saved shrink state para hindi gumalaw ang sidebar kada lipat ng page.
+    (function () {
+        try {
+            if (window.innerWidth > 768 && window.localStorage.getItem('engineer.sidebar.shrink') === '1') {
+                document.documentElement.classList.add('ops-sidebar-shrink-pref');
+            }
+        } catch (error) {
+            // Safe fallback kapag blocked ang browser storage.
+        }
+    })();
+</script>
 <button
     class="sidebar-mobile-toggle"
     type="button"
@@ -26,27 +38,27 @@ $isProfile = $currentFile === 'profile.php';
     <span></span>
 </button>
 
-<nav class="sidebar" id="sidebar">
-    <button
-        class="sidebar-toggle"
-        type="button"
-        aria-label="Collapse menu"
-        aria-expanded="true"
-        data-sidebar-toggle
-    >
-        <span class="sidebar-toggle-icon" aria-hidden="true">
-            <svg class="sidebar-toggle-svg" viewBox="0 0 20 20" focusable="false" aria-hidden="true">
-                <path d="M11.75 4.75L6.5 10l5.25 5.25"></path>
-            </svg>
-        </span>
-    </button>
+<nav class="sidebar sidebar--engineer" id="sidebar">
     <div class="brand-block">
-        <span class="brand-title">Engineer Overview</span>
+        <button
+            class="sidebar-toggle"
+            type="button"
+            aria-label="Collapse menu"
+            aria-expanded="true"
+            data-sidebar-toggle
+        >
+            <span class="sidebar-toggle-icon" aria-hidden="true">
+                <svg class="sidebar-toggle-svg" viewBox="0 0 20 20" focusable="false" aria-hidden="true">
+                    <path d="M11.75 4.75L6.5 10l5.25 5.25"></path>
+                </svg>
+            </span>
+        </button>
+        <a class="brand-title brand-title-link" href="/codesamplecaps/ENGINEER/dashboards/overview.php">Engineer</a>
     </div>
     <div class="nav-divider"></div>
     <ul class="nav-menu">
         <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/engineer_dashboard.php" class="menu-link<?php echo $isOverview ? ' active-link' : ''; ?>">
+            <a href="/codesamplecaps/ENGINEER/dashboards/overview.php" class="menu-link<?php echo $isOverview ? ' active-link' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -122,7 +134,7 @@ $isProfile = $currentFile === 'profile.php';
                             <path d="M9 16h4"></path>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">PO</span>
+                    <span class="menu-mini-label">Proc</span>
                 </span>
                 <span class="menu-text">Procurement</span>
             </a>
@@ -136,7 +148,7 @@ $isProfile = $currentFile === 'profile.php';
                             <circle cx="12" cy="10" r="2"></circle>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">Inspect</span>
+                    <span class="menu-mini-label">Site</span>
                 </span>
                 <span class="menu-text">Site Inspections</span>
             </a>
@@ -168,7 +180,7 @@ $isProfile = $currentFile === 'profile.php';
                             <path d="M17 16v-4"></path>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">Rpt</span>
+                    <span class="menu-mini-label">Report</span>
                 </span>
                 <span class="menu-text">Reports</span>
             </a>
@@ -196,7 +208,7 @@ $isProfile = $currentFile === 'profile.php';
                             <path d="M5 19a7 7 0 0 1 14 0"></path>
                         </svg>
                     </span>
-                    <span class="menu-mini-label">Profile</span>
+                    <span class="menu-mini-label">Me</span>
                 </span>
                 <span class="menu-text">Profile</span>
             </a>

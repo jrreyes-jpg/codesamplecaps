@@ -464,7 +464,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const lastOpenModalId = sessionStorage.getItem('edgeOpenInquiryModal');
+    const urlOpenModalId = new URLSearchParams(window.location.search).get('open');
+    const lastOpenModalId = urlOpenModalId || sessionStorage.getItem('edgeOpenInquiryModal');
     if (lastOpenModalId) {
         const modal = document.getElementById(lastOpenModalId);
         if (modal) {
@@ -481,7 +482,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const form = pendingConfirmForm;
         form.dataset.confirmed = '1';
-        sessionStorage.removeItem('edgeOpenInquiryModal');
+        if (!form.classList.contains('inquiry-review-form') && !form.classList.contains('inquiry-schedule-form')) {
+            sessionStorage.removeItem('edgeOpenInquiryModal');
+        }
         closeConfirm();
         form.requestSubmit();
     });

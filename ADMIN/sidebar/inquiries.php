@@ -155,6 +155,24 @@ function inquiry_center_redirect_back(string $message, string $fallback = '/code
     exit();
 }
 
+function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, string $message): void
+{
+    $_SESSION['inquiry_center_flash'] = $message;
+
+    $query = [
+        'status' => $status,
+        'open' => 'inquiryModal' . $inquiryId,
+    ];
+
+    $search = trim((string)($_GET['search'] ?? ''));
+    if ($search !== '') {
+        $query['search'] = $search;
+    }
+
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php?' . http_build_query($query));
+    exit();
+}
+
 inquiry_center_ensure_review_columns($conn);
 site_inspection_ensure_table($conn);
 $conn->query("UPDATE service_inquiries SET status = 'Verified Lead' WHERE status = 'Verified'");
@@ -423,7 +441,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'admin_notes' => $adminNotes,
                                 ]
                             );
-                            $message = 'Inquiry updated successfully.';
+                            inquiry_center_redirect_to_open_modal(
+                                $inquiryId,
+                                $newStatus,
+                                $newStatus === 'Verified Lead'
+                                    ? 'Inquiry marked as verified.'
+                                    : 'Inquiry updated successfully.'
+                            );
                         } else {
                             $error = 'Failed to update inquiry.';
                         }

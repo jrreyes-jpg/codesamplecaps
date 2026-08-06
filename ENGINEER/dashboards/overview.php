@@ -23,79 +23,6 @@ $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/engineer-sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
-    <style>
-        .priority-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            align-items: stretch;
-        }
-
-        .priority-card {
-            flex: 1 1 180px;
-            min-width: 180px;
-            padding: 14px 16px;
-            border-radius: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            cursor: default;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-        }
-
-        .priority-card.is-clickable {
-            cursor: pointer;
-        }
-
-        .priority-card.is-clickable:hover,
-        .priority-card.is-clickable:focus-visible {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
-        }
-
-        .priority-card.is-empty {
-            background: #f1f5f9;
-            border: 1px solid #dbe2ea;
-            box-shadow: none;
-        }
-
-        .priority-card__label {
-            font-size: 0.78rem;
-            letter-spacing: 0.06em;
-        }
-
-        .priority-card__count {
-            font-size: 1.7rem;
-            line-height: 1;
-            color: #0f172a;
-        }
-
-        .priority-card__hint {
-            margin-top: auto;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #1d4ed8;
-        }
-
-        .priority-card.is-empty .priority-card__label,
-        .priority-card.is-empty .priority-card__count,
-        .priority-card.is-empty .priority-card__hint {
-            color: #64748b;
-        }
-
-        .updates-empty-message {
-            margin: 0;
-            padding: 4px 0 0;
-            color: #64748b;
-            font-size: 0.95rem;
-        }
-
-        @media (max-width: 768px) {
-            .priority-card {
-                flex-basis: 100%;
-            }
-        }
-    </style>
 </head>
 <body>
 <?php include '../sidebar/sidebar_engineer.php'; ?>
@@ -105,6 +32,7 @@ $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
     include __DIR__ . '/../includes/header.php';
     ?>
 
+    <main class="engineer-page-body">
     <?php if ($flash): ?>
         <div class="flash <?php echo htmlspecialchars((string)($flash['type'] ?? 'success')); ?>">
             <?php echo htmlspecialchars((string)($flash['message'] ?? '')); ?>
@@ -224,7 +152,7 @@ $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
                                 <span><?php echo htmlspecialchars((string)$projectProgress['summary']); ?></span>
                             </div>
                             <div class="project-progress__bar">
-                                <span style="width: <?php echo (int)$projectProgress['percent']; ?>%;"></span>
+                                <span data-progress-width="<?php echo (int)$projectProgress['percent']; ?>"></span>
                             </div>
                         </div>
                         <p class="updates-empty-message"><?php echo htmlspecialchars((string)$projectProgress['hint']); ?></p>
@@ -235,25 +163,11 @@ $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
             <?php endif; ?>
         </div>
     </section>
+    </main>
 </div>
 
 <script src="../js/engineer.js"></script>
-<script>
-    document.querySelectorAll('[data-card-url]').forEach(function (card) {
-        var targetUrl = card.getAttribute('data-card-url');
-
-        card.addEventListener('click', function () {
-            window.location = targetUrl;
-        });
-
-        card.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                window.location = targetUrl;
-            }
-        });
-    });
-</script>
+<script src="../js/overview.js"></script>
 
 </body>
 </html>

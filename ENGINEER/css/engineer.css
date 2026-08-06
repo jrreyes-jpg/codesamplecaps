@@ -4,6 +4,11 @@
     box-sizing: border-box;
 }
 
+html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+}
+
 body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
@@ -44,6 +49,13 @@ img {
 .dashboard-main.sidebar-shrink {
     margin-left: 126px;
     width: calc(100% - 126px);
+}
+
+.engineer-page-body {
+    display: grid;
+    gap: 24px;
+    width: 100%;
+    min-width: 0;
 }
 
 .procurement-hero {

@@ -32,6 +32,7 @@ $todayDate = $data['today_date'];
     include __DIR__ . '/../includes/header.php';
     ?>
 
+    <main class="engineer-page-body">
     <?php if ($flash): ?>
         <div class="flash <?php echo htmlspecialchars((string)($flash['type'] ?? 'success')); ?>">
             <?php echo htmlspecialchars((string)($flash['message'] ?? '')); ?>
@@ -185,6 +186,7 @@ $todayDate = $data['today_date'];
             <div class="no-data"><p>No tasks yet.</p></div>
         <?php endif; ?>
     </div>
+    </main>
 </div>
 
 <script src="../js/engineer.js"></script>

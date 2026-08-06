@@ -1,26 +1,23 @@
 <?php
-require_once __DIR__ . '/../../config/profile_photo_storage.php';
+require_once __DIR__ . '/engineer_helpers.php';
 
 $engineerHeaderName = (string)($_SESSION['name'] ?? 'Engineer');
-$engineerHeaderNickname = '';
 $engineerHeaderPhotoPath = '';
 
 if (isset($conn) && $conn instanceof mysqli) {
     engineer_ensure_profile_columns($conn);
     $engineerHeaderUserId = (int)($_SESSION['user_id'] ?? 0);
-    $engineerHeaderStmt = $conn->prepare('SELECT nickname, profile_photo_path FROM users WHERE id = ? LIMIT 1');
+    $engineerHeaderStmt = $conn->prepare('SELECT profile_photo_path FROM users WHERE id = ? LIMIT 1');
     if ($engineerHeaderStmt) {
         $engineerHeaderStmt->bind_param('i', $engineerHeaderUserId);
         $engineerHeaderStmt->execute();
         $engineerHeaderRow = $engineerHeaderStmt->get_result()->fetch_assoc() ?: [];
-        $engineerHeaderNickname = trim((string)($engineerHeaderRow['nickname'] ?? ''));
         $engineerHeaderPhotoPath = trim((string)($engineerHeaderRow['profile_photo_path'] ?? ''));
         $engineerHeaderStmt->close();
     }
 }
 
-$engineerHeaderDisplayName = $engineerHeaderNickname !== '' ? $engineerHeaderNickname : $engineerHeaderName;
-$engineerHeaderInitial = strtoupper(substr(trim($engineerHeaderDisplayName) !== '' ? trim($engineerHeaderDisplayName) : 'E', 0, 1));
+$engineerHeaderInitial = strtoupper(substr(trim($engineerHeaderName) !== '' ? trim($engineerHeaderName) : 'E', 0, 1));
 $engineerHeaderPhotoUrl = $engineerHeaderPhotoPath !== '' ? profile_photo_public_url($engineerHeaderPhotoPath) : '';
 $engineerHeaderCsrfToken = engineer_get_csrf_token();
 $engineerHeaderReturnUrl = $_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ENGINEER/dashboards/overview.php';
@@ -66,7 +63,7 @@ $engineerHeaderTime = date('g:i A');
                         <?php endif; ?>
                     </button>
                     <button class="engineer-profile-dropdown__summary" type="button" data-engineer-profile-modal-open>
-                        <strong><?php echo htmlspecialchars($engineerHeaderDisplayName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                        <strong><?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?></strong>
                         <small>View Profile</small>
                     </button>
                 </div>
@@ -89,29 +86,21 @@ $engineerHeaderTime = date('g:i A');
 <div class="engineer-profile-modal" data-engineer-profile-modal hidden>
     <div class="engineer-profile-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerProfileModalTitle">
         <button class="engineer-profile-modal__close" type="button" data-engineer-profile-modal-close aria-label="Close profile modal">&times;</button>
-        <div class="engineer-profile-modal__avatar">
+        <button class="engineer-profile-modal__avatar" type="button" data-engineer-photo-preview aria-label="View profile photo">
             <?php if ($engineerHeaderPhotoUrl !== ''): ?>
                 <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo">
             <?php else: ?>
                 <span><?php echo htmlspecialchars($engineerHeaderInitial, ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
-        </div>
+        </button>
         <p class="engineer-profile-modal__kicker">Engineer Profile</p>
         <h2 id="engineerProfileModalTitle"><?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?></h2>
-        <?php if ($engineerHeaderNickname !== ''): ?>
-            <p class="engineer-profile-modal__nickname">Nickname: <?php echo htmlspecialchars($engineerHeaderNickname, ENT_QUOTES, 'UTF-8'); ?></p>
-        <?php endif; ?>
         <form class="engineer-profile-edit-form" method="POST" action="/codesamplecaps/ENGINEER/actions/update_profile.php" enctype="multipart/form-data" data-engineer-profile-form>
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($engineerHeaderCsrfToken, ENT_QUOTES, 'UTF-8'); ?>">
             <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($engineerHeaderReturnUrl, ENT_QUOTES, 'UTF-8'); ?>">
             <input id="engineerProfilePhotoInput" class="engineer-profile-edit-form__file" type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp" data-profile-photo-input>
 
             <button class="engineer-profile-edit-form__photo-button" type="button" data-engineer-photo-change>Change Profile Photo</button>
-
-            <label class="engineer-profile-edit-form__field">
-                <span>Nickname</span>
-                <input type="text" name="nickname" maxlength="80" value="<?php echo htmlspecialchars($engineerHeaderNickname, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Optional nickname">
-            </label>
 
             <p class="engineer-profile-edit-form__error" data-profile-form-error hidden></p>
 

@@ -231,7 +231,7 @@ const initEngineerProfileMenu = () => {
     const profileOpen = document.querySelector('[data-engineer-profile-modal-open]');
     const profileClose = document.querySelector('[data-engineer-profile-modal-close]');
     const photoModal = document.querySelector('[data-engineer-photo-modal]');
-    const photoOpen = document.querySelector('[data-engineer-photo-preview]');
+    const photoOpenButtons = document.querySelectorAll('[data-engineer-photo-preview]');
     const photoClose = document.querySelector('[data-engineer-photo-modal-close]');
     const photoChangeButtons = document.querySelectorAll('[data-engineer-photo-change]');
     const photoSave = document.querySelector('[data-engineer-photo-save]');
@@ -281,7 +281,9 @@ const initEngineerProfileMenu = () => {
 
     profileOpen?.addEventListener('click', () => openModal(profileModal));
     profileClose?.addEventListener('click', () => closeModal(profileModal));
-    photoOpen?.addEventListener('click', () => openModal(photoModal));
+    photoOpenButtons.forEach((button) => {
+        button.addEventListener('click', () => openModal(photoModal));
+    });
     photoClose?.addEventListener('click', () => closeModal(photoModal));
     photoChangeButtons.forEach((button) => {
         button.addEventListener('click', () => {

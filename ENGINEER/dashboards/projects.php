@@ -26,6 +26,10 @@ $projectRows = $isArchiveView ? engineer_fetch_archived_projects($conn, $userId)
 <?php include '../sidebar/sidebar_engineer.php'; ?>
 
 <div class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <div class="section-heading">
         <div>
             <p class="section-kicker">Projects</p>

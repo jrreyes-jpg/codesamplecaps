@@ -28,6 +28,10 @@ $todayDate = $data['today_date'];
 <?php include '../sidebar/sidebar_engineer.php'; ?>
 
 <div class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <?php if ($flash): ?>
         <div class="flash <?php echo htmlspecialchars((string)($flash['type'] ?? 'success')); ?>">
             <?php echo htmlspecialchars((string)($flash['message'] ?? '')); ?>

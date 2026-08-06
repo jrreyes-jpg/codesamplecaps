@@ -1,5 +1,25 @@
 <?php
 require_once __DIR__ . '/../../config/auth_middleware.php';
+require_once __DIR__ . '/../../config/profile_photo_storage.php';
+
+if (!function_exists('engineer_ensure_profile_columns')) {
+    function engineer_ensure_profile_columns(mysqli $conn): void
+    {
+        // Siguraduhin na ready ang profile columns kahit hindi pa manually narun ang migration.
+        $columns = [
+            'nickname' => "ALTER TABLE users ADD COLUMN nickname VARCHAR(80) NULL AFTER full_name",
+            'profile_photo_path' => "ALTER TABLE users ADD COLUMN profile_photo_path VARCHAR(255) NULL AFTER token_expiry",
+        ];
+
+        foreach ($columns as $column => $sql) {
+            $escapedColumn = $conn->real_escape_string($column);
+            $result = $conn->query("SHOW COLUMNS FROM users LIKE '{$escapedColumn}'");
+            if ($result && $result->num_rows === 0) {
+                $conn->query($sql);
+            }
+        }
+    }
+}
 
 function engineer_normalize_text_or_null(?string $value): ?string
 {
@@ -281,6 +301,8 @@ function engineer_handle_task_update(mysqli $conn, int $userId, array $taskStatu
 
 function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions): array
 {
+    engineer_ensure_profile_columns($conn);
+
     ensure_engineer_task_updates_table($conn);
     $activeProjectFilter = engineer_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NULL' : '';
 
@@ -475,7 +497,7 @@ function engineer_fetch_data(mysqli $conn, int $userId, array $taskStatusOptions
     }
 
     $profileStmt = $conn->prepare(
-        'SELECT full_name, email, phone, status, role
+        'SELECT full_name, nickname, email, phone, status, role, profile_photo_path
          FROM users
          WHERE id = ?
          LIMIT 1'

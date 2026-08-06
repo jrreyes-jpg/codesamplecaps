@@ -101,6 +101,10 @@ $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
 <?php include '../sidebar/sidebar_engineer.php'; ?>
 
 <div class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <?php if ($flash): ?>
         <div class="flash <?php echo htmlspecialchars((string)($flash['type'] ?? 'success')); ?>">
             <?php echo htmlspecialchars((string)($flash['message'] ?? '')); ?>

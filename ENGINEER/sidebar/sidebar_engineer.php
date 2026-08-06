@@ -12,7 +12,6 @@ $isQuotations = in_array($currentFile, ['quotations.php', 'quotation_form.php'],
 $isReports = $currentFile === 'reports.php';
 $isTasks = $currentFile === 'tasks.php';
 $isUpdates = $currentFile === 'progress_updates.php';
-$isProfile = $currentFile === 'profile.php';
 ?>
 <?php auth_render_back_button_logout_script(); ?>
 <script>
@@ -197,20 +196,6 @@ $isProfile = $currentFile === 'profile.php';
                     <span class="menu-mini-label">Update</span>
                 </span>
                 <span class="menu-text">Progress Updates</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/profile.php" class="menu-link<?php echo $isProfile ? ' active-link' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <circle cx="12" cy="8" r="3.25"></circle>
-                            <path d="M5 19a7 7 0 0 1 14 0"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Me</span>
-                </span>
-                <span class="menu-text">Profile</span>
             </a>
         </li>
         <li>

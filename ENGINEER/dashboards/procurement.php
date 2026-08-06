@@ -1051,6 +1051,10 @@ foreach ($purchaseOrders as $purchaseOrder) {
     <?php include __DIR__ . '/../sidebar/sidebar_engineer.php'; ?>
 
     <main class="dashboard-main">
+        <?php
+        include __DIR__ . '/../includes/header.php';
+        ?>
+
         <section class="procurement-hero">
             <div class="procurement-hero__content">
                 <span class="section-kicker">Engineer Workflow</span>

@@ -203,15 +203,6 @@ const initStaleLoginWindowGuard = () => {
         }
     };
 
-    const redirectStaleLogin = (dashboardPath) => {
-        if (!dashboardPath || !dashboardPath.startsWith('/codesamplecaps/')) {
-            return;
-        }
-
-        // Kapag lumang login tab ito, dalhin na siya sa dashboard para hindi lumabas ulit na login sa Alt-Tab.
-        window.location.replace(dashboardPath);
-    };
-
     window.addEventListener('storage', (event) => {
         if (event.key !== 'edge_auth_state' || !event.newValue) {
             return;
@@ -220,7 +211,7 @@ const initStaleLoginWindowGuard = () => {
         try {
             const state = JSON.parse(event.newValue);
             if (state.status === 'logged-in') {
-                redirectStaleLogin(String(state.dashboardPath || ''));
+                clearStaleCredentials();
             } else if (state.status === 'logged-out') {
                 clearStaleCredentials();
             }
@@ -247,40 +238,19 @@ const initStaleLoginWindowGuard = () => {
     try {
         const state = JSON.parse(localStorage.getItem('edge_auth_state') || '{}');
         if (state.status === 'logged-in') {
-            redirectStaleLogin(String(state.dashboardPath || ''));
+            clearStaleCredentials();
         }
     } catch (error) {
         // Ignore invalid localStorage data.
     }
 
-    const checkAuthStatus = () => {
-        fetch('/codesamplecaps/LOGIN/php/auth_status.php', {
-            cache: 'no-store',
-            credentials: 'same-origin',
-        })
-            .then((response) => response.ok ? response.json() : null)
-            .then((state) => {
-                if (state?.authenticated) {
-                    redirectStaleLogin(String(state.dashboard || ''));
-                }
-            })
-            .catch(() => {});
-    };
-
-    checkAuthStatus();
-    const staleLoginCheckTimer = window.setInterval(checkAuthStatus, 1000);
     window.addEventListener('focus', () => {
         clearStaleCredentials();
-        checkAuthStatus();
     });
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             clearStaleCredentials();
-            checkAuthStatus();
         }
-    });
-    window.addEventListener('beforeunload', () => {
-        window.clearInterval(staleLoginCheckTimer);
     });
 };
 

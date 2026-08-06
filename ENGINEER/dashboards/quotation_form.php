@@ -67,6 +67,10 @@ if (empty($items)) {
 <body>
 <?php include __DIR__ . '/../sidebar/sidebar_engineer.php'; ?>
 <main class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <div class="quotation-shell">
         <?php if ($flash): ?>
             <div class="flash <?php echo htmlspecialchars((string)$flash['type']); ?>"><?php echo htmlspecialchars((string)$flash['message']); ?></div>

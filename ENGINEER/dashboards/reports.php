@@ -221,6 +221,10 @@ foreach ($quotationRows as $quotationRow) {
 <?php include __DIR__ . '/../sidebar/sidebar_engineer.php'; ?>
 
 <div class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <section class="reports-hero">
         <div>
             <p class="report-kicker">Engineer Reports</p>

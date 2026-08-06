@@ -273,6 +273,10 @@ $csrfToken = engineer_inspection_csrf_token();
 <body>
 <?php include '../sidebar/sidebar_engineer.php'; ?>
 <main class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <div class="inspection-shell">
         <?php if ($message): ?><div class="inspection-flash success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         <?php if ($error): ?><div class="inspection-flash error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>

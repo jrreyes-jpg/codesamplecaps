@@ -23,6 +23,10 @@ $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
 <?php include '../sidebar/sidebar_engineer.php'; ?>
 
 <div class="main-content">
+    <?php
+    include __DIR__ . '/../includes/header.php';
+    ?>
+
     <div class="section-heading">
         <div>
             <p class="section-kicker">Updates</p>

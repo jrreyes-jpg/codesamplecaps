@@ -170,6 +170,10 @@ const initStaleLoginWindowGuard = () => {
         } catch (error) {
             // Ignore localStorage errors.
         }
+
+        if (window.history?.replaceState) {
+            window.history.replaceState({}, document.title, '/codesamplecaps/LOGIN/php/login.php');
+        }
     }
 
     if (!form || window.location.search.includes('logout=1')) {
@@ -189,10 +193,6 @@ const initStaleLoginWindowGuard = () => {
     form.target = '_self';
 
     const clearStaleCredentials = () => {
-        if (document.visibilityState === 'hidden') {
-            return;
-        }
-
         if (password && !password.matches(':focus')) {
             password.value = '';
         }
@@ -200,6 +200,27 @@ const initStaleLoginWindowGuard = () => {
         if (submitButton && submitButton.textContent === (submitButton.dataset.loadingText || 'Logging in...')) {
             submitButton.disabled = false;
             submitButton.textContent = defaultSubmitText;
+        }
+    };
+
+    const redirectAuthenticatedLoginPage = async () => {
+        if (window.location.search.includes('logout=1')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/codesamplecaps/LOGIN/php/auth_status.php', {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            });
+            const data = await response.json();
+
+            if (data.authenticated && data.dashboard) {
+                clearStaleCredentials();
+                window.location.replace(data.dashboard);
+            }
+        } catch (error) {
+            clearStaleCredentials();
         }
     };
 
@@ -212,6 +233,7 @@ const initStaleLoginWindowGuard = () => {
             const state = JSON.parse(event.newValue);
             if (state.status === 'logged-in') {
                 clearStaleCredentials();
+                redirectAuthenticatedLoginPage();
             } else if (state.status === 'logged-out') {
                 clearStaleCredentials();
             }
@@ -239,6 +261,7 @@ const initStaleLoginWindowGuard = () => {
         const state = JSON.parse(localStorage.getItem('edge_auth_state') || '{}');
         if (state.status === 'logged-in') {
             clearStaleCredentials();
+            redirectAuthenticatedLoginPage();
         }
     } catch (error) {
         // Ignore invalid localStorage data.
@@ -246,11 +269,17 @@ const initStaleLoginWindowGuard = () => {
 
     window.addEventListener('focus', () => {
         clearStaleCredentials();
+        redirectAuthenticatedLoginPage();
     });
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             clearStaleCredentials();
+            redirectAuthenticatedLoginPage();
         }
+    });
+    window.addEventListener('pageshow', () => {
+        clearStaleCredentials();
+        redirectAuthenticatedLoginPage();
     });
 };
 

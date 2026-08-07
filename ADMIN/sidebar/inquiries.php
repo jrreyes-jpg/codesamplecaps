@@ -117,6 +117,11 @@ function inquiry_center_format_date(?string $date): string
     return date('M j, Y', $timestamp);
 }
 
+function inquiry_center_format_money(float $amount): string
+{
+    return 'PHP ' . number_format($amount, 2);
+}
+
 function inquiry_center_allowed_next_statuses(string $currentStatus): array
 {
     // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
@@ -175,6 +180,7 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
 
 inquiry_center_ensure_review_columns($conn);
 site_inspection_ensure_table($conn);
+site_inspection_ensure_costing_table($conn);
 $conn->query("UPDATE service_inquiries SET status = 'Verified Lead' WHERE status = 'Verified'");
 $conn->query("UPDATE service_inquiries SET status = 'Not Qualified' WHERE status = 'Rejected'");
 $csrfToken = inquiry_center_csrf_token();
@@ -524,10 +530,15 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 $inspectionByInquiry = [];
 $inspectionResult = $conn->query(
     "SELECT
+        si.id,
         si.inquiry_id,
         si.scheduled_at,
         si.status,
         si.site_notes,
+        si.engineer_findings,
+        si.risk_notes,
+        si.client_requests,
+        si.updated_at,
         u.full_name AS engineer_name
      FROM site_inspections si
      INNER JOIN users u ON u.id = si.engineer_id
@@ -538,6 +549,50 @@ if ($inspectionResult) {
         $inquiryId = (int)($inspection['inquiry_id'] ?? 0);
         if ($inquiryId > 0 && !isset($inspectionByInquiry[$inquiryId])) {
             $inspectionByInquiry[$inquiryId] = $inspection;
+        }
+    }
+}
+
+$costItemsByInspection = [];
+$costingResult = $conn->query(
+    "SELECT inspection_id, item_type, item_name, quantity, unit, unit_cost, line_total, notes
+     FROM site_inspection_cost_items
+     ORDER BY id ASC"
+);
+if ($costingResult) {
+    while ($costItem = $costingResult->fetch_assoc()) {
+        $inspectionId = (int)($costItem['inspection_id'] ?? 0);
+        if ($inspectionId > 0) {
+            $costItemsByInspection[$inspectionId][] = $costItem;
+        }
+    }
+}
+
+$costingReviewByInquiry = [];
+$costingReviewResult = $conn->query(
+    "SELECT
+        si.id,
+        si.inquiry_id,
+        si.scheduled_at,
+        si.status,
+        si.engineer_findings,
+        si.risk_notes,
+        si.client_requests,
+        si.updated_at,
+        u.full_name AS engineer_name,
+        COUNT(ci.id) AS costing_rows,
+        COALESCE(SUM(ci.line_total), 0) AS costing_total
+     FROM site_inspections si
+     INNER JOIN users u ON u.id = si.engineer_id
+     INNER JOIN site_inspection_cost_items ci ON ci.inspection_id = si.id
+     GROUP BY si.id, si.inquiry_id, si.scheduled_at, si.status, si.engineer_findings, si.risk_notes, si.client_requests, si.updated_at, u.full_name
+     ORDER BY (si.status = 'Submitted to Admin') DESC, si.updated_at DESC, si.id DESC"
+);
+if ($costingReviewResult) {
+    while ($review = $costingReviewResult->fetch_assoc()) {
+        $inquiryId = (int)($review['inquiry_id'] ?? 0);
+        if ($inquiryId > 0 && !isset($costingReviewByInquiry[$inquiryId])) {
+            $costingReviewByInquiry[$inquiryId] = $review;
         }
     }
 }
@@ -627,21 +682,19 @@ include __DIR__ . '/../admin_sidebar.php';
                     <?php $currentStatus = (string)($inquiry['status'] ?? 'Pending Review'); ?>
                     <?php $isViewed = !empty($inquiry['viewed_at']); ?>
                     <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
+                    <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
+                    <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
+                    <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>">
                         <div class="inquiry-card__head">
                             <div>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <div class="inquiry-meta">
-                                    <?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?>
-                                    |
-                                    <?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?>
-                                    |
-                                    <?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?>
+                                    <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 </div>
                             </div>
-                            <span class="inquiry-status" data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                <?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>
-                            </span>
                         </div>
 
                         <button type="button" class="inquiry-open-modal" data-inquiry-modal-open="inquiryModal<?php echo (int)$inquiry['id']; ?>">
@@ -658,6 +711,9 @@ include __DIR__ . '/../admin_sidebar.php';
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                         </div>
                                     </div>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
@@ -717,6 +773,52 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <strong>Project Description</strong><br>
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
+
+                                    <?php if ($costingReview && !empty($latestCostItems)): ?>
+                                        <div class="inquiry-section-title">Engineer Costing Review</div>
+                                        <div class="inquiry-costing-review">
+                                            <div class="inquiry-costing-review__head">
+                                                <div>
+                                                    <span>Submitted By</span>
+                                                    <strong><?php echo htmlspecialchars((string)$costingReview['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                </div>
+                                                <div>
+                                                    <span>Status</span>
+                                                    <strong><?php echo htmlspecialchars((string)$costingReview['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                </div>
+                                                <div>
+                                                    <span>Total Cost</span>
+                                                    <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                </div>
+                                            </div>
+
+                                            <?php if (!empty($costingReview['engineer_findings'])): ?>
+                                                <div class="inquiry-costing-review__notes">
+                                                    <span>Engineer Findings</span>
+                                                    <strong><?php echo nl2br(htmlspecialchars((string)$costingReview['engineer_findings'], ENT_QUOTES, 'UTF-8')); ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <div class="inquiry-costing-table">
+                                                <div class="inquiry-costing-table__row inquiry-costing-table__row--head">
+                                                    <span>Type</span>
+                                                    <span>Item</span>
+                                                    <span>Qty</span>
+                                                    <span>Unit Cost</span>
+                                                    <span>Total</span>
+                                                </div>
+                                                <?php foreach ($latestCostItems as $costItem): ?>
+                                                    <div class="inquiry-costing-table__row">
+                                                        <span><?php echo htmlspecialchars(ucfirst((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.') . ' ' . (string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="inquiry-expanded-actions">

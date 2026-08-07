@@ -58,6 +58,18 @@ if (canvas) {
     });
 }
 
+// Load shared duplicate-window guard for Inventory Clerk pages.
+(function () {
+    if (document.querySelector('script[src$="/assets/js/app-window-guard.js"]')) {
+        return;
+    }
+
+    const guardScript = document.createElement('script');
+    guardScript.src = '/codesamplecaps/assets/js/app-window-guard.js';
+    guardScript.defer = true;
+    document.head.appendChild(guardScript);
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
     try {
         localStorage.setItem('edge_auth_state', JSON.stringify({

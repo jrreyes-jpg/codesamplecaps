@@ -5,6 +5,10 @@ $adminJsFiles = $adminJsFiles ?? [
     '/codesamplecaps/ADMIN/js/overview.js',
     '/codesamplecaps/assets/js/realtime-updates.js',
 ];
+
+if (!in_array('/codesamplecaps/assets/js/app-window-guard.js', $adminJsFiles, true)) {
+    array_unshift($adminJsFiles, '/codesamplecaps/assets/js/app-window-guard.js');
+}
 ?>
 </div>
 <?php foreach ($adminJsFiles as $jsFile): ?>

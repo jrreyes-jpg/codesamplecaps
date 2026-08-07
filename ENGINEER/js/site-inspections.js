@@ -118,6 +118,16 @@ document.addEventListener('DOMContentLoaded', function () {
         holder.appendChild(error);
     };
 
+    const clearFieldError = function (field) {
+        if (!field) {
+            return;
+        }
+
+        field.classList.remove('is-invalid');
+        const holder = field.closest('label') || field.parentElement;
+        holder?.querySelector('.costing-field-error')?.remove();
+    };
+
     const showCostingError = function (form, message) {
         const errorBox = form.querySelector('[data-costing-error]');
         if (!errorBox) {
@@ -130,12 +140,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const clearCostingError = function (form) {
         const errorBox = form.querySelector('[data-costing-error]');
-        if (!errorBox) {
-            return;
-        }
+        form.querySelectorAll('.is-invalid-total').forEach(function (field) {
+            field.classList.remove('is-invalid-total');
+        });
 
-        errorBox.textContent = '';
-        errorBox.hidden = true;
+        if (errorBox) {
+            errorBox.textContent = '';
+            errorBox.hidden = true;
+        }
     };
 
     const sanitizePositiveNumber = function (field) {
@@ -155,6 +167,40 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         field.setCustomValidity('');
+    };
+
+    const isValidCostText = function (value) {
+        return /^[1-9]\d*(\.\d{1,2})?$/.test(value);
+    };
+
+    const addCostingRow = function (form, type = 'material') {
+        const rowsBox = form.querySelector('[data-costing-rows]');
+        const firstRow = rowsBox?.querySelector('.costing-row');
+        if (!rowsBox || !firstRow) {
+            return null;
+        }
+
+        const row = firstRow.cloneNode(true);
+        row.querySelectorAll('input').forEach(function (field) {
+            field.value = field.name === 'quantity[]' ? '1' : '';
+            clearFieldError(field);
+        });
+        row.querySelectorAll('select').forEach(function (field) {
+            field.selectedIndex = 0;
+            clearFieldError(field);
+        });
+
+        const typeField = row.querySelector('select[name="item_type[]"]');
+        if (typeField) {
+            typeField.value = type;
+        }
+
+        rowsBox.appendChild(row);
+        bindRow(form, row);
+        syncTotal(form);
+        saveFormDraft(form);
+
+        return row;
     };
 
     const validateCosting = function (form, requireFinal) {
@@ -187,6 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const quantityValue = Number(quantity?.value || 0);
             const unitValue = unit?.value.trim() || '';
             const unitCostValue = Number(unitCost?.value || 0);
+            const unitCostText = unitCost?.value.trim() || '';
             const rowHasValue = nameValue !== '' || quantityValue > 0 || unitCostValue > 0;
 
             if (!rowHasValue) {
@@ -208,8 +255,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 firstInvalid = firstInvalid || quantity;
             }
 
-            if (unitCostValue < 0) {
-                setFieldError(unitCost, 'Price cannot be negative.');
+            if (unitCostText !== '' && !isValidCostText(unitCostText)) {
+                setFieldError(unitCost, 'Unit cost must be a valid PHP amount. Example: 1500 or 1500.50.');
                 firstInvalid = firstInvalid || unitCost;
             }
 
@@ -219,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (requireFinal && unitCostValue <= 0) {
-                setFieldError(unitCost, 'Price must be greater than 0 before submitting.');
+                setFieldError(unitCost, 'Unit cost is required and must be greater than 0.');
                 firstInvalid = firstInvalid || unitCost;
             }
         });
@@ -237,20 +284,26 @@ document.addEventListener('DOMContentLoaded', function () {
         if (requireFinal && (!hasMaterial || !hasLabor || total <= 0)) {
             const totalBox = form.querySelector('[data-costing-total]');
             totalBox?.classList.add('is-invalid-total');
-            firstInvalid = firstInvalid || totalBox;
             if (!hasMaterial) {
-                errorMessage = errorMessage || 'Add at least one Material row.';
+                const newRow = addCostingRow(form, 'material');
+                const nameField = newRow?.querySelector('input[name="item_name[]"]');
+                setFieldError(nameField, 'Fill this Material item.');
+                firstInvalid = firstInvalid || nameField;
+                errorMessage = errorMessage || 'Missing Material row. I added one below.';
             } else if (!hasLabor) {
-                errorMessage = errorMessage || 'Add at least one Labor row.';
+                const newRow = addCostingRow(form, 'labor');
+                const nameField = newRow?.querySelector('input[name="item_name[]"]');
+                setFieldError(nameField, 'Fill this Labor item.');
+                firstInvalid = firstInvalid || nameField;
+                errorMessage = errorMessage || 'Missing Labor row. I added one below.';
             } else {
+                firstInvalid = firstInvalid || totalBox;
                 errorMessage = errorMessage || 'Total cost must be greater than 0.';
             }
         }
 
         if (firstInvalid) {
-            if (errorMessage) {
-                showCostingError(form, errorMessage);
-            }
+            showCostingError(form, errorMessage || 'Please fix the highlighted field.');
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof firstInvalid.focus === 'function') {
                 firstInvalid.focus();
@@ -271,6 +324,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             field.addEventListener('input', function () {
                 sanitizePositiveNumber(field);
+                clearFieldError(field);
+                clearCostingError(form);
                 syncTotal(form);
                 saveFormDraft(form);
             });
@@ -296,10 +351,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         row.querySelectorAll('input, select').forEach(function (field) {
             field.addEventListener('input', function () {
+                clearFieldError(field);
+                clearCostingError(form);
                 saveFormDraft(form);
             });
 
             field.addEventListener('change', function () {
+                clearFieldError(field);
+                clearCostingError(form);
                 saveFormDraft(form);
             });
         });
@@ -330,27 +389,13 @@ document.addEventListener('DOMContentLoaded', function () {
         restoreFormDraft(form);
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
-            const rowsBox = form.querySelector('[data-costing-rows]');
-            const firstRow = rowsBox?.querySelector('.costing-row');
-            if (!rowsBox || !firstRow) {
-                return;
-            }
-
-            const row = firstRow.cloneNode(true);
-            row.querySelectorAll('input').forEach(function (field) {
-                field.value = field.name === 'quantity[]' ? '1' : '';
-            });
-            row.querySelectorAll('select').forEach(function (field) {
-                field.selectedIndex = 0;
-            });
-            rowsBox.appendChild(row);
-            bindRow(form, row);
-            syncTotal(form);
-            saveFormDraft(form);
+            addCostingRow(form);
         });
 
         form.querySelectorAll('textarea').forEach(function (field) {
             field.addEventListener('input', function () {
+                clearFieldError(field);
+                clearCostingError(form);
                 saveFormDraft(form);
             });
         });

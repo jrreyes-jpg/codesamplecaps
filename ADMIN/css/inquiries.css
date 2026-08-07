@@ -54,6 +54,19 @@
     color: #475569;
 }
 
+.inquiry-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.inquiry-meta > span:not(.inquiry-status) {
+    min-width: 0;
+}
+
 .inquiry-filter-bar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 220px auto;
@@ -70,6 +83,34 @@
     border-radius: 12px;
     padding: 11px 14px;
     font: inherit;
+}
+
+.inquiry-review-form select[name="status"] {
+    font-weight: 900;
+}
+
+.inquiry-review-form select[name="status"][data-status="Pending Review"] {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.inquiry-review-form select[name="status"][data-status="Verified Lead"] {
+    border-color: #22c55e;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.inquiry-review-form select[name="status"][data-status="For Inspection"] {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.inquiry-review-form select[name="status"][data-status="Not Qualified"] {
+    border-color: #ef4444;
+    background: #fef2f2;
+    color: #991b1b;
 }
 
 .inquiry-filter-actions {
@@ -134,15 +175,38 @@
     font-size: 0.72rem;
 }
 
-.inquiry-status[data-status="Verified Lead"],
-.inquiry-status[data-status="For Inspection"] {
-    background: #dcfce7;
-    color: #166534;
+.inquiry-status[data-status="Pending Review"],
+.inquiry-review-form select[name="status"][data-status="Pending Review"] {
+    background: #fef3c7 !important;
+    color: #92400e !important;
 }
 
-.inquiry-status[data-status="Not Qualified"] {
-    background: #fee2e2;
-    color: #991b1b;
+.inquiry-status[data-status="Verified Lead"] {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.inquiry-status[data-status="Costing Draft"],
+.inquiry-status[data-status="Submitted to Admin"] {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.inquiry-status[data-status="For Inspection"],
+.inquiry-review-form select[name="status"][data-status="For Inspection"] {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.inquiry-status[data-status="Not Qualified"],
+.inquiry-review-form select[name="status"][data-status="Not Qualified"] {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+.inquiry-status[data-status="Archived"] {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
 }
 
 .inquiry-status-link {
@@ -374,6 +438,7 @@
     gap: 18px;
     padding: 18px;
     border-bottom: 1px solid #e2e8f0;
+    border-radius: 24px 24px 0 0;
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(10px);
 }
@@ -406,7 +471,8 @@
 }
 
 .inquiry-modal__meta .inquiry-status--modal {
-    color: #1d4ed8;
+    max-width: none;
+    color: inherit;
 }
 
 .inquiry-modal__summary-card {
@@ -709,6 +775,11 @@ body.inquiry-modal-open {
     .inquiry-modal__tools {
         justify-content: flex-end;
     }
+
+    .inquiry-costing-review__head,
+    .inquiry-costing-table__row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .inquiry-summary-row {
@@ -726,6 +797,70 @@ body.inquiry-modal-open {
     background: #ffffff;
     border: 1px solid #e2e8f0;
     overflow-wrap: anywhere;
+}
+
+.inquiry-costing-review {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid rgba(22, 163, 74, 0.18);
+    border-radius: 16px;
+    background: #f0fdf4;
+}
+
+.inquiry-costing-review__head {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.inquiry-costing-review__head div,
+.inquiry-costing-review__notes {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid rgba(22, 163, 74, 0.16);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.inquiry-costing-review span {
+    color: #64748b;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.inquiry-costing-review strong {
+    color: #0f172a;
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+}
+
+.inquiry-costing-table {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid rgba(22, 163, 74, 0.16);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.inquiry-costing-table__row {
+    display: grid;
+    grid-template-columns: 0.75fr 1.5fr 0.7fr 0.85fr 0.85fr;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    align-items: center;
+}
+
+.inquiry-costing-table__row:last-child {
+    border-bottom: 0;
+}
+
+.inquiry-costing-table__row--head {
+    background: #dcfce7;
 }
 
 .inquiry-review-form label,

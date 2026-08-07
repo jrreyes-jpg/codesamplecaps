@@ -554,23 +554,43 @@ const initInquiryForm = () => {
             }
         };
 
+        const hideFieldTooltips = () => {
+            inquiryForm.querySelectorAll('.js-field-tooltip').forEach((tooltip) => {
+                tooltip.classList.remove('is-visible');
+            });
+        };
+
         dateInfoButton?.addEventListener('click', (event) => {
             event.preventDefault();
+            event.stopPropagation();
+            hideFieldTooltips();
             dateTooltip?.classList.toggle('is-visible');
         });
 
         inquiryForm.querySelectorAll('.js-field-info-button').forEach((button) => {
             button.addEventListener('click', (event) => {
                 event.preventDefault();
+                event.stopPropagation();
                 const tooltip = button.closest('.field-info-wrap')?.querySelector('.js-field-tooltip');
-                tooltip?.classList.toggle('is-visible');
+                const willShow = !tooltip?.classList.contains('is-visible');
+
+                hideFieldTooltips();
+                hideDateTooltip();
+                tooltip?.classList.toggle('is-visible', willShow);
             });
         });
 
-        inquiryForm.querySelectorAll('[data-help-tooltip-target]').forEach((field) => {
-            const tooltip = field.closest('label')?.querySelector('.js-field-tooltip');
-            field.addEventListener('focus', () => tooltip?.classList.add('is-visible'));
-            field.addEventListener('blur', () => tooltip?.classList.remove('is-visible'));
+        inquiryForm.querySelectorAll('input, textarea, select').forEach((field) => {
+            field.addEventListener('focus', () => {
+                hideFieldTooltips();
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.field-info-wrap')) {
+                hideFieldTooltips();
+                dateTooltip?.classList.remove('is-visible');
+            }
         });
 
         datePickerButton?.addEventListener('click', () => {

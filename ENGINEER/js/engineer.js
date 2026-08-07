@@ -1,3 +1,15 @@
+// Load shared duplicate-window guard for Engineer pages.
+(function () {
+    if (document.querySelector('script[src$="/assets/js/app-window-guard.js"]')) {
+        return;
+    }
+
+    const guardScript = document.createElement('script');
+    guardScript.src = '/codesamplecaps/assets/js/app-window-guard.js';
+    guardScript.defer = true;
+    document.head.appendChild(guardScript);
+})();
+
 const ENGINEER_SIDEBAR_STORAGE_KEY = 'engineer.sidebar.shrink';
 
 const persistSidebarState = (isShrink) => {

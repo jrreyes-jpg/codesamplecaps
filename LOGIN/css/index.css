@@ -768,8 +768,6 @@ h4 {
     backdrop-filter: blur(8px);
 }
 
-.field-info-wrap:hover .field-tooltip,
-.field-info-wrap:focus-within .field-tooltip,
 .field-tooltip.is-visible {
     display: block;
 }

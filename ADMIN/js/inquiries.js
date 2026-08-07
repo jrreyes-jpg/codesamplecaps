@@ -36,13 +36,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (toast) {
         playToastSound();
-        toast.querySelector('[data-inquiry-toast-close]')?.addEventListener('click', function () {
+        const isErrorToast = toast.classList.contains('inquiry-toast--error');
+        let toastClosed = false;
+
+        const closeToast = function () {
+            if (toastClosed) {
+                return;
+            }
+
+            toastClosed = true;
             toast.remove();
+        };
+
+        toast.querySelector('[data-inquiry-toast-close]')?.addEventListener('click', function () {
+            closeToast();
         });
 
         setTimeout(function () {
-            toast.remove();
-        }, 4500);
+            closeToast();
+        }, isErrorToast ? 8000 : 4500);
+
+        if (!isErrorToast) {
+            document.addEventListener('click', function closeSuccessToastOnOutside(event) {
+                if (!toast || toastClosed) {
+                    document.removeEventListener('click', closeSuccessToastOnOutside);
+                    return;
+                }
+
+                if (!toast.contains(event.target)) {
+                    closeToast();
+                    document.removeEventListener('click', closeSuccessToastOnOutside);
+                }
+            });
+        }
     }
 
     const confirmBox = document.createElement('div');
@@ -83,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         modal.hidden = true;
         document.body.classList.remove('inquiry-modal-open');
-        sessionStorage.removeItem('edgeOpenInquiryModal');
+        sessionStorage.removeItem('edgeLastInquiryModal');
 
         if (lastOpenButton) {
             lastOpenButton.focus();
@@ -98,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         modal.hidden = false;
         document.body.classList.add('inquiry-modal-open');
-        sessionStorage.setItem('edgeOpenInquiryModal', modal.id);
+        sessionStorage.setItem('edgeLastInquiryModal', modal.id);
 
         const closeButton = modal.querySelector('[data-inquiry-modal-close]');
         if (closeButton) {
@@ -383,6 +409,38 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const originalStatus = statusSelect.value;
+        const modal = form.closest('.inquiry-modal');
+        const statusChip = modal?.querySelector('[data-modal-status-chip]');
+        const statusClasses = [
+            'status-select--pending',
+            'status-select--verified',
+            'status-select--inspection',
+            'status-select--not-qualified',
+        ];
+
+        const syncStatusChip = function () {
+            statusSelect.dataset.status = statusSelect.value;
+            statusSelect.classList.remove(...statusClasses);
+
+            if (statusSelect.value === 'Pending Review') {
+                statusSelect.classList.add('status-select--pending');
+            } else if (statusSelect.value === 'Verified Lead') {
+                statusSelect.classList.add('status-select--verified');
+            } else if (statusSelect.value === 'For Inspection') {
+                statusSelect.classList.add('status-select--inspection');
+            } else if (statusSelect.value === 'Not Qualified') {
+                statusSelect.classList.add('status-select--not-qualified');
+            }
+
+            if (statusChip) {
+                statusChip.textContent = statusSelect.value;
+                statusChip.dataset.status = statusSelect.value;
+            }
+        };
+
+        statusSelect.addEventListener('change', syncStatusChip);
+        syncStatusChip();
+
         form.addEventListener('submit', function (event) {
             if (form.dataset.confirmed === '1' || statusSelect.value === originalStatus) {
                 return;
@@ -435,7 +493,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            sessionStorage.removeItem('edgeOpenInquiryModal');
             showConfirm(form, 'Archive this inquiry? It will move to Archive list.');
         });
     });
@@ -447,7 +504,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            sessionStorage.removeItem('edgeOpenInquiryModal');
             showConfirm(form, 'Permanently delete this archived inquiry? This cannot be undone.');
         });
     });
@@ -459,17 +515,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            sessionStorage.removeItem('edgeOpenInquiryModal');
             showConfirm(form, 'Restore this inquiry to active list?');
         });
     });
 
-    const urlOpenModalId = new URLSearchParams(window.location.search).get('open');
-    const lastOpenModalId = urlOpenModalId || sessionStorage.getItem('edgeOpenInquiryModal');
-    if (lastOpenModalId) {
-        const modal = document.getElementById(lastOpenModalId);
+    const queryParams = new URLSearchParams(window.location.search);
+    const urlOpenModalId = queryParams.get('open');
+    if (urlOpenModalId) {
+        const modal = document.getElementById(urlOpenModalId);
         if (modal) {
             openModal(modal);
+        }
+    } else {
+        const lastOpenModalId = sessionStorage.getItem('edgeLastInquiryModal');
+        const lastModal = lastOpenModalId ? document.getElementById(lastOpenModalId) : null;
+        const lastCard = lastModal?.closest('.inquiry-card');
+        if (lastCard) {
+            lastCard.scrollIntoView({ behavior: 'instant', block: 'center' });
         }
     }
 
@@ -482,9 +544,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const form = pendingConfirmForm;
         form.dataset.confirmed = '1';
-        if (!form.classList.contains('inquiry-review-form') && !form.classList.contains('inquiry-schedule-form')) {
-            sessionStorage.removeItem('edgeOpenInquiryModal');
-        }
         closeConfirm();
         form.requestSubmit();
     });

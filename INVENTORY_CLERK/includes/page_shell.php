@@ -30,6 +30,7 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
             <?php $renderContent(); ?>
         </main>
     </div>
+    <script src="/codesamplecaps/assets/js/app-window-guard.js"></script>
     <script src="/codesamplecaps/INVENTORY_CLERK/js/inventory_clerk_dashboard.js"></script>
     </body>
     </html>

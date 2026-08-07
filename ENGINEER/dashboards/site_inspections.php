@@ -101,8 +101,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
-            if (preg_match('/^0/', $rawQuantityText) || preg_match('/^0/', $rawUnitCostText)) {
-                $error = 'Quantity and price must not start with 0.';
+            // Backend guard: bawal fake/invalid PHP amount kahit ma-bypass ang browser.
+            if ($rawQuantityText !== '' && !preg_match('/^[1-9]\d*(\.\d{1,2})?$/', $rawQuantityText)) {
+                $error = 'Quantity must be valid and must not start with 0.';
+                break;
+            }
+
+            if ($rawUnitCostText !== '' && !preg_match('/^[1-9]\d*(\.\d{1,2})?$/', $rawUnitCostText)) {
+                $error = 'Unit cost must be a valid PHP amount and must not start with 0.';
                 break;
             }
 
@@ -437,7 +443,7 @@ $csrfToken = engineer_inspection_csrf_token();
                                         </label>
                                         <label>
                                             <span>Unit Cost (PHP)</span>
-                                            <input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                            <input type="number" name="unit_cost[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Notes</span>

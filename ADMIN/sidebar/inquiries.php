@@ -658,9 +658,6 @@ include __DIR__ . '/../admin_sidebar.php';
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span class="inquiry-status inquiry-status--modal" data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>
-                                            </span>
                                         </div>
                                     </div>
                                     <?php if (!empty($inquiry['archived_at'])): ?>

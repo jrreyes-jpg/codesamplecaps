@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inventoryIds = $_POST['inventory_id'] ?? [];
         $itemNames = $_POST['item_name'] ?? [];
         $quantities = $_POST['quantity'] ?? [];
+        $units = $_POST['unit'] ?? [];
         $unitCosts = $_POST['unit_cost'] ?? [];
         $notes = $_POST['notes'] ?? [];
         $engineerFindings = trim((string)($_POST['engineer_findings'] ?? ''));
@@ -79,8 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         foreach ($itemNames as $index => $rawName) {
             $itemName = trim((string)$rawName);
-            $quantity = max(0, (float)($quantities[$index] ?? 0));
-            $unitCost = max(0, (float)($unitCosts[$index] ?? 0));
+            $rawQuantityText = trim((string)($quantities[$index] ?? ''));
+            $rawUnitCostText = trim((string)($unitCosts[$index] ?? ''));
+            $rawQuantity = (float)($quantities[$index] ?? 0);
+            $unit = trim((string)($units[$index] ?? 'unit'));
+            $rawUnitCost = (float)($unitCosts[$index] ?? 0);
+            $quantity = max(0, $rawQuantity);
+            $unitCost = max(0, $rawUnitCost);
             $itemType = in_array(($itemTypes[$index] ?? 'material'), ['material', 'labor', 'other'], true)
                 ? (string)$itemTypes[$index]
                 : 'material';
@@ -90,8 +96,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
+            if ($rawQuantity < 0 || $rawUnitCost < 0) {
+                $error = 'Quantity and price cannot be negative.';
+                break;
+            }
+
+            if (preg_match('/^0/', $rawQuantityText) || preg_match('/^0/', $rawUnitCostText)) {
+                $error = 'Quantity and price must not start with 0.';
+                break;
+            }
+
             if ($itemName === '' || $quantity <= 0) {
                 $error = 'Please complete item name and quantity.';
+                break;
+            }
+
+            if ($unit === '') {
+                $error = 'Please select a quantity unit.';
                 break;
             }
 
@@ -110,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'inventory_id' => $inventoryId > 0 ? $inventoryId : null,
                 'item_name' => $itemName,
                 'quantity' => $quantity,
+                'unit' => $unit,
                 'unit_cost' => $unitCost,
                 'line_total' => $lineTotal,
                 'notes' => trim((string)($notes[$index] ?? '')),
@@ -145,8 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $insertStmt = $conn->prepare(
                     'INSERT INTO site_inspection_cost_items
-                     (inspection_id, item_type, inventory_id, item_name, quantity, unit_cost, line_total, notes)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                     (inspection_id, item_type, inventory_id, item_name, quantity, unit, unit_cost, line_total, notes)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
                 );
                 if (!$insertStmt) {
                     throw new RuntimeException('Failed to prepare costing save.');
@@ -157,16 +179,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $inventoryId = $row['inventory_id'];
                     $itemName = $row['item_name'];
                     $quantity = $row['quantity'];
+                    $unit = $row['unit'];
                     $unitCost = $row['unit_cost'];
                     $lineTotal = $row['line_total'];
                     $itemNotes = $row['notes'];
                     $insertStmt->bind_param(
-                        'isisddds',
+                        'isisdsdds',
                         $inspectionId,
                         $itemType,
                         $inventoryId,
                         $itemName,
                         $quantity,
+                        $unit,
                         $unitCost,
                         $lineTotal,
                         $itemNotes
@@ -298,6 +322,7 @@ $csrfToken = engineer_inspection_csrf_token();
                             'inventory_id' => '',
                             'item_name' => '',
                             'quantity' => 1,
+                            'unit' => 'unit',
                             'unit_cost' => 0,
                             'notes' => '',
                         ]];
@@ -324,7 +349,6 @@ $csrfToken = engineer_inspection_csrf_token();
                                         <span class="inspection-modal__eyebrow">Site Inspection</span>
                                         <h2 id="inspectionModalTitle<?php echo $inspectionId; ?>"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <p><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                        <span class="inspection-status inspection-status--modal" data-status="<?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                                     </div>
                                     <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
                                 </div>
@@ -347,12 +371,13 @@ $csrfToken = engineer_inspection_csrf_token();
                                 <strong>Costing Draft</strong>
                                 <span>Total: <b data-costing-total><?php echo engineer_format_money($totalCost); ?></b></span>
                             </div>
+                            <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
                             <?php endif; ?>
 
                             <div class="inspection-costing-notes">
-                                <label>
+                                <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
                                     <textarea name="engineer_findings" rows="3" minlength="10" placeholder="Actual problem found, site condition, and recommended scope" <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </label>
@@ -369,27 +394,55 @@ $csrfToken = engineer_inspection_csrf_token();
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($costItems as $item): ?>
                                     <div class="costing-row">
-                                        <select name="item_type[]" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
-                                            <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
-                                            <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
-                                            <option value="other" <?php echo ($item['item_type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
-                                        </select>
-                                        <select name="inventory_id[]" data-inventory-picker <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
-                                            <option value="">No inventory link</option>
-                                            <?php foreach ($inventoryOptions as $inventory): ?>
-                                                <option
-                                                    value="<?php echo (int)$inventory['id']; ?>"
-                                                    data-name="<?php echo htmlspecialchars((string)$inventory['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                                    <?php echo (int)($item['inventory_id'] ?? 0) === (int)$inventory['id'] ? 'selected' : ''; ?>
-                                                >
-                                                    <?php echo htmlspecialchars((string)$inventory['asset_name'], ENT_QUOTES, 'UTF-8'); ?> | Stock: <?php echo (int)$inventory['quantity']; ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <input type="text" name="item_name[]" placeholder="Item or labor name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
-                                        <input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
-                                        <input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
-                                        <input type="text" name="notes[]" placeholder="Notes" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        <label>
+                                            <span>Type</span>
+                                            <select name="item_type[]" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                                <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
+                                                <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
+                                                <option value="other" <?php echo ($item['item_type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span>Inventory</span>
+                                            <select name="inventory_id[]" data-inventory-picker <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                                <option value="">No inventory link</option>
+                                                <?php foreach ($inventoryOptions as $inventory): ?>
+                                                    <option
+                                                        value="<?php echo (int)$inventory['id']; ?>"
+                                                        data-name="<?php echo htmlspecialchars((string)$inventory['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        <?php echo (int)($item['inventory_id'] ?? 0) === (int)$inventory['id'] ? 'selected' : ''; ?>
+                                                    >
+                                                        <?php echo htmlspecialchars((string)$inventory['asset_name'], ENT_QUOTES, 'UTF-8'); ?> | Stock: <?php echo (int)$inventory['quantity']; ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span>Item / Labor</span>
+                                            <input type="text" name="item_name[]" placeholder="Item or labor name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        </label>
+                                        <label>
+                                            <span>Qty</span>
+                                            <input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        </label>
+                                        <label>
+                                            <span>Unit</span>
+                                            <select name="unit[]" required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                                <?php foreach (['unit', 'pc', 'pcs', 'set', 'lot', 'meter', 'roll', 'box', 'kg', 'hour', 'day', 'trip'] as $unitOption): ?>
+                                                    <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? 'unit') === $unitOption ? 'selected' : ''; ?>>
+                                                        <?php echo htmlspecialchars(ucfirst($unitOption), ENT_QUOTES, 'UTF-8'); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span>Unit Cost (PHP)</span>
+                                            <input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        </label>
+                                        <label>
+                                            <span>Notes</span>
+                                            <input type="text" name="notes[]" placeholder="Notes" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isSubmittedToAdmin ? 'disabled' : ''; ?>>
+                                        </label>
                                         <?php if (!$isSubmittedToAdmin): ?>
                                             <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
                                         <?php endif; ?>
@@ -400,6 +453,7 @@ $csrfToken = engineer_inspection_csrf_token();
                             <?php if (!$isSubmittedToAdmin): ?>
                                 <div class="inspection-actions">
                                     <button type="button" class="btn-secondary" data-add-costing-row>Add item</button>
+                                    <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
                                     <button type="submit" name="costing_action" value="save_draft" class="btn-secondary">Save Draft</button>
                                     <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing>Submit to Admin</button>
                                 </div>

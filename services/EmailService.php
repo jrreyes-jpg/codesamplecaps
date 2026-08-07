@@ -198,6 +198,48 @@ class EmailService {
         }
     }
 
+    public function sendEngineerPasswordOtp(string $recipientEmail, string $recipientName, string $otp, int $expiryMinutes = 10): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Engineer', ENT_QUOTES, 'UTF-8');
+            $safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+            $logoPath = __DIR__ . '/../IMAGES/edge.jpg';
+            $logoHtml = '';
+            if (is_file($logoPath)) {
+                $this->mailer->addEmbeddedImage($logoPath, 'edgeLogo');
+                $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
+            }
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Password Change Verification Code - ' . $this->config->get('APP_NAME');
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        {$logoHtml}
+                        <h2 style='margin:0'>Verify password change</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeName},</p>
+                        <p>Use this code to continue changing your password:</p>
+                        <p style='font-size:30px;font-weight:800;letter-spacing:6px;color:#0f172a'>{$safeOtp}</p>
+                        <p>This code expires in {$expiryMinutes} minutes.</p>
+                        <p>If this was not you, contact Super Admin immediately.</p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Your password change code is {$otp}. It expires in {$expiryMinutes} minutes.";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
+            return false;
+        }
+    }
+
     /**
      * Get password reset email HTML template
      */

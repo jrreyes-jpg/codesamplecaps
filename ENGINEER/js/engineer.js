@@ -384,7 +384,8 @@ const initProfilePhotoPreview = () => {
     const photoActions = document.querySelector('[data-engineer-photo-actions]');
     const photoStatus = document.querySelector('[data-engineer-photo-status]');
     const photoCancel = document.querySelector('[data-engineer-photo-cancel]');
-    const modalImage = document.querySelector('.engineer-photo-modal__panel img');
+    const photoPanel = document.querySelector('.engineer-photo-modal__panel');
+    let modalImage = document.querySelector('.engineer-photo-modal__panel img');
     const originalModalImageSrc = modalImage?.getAttribute('src') || '';
 
     if (!input || !previewBox) {
@@ -392,15 +393,36 @@ const initProfilePhotoPreview = () => {
     }
 
     const showError = (message) => {
+        previewBox.classList.remove('is-valid');
+        previewBox.classList.add('is-invalid');
+        photoPanel?.classList.remove('is-valid');
+        photoPanel?.classList.add('is-invalid');
+
         if (!profileError) {
+            if (photoStatus) {
+                photoStatus.textContent = message;
+                photoStatus.classList.remove('is-success');
+                photoStatus.classList.add('is-error');
+                photoStatus.hidden = false;
+            }
             return;
         }
 
         profileError.textContent = message;
         profileError.hidden = false;
+
+        if (photoStatus) {
+            photoStatus.textContent = message;
+            photoStatus.classList.remove('is-success');
+            photoStatus.classList.add('is-error');
+            photoStatus.hidden = false;
+        }
     };
 
     const clearError = () => {
+        previewBox.classList.remove('is-invalid');
+        photoPanel?.classList.remove('is-invalid');
+
         if (!profileError) {
             return;
         }
@@ -422,12 +444,18 @@ const initProfilePhotoPreview = () => {
         if (!allowedTypes.includes(file.type)) {
             input.value = '';
             showError('Use JPG, PNG, or WEBP only.');
+            if (photoActions) {
+                photoActions.hidden = true;
+            }
             return;
         }
 
         if (file.size > 3 * 1024 * 1024) {
             input.value = '';
             showError('Profile photo must be 3MB or smaller.');
+            if (photoActions) {
+                photoActions.hidden = true;
+            }
             return;
         }
 
@@ -448,12 +476,24 @@ const initProfilePhotoPreview = () => {
 
         image.src = previewUrl;
 
+        if (!modalImage && photoPanel) {
+            photoPanel.textContent = '';
+            modalImage = document.createElement('img');
+            modalImage.setAttribute('alt', 'Selected profile photo preview');
+            photoPanel.appendChild(modalImage);
+        }
+
         if (modalImage) {
             modalImage.src = previewUrl;
         }
 
+        previewBox.classList.add('is-valid');
+        photoPanel?.classList.add('is-valid');
+
         if (photoStatus) {
             photoStatus.textContent = 'New photo selected. Preview shown above.';
+            photoStatus.classList.remove('is-error');
+            photoStatus.classList.add('is-success');
             photoStatus.hidden = false;
         }
 
@@ -469,6 +509,135 @@ const initProfilePhotoPreview = () => {
     photoCancel?.addEventListener('click', () => {
         if (modalImage && originalModalImageSrc !== '') {
             modalImage.src = originalModalImageSrc;
+        }
+
+        previewBox.classList.remove('is-valid', 'is-invalid');
+        photoPanel?.classList.remove('is-valid', 'is-invalid');
+    });
+};
+
+const initEngineerPasswordChange = () => {
+    const panel = document.querySelector('[data-engineer-password-panel]');
+    if (!panel) {
+        return;
+    }
+
+    const start = panel.querySelector('[data-engineer-password-start]');
+    const form = panel.querySelector('[data-engineer-password-form]');
+    const send = panel.querySelector('[data-engineer-password-send]');
+    const save = panel.querySelector('[data-engineer-password-save]');
+    const status = panel.querySelector('[data-engineer-password-status]');
+    const otp = panel.querySelector('[data-engineer-password-otp]');
+    const password = panel.querySelector('[data-engineer-new-password]');
+    const confirm = panel.querySelector('[data-engineer-confirm-password]');
+    const csrf = document.querySelector('input[name="csrf_token"]')?.value || '';
+    let sendLocked = false;
+
+    const setStatus = (message, type = 'error') => {
+        if (!status) {
+            return;
+        }
+
+        status.textContent = message;
+        status.classList.toggle('is-success', type === 'success');
+        status.classList.toggle('is-error', type !== 'success');
+        status.hidden = false;
+    };
+
+    const rules = {
+        length: (value) => value.length >= 8,
+        upper: (value) => /[A-Z]/.test(value),
+        lower: (value) => /[a-z]/.test(value),
+        number: (value) => /\d/.test(value),
+        symbol: (value) => /[^A-Za-z0-9]/.test(value),
+    };
+
+    const updateStrength = () => {
+        const value = password?.value || '';
+        Object.entries(rules).forEach(([rule, test]) => {
+            panel.querySelector(`[data-rule="${rule}"]`)?.classList.toggle('is-valid', test(value));
+        });
+    };
+
+    const postPasswordAction = async (payload) => {
+        const body = new URLSearchParams({ csrf_token: csrf, ...payload });
+        const response = await fetch('/codesamplecaps/ENGINEER/actions/change_password.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body,
+        });
+        return response.json();
+    };
+
+    start?.addEventListener('click', () => {
+        if (!window.confirm('Send a verification code to your registered email?')) {
+            return;
+        }
+
+        form.hidden = false;
+        send?.click();
+    });
+
+    send?.addEventListener('click', async () => {
+        if (sendLocked) {
+            return;
+        }
+
+        sendLocked = true;
+        send.disabled = true;
+        setStatus('Sending verification code...', 'success');
+
+        const result = await postPasswordAction({ password_action: 'send_otp' });
+        setStatus(result.message, result.ok ? 'success' : 'error');
+
+        window.setTimeout(() => {
+            sendLocked = false;
+            send.disabled = false;
+        }, Number(result.cooldown || 60) * 1000);
+    });
+
+    otp?.addEventListener('input', () => {
+        otp.value = otp.value.replace(/\D/g, '').slice(0, 6);
+    });
+
+    password?.addEventListener('input', updateStrength);
+
+    save?.addEventListener('click', async () => {
+        [otp, password, confirm].forEach((field) => field?.classList.remove('is-invalid'));
+
+        if (!otp?.value || otp.value.length !== 6) {
+            otp?.classList.add('is-invalid');
+            setStatus('Enter the 6-digit verification code.');
+            return;
+        }
+
+        const passValue = password?.value || '';
+        const isStrong = Object.values(rules).every((test) => test(passValue));
+        if (!isStrong) {
+            password?.classList.add('is-invalid');
+            setStatus('Password must pass all strength rules.');
+            return;
+        }
+
+        if (passValue !== (confirm?.value || '')) {
+            confirm?.classList.add('is-invalid');
+            setStatus('Passwords do not match.');
+            return;
+        }
+
+        const result = await postPasswordAction({
+            password_action: 'change_password',
+            otp: otp.value,
+            new_password: passValue,
+            confirm_password: confirm.value,
+        });
+
+        setStatus(result.message, result.ok ? 'success' : 'error');
+        if (result.ok) {
+            otp.value = '';
+            password.value = '';
+            confirm.value = '';
+            updateStrength();
         }
     });
 };
@@ -551,6 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initEngineerClock();
     initEngineerProfileMenu();
     initProfilePhotoPreview();
+    initEngineerPasswordChange();
     initTaskFilters();
     applyStoredSidebarState();
 

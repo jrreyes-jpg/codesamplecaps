@@ -233,8 +233,9 @@ body.inspection-modal-open {
 
 .inspection-costing-notes {
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
 }
 
 .inspection-costing-notes label {
@@ -263,6 +264,10 @@ body.inspection-modal-open {
     background: #ffffff;
 }
 
+.inspection-costing-notes__findings {
+    grid-column: 1 / -1;
+}
+
 .inspection-costing-notes small {
     color: #64748b;
     font-size: 0.76rem;
@@ -271,9 +276,21 @@ body.inspection-modal-open {
 
 .costing-row {
     display: grid;
-    grid-template-columns: 120px minmax(180px, 1fr) minmax(170px, 1fr) 90px 110px minmax(140px, 1fr) auto;
+    grid-template-columns: 118px minmax(170px, 1fr) minmax(160px, 1fr) 86px 100px 132px minmax(130px, 1fr) auto;
     gap: 8px;
-    align-items: center;
+    align-items: end;
+}
+
+.costing-row label {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.costing-row label span {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 900;
 }
 
 .costing-row input,
@@ -302,8 +319,30 @@ body.inspection-modal-open {
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
 }
 
+.costing-field-error {
+    color: #b91c1c;
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
 [data-costing-total].is-invalid-total {
     color: #dc2626;
+}
+
+.costing-error {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(220, 38, 38, 0.22);
+    border-radius: 12px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.86rem;
+    font-weight: 900;
+}
+
+.costing-error[hidden] {
+    display: none;
 }
 
 .inspection-submit-note {
@@ -318,6 +357,7 @@ body.inspection-modal-open {
 
 .btn-primary,
 .btn-secondary,
+.btn-clear-form,
 .btn-remove-row {
     min-height: 40px;
     border: 0;
@@ -337,6 +377,12 @@ body.inspection-modal-open {
     background: #ffffff;
     color: #166534;
     border: 1px solid rgba(22, 101, 52, 0.24);
+}
+
+.btn-clear-form {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid rgba(234, 88, 12, 0.24);
 }
 
 .btn-remove-row {

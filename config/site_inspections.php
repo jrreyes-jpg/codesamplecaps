@@ -39,6 +39,26 @@ if (!function_exists('site_inspection_column_exists')) {
     }
 }
 
+if (!function_exists('site_inspection_cost_column_exists')) {
+    function site_inspection_cost_column_exists(mysqli $conn, string $columnName): bool
+    {
+        $stmt = $conn->prepare(
+            'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = "site_inspection_cost_items"
+             AND COLUMN_NAME = ?
+             LIMIT 1'
+        );
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bind_param('s', $columnName);
+        $stmt->execute();
+        return (bool)$stmt->get_result()->fetch_assoc();
+    }
+}
+
 if (!function_exists('site_inspection_ensure_table')) {
     function site_inspection_ensure_table(mysqli $conn): void
     {
@@ -90,6 +110,7 @@ if (!function_exists('site_inspection_ensure_costing_table')) {
                 inventory_id INT NULL,
                 item_name VARCHAR(180) NOT NULL,
                 quantity DECIMAL(12,2) NOT NULL DEFAULT 1.00,
+                unit VARCHAR(30) NOT NULL DEFAULT 'unit',
                 unit_cost DECIMAL(14,2) NOT NULL DEFAULT 0.00,
                 line_total DECIMAL(14,2) NOT NULL DEFAULT 0.00,
                 notes TEXT NULL,
@@ -100,6 +121,10 @@ if (!function_exists('site_inspection_ensure_costing_table')) {
                 KEY idx_site_inspection_cost_items_type (item_type)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         );
+
+        if (!site_inspection_cost_column_exists($conn, 'unit')) {
+            $conn->query("ALTER TABLE site_inspection_cost_items ADD COLUMN unit VARCHAR(30) NOT NULL DEFAULT 'unit' AFTER quantity");
+        }
     }
 }
 

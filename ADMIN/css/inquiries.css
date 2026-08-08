@@ -89,6 +89,30 @@
     font-weight: 900;
 }
 
+.inquiry-review-form select[name="status"].status-select--pending {
+    border-color: #f59e0b !important;
+    background-color: #fffbeb !important;
+    color: #92400e !important;
+}
+
+.inquiry-review-form select[name="status"].status-select--verified {
+    border-color: #22c55e !important;
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+}
+
+.inquiry-review-form select[name="status"].status-select--inspection {
+    border-color: #3b82f6 !important;
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+}
+
+.inquiry-review-form select[name="status"].status-select--not-qualified {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+    color: #991b1b !important;
+}
+
 .inquiry-review-form select[name="status"][data-status="Pending Review"] {
     border-color: #f59e0b;
     background: #fffbeb;
@@ -536,6 +560,66 @@
     margin: 0;
 }
 
+.inquiry-modal-tabs {
+    position: sticky;
+    top: 82px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 18px;
+    border-bottom: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.96);
+    backdrop-filter: blur(10px);
+}
+
+.inquiry-modal-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dbe5f1;
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.inquiry-modal-tab:hover,
+.inquiry-modal-tab:focus-visible,
+.inquiry-modal-tab.is-active {
+    border-color: rgba(22, 101, 52, 0.24);
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inquiry-modal-tab.has-data::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    margin-left: 7px;
+    border-radius: 999px;
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+
+.inquiry-modal-panels {
+    padding: 18px;
+}
+
+.inquiry-tab-panel {
+    display: grid;
+    gap: 12px;
+    min-height: 360px;
+    align-content: start;
+}
+
+.inquiry-tab-panel[hidden] {
+    display: none;
+}
+
 .inquiry-modal__close:hover {
     background: #e2e8f0;
     color: #0f172a;
@@ -630,6 +714,13 @@
     border-left: 0;
     background: rgba(255, 255, 255, 0.55);
     min-height: 100%;
+}
+
+.inquiry-tab-panel.inquiry-expanded-actions {
+    border: 0;
+    background: transparent;
+    min-height: 360px;
+    padding: 0;
 }
 
 .admin-date-input-wrap {
@@ -776,9 +867,14 @@ body.inquiry-modal-open {
         justify-content: flex-end;
     }
 
-    .inquiry-costing-review__head,
-    .inquiry-costing-table__row {
+    .inquiry-costing-table__row,
+    .inquiry-quote-draft,
+    .inquiry-quote-form {
         grid-template-columns: 1fr;
+    }
+
+    .inquiry-quote-draft__action {
+        justify-content: start;
     }
 }
 
@@ -802,40 +898,7 @@ body.inquiry-modal-open {
 .inquiry-costing-review {
     display: grid;
     gap: 12px;
-    margin-top: 12px;
-    padding: 14px;
-    border: 1px solid rgba(22, 163, 74, 0.18);
-    border-radius: 16px;
-    background: #f0fdf4;
-}
-
-.inquiry-costing-review__head {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.inquiry-costing-review__head div,
-.inquiry-costing-review__notes {
-    display: grid;
-    gap: 4px;
-    padding: 10px 12px;
-    border: 1px solid rgba(22, 163, 74, 0.16);
-    border-radius: 12px;
-    background: #ffffff;
-}
-
-.inquiry-costing-review span {
-    color: #64748b;
-    font-size: 0.74rem;
-    font-weight: 900;
-    text-transform: uppercase;
-}
-
-.inquiry-costing-review strong {
-    color: #0f172a;
-    font-size: 0.92rem;
-    overflow-wrap: anywhere;
+    margin-top: 0;
 }
 
 .inquiry-costing-table {
@@ -861,6 +924,93 @@ body.inquiry-modal-open {
 
 .inquiry-costing-table__row--head {
     background: #dcfce7;
+}
+
+.inquiry-quote-draft,
+.inquiry-quote-form,
+.inquiry-quote-approve-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    align-items: center;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 14px;
+    background: #eff6ff;
+}
+
+.inquiry-quote-draft {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.inquiry-quote-draft div,
+.inquiry-quote-form label {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.inquiry-quote-draft span,
+.inquiry-quote-form span {
+    color: #475569;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.inquiry-quote-draft strong {
+    color: #0f172a;
+    overflow-wrap: anywhere;
+}
+
+.inquiry-quote-pdf-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 8px 12px;
+    border: 1px solid rgba(29, 78, 216, 0.18);
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1d4ed8;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-decoration: none;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.inquiry-quote-draft__action {
+    justify-content: end;
+}
+
+.inquiry-quote-pdf-link:hover,
+.inquiry-quote-pdf-link:focus-visible {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.inquiry-quote-form input {
+    width: 100%;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: #0f172a;
+    font: inherit;
+}
+
+.inquiry-quote-form button {
+    min-height: 44px;
+}
+
+.inquiry-quote-approve-form {
+    grid-template-columns: 1fr;
+    background: #f0fdf4;
+    border-color: rgba(22, 101, 52, 0.2);
+}
+
+.inquiry-quote-approve-form button {
+    width: fit-content;
 }
 
 .inquiry-review-form label,

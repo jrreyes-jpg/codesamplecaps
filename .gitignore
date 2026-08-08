@@ -77,9 +77,6 @@ Name sa project management kay admin ayusin sabi ni maam gigi
 
 yung sa project code pala lagyan mo siya na dapat pede malagyan ng ganitnog sign -
 
-# Client Submission: Pupunan ng client ang Inquiry Form sa landing page para sa quotation request.
-# Admin Verification (Lead Filtering): Makikita ni Admin sa system dashboard ang inquiry. Tatawagan o ie-email niya ang client para i-verify kung seryoso ang project.
-Engineer Site Inspection & Costing: Kapag "deal" o interesado ang client, mag-ii-schedule si Admin ng site inspection para kay Engineer. Si Engineer ang magpapasok ng mga kailangang materyales mula sa Inventory System at magtatakda ng labor cost.
 Quotation Generation (The System's Job): Ang System ang awtomatikong magka-compute at gagawa ng PDF Quotation base sa input ni Engineer. Si Admin ang mag-aapruba at magsesend nito sa client.
 
 Due today card

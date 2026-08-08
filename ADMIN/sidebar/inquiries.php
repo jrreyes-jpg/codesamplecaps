@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/admin_auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/site_inspections.php';
+require_once __DIR__ . '/../../config/inquiry_quotation_module.php';
 
 $message = '';
 $error = '';
@@ -181,6 +182,7 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
 inquiry_center_ensure_review_columns($conn);
 site_inspection_ensure_table($conn);
 site_inspection_ensure_costing_table($conn);
+inquiry_quote_ensure_tables($conn);
 $conn->query("UPDATE service_inquiries SET status = 'Verified Lead' WHERE status = 'Verified'");
 $conn->query("UPDATE service_inquiries SET status = 'Not Qualified' WHERE status = 'Rejected'");
 $csrfToken = inquiry_center_csrf_token();
@@ -307,6 +309,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $error = 'Failed to archive inquiry.';
                 }
+            }
+        }
+    } elseif (($_POST['action'] ?? '') === 'approve_quotation_draft') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $draftId = (int)($_POST['draft_id'] ?? 0);
+
+        if ($inquiryId <= 0 || $draftId <= 0) {
+            $error = 'Invalid quotation approval request.';
+        } else {
+            try {
+                inquiry_quote_approve($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
+                audit_log_event(
+                    $conn,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    'approve_inquiry_quotation_draft',
+                    'quotation',
+                    $draftId,
+                    ['status' => 'Draft'],
+                    ['status' => 'Approved']
+                );
+                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation draft approved.');
+            } catch (Throwable $throwable) {
+                $error = $throwable->getMessage();
+            }
+        }
+    } elseif (($_POST['action'] ?? '') === 'create_quotation_draft') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $inspectionId = (int)($_POST['inspection_id'] ?? 0);
+        $marginPercent = (float)($_POST['profit_margin_percent'] ?? 15);
+
+        if ($inquiryId <= 0 || $inspectionId <= 0) {
+            $error = 'Invalid quotation draft request.';
+        } elseif ($marginPercent < 0 || $marginPercent > 100) {
+            $error = 'Profit margin must be from 0 to 100 percent.';
+        } else {
+            try {
+                $draftId = inquiry_quote_create_from_inspection(
+                    $conn,
+                    $inquiryId,
+                    $inspectionId,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    $marginPercent
+                );
+
+                audit_log_event(
+                    $conn,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    'create_inquiry_quotation_draft',
+                    'quotation',
+                    $draftId,
+                    null,
+                    [
+                        'inquiry_id' => $inquiryId,
+                        'inspection_id' => $inspectionId,
+                        'profit_margin_percent' => $marginPercent,
+                    ]
+                );
+
+                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation draft generated from engineer costing.');
+            } catch (Throwable $throwable) {
+                $error = $throwable->getMessage();
             }
         }
     } elseif (($_POST['action'] ?? '') === 'schedule_inspection') {
@@ -597,6 +660,8 @@ if ($costingReviewResult) {
     }
 }
 
+$quotationDraftByInquiry = inquiry_quote_fetch_by_inquiry($conn);
+
 $pendingCount = 0;
 $verifiedCount = 0;
 $inspectionCount = 0;
@@ -685,6 +750,7 @@ include __DIR__ . '/../admin_sidebar.php';
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
+                    <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>">
                         <div class="inquiry-card__head">
                             <div>
@@ -755,8 +821,15 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry review">&times;</button>
                                     </div>
                                 </div>
-                            <div class="inquiry-expanded-grid inquiry-expanded-grid--stacked">
-                                <div class="inquiry-expanded-main">
+                                <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
+                                    <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Client Details</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?>" data-inquiry-tab="inspection">Inspection</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo $costingReview ? ' has-data' : ''; ?>" data-inquiry-tab="costing">Engineer Costing</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo $quotationDraft ? ' has-data' : ''; ?>" data-inquiry-tab="quotation">Quotation</button>
+                                    <button type="button" class="inquiry-modal-tab" data-inquiry-tab="actions">Admin Actions</button>
+                                </div>
+                            <div class="inquiry-modal-panels">
+                                <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
                                     <div class="inquiry-section-title">Client and Project Details</div>
                                     <div class="inquiry-details-grid">
                                         <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
@@ -773,27 +846,44 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <strong>Project Description</strong><br>
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
+                                </section>
 
+                                <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
+                                    <div class="inquiry-section-title">Inspection</div>
+                                    <?php if ($latestInspection): ?>
+                                        <div class="inquiry-details-grid">
+                                            <div class="inquiry-detail"><span>Engineer</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Date / Time</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Status</span><strong><?php echo htmlspecialchars((string)$latestInspection['status'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Updated</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['updated_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail inquiry-detail--wide"><span>Site Notes</span><strong><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?: 'No notes'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="inquiry-empty">No inspection schedule yet.</div>
+                                    <?php endif; ?>
+                                </section>
+
+                                <section class="inquiry-tab-panel" data-inquiry-panel="costing" hidden>
                                     <?php if ($costingReview && !empty($latestCostItems)): ?>
                                         <div class="inquiry-section-title">Engineer Costing Review</div>
                                         <div class="inquiry-costing-review">
-                                            <div class="inquiry-costing-review__head">
-                                                <div>
+                                            <div class="inquiry-details-grid">
+                                                <div class="inquiry-detail">
                                                     <span>Submitted By</span>
                                                     <strong><?php echo htmlspecialchars((string)$costingReview['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
-                                                <div>
+                                                <div class="inquiry-detail">
                                                     <span>Status</span>
                                                     <strong><?php echo htmlspecialchars((string)$costingReview['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
-                                                <div>
+                                                <div class="inquiry-detail">
                                                     <span>Total Cost</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
                                             </div>
 
                                             <?php if (!empty($costingReview['engineer_findings'])): ?>
-                                                <div class="inquiry-costing-review__notes">
+                                                <div class="inquiry-detail inquiry-detail--wide">
                                                     <span>Engineer Findings</span>
                                                     <strong><?php echo nl2br(htmlspecialchars((string)$costingReview['engineer_findings'], ENT_QUOTES, 'UTF-8')); ?></strong>
                                                 </div>
@@ -818,10 +908,60 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <?php endforeach; ?>
                                             </div>
                                         </div>
+                                    <?php else: ?>
+                                        <div class="inquiry-empty">No engineer costing yet.</div>
                                     <?php endif; ?>
-                                </div>
+                                </section>
 
-                                <div class="inquiry-expanded-actions">
+                                <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
+                                    <div class="inquiry-section-title">Quotation</div>
+                                    <?php if ($quotationDraft): ?>
+                                        <div class="inquiry-quote-draft">
+                                            <div>
+                                                <span>Quotation Draft</span>
+                                                <strong><?php echo htmlspecialchars((string)$quotationDraft['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                            <div>
+                                                <span>Status</span>
+                                                <strong><?php echo htmlspecialchars((string)$quotationDraft['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                            <div>
+                                                <span>Total</span>
+                                                <strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotationDraft['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                            <div class="inquiry-quote-draft__action">
+                                                <a class="inquiry-quote-pdf-link" href="/codesamplecaps/ADMIN/sidebar/inquiry_quotation_pdf.php?id=<?php echo (int)$quotationDraft['id']; ?>">
+                                                    View / Print PDF
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <?php if ((string)$quotationDraft['status'] === 'Draft'): ?>
+                                            <form method="POST" class="inquiry-quote-approve-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="approve_quotation_draft">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                                <button type="submit" class="btn-primary">Approve Quotation Draft</button>
+                                            </form>
+                                        <?php endif; ?>
+                                    <?php elseif ($costingReview && !empty($latestCostItems)): ?>
+                                        <form method="POST" class="inquiry-quote-form">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="action" value="create_quotation_draft">
+                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                            <input type="hidden" name="inspection_id" value="<?php echo (int)$costingReview['id']; ?>">
+                                            <label>
+                                                <span>Profit Margin (%)</span>
+                                                <input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="15" required>
+                                            </label>
+                                            <button type="submit" class="btn-primary">Generate Quotation Draft</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <div class="inquiry-empty">Engineer costing is needed before generating a quotation.</div>
+                                    <?php endif; ?>
+                                </section>
+
+                                <section class="inquiry-tab-panel inquiry-expanded-actions" data-inquiry-panel="actions" hidden>
                                     <div class="inquiry-section-title">Admin Actions</div>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
                                         <div class="inquiry-readonly-notice">
@@ -910,7 +1050,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                             <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
                                         </div>
                                     <?php endif; ?>
-                                </div>
+                                </section>
                             </div>
                             </div>
                         </div>

@@ -519,6 +519,46 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
+        const tabs = Array.from(modal.querySelectorAll('[data-inquiry-tab]'));
+        const panels = Array.from(modal.querySelectorAll('[data-inquiry-panel]'));
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                const target = tab.getAttribute('data-inquiry-tab');
+                tabs.forEach(function (item) {
+                    item.classList.toggle('is-active', item === tab);
+                });
+                panels.forEach(function (panel) {
+                    panel.hidden = panel.getAttribute('data-inquiry-panel') !== target;
+                    panel.classList.toggle('is-active', !panel.hidden);
+                });
+            });
+        });
+    });
+
+    document.querySelectorAll('.inquiry-quote-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            showConfirm(form, 'Generate quotation draft from engineer costing?');
+        });
+    });
+
+    document.querySelectorAll('.inquiry-quote-approve-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            showConfirm(form, 'Approve this quotation draft?');
+        });
+    });
+
     const queryParams = new URLSearchParams(window.location.search);
     const urlOpenModalId = queryParams.get('open');
     if (urlOpenModalId) {

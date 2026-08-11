@@ -928,7 +928,8 @@ body.inquiry-modal-open {
 
 .inquiry-quote-draft,
 .inquiry-quote-form,
-.inquiry-quote-approve-form {
+.inquiry-quote-approve-form,
+.inquiry-project-create-form {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
@@ -1003,14 +1004,40 @@ body.inquiry-modal-open {
     min-height: 44px;
 }
 
-.inquiry-quote-approve-form {
+.inquiry-quote-approve-form,
+.inquiry-project-create-form,
+.inquiry-created-project {
     grid-template-columns: 1fr;
     background: #f0fdf4;
     border-color: rgba(22, 101, 52, 0.2);
 }
 
-.inquiry-quote-approve-form button {
+.inquiry-quote-approve-form button,
+.inquiry-project-create-form button {
     width: fit-content;
+}
+
+.inquiry-created-project {
+    display: grid;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(22, 101, 52, 0.2);
+    border-radius: 14px;
+}
+
+.inquiry-created-project span {
+    color: #166534;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.inquiry-created-project a {
+    width: fit-content;
+    color: #1d4ed8;
+    font-weight: 900;
+    text-decoration: none;
 }
 
 .inquiry-review-form label,

@@ -285,6 +285,24 @@ button:hover{
     line-height: 1.55;
 }
 
+.verify-next-step {
+    display: grid;
+    gap: 5px;
+    margin: -8px 0 18px;
+    padding: 13px 15px;
+    border: 1px solid rgba(15, 118, 110, 0.22);
+    border-radius: 12px;
+    background: #ecfdf5;
+    color: #166534;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.verify-next-step strong {
+    color: #064e3b;
+    font-size: 13px;
+}
+
 .verify-code-field {
     min-height: 58px;
     margin: 18px 0;

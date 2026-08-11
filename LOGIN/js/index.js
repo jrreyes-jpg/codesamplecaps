@@ -311,6 +311,48 @@ const initInquiryForm = () => {
         }
     };
 
+    const hasMeaningfulText = (value, minimumLetters = 2) => {
+        const letters = value.match(/[A-Za-z]/g) || [];
+        return letters.length >= minimumLetters;
+    };
+
+    const validateFullNameText = (field) => {
+        const value = field.value.trim();
+
+        if (value === '') {
+            return true;
+        }
+
+        if (!/^[A-Za-z .'-]+$/.test(value)) {
+            setFieldError(field, 'Full Name can only use letters, spaces, dot, hyphen, or apostrophe.');
+            return false;
+        }
+
+        if (!hasMeaningfulText(value, 2)) {
+            setFieldError(field, 'Please enter a real full name.');
+            return false;
+        }
+
+        clearFieldError(field);
+        return true;
+    };
+
+    const validateMeaningfulTextField = (field, label, minimumLetters = 4) => {
+        const value = field.value.trim();
+
+        if (value === '') {
+            return true;
+        }
+
+        if (!hasMeaningfulText(value, minimumLetters)) {
+            setFieldError(field, `${label} must include real words, not only numbers or symbols.`);
+            return false;
+        }
+
+        clearFieldError(field);
+        return true;
+    };
+
     const normalizeContactNumber = (field) => {
         let digits = field.value.replace(/\D/g, '');
 
@@ -325,6 +367,7 @@ const initInquiryForm = () => {
 
     inquiryForms.forEach((inquiryForm) => {
         const contactInput = inquiryForm.querySelector('.js-inquiry-contact');
+        const clientNameInput = inquiryForm.querySelector('input[name="client_name"]');
         const inspectionDateInput = inquiryForm.querySelector('.js-inspection-date');
         const datePickerButton = inquiryForm.querySelector('.js-date-picker-button');
         const dateInfoButton = inquiryForm.querySelector('.js-date-info-button');
@@ -560,11 +603,22 @@ const initInquiryForm = () => {
             });
         };
 
+        const showPinnedTooltip = (tooltip) => {
+            hideFieldTooltips();
+            hideDateTooltip();
+            tooltip?.classList.add('is-visible');
+        };
+
         dateInfoButton?.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
+            const willShow = !dateTooltip?.classList.contains('is-visible');
             hideFieldTooltips();
-            dateTooltip?.classList.toggle('is-visible');
+            if (willShow) {
+                dateTooltip?.classList.add('is-visible');
+            } else {
+                dateTooltip?.classList.remove('is-visible');
+            }
         });
 
         inquiryForm.querySelectorAll('.js-field-info-button').forEach((button) => {
@@ -574,15 +628,19 @@ const initInquiryForm = () => {
                 const tooltip = button.closest('.field-info-wrap')?.querySelector('.js-field-tooltip');
                 const willShow = !tooltip?.classList.contains('is-visible');
 
-                hideFieldTooltips();
-                hideDateTooltip();
-                tooltip?.classList.toggle('is-visible', willShow);
+                if (willShow) {
+                    showPinnedTooltip(tooltip);
+                } else {
+                    hideFieldTooltips();
+                    hideDateTooltip();
+                }
             });
         });
 
         inquiryForm.querySelectorAll('input, textarea, select').forEach((field) => {
             field.addEventListener('focus', () => {
                 hideFieldTooltips();
+                hideDateTooltip();
             });
         });
 
@@ -691,12 +749,32 @@ const initInquiryForm = () => {
             clearFormMessageIfReady();
         });
 
+        clientNameInput?.addEventListener('input', () => {
+            validateFullNameText(clientNameInput);
+            clearFormMessageIfReady();
+            saveInquiryDraft();
+        });
+
+        otherServiceInput?.addEventListener('input', () => {
+            validateMeaningfulTextField(otherServiceInput, 'Other Service Details');
+            clearFormMessageIfReady();
+            saveInquiryDraft();
+        });
+
+        inquiryForm.querySelector('textarea[name="description"]')?.addEventListener('input', (event) => {
+            validateMeaningfulTextField(event.currentTarget, 'Project Description');
+            clearFormMessageIfReady();
+            saveInquiryDraft();
+        });
+
         inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {
             field.addEventListener('focus', () => {
                 gentlyRevealField(field);
             });
             field.addEventListener('input', () => {
-                clearFieldError(field);
+                if (!['client_name', 'other_service_details', 'description'].includes(field.name)) {
+                    clearFieldError(field);
+                }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
             });
@@ -746,6 +824,14 @@ const initInquiryForm = () => {
                     continue;
                 }
 
+                if (field.name === 'client_name' && value !== '' && !validateFullNameText(field)) {
+                    firstInvalidField = firstInvalidField || field;
+                }
+
+                if (field.name === 'other_service_details' && value !== '' && !validateMeaningfulTextField(field, 'Other Service Details')) {
+                    firstInvalidField = firstInvalidField || field;
+                }
+
                 if (field.type === 'email' && value !== '' && !emailPattern.test(value)) {
                     setFieldError(field, 'Please enter a valid email address.');
                     firstInvalidField = firstInvalidField || field;
@@ -760,6 +846,8 @@ const initInquiryForm = () => {
 
                 if (field.name === 'description' && value !== '' && value.length < 10) {
                     setFieldError(field, 'Project description must be at least 10 characters.');
+                    firstInvalidField = firstInvalidField || field;
+                } else if (field.name === 'description' && value !== '' && !validateMeaningfulTextField(field, 'Project Description')) {
                     firstInvalidField = firstInvalidField || field;
                 }
             }

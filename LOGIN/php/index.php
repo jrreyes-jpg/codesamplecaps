@@ -631,7 +631,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 <small class="field-error"></small>
             </label>
 
-            <label>
+            <label class="project-description-field">
                 <span class="field-label-with-info">
                     Project Description <b class="required-mark">*</b>
                     <span class="field-info-wrap">

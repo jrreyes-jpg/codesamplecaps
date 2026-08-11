@@ -1,82 +1,9 @@
-FLOATING LABEL
+# Environment secrets
+.env
+.env.local
+.env.*.local
 
-Kapag ba ibang email o acc ung binuksan ay magreset ba ung sa attempt o simula ulit sa 5 attempt kada change acc o email ang ginamit
-
-sa email gusto ko ay lalabas dun ung name nung nag req ng reset pass 
-
-15 mins expired ng link pag nag req ng reset pass
-
-prevent pass reuse
-
-dapat nagana kahit walang internet connection ung sa social logo sa index.php
-
-
-NEED TO DO OR ADD JHAY
-
-2. P.O NUMBER ABOUT SA DRAFTS
-
-GAWA GALANG AT JOAN TULAD SA FILE EXPLORER  
-
-3. KADA CREATE NG PROJECT, AUTOMATIC GAGAWA NG CLIENT FILE GAWA NG SA FILE EXPLORER, UNG FILE NAME NUN AY UNG PROJECT CLIENT. KAPAG OLD CLIENT TAS GUMAWA ULIT BAGO PROJECT DUN PADEN ILALAGAY PARA IWAS DUPLICATE FILES.
-
-
-4. UNG ABOUT SA ASSET TYPE
-
-5. SER BERN ANO ANO PO BA UNG MGA NAWAWALA SA ASSETS?
-
-6. PANO NAMAN KUNG UMAYAW NA SI CLIENT SA PROJECT, ANO NA PO ANG MANGYARE, AT ANO ANG GAGAWIN SA MGA NAGASTOS AT IBA PA?
-
-7. PROJECT CODE SAMPLE MAAM ERIKA 
-
-
-ang gawin mo pala is si engineer ang mag ooorder ng supply pero si foreman ang mga req 
-
-Manage Users - Project Redundant
-Email - remove
-Project Budget - w/ Computation Automated add  ceiling 
-Asset no. quantity
-Status per  user/level/improve
-Reports
-Remove responsibility task not or that
-
-When you use a dashboard   color for the button . its font should be readable .(foreman)
-
-Manage Users - Project Redundant
-Email - remove
-Project Budget - w/ Computation Automated add  ceiling 
-Asset no. quantity
-Status per  user/level/improve
-Reports
-Remove responsibility task not or that
-
-When you use a dashboard   color for the button . its font should be readable .(foreman)
-
-Manage Users - Project Redundant
-Email - remove
-Project Budget - w/ Computation Automated add  ceiling 
-Asset no. quantity
-Status per  user/level/improve
-Reports
-Remove responsibility task not or that
-
-When you use a dashboard   color for the button . its font should be readable .(foreman)
-
-Rearrange the system to avoid discrepancies
-
-Provide a cleared template or reports for project management
-
-# Runtime session files
+# Runtime files
 storage/sessions/
 storage/logs/
-
-Provide a cleared template or reports for project management
-
-Provide a cleared template or reports for project management
-
-Name sa project management kay admin ayusin sabi ni maam gigi
-
-yung sa project code pala lagyan mo siya na dapat pede malagyan ng ganitnog sign -
-
-Quotation Generation (The System's Job): Ang System ang awtomatikong magka-compute at gagawa ng PDF Quotation base sa input ni Engineer. Si Admin ang mag-aapruba at magsesend nito sa client.
-
-Due today card
+*.log

@@ -559,6 +559,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    document.querySelectorAll('.inquiry-project-create-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            showConfirm(form, 'Create project from this approved quotation?');
+        });
+    });
+
     const queryParams = new URLSearchParams(window.location.search);
     const urlOpenModalId = queryParams.get('open');
     if (urlOpenModalId) {

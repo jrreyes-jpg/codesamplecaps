@@ -311,6 +311,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+    } elseif (($_POST['action'] ?? '') === 'create_project_from_quote') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $draftId = (int)($_POST['draft_id'] ?? 0);
+
+        if ($inquiryId <= 0 || $draftId <= 0) {
+            $error = 'Invalid project creation request.';
+        } else {
+            try {
+                $projectId = inquiry_quote_create_project($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
+                audit_log_event(
+                    $conn,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    'create_project_from_quotation',
+                    'project',
+                    $projectId,
+                    null,
+                    ['quotation_draft_id' => $draftId, 'inquiry_id' => $inquiryId]
+                );
+                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Project created from approved quotation.');
+            } catch (Throwable $throwable) {
+                $error = $throwable->getMessage();
+            }
+        }
     } elseif (($_POST['action'] ?? '') === 'approve_quotation_draft') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $draftId = (int)($_POST['draft_id'] ?? 0);
@@ -943,6 +966,21 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
                                                 <button type="submit" class="btn-primary">Approve Quotation Draft</button>
                                             </form>
+                                        <?php elseif ((string)$quotationDraft['status'] === 'Approved' && empty($quotationDraft['project_id'])): ?>
+                                            <form method="POST" class="inquiry-project-create-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="create_project_from_quote">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                                <button type="submit" class="btn-primary">Create Project</button>
+                                            </form>
+                                        <?php elseif (!empty($quotationDraft['project_id'])): ?>
+                                            <div class="inquiry-created-project">
+                                                <span>Project Created</span>
+                                                <a href="/codesamplecaps/ADMIN/sidebar/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                                                    Open Project
+                                                </a>
+                                            </div>
                                         <?php endif; ?>
                                     <?php elseif ($costingReview && !empty($latestCostItems)): ?>
                                         <form method="POST" class="inquiry-quote-form">

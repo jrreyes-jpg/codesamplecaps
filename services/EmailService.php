@@ -42,18 +42,19 @@ class EmailService {
             }
             
             $this->mailer->isSMTP();
-            $this->mailer->Host = $mailConfig['host'];
+            $this->mailer->Host = trim((string)$mailConfig['host']);
             $this->mailer->SMTPAuth = true;
-            $this->mailer->Username = $mailConfig['username'];
-            $this->mailer->Password = $mailConfig['password'];
+            $this->mailer->Username = trim((string)$mailConfig['username']);
+            $this->mailer->Password = trim((string)$mailConfig['password']);
             // Gamitin ang encryption na nasa config para hindi hardcoded.
             $this->mailer->SMTPSecure = $mailConfig['encryption'] === 'ssl'
                 ? PHPMailer::ENCRYPTION_SMTPS
                 : PHPMailer::ENCRYPTION_STARTTLS;
-            $this->mailer->Port = $mailConfig['port'];
+            $this->mailer->Port = (int)$mailConfig['port'];
             
-            $this->mailer->setFrom($mailConfig['from_address'], $mailConfig['from_name']);
+            $this->mailer->setFrom(trim((string)$mailConfig['from_address']), trim((string)$mailConfig['from_name']));
         } catch (Exception $e) {
+            error_log('SMTP configuration error: ' . $e->getMessage());
             $this->error = "SMTP Configuration Error: " . $e->getMessage();
         }
     }
@@ -193,6 +194,7 @@ class EmailService {
             $this->mailer->send();
             return true;
         } catch (Exception $e) {
+            error_log('Password reset email failed: ' . $e->getMessage());
             $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
             return false;
         }

@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS inquiry_quotation_drafts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     inquiry_id INT NOT NULL,
     inspection_id INT NOT NULL,
+    project_id INT NULL,
     quotation_no VARCHAR(80) NOT NULL,
     status VARCHAR(40) NOT NULL DEFAULT 'Draft',
     subtotal DECIMAL(14,2) NOT NULL DEFAULT 0.00,

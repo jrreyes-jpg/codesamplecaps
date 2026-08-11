@@ -32,6 +32,18 @@ function normalize_text(?string $value): string
     return trim((string) $value);
 }
 
+function has_meaningful_letters(string $value, int $minimumLetters = 2): bool
+{
+    preg_match_all('/[A-Za-z]/', $value, $matches);
+    return count($matches[0]) >= $minimumLetters;
+}
+
+function is_valid_full_name(string $value): bool
+{
+    return (bool)preg_match("/^[A-Za-z .'-]+$/", $value)
+        && has_meaningful_letters($value, 2);
+}
+
 function inquiry_column_exists(mysqli $conn, string $columnName): bool
 {
     $stmt = $conn->prepare(
@@ -78,7 +90,7 @@ if (
 // Isang gamit lang ang token para hindi makapagpadala ng duplicate OTP email.
 unset($_SESSION['inquiry_form_token']);
 
-if ($clientName === '') {
+if ($clientName === '' || !is_valid_full_name($clientName)) {
     $errors[] = 'client_name';
 }
 
@@ -108,11 +120,14 @@ if ($serviceCategory === '' || !in_array($serviceCategory, $allowedCategories, t
     $errors[] = 'service_category';
 }
 
-if ($description === '' || mb_strlen($description, 'UTF-8') < 10) {
+if ($description === '' || mb_strlen($description, 'UTF-8') < 10 || !has_meaningful_letters($description, 4)) {
     $errors[] = 'description';
 }
 
-if ($serviceCategory === 'Other / Not sure yet' && $otherServiceDetails === '') {
+if (
+    $serviceCategory === 'Other / Not sure yet'
+    && ($otherServiceDetails === '' || !has_meaningful_letters($otherServiceDetails, 4))
+) {
     $errors[] = 'other_service_details';
 }
 

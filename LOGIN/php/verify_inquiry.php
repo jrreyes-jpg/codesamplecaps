@@ -183,6 +183,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <form method="POST" id="verifyInquiryForm">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
+                    <div class="verify-next-step" aria-label="What happens next">
+                        <strong>What happens next?</strong>
+                        <span>After verification, Admin will review your request and contact you by call or email.</span>
+                    </div>
                     <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">

@@ -65,6 +65,10 @@ const initInquiryStatusToast = () => {
     };
     const [message, type] = messages[status] || ['Sorry, the inquiry service had a problem. Please try again later.', 'error'];
 
+    if (status === 'success') {
+        localStorage.removeItem('edgeInquiryFormDraft');
+    }
+
     showNotification(message, type);
 
     const url = new URL(window.location.href);
@@ -894,7 +898,6 @@ const initInquiryForm = () => {
             }
 
             isSubmittingInquiry = true;
-            localStorage.removeItem(draftKey);
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.textContent = 'Sending code...';

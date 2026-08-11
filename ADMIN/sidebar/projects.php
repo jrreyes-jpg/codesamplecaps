@@ -989,6 +989,35 @@ function projectFieldValueExists(mysqli $conn, string $columnName, string $value
     return (bool)($result && $result->fetch_assoc());
 }
 
+function generate_next_project_code(mysqli $conn): string {
+    $year = date('Y');
+
+    for ($number = 1; $number <= 9999; $number++) {
+        $code = 'EDGE-' . $year . '-' . str_pad((string)$number, 4, '0', STR_PAD_LEFT);
+
+        if (!projectFieldValueExists($conn, 'project_code', $code)) {
+            return $code;
+        }
+    }
+
+    return 'EDGE-' . $year . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+}
+
+function build_manual_project_title(array $input): string {
+    $site = trim((string)($input['project_site'] ?? ''));
+    $client = trim((string)($input['client_name'] ?? ''));
+
+    if ($site !== '') {
+        return 'Project - ' . $site;
+    }
+
+    if ($client !== '') {
+        return 'Project - ' . $client;
+    }
+
+    return 'Project';
+}
+
 /**
  * @param mixed $value
  */
@@ -1217,6 +1246,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $additionalInfoRows = normalize_project_additional_info_input($_POST['additional_info'] ?? []);
         $additionalInfoJson = encode_project_additional_info($additionalInfoRows);
         $projectCode = $hasProjectCodeColumn ? normalize_text_or_null($_POST['project_code'] ?? null) : null;
+        if ($hasProjectCodeColumn && $projectCode === null) {
+            // Auto project code para iwas duplicate at hindi na mano-mano si Admin.
+            $projectCode = generate_next_project_code($conn);
+            $_POST['project_code'] = $projectCode;
+        }
         $poNumber = $hasPoNumberColumn ? normalize_text_or_null($_POST['po_number'] ?? null) : null;
         $clientId = (int)($_POST['client_id'] ?? 0);
         $engineerIds = normalize_engineer_ids($_POST['engineer_ids'] ?? []);
@@ -1337,10 +1371,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if (projectFieldValueExists($conn, 'project_code', $projectCode)) {
-            set_projects_old_input($createProjectInput, 'project_code');
-            set_projects_flash('error', 'Project code already exists.');
-            redirect_projects_page();
+        if ($hasProjectCodeColumn && $projectCode !== null && projectFieldValueExists($conn, 'project_code', $projectCode)) {
+            // Kapag lumang tab ang gamit, gumawa ulit ng fresh code bago mag-save.
+            $projectCode = generate_next_project_code($conn);
+            $createProjectInput['project_code'] = $projectCode;
         }
 
         if ($poNumber !== null && projectFieldValueExists($conn, 'po_number', $poNumber)) {
@@ -2965,6 +2999,11 @@ $createProjectValues = [
     'budget_notes' => (string)($createProjectOldInput['budget_notes'] ?? ''),
 ];
 
+$nextProjectCode = $hasProjectCodeColumn ? generate_next_project_code($conn) : '';
+if ($hasProjectCodeColumn && $createProjectValues['project_code'] === '') {
+    $createProjectValues['project_code'] = $nextProjectCode;
+}
+
 if ($createProjectValues['status'] === '' || !in_array($createProjectValues['status'], $initialStatusOptions, true)) {
     $createProjectValues['status'] = 'pending';
 }
@@ -3295,7 +3334,11 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                     <input type="hidden" name="action" value="create_project">
 
-                    <div class="project-create-top-grid">
+                    <div class="project-create-card-grid">
+                        <div class="project-create-card project-create-card--client">
+                            <div class="project-create-section-heading">
+                                <span>Client Information</span>
+                            </div>
                         <div class="input-group">
                             <label for="client_id">Client <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select id="client_id" name="client_id" required>
@@ -3311,31 +3354,6 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
-                        <div class="input-group">
-                            <label for="project_name">Project Title <span class="required-indicator" aria-hidden="true">*</span></label>
-                            <input type="text" id="project_name" name="project_name" value="<?php echo htmlspecialchars($createProjectValues['project_name']); ?>" required>
-                        </div>
-
-                        <?php if ($hasProjectCodeColumn): ?>
-                            <div class="input-group">
-                                <label for="project_code">Project Code <span class="required-indicator" aria-hidden="true">*</span></label>
-                                <input type="text" id="project_code" name="project_code" value="<?php echo htmlspecialchars($createProjectValues['project_code']); ?>" placeholder="Enter project code" required>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php if ($hasProjectSiteColumn): ?>
-                            <div class="input-group">
-                                <div class="field-label-row">
-                                    <label for="project_site">Project Site <span class="required-indicator" aria-hidden="true">*</span></label>
-                                    <button type="button" class="field-tip" aria-label="Project site help">
-                                        <span class="field-tip__icon" aria-hidden="true">i</span>
-                                        <span class="field-tip__bubble">Enter the site, branch, building, or location code. Required unless the project stays in Draft.</span>
-                                    </button>
-                                </div>
-                                <input type="text" id="project_site" name="project_site" value="<?php echo htmlspecialchars($createProjectValues['project_site']); ?>" placeholder="Site name, branch, building, or location code">
-                            </div>
-                        <?php endif; ?>
 
                         <?php if ($hasContactPersonColumn): ?>
                             <div class="input-group">
@@ -3360,6 +3378,42 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                     </button>
                                 </div>
                                 <input type="text" id="contact_number" name="contact_number" value="<?php echo htmlspecialchars($createProjectValues['contact_number']); ?>" placeholder="09xxxxxxxxx or landline">
+                            </div>
+                        <?php endif; ?>
+                        </div>
+
+                        <div class="project-create-card project-create-card--project">
+                            <div class="project-create-section-heading">
+                                <span>Project Details</span>
+                            </div>
+                        <div class="input-group">
+                            <label for="project_name">Project Title <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <input type="text" id="project_name" name="project_name" value="<?php echo htmlspecialchars($createProjectValues['project_name']); ?>" required>
+                        </div>
+
+                        <?php if ($hasProjectCodeColumn): ?>
+                            <div class="input-group">
+                                <div class="field-label-row">
+                                    <label for="project_code">Project Code <span class="required-indicator" aria-hidden="true">*</span></label>
+                                    <button type="button" class="field-tip" aria-label="Project code help">
+                                        <span class="field-tip__icon" aria-hidden="true">i</span>
+                                        <span class="field-tip__bubble">Auto-generated by the system.</span>
+                                    </button>
+                                </div>
+                                <input type="text" id="project_code" name="project_code" value="<?php echo htmlspecialchars($createProjectValues['project_code']); ?>" placeholder="Auto-generated project code" required readonly>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($hasProjectSiteColumn): ?>
+                            <div class="input-group">
+                                <div class="field-label-row">
+                                    <label for="project_site">Project Site <span class="required-indicator" aria-hidden="true">*</span></label>
+                                    <button type="button" class="field-tip" aria-label="Project site help">
+                                        <span class="field-tip__icon" aria-hidden="true">i</span>
+                                        <span class="field-tip__bubble">Enter the site, branch, building, or location code. Required unless the project stays in Draft.</span>
+                                    </button>
+                                </div>
+                                <input type="text" id="project_site" name="project_site" value="<?php echo htmlspecialchars($createProjectValues['project_site']); ?>" placeholder="Site name, branch, building, or location code">
                             </div>
                         <?php endif; ?>
 
@@ -3518,6 +3572,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                     <?php endforeach; ?>
                                 </div>
                             </div>
+                        </div>
                         </div>
                     </div>
 
@@ -4040,8 +4095,101 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                         <?php endif; ?>
                     </section>
                 <?php else: ?>
+                    <?php if (empty($projects)): ?>
+                        <div class="empty-state">
+                            <?php echo ($searchQuery !== '' || $statusFilter !== '') ? 'No matching projects found.' : 'No active projects found right now.'; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="project-results-meta">
+                            <span>Showing <?php echo count($projects); ?> of <?php echo $filteredProjects; ?> matching projects</span>
+                            <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+                        </div>
+
+                        <div class="projects-grid" id="projects-grid">
+                            <?php foreach ($projects as $project): ?>
+                                <?php
+                                $isDraft = ($project['status'] ?? '') === 'draft';
+                                $isCompleted = ($project['status'] ?? '') === 'completed';
+                                $budgetAmount = (float)($project['budget_amount'] ?? 0);
+                                $totalCost = (float)($project['total_cost'] ?? 0);
+                                $remainingBudget = $budgetAmount - $totalCost;
+                                $projectCode = trim((string)($project['project_code'] ?? ''));
+                                $projectPoNumber = trim((string)($project['po_number'] ?? ''));
+                                $projectContactPerson = trim((string)($project['contact_person'] ?? ''));
+                                $projectContactNumber = trim((string)($project['contact_number'] ?? ''));
+                                $projectSite = trim((string)($project['project_site'] ?? ''));
+                                $projectAdditionalInfoRows = decode_project_additional_info($project['additional_info_json'] ?? null);
+                                $projectAdditionalInfoSearchText = project_additional_info_search_text($projectAdditionalInfoRows);
+                                $assignedEngineerNames = trim((string)($project['engineer_names'] ?? ''));
+                                $searchText = strtolower(trim(implode(' ', [
+                                    $project['project_name'] ?? '',
+                                    $projectCode,
+                                    $projectPoNumber,
+                                    $projectContactPerson,
+                                    $projectContactNumber,
+                                    $projectSite,
+                                    $project['client_name'] ?? '',
+                                    $assignedEngineerNames,
+                                    $project['project_address'] ?? '',
+                                    $projectAdditionalInfoSearchText,
+                                    $project['status'] ?? '',
+                                ])));
+                                $detailsPath = '/codesamplecaps/ADMIN/sidebar/project_details.php?id=' . (int)$project['id'];
+                                ?>
+                                <article class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>" data-project-card data-status="<?php echo htmlspecialchars($project['status']); ?>" data-search="<?php echo htmlspecialchars($searchText); ?>" data-title="<?php echo htmlspecialchars($project['project_name']); ?>" data-link="<?php echo htmlspecialchars($detailsPath); ?>" data-client="<?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?>" data-engineer="<?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?>">
+                                    <div class="card-split">
+                                        <div>
+                                            <div class="project-card__eyebrow-row">
+                                                <span class="project-card__eyebrow">Project Title</span>
+                                                <?php if ($projectCode !== ''): ?>
+                                                    <span class="project-card__reference"><?php echo htmlspecialchars($projectCode); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <h3><?php echo htmlspecialchars($project['project_name']); ?></h3>
+                                            <div class="status-pill-wrap">
+                                                <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
+                                                    <?php echo htmlspecialchars(ucfirst((string)$project['status'])); ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="project-meta">
+                                            <div><strong>Client:</strong> <?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></div>
+                                            <div><strong>Team:</strong> <?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?></div>
+                                            <div><strong>Site:</strong> <?php echo htmlspecialchars($projectSite !== '' ? $projectSite : 'Not set'); ?></div>
+                                            <div><strong>Budget:</strong> <?php echo htmlspecialchars(format_money($budgetAmount)); ?></div>
+                                            <div><strong>Remaining:</strong> <?php echo htmlspecialchars(format_money($remainingBudget)); ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions project-card__actions">
+                                        <a href="<?php echo htmlspecialchars($detailsPath); ?>" class="btn-primary project-card__details-btn">View Details</a>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <?php if ($totalPages > 1): ?>
+                            <div class="pagination">
+                                <?php for ($page = 1; $page <= $totalPages; $page++): ?>
+                                    <?php
+                                    $pageParams = [];
+                                    if ($searchQuery !== '') {
+                                        $pageParams['q'] = $searchQuery;
+                                    }
+                                    if ($statusFilter !== '') {
+                                        $pageParams['status'] = $statusFilter;
+                                    }
+                                    $pageParams['page'] = $page;
+                                    $pageLink = '/codesamplecaps/ADMIN/sidebar/projects.php?' . http_build_query($pageParams);
+                                    ?>
+                                    <a href="<?php echo htmlspecialchars($pageLink); ?>" class="pagination-link<?php echo $page === $currentPage ? ' is-active' : ''; ?>">
+                                        <?php echo $page; ?>
+                                    </a>
+                                <?php endfor; ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                <?php endif; ?>
             </section>
-            <?php endif; ?>
         </div>
     </main>
 </div>
@@ -4441,6 +4589,20 @@ function initCreateProjectForm() {
     const estimatedCompletionDateField = createProjectForm.elements.namedItem('estimated_completion_date');
     const projectDurationField = createProjectForm.elements.namedItem('estimated_duration_days');
     const poDateField = createProjectForm.elements.namedItem('start_date');
+    const statusField = createProjectForm.elements.namedItem('status');
+    const requiredWhenActiveFields = [
+        createProjectForm.elements.namedItem('contact_person'),
+        createProjectForm.elements.namedItem('contact_number'),
+        createProjectForm.elements.namedItem('project_site'),
+        createProjectForm.elements.namedItem('project_address'),
+    ].filter(Boolean);
+
+    function syncCreateProjectRequiredFields() {
+        const isDraft = String(statusField?.value || '') === 'draft';
+        requiredWhenActiveFields.forEach(function (field) {
+            field.required = !isDraft;
+        });
+    }
 
     function calculateDurationDays(startDate, endDate) {
         if (!startDate || !endDate) {
@@ -4541,6 +4703,9 @@ function initCreateProjectForm() {
         syncProjectTimelineValidation('init');
     }
 
+    statusField?.addEventListener('change', syncCreateProjectRequiredFields);
+    syncCreateProjectRequiredFields();
+
     if (focusFieldName !== '') {
         const targetField = createProjectForm.elements.namedItem(focusFieldName) || document.getElementById(focusFieldName);
 
@@ -4563,8 +4728,11 @@ function initCreateProjectClientAutofill() {
     }
 
     const clientField = createProjectForm.elements.namedItem('client_id');
+    const projectTitleField = createProjectForm.elements.namedItem('project_name');
+    const projectSiteField = createProjectForm.elements.namedItem('project_site');
     const contactPersonField = createProjectForm.elements.namedItem('contact_person');
     const contactNumberField = createProjectForm.elements.namedItem('contact_number');
+    let titleWasAutoGenerated = String(projectTitleField?.value || '').trim() === '';
 
     if (!clientField) {
         return;
@@ -4580,6 +4748,38 @@ function initCreateProjectClientAutofill() {
             name: String(selectedOption.getAttribute('data-client-name') || '').trim(),
             phone: String(selectedOption.getAttribute('data-client-phone') || '').trim(),
         };
+    };
+
+    const buildAutoTitle = function () {
+        const selectedClient = getSelectedClient();
+        const site = String(projectSiteField?.value || '').trim();
+        const clientName = selectedClient?.name || '';
+
+        if (site !== '') {
+            return 'Project - ' + site;
+        }
+
+        if (clientName !== '') {
+            return 'Project - ' + clientName;
+        }
+
+        return '';
+    };
+
+    const syncProjectTitle = function (forceOverwrite) {
+        if (!projectTitleField) {
+            return;
+        }
+
+        const nextTitle = buildAutoTitle();
+        if (nextTitle === '') {
+            return;
+        }
+
+        if (forceOverwrite || titleWasAutoGenerated || String(projectTitleField.value || '').trim() === '') {
+            projectTitleField.value = nextTitle;
+            titleWasAutoGenerated = true;
+        }
     };
 
     const syncClientDetails = function (forceOverwrite) {
@@ -4604,7 +4804,17 @@ function initCreateProjectClientAutofill() {
         if (contactNumberField && (forceOverwrite || String(contactNumberField.value || '').trim() === '')) {
             contactNumberField.value = selectedClient.phone;
         }
+
+        syncProjectTitle(forceOverwrite);
     };
+
+    projectTitleField?.addEventListener('input', function () {
+        titleWasAutoGenerated = String(projectTitleField.value || '').trim() === '' || projectTitleField.value === buildAutoTitle();
+    });
+
+    projectSiteField?.addEventListener('input', function () {
+        syncProjectTitle(false);
+    });
 
     clientField.addEventListener('change', function () {
         syncClientDetails(true);
@@ -4615,6 +4825,8 @@ function initCreateProjectClientAutofill() {
     if (String(clientField.value || '').trim() !== '') {
         syncClientDetails(false);
     }
+
+    syncProjectTitle(false);
 }
 
 function initProjectAdditionalInfoRows() {
@@ -4751,7 +4963,7 @@ function initCreateProjectDraft() {
     const shouldClearStoredDraft = <?php echo $shouldClearCreateProjectDraft ? 'true' : 'false'; ?>;
     const defaultDraft = {
         project_name: '',
-        project_code: '',
+        project_code: <?php echo json_encode($createProjectValues['project_code'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>,
         po_number: '',
         client_id: '',
         contact_person: '',
@@ -4901,7 +5113,7 @@ function initCreateProjectDraft() {
         }
 
         Object.keys(defaultDraft).forEach(function (fieldName) {
-            if (fieldName === 'engineer_ids' || fieldName === 'additional_info') {
+            if (fieldName === 'engineer_ids' || fieldName === 'additional_info' || fieldName === 'project_code') {
                 return;
             }
 
@@ -4913,6 +5125,7 @@ function initCreateProjectDraft() {
         });
 
         setEngineerIds(Array.isArray(draft.engineer_ids) ? draft.engineer_ids.map(String) : []);
+        setFieldValue('project_code', defaultDraft.project_code);
 
         if (window.__projectAdditionalInfoManager) {
             const nextRows = Array.isArray(draft.additional_info) ? draft.additional_info : defaultDraft.additional_info;
@@ -5180,6 +5393,66 @@ function initEngineerAssignmentPicker() {
     picker.dataset.toggleBound = 'true';
 }
 
+function initFieldTipToggle() {
+    const tips = Array.from(document.querySelectorAll('.field-tip'));
+
+    function closeTips(exceptTip) {
+        tips.forEach(function (tip) {
+            if (tip !== exceptTip) {
+                tip.classList.remove('is-visible');
+            }
+        });
+    }
+
+    tips.forEach(function (tip) {
+        tip.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const willOpen = !tip.classList.contains('is-visible');
+            closeTips(tip);
+            tip.classList.toggle('is-visible', willOpen);
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.field-tip')) {
+            closeTips(null);
+        }
+    });
+
+    document.addEventListener('focusin', function (event) {
+        if (!event.target.closest('.field-tip')) {
+            closeTips(null);
+        }
+    });
+}
+
+function initProjectsScrollRestore() {
+    const storageKey = 'codesamplecaps.admin.projects.scrollY';
+
+    try {
+        const savedScroll = window.sessionStorage.getItem(storageKey);
+        if (savedScroll !== null) {
+            window.sessionStorage.removeItem(storageKey);
+            const scrollY = Number(savedScroll);
+            if (Number.isFinite(scrollY) && scrollY > 0) {
+                window.setTimeout(function () {
+                    window.scrollTo({ top: scrollY, behavior: 'auto' });
+                }, 50);
+            }
+        }
+    } catch (error) {
+    }
+
+    window.addEventListener('beforeunload', function () {
+        try {
+            window.sessionStorage.setItem(storageKey, String(window.scrollY || 0));
+        } catch (error) {
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', initProjectSearchUI);
 document.addEventListener('DOMContentLoaded', initArchiveTabs);
 document.addEventListener('DOMContentLoaded', initCreateProjectForm);
@@ -5188,6 +5461,8 @@ document.addEventListener('DOMContentLoaded', initProjectAdditionalInfoRows);
 document.addEventListener('DOMContentLoaded', initCreateProjectDraft);
 document.addEventListener('DOMContentLoaded', initCurrencyInputs);
 document.addEventListener('DOMContentLoaded', initEngineerAssignmentPicker);
+document.addEventListener('DOMContentLoaded', initFieldTipToggle);
+document.addEventListener('DOMContentLoaded', initProjectsScrollRestore);
 </script>
 </body>
 </html>

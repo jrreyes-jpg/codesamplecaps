@@ -10,12 +10,39 @@ function normalizeRole(string $role): string {
     return $role === 'foremen' ? 'foreman' : $role;
 }
 
-function isValidPhMobile(?string $phone): bool {
-    if ($phone === null || $phone === '') {
-        return true;
+function normalizePhMobile(?string $phone): string {
+    $digits = preg_replace('/\D+/', '', (string)$phone);
+
+    if ($digits === '') {
+        return '';
     }
 
-    return (bool)preg_match('/^09\d{9}$/', $phone);
+    if (strpos($digits, '639') === 0) {
+        return substr('09' . substr($digits, 3), 0, 11);
+    }
+
+    if (strpos($digits, '9') === 0) {
+        return substr('0' . $digits, 0, 11);
+    }
+
+    if (strpos($digits, '09') !== 0) {
+        return substr('09' . ltrim($digits, '0'), 0, 11);
+    }
+
+    return substr($digits, 0, 11);
+}
+
+function isValidPhMobile(?string $phone): bool {
+    if ($phone === null || $phone === '') {
+        return false;
+    }
+
+    return (bool)preg_match('/^09\d{9}$/', normalizePhMobile($phone));
+}
+
+function isValidPersonName(string $name): bool {
+    return (bool)preg_match('/^[\p{L} .\'-]+$/u', $name)
+        && (bool)preg_match('/[\p{L}]{2,}/u', $name);
 }
 
 function isStrongPassword(string $password): bool {
@@ -53,12 +80,24 @@ function superadmin_user_consume_flash(): array {
     ];
 }
 
-function superadmin_user_redirect(string $tab = 'users', string $status = ''): void {
+function superadmin_user_redirect(string $tab = 'users', string $status = '', string $role = '', bool $trashView = false): void {
     $url = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php';
     if ($tab === 'create') {
         $url .= '?create=1';
-    } elseif ($status !== '') {
-        $url .= '?status=' . rawurlencode($status);
+    } else {
+        $query = [];
+        if ($trashView) {
+            $query['view'] = 'trash';
+        }
+        if ($status !== '') {
+            $query['status'] = $status;
+        }
+        if ($role !== '') {
+            $query['role'] = $role;
+        }
+        if ($query !== []) {
+            $url .= '?' . http_build_query($query);
+        }
     }
 
     header('Location: ' . $url);
@@ -103,7 +142,9 @@ function superadmin_user_ensure_trash_columns(mysqli $conn): void {
 }
 
 function getUserForStatusChange(mysqli $conn, int $userId): ?array {
-    $stmt = $conn->prepare('SELECT id, full_name, email, phone, role, status FROM users WHERE id = ? LIMIT 1');
+    $deletedColumn = superadmin_user_has_column($conn, 'users', 'deleted_at');
+    $deletedSelect = $deletedColumn ? ', deleted_at' : ', NULL AS deleted_at';
+    $stmt = $conn->prepare('SELECT id, full_name, email, phone, role, status' . $deletedSelect . ' FROM users WHERE id = ? LIMIT 1');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -181,8 +222,11 @@ function compareUsersForTable(array $left, array $right): int {
     return strtolower((string)($left['full_name'] ?? '')) <=> strtolower((string)($right['full_name'] ?? ''));
 }
 
-function fetchUsersByRoles(mysqli $conn, array $roles, string $statusFilter = '', bool $trashView = false): array {
+function fetchUsersByRoles(mysqli $conn, array $roles, string $statusFilter = '', bool $trashView = false, string $roleFilter = ''): array {
     $roles = array_values(array_map('normalizeRole', $roles));
+    if ($roleFilter !== '' && in_array($roleFilter, $roles, true)) {
+        $roles = [$roleFilter];
+    }
     $placeholders = implode(',', array_fill(0, count($roles), '?'));
     $types = str_repeat('s', count($roles));
     $deletedColumn = superadmin_user_has_column($conn, 'users', 'deleted_at');
@@ -231,7 +275,7 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
     $old = [
         'full_name' => trim((string)($_POST['full_name'] ?? '')),
         'email' => trim((string)($_POST['email'] ?? '')),
-        'phone' => trim((string)($_POST['phone'] ?? '')),
+        'phone' => normalizePhMobile($_POST['phone'] ?? ''),
         'role' => normalizeRole((string)($_POST['role'] ?? '')),
     ];
 
@@ -243,13 +287,13 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
     if ($action === 'create_account') {
         $password = trim((string)($_POST['password'] ?? ''));
 
-        if ($old['full_name'] === '' || $old['email'] === '' || $password === '' || $old['role'] === '') {
-            superadmin_user_flash('error', 'Full name, email, password, and role are required.', $old);
+        if ($old['full_name'] === '' || $old['email'] === '' || $old['phone'] === '' || $password === '' || $old['role'] === '') {
+            superadmin_user_flash('error', 'Full name, email, phone, password, and role are required.', $old);
             superadmin_user_redirect('create');
         }
 
-        if (!filter_var($old['email'], FILTER_VALIDATE_EMAIL) || !in_array($old['role'], $allowedRoles, true) || !preg_match('/^09\d{9}$/', $old['phone']) || !isStrongPassword($password)) {
-            superadmin_user_flash('error', 'Please check email, role, phone, and password strength.', $old);
+        if (!isValidPersonName($old['full_name']) || !filter_var($old['email'], FILTER_VALIDATE_EMAIL) || !in_array($old['role'], $allowedRoles, true) || !isValidPhMobile($old['phone']) || !isStrongPassword($password)) {
+            superadmin_user_flash('error', 'Please check full name, email, role, phone, and password strength.', $old);
             superadmin_user_redirect('create');
         }
 
@@ -312,10 +356,10 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
         $userId = (int)($_POST['user_id'] ?? 0);
         $fullName = trim((string)($_POST['edit_full_name'] ?? ''));
         $email = trim((string)($_POST['edit_email'] ?? ''));
-        $phone = trim((string)($_POST['edit_phone'] ?? ''));
+        $phone = normalizePhMobile($_POST['edit_phone'] ?? '');
         $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
 
-        if ($userId <= 0 || !$user || normalizeRole((string)$user['role']) === 'super_admin' || $fullName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !isValidPhMobile($phone)) {
+        if ($userId <= 0 || !$user || normalizeRole((string)$user['role']) === 'super_admin' || !isValidPersonName($fullName) || !filter_var($email, FILTER_VALIDATE_EMAIL) || !isValidPhMobile($phone)) {
             superadmin_user_flash('error', 'Invalid edit request. Please check user details.');
             superadmin_user_redirect('users');
         }
@@ -340,6 +384,31 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
             superadmin_user_flash('success', 'User profile updated successfully.');
         } else {
             superadmin_user_flash('error', 'Failed to update user profile.');
+        }
+        superadmin_user_redirect('users');
+    }
+
+    if ($action === 'reset_password') {
+        $userId = (int)($_POST['user_id'] ?? 0);
+        $newPassword = trim((string)($_POST['new_password'] ?? ''));
+        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
+
+        if ($userId <= 0 || !$user || normalizeRole((string)$user['role']) === 'super_admin' || !isStrongPassword($newPassword)) {
+            superadmin_user_flash('error', 'Password reset failed. Use a strong temporary password.');
+            superadmin_user_redirect('users');
+        }
+
+        $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $conn->prepare('UPDATE users SET password = ? WHERE id = ?');
+        $stmt->bind_param('si', $passwordHash, $userId);
+        if ($stmt->execute()) {
+            audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'reset_user_password', 'user', $userId, null, [
+                'email' => $user['email'] ?? null,
+                'role' => normalizeRole((string)($user['role'] ?? '')),
+            ]);
+            superadmin_user_flash('success', 'Temporary password updated successfully.');
+        } else {
+            superadmin_user_flash('error', 'Failed to reset password.');
         }
         superadmin_user_redirect('users');
     }
@@ -370,6 +439,52 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
         }
         superadmin_user_redirect('users');
     }
+
+    if ($action === 'restore_user') {
+        $userId = (int)($_POST['user_id'] ?? 0);
+        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
+
+        if ($userId <= 0 || !$user || normalizeRole((string)$user['role']) === 'super_admin') {
+            superadmin_user_flash('error', 'Invalid restore request.');
+            superadmin_user_redirect('users', '', '', true);
+        }
+
+        $restoredBy = (int)($_SESSION['user_id'] ?? 0);
+        $stmt = $conn->prepare('UPDATE users SET deleted_at = NULL, deleted_by = NULL, restored_at = NOW(), restored_by = ? WHERE id = ? AND deleted_at IS NOT NULL');
+        $stmt->bind_param('ii', $restoredBy, $userId);
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
+            audit_log_event($conn, $restoredBy, 'restore_user', 'user', $userId, ['deleted_at' => $user['deleted_at'] ?? null], ['restored_at' => date('Y-m-d H:i:s')]);
+            superadmin_user_flash('success', 'User restored successfully.');
+        } else {
+            superadmin_user_flash('error', 'Failed to restore user.');
+        }
+        superadmin_user_redirect('users', '', '', true);
+    }
+
+    if ($action === 'permanent_delete_user') {
+        $userId = (int)($_POST['user_id'] ?? 0);
+        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
+
+        if ($userId <= 0 || !$user || normalizeRole((string)$user['role']) === 'super_admin' || $userId === (int)($_SESSION['user_id'] ?? 0)) {
+            superadmin_user_flash('error', 'Invalid permanent delete request.');
+            superadmin_user_redirect('users', '', '', true);
+        }
+
+        try {
+            $stmt = $conn->prepare('DELETE FROM users WHERE id = ? AND deleted_at IS NOT NULL');
+            $stmt->bind_param('i', $userId);
+            if ($stmt->execute() && $stmt->affected_rows > 0) {
+                audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'permanent_delete_user', 'user', $userId, $user, null);
+                superadmin_user_flash('success', 'User permanently deleted.');
+            } else {
+                superadmin_user_flash('error', 'User must be in trash before permanent delete.');
+            }
+        } catch (mysqli_sql_exception $exception) {
+            superadmin_user_flash('error', 'Cannot permanently delete this user because system records still use it.');
+        }
+
+        superadmin_user_redirect('users', '', '', true);
+    }
 }
 
 function superadmin_user_context(mysqli $conn): array {
@@ -390,8 +505,13 @@ function superadmin_user_context(mysqli $conn): array {
     if (!in_array($userStatusFilter, $allowedStatuses, true)) {
         $userStatusFilter = '';
     }
+    $userRoleFilter = normalizeRole((string)($_GET['role'] ?? ''));
+    if (!in_array($userRoleFilter, $allowedRoles, true)) {
+        $userRoleFilter = '';
+    }
+    $userTrashView = (string)($_GET['view'] ?? '') === 'trash';
 
-    $managedUsers = fetchUsersByRoles($conn, $allowedRoles, $userStatusFilter, false);
+    $managedUsers = fetchUsersByRoles($conn, $allowedRoles, $userStatusFilter, $userTrashView, $userRoleFilter);
     usort($managedUsers, 'compareUsersForTable');
 
     return [
@@ -400,6 +520,9 @@ function superadmin_user_context(mysqli $conn): array {
         'isUserWorkspaceTab' => true,
         'userWorkspaceShouldOpenModal' => isset($_GET['create']) || $flash['type'] === 'error' && ($old['full_name'] !== '' || $old['email'] !== ''),
         'userStatusFilter' => $userStatusFilter,
+        'userRoleFilter' => $userRoleFilter,
+        'userTrashView' => $userTrashView,
+        'allowedRoles' => $allowedRoles,
         'csrfToken' => getCsrfToken(),
         'old' => $old,
         'managedUsers' => $managedUsers,

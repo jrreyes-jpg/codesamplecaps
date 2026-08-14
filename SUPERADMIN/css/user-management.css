@@ -183,6 +183,35 @@ body:has([data-user-management-shell]) .user-management-panel {
     padding-inline: 0;
 }
 
+.table-input.is-invalid-live,
+.user-create-form input.is-invalid-live,
+.user-create-form select.is-invalid-live {
+    border-color: #dc2626 !important;
+    background: #fff5f5;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.table-input.is-valid-live,
+.user-create-form input.is-valid-live,
+.user-create-form select.is-valid-live {
+    border-color: #16a34a !important;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.field-error {
+    display: block;
+    min-height: 18px;
+    margin-top: 6px;
+    color: #dc2626;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.field-error[hidden] {
+    display: block;
+    visibility: hidden;
+}
+
 .inline-action-form {
     margin: 0;
 }
@@ -211,6 +240,15 @@ body:has([data-user-management-shell]) .user-management-panel {
 .action-btn.deactivate {
     background: #dc2626;
     color: #ffffff;
+}
+
+.action-btn.reset-password {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.action-btn.reset-password:hover {
+    background: #1d4ed8;
 }
 
 .user-management-shell {
@@ -255,7 +293,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .user-management-panel {
     margin-top: 0;
-    padding: 24px;
+    padding: 30px;
     overflow: hidden;
     display: grid;
     gap: 18px;
@@ -263,10 +301,10 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .user-table-toolbar {
     display: grid;
-    grid-template-columns: minmax(180px, 1fr) minmax(360px, 560px) auto;
+    grid-template-columns: minmax(190px, 1fr) minmax(420px, 620px) minmax(160px, 1fr);
     align-items: center;
     gap: 18px;
-    padding: 0;
+    padding: 4px 12px 0;
 }
 
 .user-table-toolbar__copy {
@@ -292,12 +330,11 @@ body:has([data-user-management-shell]) .user-management-panel {
     display: grid;
     gap: 6px;
     width: 100%;
-    max-width: 560px;
+    max-width: 620px;
     min-width: 0;
     margin: 0;
     justify-self: center;
     position: relative;
-    left: -100px;
 }
 
 .user-search-field input {
@@ -319,6 +356,8 @@ body:has([data-user-management-shell]) .user-management-panel {
 .user-management-trigger {
     min-height: 46px;
     align-self: center;
+    justify-self: end;
+    white-space: nowrap;
 }
 
 .user-search-field input:focus {
@@ -346,15 +385,15 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table__col-role {
-    width: 12%;
+    width: 13%;
 }
 
 .user-management-table__col-status {
-    width: 10%;
+    width: 11%;
 }
 
 .user-management-table__col-actions {
-    width: 16%;
+    width: 11%;
 }
 
 .user-management-table .responsive-table thead {
@@ -365,6 +404,11 @@ body:has([data-user-management-shell]) .user-management-panel {
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.user-management-table .responsive-table th:last-child,
+.user-management-table .responsive-table td:last-child {
+    text-align: center;
 }
 
 .user-management-table .responsive-table td {
@@ -391,6 +435,16 @@ body:has([data-user-management-shell]) .user-management-panel {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+.role-badge-admin {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.role-badge-inventory_clerk {
+    background: #e0f2fe;
+    color: #075985;
 }
 
 .role-badge-engineer {
@@ -613,7 +667,249 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .user-filters {
     margin: 0;
-    padding: 0 0 4px;
+    padding: 2px 12px 6px;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-chip-trash {
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.user-role-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    padding-left: 12px;
+}
+
+.user-role-filter label {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.user-role-filter select {
+    min-height: 40px;
+    min-width: 170px;
+    padding: 8px 38px 8px 12px;
+    border: 1px solid #d7dee7;
+    border-radius: 999px;
+    background:
+        linear-gradient(45deg, transparent 50%, #0f766e 50%) calc(100% - 20px) 16px / 7px 7px no-repeat,
+        linear-gradient(135deg, #0f766e 50%, transparent 50%) calc(100% - 15px) 16px / 7px 7px no-repeat,
+        #ffffff;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 700;
+    appearance: none;
+}
+
+.user-role-filter select:focus {
+    outline: none;
+    border-color: #16a34a;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+
+.user-actions-menu {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-height: 36px;
+}
+
+.user-actions-menu__toggle {
+    background: #0f766e;
+    color: #ffffff;
+    min-width: 0;
+    min-height: 34px;
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    line-height: 1;
+}
+
+.user-actions-menu__toggle::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform 0.18s ease;
+}
+
+.user-actions-menu__toggle[aria-expanded="true"]::after {
+    transform: rotate(225deg) translateY(2px);
+}
+
+.user-actions-menu__list {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
+    z-index: 1500;
+    display: grid;
+    gap: 8px;
+    width: min(360px, calc(100vw - 32px));
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #dbeafe;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.26);
+}
+
+.user-actions-menu__list[hidden],
+.user-actions-menu[hidden] {
+    display: none;
+}
+
+.user-actions-modal-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1490;
+    background: rgba(15, 23, 42, 0.46);
+    backdrop-filter: blur(4px);
+}
+
+.user-actions-menu__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 2px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+
+.user-actions-menu__close {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #0f172a;
+    cursor: pointer;
+    font-size: 1.25rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.user-actions-menu__close:hover,
+.user-actions-menu__close:focus-visible {
+    background: #e2e8f0;
+    outline: 2px solid #86efac;
+    outline-offset: 2px;
+}
+
+.user-actions-menu__item {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #0f172a;
+    text-align: left;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.user-actions-menu__item:hover,
+.user-actions-menu__item:focus-visible {
+    background: #ecfdf5;
+    outline: 2px solid #86efac;
+    outline-offset: 2px;
+}
+
+.user-actions-menu__item.is-danger {
+    color: #b91c1c;
+}
+
+.user-actions-menu__item.is-success {
+    color: #166534;
+}
+
+.user-actions-menu__item.is-muted {
+    color: #64748b;
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
+.user-actions-menu__item:disabled {
+    pointer-events: none;
+}
+
+.user-reset-target {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.user-edit-modal__panel {
+    width: min(720px, 100%);
+}
+
+.user-edit-modal__panel .user-create-modal__header {
+    margin-bottom: 24px;
+}
+
+.user-edit-modal__panel .user-create-form {
+    display: grid;
+    gap: 18px;
+}
+
+.user-edit-modal__panel .form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.user-edit-modal__panel .form-row:last-of-type {
+    grid-template-columns: 1fr;
+}
+
+.user-edit-modal__panel label {
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.user-edit-modal__panel input {
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 0.98rem;
+}
+
+.user-edit-modal__panel .user-create-modal__actions {
+    margin-top: 4px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+@media (max-width: 680px) {
+    .user-edit-modal__panel .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.user-reset-modal__panel {
+    width: min(560px, 100%);
 }
 
 /* Final alignment guard: para hindi bumaba o mag-overlap ang User Management page. */

@@ -161,6 +161,14 @@ function inquiry_center_redirect_back(string $message, string $fallback = '/code
     exit();
 }
 
+function inquiry_center_redirect_with_project(int $projectId, string $message): void
+{
+    $_SESSION['inquiry_center_flash'] = $message;
+    $_SESSION['inquiry_center_flash_project_id'] = $projectId;
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php?status=For+Inspection');
+    exit();
+}
+
 function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
@@ -329,7 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     null,
                     ['quotation_draft_id' => $draftId, 'inquiry_id' => $inquiryId]
                 );
-                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Project created from approved quotation.');
+                inquiry_center_redirect_with_project($projectId, 'Project created from approved quotation.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -551,7 +559,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $message = (string)($_SESSION['inquiry_center_flash'] ?? $message);
+$flashProjectId = (int)($_SESSION['inquiry_center_flash_project_id'] ?? 0);
 unset($_SESSION['inquiry_center_flash']);
+unset($_SESSION['inquiry_center_flash_project_id']);
 
 $engineers = [];
 $engineerResult = $conn->query("SELECT id, full_name FROM users WHERE role = 'engineer' AND status = 'active' ORDER BY full_name ASC");
@@ -730,7 +740,12 @@ include __DIR__ . '/../admin_sidebar.php';
                 role="status"
                 data-inquiry-toast
             >
-                <?php echo htmlspecialchars($message ?: $error, ENT_QUOTES, 'UTF-8'); ?>
+                <span><?php echo htmlspecialchars($message ?: $error, ENT_QUOTES, 'UTF-8'); ?></span>
+                <?php if ($message && $flashProjectId > 0): ?>
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)$flashProjectId; ?>">
+                        Open Project
+                    </a>
+                <?php endif; ?>
                 <button type="button" data-inquiry-toast-close aria-label="Close notification">&times;</button>
             </div>
         <?php endif; ?>
@@ -977,7 +992,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <?php elseif (!empty($quotationDraft['project_id'])): ?>
                                             <div class="inquiry-created-project">
                                                 <span>Project Created</span>
-                                                <a href="/codesamplecaps/ADMIN/sidebar/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                                                <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
                                                     Open Project
                                                 </a>
                                             </div>

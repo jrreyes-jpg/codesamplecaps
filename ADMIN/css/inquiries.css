@@ -352,6 +352,28 @@
     animation: inquiryToastIn 0.22s ease-out;
 }
 
+.inquiry-toast span {
+    flex: 1;
+}
+
+.inquiry-toast a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.inquiry-toast a:hover,
+.inquiry-toast a:focus-visible {
+    background: rgba(255, 255, 255, 0.32);
+}
+
 .inquiry-toast--success {
     background: #15803d;
 }

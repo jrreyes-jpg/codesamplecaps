@@ -50,6 +50,43 @@ const showNotification = (message, type = 'info') => {
     }, 4000);
 };
 
+const showInquirySuccessModal = () => {
+    const modal = document.createElement('div');
+    modal.className = 'inquiry-success-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'inquirySuccessTitle');
+    modal.innerHTML = [
+        '<div class="inquiry-success-modal__card">',
+        '<div class="inquiry-success-modal__icon" aria-hidden="true">✓</div>',
+        '<h2 id="inquirySuccessTitle">Inquiry Sent</h2>',
+        '<p>Please wait for our call or email. Admin will review your request first.</p>',
+        '<button type="button" class="btn btn-primary" data-inquiry-success-close>Back to Home</button>',
+        '</div>',
+    ].join('');
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => {
+        modal.classList.add('is-closing');
+        window.setTimeout(() => modal.remove(), 220);
+    };
+
+    modal.querySelector('[data-inquiry-success-close]')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function closeOnEscape(event) {
+        if (event.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', closeOnEscape);
+        }
+    });
+};
+
 const initInquiryStatusToast = () => {
     const status = window.edgeInquiryStatus || '';
 
@@ -58,7 +95,7 @@ const initInquiryStatusToast = () => {
     }
 
     const messages = {
-        success: ['Your inquiry was sent. We will contact you soon.', 'success'],
+        success: ['Inquiry sent. Please wait for our call or email.', 'success'],
         invalid: ['Please check the form and try again.', 'error'],
         email_error: ['We could not send the verification code. Please try again later.', 'error'],
         expired: ['The verification code expired. Please submit the inquiry again.', 'error'],
@@ -67,9 +104,34 @@ const initInquiryStatusToast = () => {
 
     if (status === 'success') {
         localStorage.removeItem('edgeInquiryFormDraft');
-    }
+        document.querySelectorAll('.js-inquiry-form').forEach((form) => {
+            form.reset();
+            const contactInput = form.querySelector('.js-inquiry-contact');
+            if (contactInput) {
+                contactInput.value = '09';
+            }
+            form.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+            form.querySelectorAll('.field-error').forEach((fieldError) => {
+                fieldError.textContent = '';
+                fieldError.classList.remove('is-visible');
+            });
+            const message = form.querySelector('.js-inquiry-message');
+            if (message) {
+                message.textContent = '';
+                message.classList.remove('is-error');
+            }
+        });
 
-    showNotification(message, type);
+        const inquiryModal = document.getElementById('inquiryModal');
+        if (inquiryModal) {
+            inquiryModal.classList.remove('is-open');
+            inquiryModal.setAttribute('aria-hidden', 'true');
+        }
+
+        showInquirySuccessModal();
+    } else {
+        showNotification(message, type);
+    }
 
     const url = new URL(window.location.href);
     url.searchParams.delete('inquiry');
@@ -712,6 +774,11 @@ const initInquiryForm = () => {
         };
 
         const restoreInquiryDraft = () => {
+            if (window.edgeInquiryStatus === 'success') {
+                localStorage.removeItem(draftKey);
+                return;
+            }
+
             let draft = {};
             try {
                 draft = JSON.parse(localStorage.getItem(draftKey) || '{}');

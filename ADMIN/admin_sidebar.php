@@ -11,7 +11,7 @@ $isDashboard = $isOverviewPage || ($isDashboardPage && ($currentQuery === '' || 
 $isCreate = $isDashboardPage && str_contains($currentQuery, 'tab=create');
 $isCreate = $isCreate || ($isUserManagementPage && str_contains($currentQuery, 'create=1'));
 $isUsers = $isUserManagementPage || ($isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate));
-$isProjects = str_contains($currentPath, '/ADMIN/sidebar/projects.php');
+$isProjects = str_contains($currentPath, '/ADMIN/sidebar/projects/projects.php');
 $isProjectsTrash = $isProjects && str_contains($currentQuery, 'view=trash');
 $isInventory = str_contains($currentPath, '/ADMIN/sidebar/inventory.php');
 $isAssets = str_contains($currentPath, '/ADMIN/sidebar/assets.php');
@@ -465,7 +465,7 @@ try {
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/ADMIN/sidebar/projects.php" class="menu-link<?php echo $isProjects && !$isProjectsTrash ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="menu-link<?php echo $isProjects && !$isProjectsTrash ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -557,7 +557,7 @@ try {
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash" class="menu-link<?php echo $isProjectsTrash ? ' active' : ''; ?>">
+            <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash" class="menu-link<?php echo $isProjectsTrash ? ' active' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
                         <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -687,7 +687,7 @@ try {
 
                 <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
                     <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/ADMIN/sidebar/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
+                        <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
                             <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
                             <span>Project risks</span>
                         </a>
@@ -710,7 +710,7 @@ try {
                         </div>
                     <?php else: ?>
                         <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                            <a href="/codesamplecaps/ADMIN/sidebar/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
+                            <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
                                 <span class="notification-item__dot"></span>
                                 <div class="notification-item__copy">
                                     <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>

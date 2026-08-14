@@ -28,8 +28,8 @@ function assets_get_redirect_target(): string {
 
     $allowedPrefixes = [
         '/codesamplecaps/ADMIN/sidebar/assets.php',
-        '/codesamplecaps/ADMIN/sidebar/projects.php?view=trash',
-        '/codesamplecaps/ADMIN/sidebar/projects.php',
+        '/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash',
+        '/codesamplecaps/ADMIN/sidebar/projects/projects.php',
     ];
 
     foreach ($allowedPrefixes as $allowedPrefix) {
@@ -1609,14 +1609,14 @@ include __DIR__ . '/../admin_sidebar.php';
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="restore_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
                                                     <button type="submit" class="btn-secondary">Restore</button>
                                                 </form>
                                                 <form method="POST" class="asset-inline-form" onsubmit="return confirm('Permanently delete this asset from trash bin?');">
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger">Delete Permanently</button>
                                                 </form>
                                             <?php else: ?>

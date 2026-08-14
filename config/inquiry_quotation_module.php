@@ -1,6 +1,8 @@
 <?php
 // Shared Inquiry Quotation helpers para system-generated quote galing sa Engineer costing.
 
+require_once __DIR__ . '/project_history.php';
+
 function inquiry_quote_table_exists(mysqli $conn, string $tableName): bool
 {
     $stmt = $conn->prepare(
@@ -91,7 +93,11 @@ function inquiry_quote_project_status(mysqli $conn): string
     $row = $stmt->get_result()->fetch_assoc();
     $type = (string)($row['COLUMN_TYPE'] ?? '');
 
-    return str_contains($type, "'draft'") ? 'draft' : 'pending';
+    if (str_contains($type, "'pending'")) {
+        return 'pending';
+    }
+
+    return str_contains($type, "'draft'") ? 'draft' : 'ongoing';
 }
 
 function inquiry_quote_ensure_project_columns(mysqli $conn): void
@@ -103,6 +109,7 @@ function inquiry_quote_ensure_project_columns(mysqli $conn): void
         'project_address' => "ALTER TABLE projects ADD COLUMN project_address TEXT DEFAULT NULL AFTER client_id",
         'project_email' => "ALTER TABLE projects ADD COLUMN project_email VARCHAR(190) DEFAULT NULL AFTER project_address",
         'project_code' => "ALTER TABLE projects ADD COLUMN project_code VARCHAR(80) DEFAULT NULL AFTER project_email",
+        'project_source' => "ALTER TABLE projects ADD COLUMN project_source VARCHAR(40) NOT NULL DEFAULT 'walk_in' AFTER project_code",
         'project_start_date' => "ALTER TABLE projects ADD COLUMN project_start_date DATE DEFAULT NULL AFTER start_date",
         'estimated_completion_date' => "ALTER TABLE projects ADD COLUMN estimated_completion_date DATE DEFAULT NULL AFTER project_start_date",
     ];
@@ -329,10 +336,41 @@ function inquiry_quote_generate_project_code(mysqli $conn): string
 function inquiry_quote_build_project_title(array $quotation): string
 {
     $service = trim((string)($quotation['service_category'] ?? 'Project'));
+    $client = trim((string)($quotation['client_name'] ?? ''));
     $city = trim((string)($quotation['city_municipality'] ?? ''));
-    $suffix = $city !== '' ? ' - ' . $city : '';
+    $parts = array_filter([$service, $client, $city], static fn($part) => $part !== '');
 
-    return $service . $suffix;
+    return implode(' - ', $parts);
+}
+
+function inquiry_quote_project_name_exists(mysqli $conn, string $projectName): bool
+{
+    $stmt = $conn->prepare('SELECT 1 FROM projects WHERE LOWER(TRIM(project_name)) = LOWER(TRIM(?)) LIMIT 1');
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('s', $projectName);
+    $stmt->execute();
+
+    return (bool)$stmt->get_result()->fetch_assoc();
+}
+
+function inquiry_quote_unique_project_title(mysqli $conn, array $quotation): string
+{
+    $baseTitle = inquiry_quote_build_project_title($quotation);
+    $quotationNo = trim((string)($quotation['quotation_no'] ?? ''));
+    $fallbackTitle = $quotationNo !== '' ? $baseTitle . ' - ' . $quotationNo : $baseTitle;
+
+    if (!inquiry_quote_project_name_exists($conn, $baseTitle)) {
+        return $baseTitle;
+    }
+
+    if (!inquiry_quote_project_name_exists($conn, $fallbackTitle)) {
+        return $fallbackTitle;
+    }
+
+    return $baseTitle . ' - ' . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 }
 
 function inquiry_quote_get_or_create_client(mysqli $conn, array $quotation, int $adminId): int
@@ -389,7 +427,7 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
 
     $clientId = inquiry_quote_get_or_create_client($conn, $quotation, $adminId);
     $projectCode = inquiry_quote_generate_project_code($conn);
-    $projectName = inquiry_quote_build_project_title($quotation);
+    $projectName = inquiry_quote_unique_project_title($conn, $quotation);
     $description = trim((string)($quotation['engineer_findings'] ?: $quotation['description'] ?? ''));
     $contactPerson = trim((string)($quotation['client_name'] ?? ''));
     $contactNumber = trim((string)($quotation['contact_no'] ?? ''));
@@ -445,15 +483,29 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
         );
         $stmt->execute();
         $projectId = (int)$conn->insert_id;
+        $projectSource = 'inquiry_quotation';
+        $quotationNo = (string)$quotation['quotation_no'];
+        $budgetAmount = (float)($quotation['grand_total'] ?? 0);
+        $engineerId = (int)($quotation['engineer_id'] ?? 0);
+        $engineerName = trim((string)($quotation['engineer_name'] ?? 'Engineer'));
+        $engineerWasAssigned = false;
 
         $assignment = $conn->prepare(
             'INSERT IGNORE INTO project_assignments (project_id, engineer_id, assigned_by)
              VALUES (?, ?, ?)'
         );
         if ($assignment) {
-            $engineerId = (int)($quotation['engineer_id'] ?? 0);
-            $assignment->bind_param('iii', $projectId, $engineerId, $adminId);
-            $assignment->execute();
+            if ($engineerId > 0) {
+                $assignment->bind_param('iii', $projectId, $engineerId, $adminId);
+                $assignment->execute();
+                $engineerWasAssigned = $assignment->affected_rows > 0;
+            }
+        }
+
+        $sourceUpdate = $conn->prepare('UPDATE projects SET project_source = ? WHERE id = ?');
+        if ($sourceUpdate) {
+            $sourceUpdate->bind_param('si', $projectSource, $projectId);
+            $sourceUpdate->execute();
         }
 
         $budget = $conn->prepare(
@@ -462,8 +514,7 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
              ON DUPLICATE KEY UPDATE budget_amount = VALUES(budget_amount), budget_notes = VALUES(budget_notes), updated_by = VALUES(updated_by)'
         );
         if ($budget) {
-            $budgetAmount = (float)($quotation['grand_total'] ?? 0);
-            $budgetNotes = 'Auto-created from approved quotation ' . (string)$quotation['quotation_no'];
+            $budgetNotes = 'Auto-created from approved quotation ' . $quotationNo;
             $budget->bind_param('idsii', $projectId, $budgetAmount, $budgetNotes, $adminId, $adminId);
             $budget->execute();
         }
@@ -472,6 +523,75 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
         if ($link) {
             $link->bind_param('ii', $projectId, $draftId);
             $link->execute();
+        }
+
+        if (
+            inquiry_quote_column_exists($conn, 'service_inquiries', 'admin_notes') &&
+            inquiry_quote_column_exists($conn, 'service_inquiries', 'reviewed_at')
+        ) {
+            $note = 'Project created from quotation ' . (string)$quotation['quotation_no'] . ' as ' . $projectCode . '.';
+            $inquiryId = (int)($quotation['inquiry_id'] ?? 0);
+            $inquiryUpdate = $conn->prepare(
+                "UPDATE service_inquiries
+                 SET status = 'For Inspection',
+                     reviewed_at = COALESCE(reviewed_at, NOW()),
+                     admin_notes = TRIM(CONCAT(COALESCE(admin_notes, ''), CASE WHEN COALESCE(admin_notes, '') = '' THEN '' ELSE '\n' END, ?))
+                 WHERE id = ?"
+            );
+            if ($inquiryUpdate && $inquiryId > 0) {
+                $inquiryUpdate->bind_param('si', $note, $inquiryId);
+                $inquiryUpdate->execute();
+            }
+        }
+
+        project_history_add(
+            $conn,
+            $projectId,
+            $adminId,
+            'Project Created',
+            'Project was created from approved quotation ' . $quotationNo . '.',
+            null,
+            $projectCode,
+            'inquiry_quotation',
+            $draftId
+        );
+
+        project_history_add(
+            $conn,
+            $projectId,
+            $adminId,
+            'Quotation Approved',
+            'Approved quotation ' . $quotationNo . ' was used as the project source.',
+            null,
+            inquiry_quote_format_money($budgetAmount),
+            'inquiry_quotation',
+            $draftId
+        );
+
+        project_history_add(
+            $conn,
+            $projectId,
+            $adminId,
+            'Project Budget Created',
+            'Initial project budget was copied from the approved quotation total.',
+            null,
+            inquiry_quote_format_money($budgetAmount),
+            'inquiry_quotation',
+            $draftId
+        );
+
+        if ($engineerWasAssigned) {
+            project_history_add(
+                $conn,
+                $projectId,
+                $adminId,
+                'Engineer Assigned',
+                $engineerName . ' was assigned from the approved site inspection.',
+                null,
+                $engineerName,
+                'site_inspection',
+                (int)($quotation['inspection_id'] ?? 0)
+            );
         }
 
         $conn->commit();

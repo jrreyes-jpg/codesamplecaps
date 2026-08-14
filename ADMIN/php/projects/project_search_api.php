@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/project_search_support.php';
 
 require_role('admin');
@@ -41,7 +41,7 @@ $payload = array_map(
             'client' => (string)($project['client_name'] ?? 'N/A'),
             'engineer' => (string)($project['engineer_names'] ?? 'Not assigned'),
             'site' => (string)($project['project_site'] ?? ($project['project_address'] ?? '')),
-            'link' => '/codesamplecaps/ADMIN/sidebar/project_details.php?id=' . (int)($project['id'] ?? 0),
+            'link' => '/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=' . (int)($project['id'] ?? 0),
         ];
     },
     $results

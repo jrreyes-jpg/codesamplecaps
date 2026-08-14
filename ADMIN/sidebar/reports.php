@@ -128,7 +128,7 @@ include __DIR__ . '/../admin_sidebar.php';
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/projects.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/projects/projects.php">
                     <h3>All project reports</h3>
                     <p>Track project pipeline, active execution, completed delivery, and overall workload across the system.</p>
                     <div class="report-link-card__meta">

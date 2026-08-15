@@ -366,7 +366,7 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
         $stmt->bind_param('si', $newStatus, $userId);
         if ($stmt->execute()) {
             audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'update_user_status', 'user', $userId, ['status' => $user['status'] ?? null], ['status' => $newStatus]);
-            superadmin_user_flash('success', $newStatus === 'active' ? 'User reactivated successfully.' : 'User deactivated successfully.');
+            superadmin_user_flash($newStatus === 'active' ? 'success' : 'warning', $newStatus === 'active' ? 'User reactivated successfully.' : 'User deactivated successfully.');
         } else {
             superadmin_user_flash('error', 'Failed to update user status.');
         }
@@ -536,7 +536,8 @@ function superadmin_user_context(mysqli $conn): array {
     usort($managedUsers, 'compareUsersForTable');
 
     return [
-        'message' => $flash['type'] === 'success' ? $flash['text'] : '',
+        'message' => in_array($flash['type'], ['success', 'warning'], true) ? $flash['text'] : '',
+        'messageType' => in_array($flash['type'], ['success', 'warning'], true) ? $flash['type'] : 'success',
         'error' => $flash['type'] === 'error' ? $flash['text'] : '',
         'isUserWorkspaceTab' => true,
         'userWorkspaceShouldOpenModal' => isset($_GET['create']) || $flash['type'] === 'error' && ($old['full_name'] !== '' || $old['email'] !== ''),

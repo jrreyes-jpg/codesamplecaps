@@ -8,6 +8,7 @@ if (!defined('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL')) {
 
     $userManagementContext = superadmin_user_context($conn);
     $message = $userManagementContext['message'];
+    $messageType = $userManagementContext['messageType'];
     $error = $userManagementContext['error'];
     $isUserWorkspaceTab = $userManagementContext['isUserWorkspaceTab'];
     $userWorkspaceShouldOpenModal = $userManagementContext['userWorkspaceShouldOpenModal'];
@@ -22,15 +23,19 @@ if (!defined('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL')) {
     superadmin_render_page(
         'User Management',
         function () use (
+            $message,
+            $error,
             $isUserWorkspaceTab,
             $userWorkspaceShouldOpenModal,
+            $messageType,
             $userStatusFilter,
             $userRoleFilter,
             $userTrashView,
             $allowedRoles,
             $csrfToken,
             $old,
-            $managedUsers
+            $managedUsers,
+            $conn
         ): void {
             define('SUPERADMIN_RENDER_USER_MANAGEMENT_PARTIAL', true);
             define('SUPERADMIN_USER_MANAGEMENT_STANDALONE', true);
@@ -56,10 +61,23 @@ $isStandaloneUserManagement = defined('SUPERADMIN_USER_MANAGEMENT_STANDALONE');
 $usersWrapperClass = $isStandaloneUserManagement
     ? 'user-management-content active'
     : 'tab-content ' . ($isUserWorkspaceTab ? 'active' : '');
+$messageType = $messageType ?? 'success';
 ?>
 <div id="users" class="<?php echo htmlspecialchars($usersWrapperClass, ENT_QUOTES, 'UTF-8'); ?>">
-    <?php if (!empty($message)): ?><div class="user-toast user-toast-success" role="status" data-user-toast><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-    <?php if (!empty($error)): ?><div class="user-toast user-toast-error" role="alert" data-user-toast><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+    <?php if (!empty($message)): ?>
+        <div class="user-toast <?php echo $messageType === 'warning' ? 'user-toast-warning' : 'user-toast-success'; ?>" role="status" data-user-toast>
+            <span data-user-toast-text><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
+            <button type="button" class="user-toast__close" aria-label="Close notification" data-user-toast-close>&times;</button>
+            <span class="user-toast__progress" aria-hidden="true"></span>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($error)): ?>
+        <div class="user-toast user-toast-error" role="alert" data-user-toast>
+            <span data-user-toast-text><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
+            <button type="button" class="user-toast__close" aria-label="Close notification" data-user-toast-close>&times;</button>
+            <span class="user-toast__progress" aria-hidden="true"></span>
+        </div>
+    <?php endif; ?>
     <section class="user-management-shell" data-user-management-shell data-create-modal-default-open="<?php echo $userWorkspaceShouldOpenModal ? 'true' : 'false'; ?>">
         <section class="dashboard-panel user-management-panel">
             <div class="user-table-toolbar">
@@ -118,7 +136,7 @@ $usersWrapperClass = $isStandaloneUserManagement
                         <?php if (empty($managedUsers)): ?>
                             <tr><td colspan="5" class="user-table-empty"><?php echo $userTrashView ? 'No users in trash.' : 'No users match the current filter.'; ?></td></tr>
                         <?php else: ?>
-                            <?php foreach ($managedUsers as $user): $status = $user['status'] ?? 'active'; $rowId = (int)$user['id']; $normalizedRole = normalizeRole((string)($user['role'] ?? '')); ?>
+                            <?php foreach ($managedUsers as $user): $status = $user['status'] ?? 'active'; $rowId = (int)$user['id']; $normalizedRole = normalizeRole((string)($user['role'] ?? '')); $deactivationBlockers = ($status === 'active' && !$userTrashView) ? getDeactivationBlockers($conn, $rowId, $normalizedRole) : []; ?>
                                 <tr class="user-row" data-row-id="<?php echo $rowId; ?>" data-user-search="<?php echo htmlspecialchars(strtolower(trim(($user['full_name'] ?? '') . ' ' . ($user['email'] ?? '') . ' ' . ($user['phone'] ?? '') . ' ' . $normalizedRole . ' ' . $status))); ?>">
                                     <td data-label="Name">
                                         <input class="table-input" type="text" data-field="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" readonly required>
@@ -161,13 +179,21 @@ $usersWrapperClass = $isStandaloneUserManagement
                                                         data-user-status-date="<?php echo htmlspecialchars(superadmin_user_format_date($user['status_changed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
                                                     >Edit Details</button>
                                                     <button type="button" class="user-actions-menu__item" data-open-reset-modal data-user-id="<?php echo $rowId; ?>" data-user-name="<?php echo htmlspecialchars((string)$user['full_name'], ENT_QUOTES, 'UTF-8'); ?>">Reset Password</button>
-                                                    <form method="POST" class="inline-action-form" data-confirm-message="<?php echo $status === 'active' ? 'Deactivate this user? They will lose access to login.' : 'Reactivate this user?'; ?>">
-                                                        <input type="hidden" name="action" value="update_status">
-                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                                                        <input type="hidden" name="user_id" value="<?php echo $rowId; ?>">
-                                                        <input type="hidden" name="status" value="<?php echo $status === 'active' ? 'inactive' : 'active'; ?>">
-                                                        <button type="submit" class="user-actions-menu__item <?php echo $status === 'active' ? 'is-danger' : 'is-success'; ?>"><?php echo $status === 'active' ? 'Deactivate' : 'Reactivate'; ?></button>
-                                                    </form>
+                                                    <?php if ($status === 'active' && !empty($deactivationBlockers)): ?>
+                                                        <button
+                                                            type="button"
+                                                            class="user-actions-menu__item is-danger is-blocked"
+                                                            data-user-blocked-toast="<?php echo htmlspecialchars('Cannot deactivate ' . (string)($user['full_name'] ?? 'this user') . ' yet. Reassign ' . implode(' and ', $deactivationBlockers) . ' first.', ENT_QUOTES, 'UTF-8'); ?>"
+                                                        >Cannot Deactivate</button>
+                                                    <?php else: ?>
+                                                        <form method="POST" class="inline-action-form" data-confirm-message="<?php echo $status === 'active' ? 'Deactivate this user? They will lose access to login.' : 'Reactivate this user?'; ?>">
+                                                            <input type="hidden" name="action" value="update_status">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                                                            <input type="hidden" name="user_id" value="<?php echo $rowId; ?>">
+                                                            <input type="hidden" name="status" value="<?php echo $status === 'active' ? 'inactive' : 'active'; ?>">
+                                                            <button type="submit" class="user-actions-menu__item <?php echo $status === 'active' ? 'is-danger' : 'is-success'; ?>"><?php echo $status === 'active' ? 'Deactivate' : 'Reactivate'; ?></button>
+                                                        </form>
+                                                    <?php endif; ?>
                                                     <?php if ($status === 'inactive'): ?>
                                                         <form method="POST" class="inline-action-form" data-confirm-message="Move this user to trash? Permanent deletion will happen only from the trash bin.">
                                                             <input type="hidden" name="action" value="delete_user">

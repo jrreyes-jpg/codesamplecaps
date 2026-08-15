@@ -83,17 +83,67 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document.querySelectorAll('[data-user-toast]').forEach(function (toast) {
-        toast.addEventListener('click', function () {
+    function bindUserToast(toast) {
+        const closeToast = function () {
             toast.classList.add('is-hiding');
             window.setTimeout(() => toast.remove(), 220);
+        };
+
+        toast.querySelector('[data-user-toast-close]')?.addEventListener('click', closeToast);
+        toast.addEventListener('click', function (event) {
+            if (event.target === toast) {
+                closeToast();
+            }
         });
 
         window.setTimeout(function () {
-            toast.classList.add('is-hiding');
-            window.setTimeout(() => toast.remove(), 220);
-        }, toast.classList.contains('user-toast-error') ? 7000 : 4500);
+            closeToast();
+        }, toast.classList.contains('user-toast-error') ? 9000 : 7000);
+    }
+
+    function createUserToast(message, type) {
+        const toast = document.createElement('div');
+        let toastClass = 'user-toast-success';
+        if (type === 'error') {
+            toastClass = 'user-toast-error';
+        } else if (type === 'warning') {
+            toastClass = 'user-toast-warning';
+        }
+        toast.className = 'user-toast ' + toastClass;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('data-user-toast', '');
+        toast.innerHTML = '<span data-user-toast-text></span><button type="button" class="user-toast__close" aria-label="Close notification" data-user-toast-close>&times;</button><span class="user-toast__progress" aria-hidden="true"></span>';
+        toast.querySelector('[data-user-toast-text]').textContent = message;
+        document.body.appendChild(toast);
+        bindUserToast(toast);
+    }
+
+    const serverToasts = document.querySelectorAll('[data-user-toast]');
+    if (serverToasts.length > 0) {
+        sessionStorage.removeItem('superadmin_user_toast');
+    }
+
+    serverToasts.forEach(function (toast) {
+        const toastText = toast.textContent.toLowerCase();
+        if (toast.classList.contains('user-toast-success') && toastText.includes('deactivated')) {
+            toast.classList.remove('user-toast-success');
+            toast.classList.add('user-toast-warning');
+        }
+        bindUserToast(toast);
     });
+
+    const storedToast = sessionStorage.getItem('superadmin_user_toast');
+    if (storedToast && serverToasts.length === 0) {
+        sessionStorage.removeItem('superadmin_user_toast');
+        try {
+            const parsedToast = JSON.parse(storedToast);
+            if (parsedToast.message) {
+                createUserToast(parsedToast.message, parsedToast.type || 'success');
+            }
+        } catch (error) {
+            createUserToast(storedToast, 'success');
+        }
+    }
 
     document.querySelectorAll('.togglePassword[data-target]').forEach(function (button) {
         button.addEventListener('click', function () {
@@ -113,7 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!window.confirm(form.getAttribute('data-confirm-message') || 'Continue?')) {
             event.preventDefault();
+            return;
         }
+
+        sessionStorage.removeItem('superadmin_user_toast');
     });
 
     document.querySelector('[data-role-filter-select]')?.addEventListener('change', function (event) {
@@ -140,11 +193,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', function (event) {
         const toggle = event.target.closest('[data-user-actions-toggle]');
         const closeButton = event.target.closest('[data-user-actions-close]');
+        const blockedAction = event.target.closest('[data-user-blocked-toast]');
         const menu = event.target.closest('[data-user-actions-menu]');
 
         if (closeButton) {
             event.preventDefault();
             closeUserActionMenus(null);
+            return;
+        }
+
+        if (blockedAction) {
+            event.preventDefault();
+            closeUserActionMenus(null);
+            createUserToast(blockedAction.getAttribute('data-user-blocked-toast') || 'This user still has active work.', 'error');
             return;
         }
 

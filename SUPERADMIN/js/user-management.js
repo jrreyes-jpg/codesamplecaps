@@ -83,6 +83,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    document.querySelectorAll('[data-user-toast]').forEach(function (toast) {
+        toast.addEventListener('click', function () {
+            toast.classList.add('is-hiding');
+            window.setTimeout(() => toast.remove(), 220);
+        });
+
+        window.setTimeout(function () {
+            toast.classList.add('is-hiding');
+            window.setTimeout(() => toast.remove(), 220);
+        }, toast.classList.contains('user-toast-error') ? 7000 : 4500);
+    });
+
     document.querySelectorAll('.togglePassword[data-target]').forEach(function (button) {
         button.addEventListener('click', function () {
             const target = document.getElementById(button.getAttribute('data-target') || '');
@@ -215,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const editName = editForm.querySelector('#edit_full_name');
         const editEmail = editForm.querySelector('#edit_email');
         const editPhone = editForm.querySelector('#edit_phone');
+        const editStatusDate = editForm.querySelector('[data-edit-status-date]');
 
         const clearEditValidation = function () {
             [editName, editEmail, editPhone].forEach(function (input) {
@@ -265,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (editName) editName.value = button.getAttribute('data-user-name') || '';
                 if (editEmail) editEmail.value = button.getAttribute('data-user-email') || '';
                 if (editPhone) editPhone.value = normalizePhMobile(button.getAttribute('data-user-phone') || '');
+                if (editStatusDate) editStatusDate.textContent = button.getAttribute('data-user-status-date') || 'Not set';
                 clearEditValidation();
                 closeUserActionMenus(null);
                 editModal.hidden = false;

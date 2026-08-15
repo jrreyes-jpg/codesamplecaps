@@ -58,8 +58,8 @@ $usersWrapperClass = $isStandaloneUserManagement
     : 'tab-content ' . ($isUserWorkspaceTab ? 'active' : '');
 ?>
 <div id="users" class="<?php echo htmlspecialchars($usersWrapperClass, ENT_QUOTES, 'UTF-8'); ?>">
-    <?php if (!empty($message)): ?><div class="alert alert-success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-    <?php if (!empty($error)): ?><div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+    <?php if (!empty($message)): ?><div class="user-toast user-toast-success" role="status" data-user-toast><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+    <?php if (!empty($error)): ?><div class="user-toast user-toast-error" role="alert" data-user-toast><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
     <section class="user-management-shell" data-user-management-shell data-create-modal-default-open="<?php echo $userWorkspaceShouldOpenModal ? 'true' : 'false'; ?>">
         <section class="dashboard-panel user-management-panel">
             <div class="user-table-toolbar">
@@ -76,17 +76,13 @@ $usersWrapperClass = $isStandaloneUserManagement
 
             <div class="dashboard-actions user-filters">
                 <?php
-                $viewBase = $userTrashView ? ['view' => 'trash'] : [];
-                $statusBase = array_merge($viewBase, $userRoleFilter !== '' ? ['role' => $userRoleFilter] : []);
-                $roleBase = array_merge($viewBase, $userStatusFilter !== '' ? ['status' => $userStatusFilter] : []);
-                $activeListQuery = $userRoleFilter !== '' ? ['role' => $userRoleFilter] : [];
+                $statusBase = $userRoleFilter !== '' ? ['role' => $userRoleFilter] : [];
                 $trashQuery = array_merge(['view' => 'trash'], $userRoleFilter !== '' ? ['role' => $userRoleFilter] : []);
                 ?>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php<?php echo $activeListQuery ? '?' . http_build_query($activeListQuery) : ''; ?>" class="action-chip<?php echo !$userTrashView ? ' active-chip' : ''; ?>">Active List</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php<?php echo $statusBase ? '?' . http_build_query($statusBase) : ''; ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === '' ? ' active-chip' : ''; ?>">All</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'active'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'active' ? ' active-chip' : ''; ?>">Active</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'inactive'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'inactive' ? ' active-chip' : ''; ?>">Inactive</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query($trashQuery); ?>" class="action-chip action-chip-trash<?php echo $userTrashView ? ' active-chip' : ''; ?>">Trash</a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php<?php echo $statusBase ? '?' . http_build_query($statusBase) : ''; ?>" class="action-chip<?php echo $userStatusFilter === '' ? ' active-chip' : ''; ?>">All</a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'active'])); ?>" class="action-chip<?php echo $userStatusFilter === 'active' ? ' active-chip' : ''; ?>">Active</a>
-                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'inactive'])); ?>" class="action-chip<?php echo $userStatusFilter === 'inactive' ? ' active-chip' : ''; ?>">Inactive</a>
                 <form method="GET" class="user-role-filter" data-role-filter-form>
                     <?php if ($userTrashView): ?>
                         <input type="hidden" name="view" value="trash">
@@ -110,34 +106,28 @@ $usersWrapperClass = $isStandaloneUserManagement
                 <table class="responsive-table">
                     <colgroup>
                         <col class="user-management-table__col-name">
-                        <col class="user-management-table__col-email">
-                        <col class="user-management-table__col-phone">
                         <col class="user-management-table__col-role">
                         <col class="user-management-table__col-status">
+                        <col class="user-management-table__col-created">
                         <col class="user-management-table__col-actions">
                     </colgroup>
                     <thead>
-                        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+                        <tr><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr>
                     </thead>
                     <tbody data-user-table-body>
                         <?php if (empty($managedUsers)): ?>
-                            <tr><td colspan="6" class="user-table-empty"><?php echo $userTrashView ? 'No users in trash.' : 'No users match the current filter.'; ?></td></tr>
+                            <tr><td colspan="5" class="user-table-empty"><?php echo $userTrashView ? 'No users in trash.' : 'No users match the current filter.'; ?></td></tr>
                         <?php else: ?>
                             <?php foreach ($managedUsers as $user): $status = $user['status'] ?? 'active'; $rowId = (int)$user['id']; $normalizedRole = normalizeRole((string)($user['role'] ?? '')); ?>
                                 <tr class="user-row" data-row-id="<?php echo $rowId; ?>" data-user-search="<?php echo htmlspecialchars(strtolower(trim(($user['full_name'] ?? '') . ' ' . ($user['email'] ?? '') . ' ' . ($user['phone'] ?? '') . ' ' . $normalizedRole . ' ' . $status))); ?>">
                                     <td data-label="Name">
                                         <input class="table-input" type="text" data-field="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" readonly required>
                                     </td>
-                                    <td data-label="Email">
-                                        <input class="table-input" type="email" data-field="email" value="<?php echo htmlspecialchars($user['email']); ?>" readonly required>
-                                    </td>
-                                    <td data-label="Phone">
-                                        <input class="table-input" type="tel" data-field="phone" value="<?php echo htmlspecialchars((string)($user['phone'] ?? '')); ?>" readonly pattern="^09[0-9]{9}$" maxlength="11" inputmode="numeric">
-                                    </td>
                                     <td data-label="Role">
                                         <span class="role-badge role-badge-<?php echo htmlspecialchars($normalizedRole); ?>"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $normalizedRole))); ?></span>
                                     </td>
                                     <td data-label="Status"><span class="status-badge <?php echo $status === 'active' ? 'status-active' : 'status-inactive'; ?>"><?php echo htmlspecialchars(ucfirst($status)); ?></span></td>
+                                    <td data-label="Created"><span class="user-date-chip"><?php echo htmlspecialchars(superadmin_user_format_date($user['created_at'] ?? null)); ?></span></td>
                                     <td data-label="Actions">
                                         <div class="user-actions-menu" data-user-actions-menu>
                                             <button type="button" class="action-btn user-actions-menu__toggle" data-user-actions-toggle aria-expanded="false">Manage</button>
@@ -168,6 +158,7 @@ $usersWrapperClass = $isStandaloneUserManagement
                                                         data-user-name="<?php echo htmlspecialchars((string)($user['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-user-email="<?php echo htmlspecialchars((string)($user['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-user-phone="<?php echo htmlspecialchars((string)($user['phone'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-user-status-date="<?php echo htmlspecialchars(superadmin_user_format_date($user['status_changed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
                                                     >Edit Details</button>
                                                     <button type="button" class="user-actions-menu__item" data-open-reset-modal data-user-id="<?php echo $rowId; ?>" data-user-name="<?php echo htmlspecialchars((string)$user['full_name'], ENT_QUOTES, 'UTF-8'); ?>">Reset Password</button>
                                                     <form method="POST" class="inline-action-form" data-confirm-message="<?php echo $status === 'active' ? 'Deactivate this user? They will lose access to login.' : 'Reactivate this user?'; ?>">
@@ -191,7 +182,7 @@ $usersWrapperClass = $isStandaloneUserManagement
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                            <tr class="user-search-empty-row" hidden><td colspan="6" class="user-table-empty">No users match your search.</td></tr>
+                            <tr class="user-search-empty-row" hidden><td colspan="5" class="user-table-empty">No users match your search.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -279,6 +270,10 @@ $usersWrapperClass = $isStandaloneUserManagement
                             <label for="edit_phone">Phone Number (PH) <span class="required-indicator">*</span></label>
                             <input type="tel" id="edit_phone" name="edit_phone" pattern="^09[0-9]{9}$" maxlength="11" placeholder="09XXXXXXXXX" inputmode="numeric" data-ph-phone-lock-prefix required>
                             <small class="field-error" data-field-error hidden></small>
+                        </div>
+                        <div class="form-group">
+                            <span class="readonly-field-label">Last Status Change</span>
+                            <strong class="readonly-field-value" data-edit-status-date>Not set</strong>
                         </div>
                     </div>
                     <div class="user-create-modal__actions">

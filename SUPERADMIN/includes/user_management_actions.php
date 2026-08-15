@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../config/audit_log.php';
 
 // User Management logic lang ito para hindi na nakaasa sa dashboard file.
-$allowedRoles = ['engineer', 'foreman', 'client', 'inventory_clerk', 'admin'];
+$allowedRoles = ['admin', 'engineer', 'foreman', 'inventory_clerk', 'client'];
 $allowedStatuses = ['active', 'inactive'];
 
 function normalizeRole(string $role): string {
@@ -124,6 +124,10 @@ function superadmin_user_has_column(mysqli $conn, string $tableName, string $col
 }
 
 function superadmin_user_ensure_trash_columns(mysqli $conn): void {
+    if (!superadmin_user_has_column($conn, 'users', 'status_changed_at')) {
+        $conn->query('ALTER TABLE users ADD COLUMN status_changed_at DATETIME DEFAULT NULL AFTER status');
+    }
+
     if (!superadmin_user_has_column($conn, 'users', 'deleted_at')) {
         $conn->query('ALTER TABLE users ADD COLUMN deleted_at DATETIME DEFAULT NULL AFTER status');
     }
@@ -143,8 +147,10 @@ function superadmin_user_ensure_trash_columns(mysqli $conn): void {
 
 function getUserForStatusChange(mysqli $conn, int $userId): ?array {
     $deletedColumn = superadmin_user_has_column($conn, 'users', 'deleted_at');
+    $statusChangedColumn = superadmin_user_has_column($conn, 'users', 'status_changed_at');
     $deletedSelect = $deletedColumn ? ', deleted_at' : ', NULL AS deleted_at';
-    $stmt = $conn->prepare('SELECT id, full_name, email, phone, role, status' . $deletedSelect . ' FROM users WHERE id = ? LIMIT 1');
+    $statusChangedSelect = $statusChangedColumn ? ', status_changed_at' : ', NULL AS status_changed_at';
+    $stmt = $conn->prepare('SELECT id, full_name, email, phone, role, status' . $statusChangedSelect . $deletedSelect . ' FROM users WHERE id = ? LIMIT 1');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -207,7 +213,7 @@ function getDeactivationBlockers(mysqli $conn, int $userId, string $role): array
 
 function compareUsersForTable(array $left, array $right): int {
     $statusOrder = ['active' => 0, 'inactive' => 1];
-    $roleOrder = ['admin' => 0, 'inventory_clerk' => 1, 'engineer' => 2, 'foreman' => 3, 'client' => 4];
+    $roleOrder = ['admin' => 0, 'engineer' => 1, 'foreman' => 2, 'inventory_clerk' => 3, 'client' => 4];
 
     $statusCompare = ($statusOrder[$left['status'] ?? 'inactive'] ?? 99) <=> ($statusOrder[$right['status'] ?? 'inactive'] ?? 99);
     if ($statusCompare !== 0) {
@@ -222,6 +228,15 @@ function compareUsersForTable(array $left, array $right): int {
     return strtolower((string)($left['full_name'] ?? '')) <=> strtolower((string)($right['full_name'] ?? ''));
 }
 
+function superadmin_user_format_date(?string $date): string {
+    $timestamp = $date ? strtotime($date) : false;
+    if ($timestamp === false) {
+        return 'Not set';
+    }
+
+    return date('M j, Y', $timestamp);
+}
+
 function fetchUsersByRoles(mysqli $conn, array $roles, string $statusFilter = '', bool $trashView = false, string $roleFilter = ''): array {
     $roles = array_values(array_map('normalizeRole', $roles));
     if ($roleFilter !== '' && in_array($roleFilter, $roles, true)) {
@@ -230,7 +245,13 @@ function fetchUsersByRoles(mysqli $conn, array $roles, string $statusFilter = ''
     $placeholders = implode(',', array_fill(0, count($roles), '?'));
     $types = str_repeat('s', count($roles));
     $deletedColumn = superadmin_user_has_column($conn, 'users', 'deleted_at');
-    $sql = "SELECT id, full_name, email, phone, status, role" . ($deletedColumn ? ', deleted_at' : ', NULL AS deleted_at') . " FROM users WHERE role IN ($placeholders)";
+    $statusChangedColumn = superadmin_user_has_column($conn, 'users', 'status_changed_at');
+    $createdColumn = superadmin_user_has_column($conn, 'users', 'created_at');
+    $sql = "SELECT id, full_name, email, phone, status, role"
+        . ($createdColumn ? ', created_at' : ', NULL AS created_at')
+        . ($statusChangedColumn ? ', status_changed_at' : ', NULL AS status_changed_at')
+        . ($deletedColumn ? ', deleted_at' : ', NULL AS deleted_at')
+        . " FROM users WHERE role IN ($placeholders)";
 
     if ($deletedColumn) {
         $sql .= $trashView ? ' AND deleted_at IS NOT NULL' : ' AND deleted_at IS NULL';
@@ -304,7 +325,7 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         $createdBy = (int)($_SESSION['user_id'] ?? 0);
-        $stmt = $conn->prepare('INSERT INTO users (full_name, email, password, role, phone, status, created_by) VALUES (?, ?, ?, ?, ?, "active", ?)');
+        $stmt = $conn->prepare('INSERT INTO users (full_name, email, password, role, phone, status, status_changed_at, created_by) VALUES (?, ?, ?, ?, ?, "active", NOW(), ?)');
         $stmt->bind_param('sssssi', $old['full_name'], $old['email'], $passwordHash, $old['role'], $old['phone'], $createdBy);
 
         if ($stmt->execute()) {
@@ -341,7 +362,7 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
             }
         }
 
-        $stmt = $conn->prepare('UPDATE users SET status = ? WHERE id = ?');
+        $stmt = $conn->prepare('UPDATE users SET status = ?, status_changed_at = NOW() WHERE id = ?');
         $stmt->bind_param('si', $newStatus, $userId);
         if ($stmt->execute()) {
             audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'update_user_status', 'user', $userId, ['status' => $user['status'] ?? null], ['status' => $newStatus]);

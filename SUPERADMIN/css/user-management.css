@@ -212,6 +212,61 @@ body:has([data-user-management-shell]) .user-management-panel {
     visibility: hidden;
 }
 
+.user-toast {
+    position: fixed;
+    top: 104px;
+    right: 28px;
+    z-index: 1800;
+    width: min(380px, calc(100vw - 32px));
+    padding: 14px 16px;
+    border-radius: 16px;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 900;
+    line-height: 1.35;
+    box-shadow: 0 24px 54px rgba(15, 23, 42, 0.22);
+    cursor: pointer;
+    animation: userToastIn 0.22s ease both;
+}
+
+.user-toast-success {
+    border: 1px solid #86efac;
+    background: #dcfce7;
+    color: #14532d;
+}
+
+.user-toast-error {
+    border: 1px solid #fecaca;
+    background: #fee2e2;
+    color: #7f1d1d;
+}
+
+.user-toast.is-hiding {
+    animation: userToastOut 0.2s ease both;
+}
+
+@keyframes userToastIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes userToastOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
 .inline-action-form {
     margin: 0;
 }
@@ -373,27 +428,23 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table__col-name {
-    width: 22%;
-}
-
-.user-management-table__col-email {
-    width: 24%;
-}
-
-.user-management-table__col-phone {
-    width: 16%;
+    width: 36%;
 }
 
 .user-management-table__col-role {
-    width: 13%;
+    width: 20%;
 }
 
 .user-management-table__col-status {
-    width: 11%;
+    width: 16%;
+}
+
+.user-management-table__col-created {
+    width: 16%;
 }
 
 .user-management-table__col-actions {
-    width: 11%;
+    width: 12%;
 }
 
 .user-management-table .responsive-table thead {
@@ -460,6 +511,20 @@ body:has([data-user-management-shell]) .user-management-panel {
 .role-badge-client {
     background: #ede9fe;
     color: #6d28d9;
+}
+
+.user-date-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .user-create-modal {
@@ -651,7 +716,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table .responsive-table {
-    min-width: 900px;
+    min-width: 760px;
 }
 
 .user-management-table .table-input {
@@ -893,6 +958,26 @@ body:has([data-user-management-shell]) .user-management-panel {
     min-height: 48px;
     padding: 12px 14px;
     border-radius: 14px;
+    font-size: 0.98rem;
+}
+
+.readonly-field-label {
+    display: block;
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.readonly-field-value {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #475569;
     font-size: 0.98rem;
 }
 

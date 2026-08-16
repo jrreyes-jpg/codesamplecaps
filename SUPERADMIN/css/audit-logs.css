@@ -114,6 +114,12 @@
     align-items: stretch;
 }
 
+.audit-search-folder-results {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
 .audit-folder-card,
 .audit-empty-card {
     min-height: 112px;

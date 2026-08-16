@@ -158,10 +158,6 @@ function initAuditLogsUI() {
 
     searchInput?.addEventListener('input', () => {
         syncLocalSearch();
-        const queryLength = searchInput.value.trim().length;
-        if (queryLength === 1) {
-            return;
-        }
         triggerSearchRefresh(false);
     });
 

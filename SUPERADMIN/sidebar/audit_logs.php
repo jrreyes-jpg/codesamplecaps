@@ -513,10 +513,32 @@ superadmin_render_page(
                 </nav>
             <?php endif; ?>
 
+            <?php if ($search !== '' && $actorFilter === 0): ?>
+                <div class="audit-folder-grid audit-search-folder-results">
+                    <?php if ($roleFilter === ''): ?>
+                        <?php foreach ($roleLabels as $roleValue => $roleLabel): ?>
+                            <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="<?php echo htmlspecialchars(strtolower($roleLabel), ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['role' => $roleValue, 'actor' => '', 'q' => '', 'entity' => '', 'action' => '', 'date' => '', 'quick' => '']), ENT_QUOTES, 'UTF-8'); ?>">
+                                <span class="audit-folder-card__icon" aria-hidden="true">&#128193;</span>
+                                <strong><?php echo htmlspecialchars($roleLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </a>
+                        <?php endforeach; ?>
+                        <div class="audit-empty-card" data-audit-folder-empty hidden>No folder matches your search.</div>
+                    <?php elseif (!empty($actorOptions)): ?>
+                        <?php foreach ($actorOptions as $actorOption): ?>
+                            <a class="audit-folder-card audit-folder-card--user" data-audit-folder-card data-audit-folder-search="<?php echo htmlspecialchars(strtolower((string)$actorOption['full_name'] . ' ' . ($roleLabels[$roleFilter] ?? '')), ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['actor' => (int)$actorOption['id']]), ENT_QUOTES, 'UTF-8'); ?>">
+                                <span class="audit-folder-card__icon" aria-hidden="true">&#128100;</span>
+                                <strong><?php echo htmlspecialchars((string)$actorOption['full_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </a>
+                        <?php endforeach; ?>
+                        <div class="audit-empty-card" data-audit-folder-empty hidden>No user matches your search.</div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <?php if ($roleFilter === '' && $search === ''): ?>
                 <div class="audit-folder-grid">
                     <?php foreach ($roleLabels as $roleValue => $roleLabel): ?>
-                        <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="<?php echo htmlspecialchars(strtolower($roleLabel . ' role folder users'), ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['role' => $roleValue, 'actor' => '', 'q' => '', 'entity' => '', 'action' => '', 'date' => '', 'quick' => '']), ENT_QUOTES, 'UTF-8'); ?>">
+                        <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="<?php echo htmlspecialchars(strtolower($roleLabel), ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['role' => $roleValue, 'actor' => '', 'q' => '', 'entity' => '', 'action' => '', 'date' => '', 'quick' => '']), ENT_QUOTES, 'UTF-8'); ?>">
                             <span class="audit-folder-card__icon" aria-hidden="true">&#128193;</span>
                             <strong><?php echo htmlspecialchars($roleLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
                         </a>

@@ -192,15 +192,19 @@ const initStaleLoginWindowGuard = () => {
     form.removeAttribute('target');
     form.target = '_self';
 
-    const clearStaleCredentials = () => {
-        if (password && !password.matches(':focus')) {
-            password.value = '';
-        }
-
+    const resetSubmitState = () => {
         if (submitButton && submitButton.textContent === (submitButton.dataset.loadingText || 'Logging in...')) {
             submitButton.disabled = false;
             submitButton.textContent = defaultSubmitText;
         }
+    };
+
+    const clearStaleCredentials = () => {
+        if (password) {
+            password.value = '';
+        }
+
+        resetSubmitState();
     };
 
     const redirectAuthenticatedLoginPage = async () => {
@@ -220,7 +224,7 @@ const initStaleLoginWindowGuard = () => {
                 window.location.replace(data.dashboard);
             }
         } catch (error) {
-            clearStaleCredentials();
+            resetSubmitState();
         }
     };
 
@@ -268,17 +272,15 @@ const initStaleLoginWindowGuard = () => {
     }
 
     window.addEventListener('focus', () => {
-        clearStaleCredentials();
         redirectAuthenticatedLoginPage();
     });
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            clearStaleCredentials();
             redirectAuthenticatedLoginPage();
         }
     });
     window.addEventListener('pageshow', () => {
-        clearStaleCredentials();
+        resetSubmitState();
         redirectAuthenticatedLoginPage();
     });
 };

@@ -663,12 +663,12 @@ try {
 
             <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
                 <div id="inquiryModalNotice" class="topbar-notifications__modal" data-inquiry-count="<?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?>" hidden>
-                    <div class="topbar-notifications__modal-card topbar-notifications__modal-card--link" data-inquiry-modal-link="/codesamplecaps/ADMIN/sidebar/inquiries.php">
+                    <div class="topbar-notifications__modal-card topbar-notifications__modal-card--link topbar-notifications__modal-card--inquiry" data-inquiry-modal-link="/codesamplecaps/ADMIN/sidebar/inquiries.php">
                         <button type="button" class="topbar-notifications__modal-close" data-inquiry-notice-close aria-label="Close inquiry notice">&times;</button>
-                        <div class="topbar-notifications__modal-icon">✉️</div>
+                        <div class="topbar-notifications__modal-icon" aria-hidden="true">&#9993;</div>
                         <div>
                             <strong>New inquiry received</strong>
-                            <p>You have <?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?> new inquiry<?php echo ((int)($superAdminNotificationData['inquiry_count'] ?? 0) === 1) ? '' : 'ies'; ?> pending review.</p>
+                            <p>You have <?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?> new <?php echo ((int)($superAdminNotificationData['inquiry_count'] ?? 0) === 1) ? 'inquiry' : 'inquiries'; ?> pending review.</p>
                         </div>
                         <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="topbar-notifications__modal-action">Open inquiries</a>
                     </div>
@@ -695,7 +695,7 @@ try {
                 <?php endif; ?>
                 <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
                     <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="notification-summary-chip notification-summary-chip--danger">
+                        <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="notification-summary-chip notification-summary-chip--info">
                             <strong><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?></strong>
                             <span>New inquiries</span>
                         </a>
@@ -731,7 +731,7 @@ try {
                                 <span class="notification-item__dot"></span>
                                 <div class="notification-item__copy">
                                     <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>
-                                    <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> • New inquiry</span>
+                                    <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> &bull; New inquiry</span>
                                 </div>
                             </a>
                         <?php endforeach; ?>

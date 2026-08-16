@@ -497,12 +497,12 @@ body {
 .topbar-notifications__toggle:focus-visible,
 .topbar-notifications__toggle[aria-expanded="true"] {
     transform: translateY(-1px);
-    border-color: rgba(239, 68, 68, 0.28);
+    border-color: rgba(37, 99, 235, 0.28);
     box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
 }
 
 .topbar-notifications__toggle:focus-visible {
-    outline: 3px solid rgba(239, 68, 68, 0.16);
+    outline: 3px solid rgba(37, 99, 235, 0.16);
     outline-offset: 3px;
 }
 
@@ -533,13 +533,13 @@ body {
     align-items: center;
     justify-content: center;
     border: 2px solid #ffffff;
-    box-shadow: 0 12px 24px rgba(220, 38, 38, 0.34);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
     animation: notificationPulse 1.8s ease-in-out infinite;
 }
 
 @keyframes notificationPulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.08); }
+    50% { transform: scale(1.04); }
 }
 
 .topbar-notifications__dropdown {
@@ -599,6 +599,11 @@ body {
     gap: 12px;
 }
 
+.topbar-notifications__modal-card--inquiry {
+    border-color: rgba(37, 99, 235, 0.18);
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.16);
+}
+
 .topbar-notifications__modal-close {
     position: absolute;
     top: 10px;
@@ -627,7 +632,8 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 16px;
-    background: linear-gradient(135deg, #eff6ff, #fef2f2);
+    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+    color: #1d4ed8;
     font-size: 1.3rem;
 }
 
@@ -650,7 +656,7 @@ body {
     width: fit-content;
     padding: 9px 12px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #2563eb, #dc2626);
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
     color: #ffffff;
     font-weight: 700;
     text-decoration: none;
@@ -733,7 +739,7 @@ body {
 }
 
 .notification-summary-chip--info {
-    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    background: linear-gradient(135deg, #1d4ed8, #38bdf8);
 }
 
 .topbar-notifications__section {
@@ -848,6 +854,17 @@ body {
     color: #2563eb;
     background: linear-gradient(180deg, #ffffff, #eff6ff);
     border-color: rgba(37, 99, 235, 0.16);
+}
+
+.notification-item--inquiry-unviewed {
+    color: #2563eb;
+    background: linear-gradient(180deg, #ffffff, #eff6ff);
+    border-color: rgba(37, 99, 235, 0.22);
+}
+
+.notification-item--inquiry-unviewed .notification-item__dot {
+    background: #2563eb;
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.1);
 }
 
 .notification-item--neutral {

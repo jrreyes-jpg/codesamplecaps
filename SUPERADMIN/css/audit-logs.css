@@ -180,6 +180,107 @@
     color: #166534;
 }
 
+.audit-recent-panel {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.audit-recent-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.audit-recent-panel__header h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.audit-recent-panel__link {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.audit-recent-panel__link:hover,
+.audit-recent-panel__link:focus-visible {
+    background: #1d4ed8;
+    color: #ffffff;
+    outline: 3px solid rgba(37, 99, 235, 0.16);
+    outline-offset: 2px;
+}
+
+.audit-recent-list {
+    display: grid;
+    gap: 8px;
+}
+
+.audit-recent-item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(120px, 0.8fr) minmax(180px, 1.5fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #0f172a;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.audit-recent-item:hover,
+.audit-recent-item:focus-visible {
+    border-color: #2563eb;
+    background: #f8fbff;
+    outline: 3px solid rgba(37, 99, 235, 0.12);
+    outline-offset: 2px;
+}
+
+.audit-recent-item strong,
+.audit-recent-item small,
+.audit-recent-item time {
+    min-width: 0;
+}
+
+.audit-recent-item strong {
+    overflow: hidden;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.audit-recent-item small {
+    overflow: hidden;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.audit-recent-item time {
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
 .audit-logs-toolbar__search .audit-logs-smart-field {
     flex: 1 1 auto;
     min-width: 220px;
@@ -578,6 +679,11 @@
     .audit-logs-toolbar__filters .btn-primary,
     .audit-logs-toolbar__filters .btn-secondary {
         width: 100%;
+    }
+
+    .audit-recent-item {
+        grid-template-columns: 1fr;
+        align-items: start;
     }
 }
 

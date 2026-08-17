@@ -836,7 +836,7 @@ if ($projectId > 0) {
                         <div class="project-details-hero__main">
                             <div class="project-details-hero__headline">
                                 <div class="project-details-hero__eyebrow-row">
-                                                        <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="btn-secondary btn-back-projects" aria-label="Back to Projects" title="Back to Projects">&#8592;</a>
+                                    <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="btn-secondary btn-back-projects" aria-label="Back to Projects" title="Back to Projects">&#8592;</a>
 
                                     <span class="project-details-hero__eyebrow">Project Overview</span>
                                     <?php if ($projectCode !== ''): ?>
@@ -870,23 +870,23 @@ if ($projectId > 0) {
 
                                 <div class="project-pulse-timeline">
                                     <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($planningStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $planningStageClass === 'done' ? '?' : '•'; ?></div>
+                                        <div class="project-pulse-stage__circle"><?php echo $planningStageClass === 'done' ? '&#10003;' : '&bull;'; ?></div>
                                         <p>Planning</p>
                                     </div>
                                     <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($quotationStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $quotationStageClass === 'done' ? '?' : '•'; ?></div>
+                                        <div class="project-pulse-stage__circle"><?php echo $quotationStageClass === 'done' ? '&#10003;' : '&bull;'; ?></div>
                                         <p>Quotation</p>
                                     </div>
                                     <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($executionStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $executionStageClass === 'done' ? '?' : ($executionStageClass === 'ongoing' ? '?' : ($executionStageClass === 'issue' ? '!' : '•')); ?></div>
+                                        <div class="project-pulse-stage__circle"><?php echo $executionStageClass === 'done' ? '&#10003;' : ($executionStageClass === 'ongoing' ? '&bull;' : ($executionStageClass === 'issue' ? '!' : '&bull;')); ?></div>
                                         <p>Execution</p>
                                     </div>
                                     <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($inspectionStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $inspectionStageClass === 'done' ? '?' : ($inspectionStageClass === 'ongoing' ? '?' : '•'); ?></div>
+                                        <div class="project-pulse-stage__circle"><?php echo $inspectionStageClass === 'done' ? '&#10003;' : ($inspectionStageClass === 'ongoing' ? '&bull;' : '&bull;'); ?></div>
                                         <p>Inspection</p>
                                     </div>
                                     <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($completedStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $completedStageClass === 'done' ? '?' : '•'; ?></div>
+                                        <div class="project-pulse-stage__circle"><?php echo $completedStageClass === 'done' ? '&#10003;' : '&bull;'; ?></div>
                                         <p>Completed</p>
                                     </div>
                                 </div>
@@ -1682,4 +1682,6 @@ if ($projectId > 0) {
 <script src="../../js/project_details.js"></script>
 </body>
 </html>
+
+
 

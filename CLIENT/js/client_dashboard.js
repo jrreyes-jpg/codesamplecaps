@@ -1,3 +1,15 @@
+// Shared guard: logout sa isang tab/window, logout din ang same browser session.
+(function () {
+    if (document.querySelector('script[src$="/assets/js/app-window-guard.js"]')) {
+        return;
+    }
+
+    const guardScript = document.createElement('script');
+    guardScript.src = '/codesamplecaps/assets/js/app-window-guard.js';
+    guardScript.defer = true;
+    document.head.appendChild(guardScript);
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
     const body = document.body;
     const sidebar = document.getElementById('sidebar');

@@ -11,17 +11,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const tabs = Array.from(document.querySelectorAll('[data-project-tab]'));
     const panels = Array.from(document.querySelectorAll('[data-project-panel]'));
+    const tabStorageKey = 'edgeProjectDetailsActiveTab';
 
     function setActiveProjectTab(tabName) {
+        const hasTab = tabs.some(function (tab) {
+            return tab.getAttribute('data-project-tab') === tabName;
+        });
+        const safeTabName = hasTab ? tabName : 'details';
+
         tabs.forEach(function (tab) {
-            const isActive = tab.getAttribute('data-project-tab') === tabName;
+            const isActive = tab.getAttribute('data-project-tab') === safeTabName;
             tab.classList.toggle('is-active', isActive);
         });
 
         panels.forEach(function (panel) {
-            const isActive = panel.getAttribute('data-project-panel') === tabName;
+            const isActive = panel.getAttribute('data-project-panel') === safeTabName;
             panel.classList.toggle('is-active', isActive);
         });
+
+        try {
+            sessionStorage.setItem(tabStorageKey, safeTabName);
+        } catch (error) {
+            // Okay lang kung blocked ang storage; tab switching still works.
+        }
     }
 
     tabs.forEach(function (tab) {
@@ -30,6 +42,15 @@ document.addEventListener('DOMContentLoaded', function () {
             setActiveProjectTab(tabName);
         });
     });
+
+    try {
+        const savedTab = sessionStorage.getItem(tabStorageKey);
+        if (savedTab) {
+            setActiveProjectTab(savedTab);
+        }
+    } catch (error) {
+        // Okay lang kung blocked ang storage; default tab stays visible.
+    }
 
     const editForm = document.querySelector('[data-project-edit-form]');
     const editToggle = document.querySelector('[data-project-edit-toggle]');
@@ -144,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasSelectedValue = selectedValue !== '';
             const isAlreadyAdded = hasSelectedValue && getSelectedEngineerIds().includes(selectedValue);
 
-            toggleButton.disabled = toggleButton.hasAttribute('data-project-editable-control') && toggleButton.closest('[data-project-panel="overview"]')?.classList.contains('is-editing') === false
+            toggleButton.disabled = toggleButton.hasAttribute('data-project-editable-control') && toggleButton.closest('[data-project-panel="details"]')?.classList.contains('is-editing') === false
                 ? true
                 : !hasSelectedValue;
             toggleButton.classList.toggle('is-remove', Boolean(isAlreadyAdded));

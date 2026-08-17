@@ -241,6 +241,7 @@ $dateFilter = trim((string)($_GET['date'] ?? ''));
 $quickFilter = trim((string)($_GET['quick'] ?? ''));
 $roleFilter = strtolower(trim((string)($_GET['role'] ?? '')));
 $actorFilter = (int)($_GET['actor'] ?? 0);
+$viewAllActivity = (string)($_GET['view'] ?? '') === 'all';
 $exportCsv = (string)($_GET['export'] ?? '') === 'csv';
 $allowedEntities = ['user', 'project', 'inventory', 'asset', 'scan', 'task', 'quotation'];
 $allowedQuickFilters = ['today', 'week', 'month'];
@@ -282,6 +283,7 @@ if ($quickFilter !== '' && $dateFilter === '') {
 }
 
 $activityRows = [];
+$recentActivityRows = [];
 $actionOptions = [];
 $actorOptions = [];
 $roleLabels = [
@@ -327,7 +329,33 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
         }
     }
 
-    if ($actorFilter > 0 || $search !== '') {
+    // Ipakita agad ang pinakahuling galaw ng buong system sa folder screen.
+    $recentStmt = $conn->prepare(
+        "SELECT
+            l.id,
+            l.created_at,
+            l.action,
+            l.entity_type,
+            l.entity_id,
+            l.old_values,
+            l.new_values,
+            l.ip_address,
+            actor.full_name AS actor_name,
+            actor.role AS actor_role
+         FROM audit_logs l
+         LEFT JOIN users actor ON actor.id = l.user_id
+         ORDER BY l.created_at DESC
+         LIMIT 5"
+    );
+    if ($recentStmt) {
+        $recentStmt->execute();
+        $recentResult = $recentStmt->get_result();
+        if ($recentResult) {
+            $recentActivityRows = $recentResult->fetch_all(MYSQLI_ASSOC);
+        }
+    }
+
+    if ($actorFilter > 0 || $search !== '' || $viewAllActivity) {
         $sql = "SELECT
                 l.id,
                 l.created_at,
@@ -466,7 +494,7 @@ if ($exportCsv) {
 }
 superadmin_render_page(
     'Audit Logs',
-    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $actorOptions, $actionOptions, $activityRows, $roleLabels, $selectedActorName): void {
+    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName): void {
         ?>
         <section class="dashboard-panel audit-logs-panel" id="audit-logs-section" data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">
             <div class="audit-explorer-header">
@@ -476,6 +504,7 @@ superadmin_render_page(
                         <input type="hidden" name="quick" value="<?php echo htmlspecialchars($quickFilter, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="role" value="<?php echo htmlspecialchars($roleFilter, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="actor" value="<?php echo $actorFilter > 0 ? (int)$actorFilter : ''; ?>">
+                        <input type="hidden" name="view" value="<?php echo $viewAllActivity ? 'all' : ''; ?>">
                         <input type="hidden" name="entity" value="<?php echo htmlspecialchars($entityFilter, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?php echo htmlspecialchars($actionFilter, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="date" value="<?php echo htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>">
@@ -486,7 +515,7 @@ superadmin_render_page(
                         </label>
                     </form>
                 </div>
-                <?php if ($roleFilter !== '' || $search !== ''): ?>
+                <?php if ($roleFilter !== '' || $search !== '' || $viewAllActivity): ?>
                     <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="btn-secondary">Back to Folders</a>
                 <?php endif; ?>
             </div>
@@ -496,6 +525,12 @@ superadmin_render_page(
                     <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">Audit Logs</a>
                     <span>&gt;</span>
                     <strong>Search: <?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?></strong>
+                </nav>
+            <?php elseif ($viewAllActivity): ?>
+                <nav class="audit-breadcrumb" aria-label="Audit breadcrumb">
+                    <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">Audit Logs</a>
+                    <span>&gt;</span>
+                    <strong>All Recent Activity</strong>
                 </nav>
             <?php elseif ($roleFilter !== ''): ?>
                 <nav class="audit-breadcrumb" aria-label="Audit breadcrumb">
@@ -535,7 +570,7 @@ superadmin_render_page(
                 </div>
             <?php endif; ?>
 
-            <?php if ($roleFilter === '' && $search === ''): ?>
+            <?php if ($roleFilter === '' && $search === '' && !$viewAllActivity): ?>
                 <div class="audit-folder-grid">
                     <?php foreach ($roleLabels as $roleValue => $roleLabel): ?>
                         <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="<?php echo htmlspecialchars(strtolower($roleLabel), ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['role' => $roleValue, 'actor' => '', 'q' => '', 'entity' => '', 'action' => '', 'date' => '', 'quick' => '']), ENT_QUOTES, 'UTF-8'); ?>">
@@ -545,7 +580,46 @@ superadmin_render_page(
                     <?php endforeach; ?>
                     <div class="audit-empty-card" data-audit-folder-empty hidden>No folder matches your search.</div>
                 </div>
-            <?php elseif ($actorFilter === 0 && $search === ''): ?>
+                <section class="audit-recent-panel" aria-labelledby="auditRecentTitle">
+                    <div class="audit-recent-panel__header">
+                        <h2 id="auditRecentTitle">Recent Activity</h2>
+                        <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php?view=all" class="audit-recent-panel__link">View All</a>
+                    </div>
+                    <?php if (empty($recentActivityRows)): ?>
+                        <div class="audit-empty-card">No recent activity yet.</div>
+                    <?php else: ?>
+                        <div class="audit-recent-list">
+                            <?php foreach ($recentActivityRows as $recentRow): ?>
+                                <?php
+                                $recentDetails = audit_logs_build_details($recentRow);
+                                $recentTime = audit_logs_format_datetime((string)($recentRow['created_at'] ?? ''));
+                                $recentTarget = audit_logs_target_label($recentRow['entity_type'] ?? 'Record', $recentRow['entity_id'] ?? null);
+                                ?>
+                                <button
+                                    type="button"
+                                    class="audit-recent-item"
+                                    data-audit-open
+                                    data-audit-time="<?php echo htmlspecialchars($recentTime, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-actor="<?php echo htmlspecialchars((string)($recentRow['actor_name'] ?: 'System'), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-role="<?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string)($recentRow['actor_role'] ?: 'System'))), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-action="<?php echo htmlspecialchars(audit_logs_action_label((string)($recentRow['action'] ?? 'activity')), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-target="<?php echo htmlspecialchars($recentTarget, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-ip="<?php echo htmlspecialchars((string)($recentRow['ip_address'] ?? 'N/A'), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-old="<?php echo htmlspecialchars(audit_logs_format_values($recentRow['old_values'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-new="<?php echo htmlspecialchars(audit_logs_format_values($recentRow['new_values'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
+                                >
+                                    <span class="audit-action-chip <?php echo htmlspecialchars(audit_logs_action_class((string)($recentRow['action'] ?? 'activity'))); ?>">
+                                        <?php echo htmlspecialchars(audit_logs_action_label((string)($recentRow['action'] ?? 'activity'))); ?>
+                                    </span>
+                                    <strong><?php echo htmlspecialchars((string)($recentRow['actor_name'] ?: 'System')); ?></strong>
+                                    <small><?php echo htmlspecialchars($recentDetails); ?></small>
+                                    <time><?php echo htmlspecialchars(audit_logs_relative_time((string)($recentRow['created_at'] ?? ''))); ?></time>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            <?php elseif ($actorFilter === 0 && $search === '' && !$viewAllActivity): ?>
                 <div class="audit-folder-grid audit-folder-grid--users">
                     <?php if (empty($actorOptions)): ?>
                         <div class="audit-empty-card">No users found for this folder.</div>
@@ -565,6 +639,7 @@ superadmin_render_page(
                     <input type="hidden" name="quick" value="<?php echo htmlspecialchars($quickFilter, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="role" value="<?php echo htmlspecialchars($roleFilter, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="actor" value="<?php echo (int)$actorFilter; ?>">
+                    <input type="hidden" name="view" value="<?php echo $viewAllActivity ? 'all' : ''; ?>">
                     <div class="audit-logs-quick-filters" aria-label="Quick audit filters">
                         <a class="audit-quick-chip <?php echo $quickFilter === 'today' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['quick' => 'today', 'date' => '']), ENT_QUOTES, 'UTF-8'); ?>">Today</a>
                         <a class="audit-quick-chip <?php echo $quickFilter === 'week' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['quick' => 'week', 'date' => '']), ENT_QUOTES, 'UTF-8'); ?>">This Week</a>

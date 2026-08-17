@@ -1,0 +1,208 @@
+/* =========================================================
+   SUPERADMIN ROLES & PERMISSIONS CSS
+   Sakop: read-only role cards, permission matrix table,
+   access badges, spacing, responsive layout, and color states.
+   Paalala: Roles & Permissions page lang ito.
+========================================================= */
+
+.main-content.roles-permissions-content {
+    display: block !important;
+    align-content: start !important;
+    align-items: start !important;
+    min-height: calc(100vh - 88px) !important;
+    padding-top: 112px !important;
+    padding-bottom: 32px !important;
+}
+
+.roles-permissions-panel {
+    display: grid;
+    gap: 18px;
+    overflow: hidden;
+    padding: 14px;
+}
+
+.main-content.roles-permissions-content .roles-permissions-panel {
+    margin-top: 0 !important;
+    transform: none !important;
+}
+
+.roles-permissions-header,
+.permission-matrix-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.roles-permissions-header h1,
+.permission-matrix-card__header h2 {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 900;
+}
+
+.roles-permissions-header h1 {
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+}
+
+.permission-matrix-card__header h2 {
+    font-size: 1.05rem;
+}
+
+.roles-permissions-header span {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    font-weight: 900;
+}
+
+.roles-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+}
+
+.role-summary-card,
+.permission-matrix-card {
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.role-summary-card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+}
+
+.role-summary-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.role-summary-card h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.role-summary-card__header span {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.role-summary-card ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.role-summary-card li {
+    position: relative;
+    padding-left: 18px;
+    color: #334155;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.role-summary-card li::before {
+    content: "";
+    position: absolute;
+    top: 0.55em;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #16a34a;
+}
+
+.permission-matrix-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+}
+
+.permission-table-wrap {
+    overflow-x: auto;
+}
+
+.permission-table {
+    width: 100%;
+    min-width: 860px;
+    border-collapse: collapse;
+}
+
+.permission-table th,
+.permission-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-size: 0.86rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.permission-table th:first-child,
+.permission-table td:first-child {
+    text-align: left;
+}
+
+.permission-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.permission-table tbody th {
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.permission-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.permission-mark--yes {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.permission-mark--no {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+@media (max-width: 768px) {
+    .roles-permissions-panel {
+        padding: 14px;
+    }
+
+    .roles-permissions-header,
+    .permission-matrix-card__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

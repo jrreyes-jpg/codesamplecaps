@@ -1,0 +1,209 @@
+/* =========================================================
+   SUPERADMIN BACKUP & RESTORE CSS
+   Sakop: backup preparation cards, restore safety rules,
+   warning banner, status chips, spacing, and responsive layout.
+   Paalala: Backup & Restore page lang ito.
+========================================================= */
+
+.main-content.backup-restore-content {
+    display: block !important;
+    align-content: start !important;
+    align-items: start !important;
+    min-height: calc(100vh - 88px) !important;
+    padding-top: 112px !important;
+    padding-bottom: 32px !important;
+}
+
+.main-content.backup-restore-content .backup-restore-panel {
+    margin-top: 0 !important;
+    transform: none !important;
+}
+
+.backup-restore-panel {
+    display: grid;
+    gap: 18px;
+    overflow: hidden;
+    padding: 14px;
+}
+
+.backup-restore-header,
+.backup-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.backup-restore-header h1,
+.backup-card h2,
+.restore-rules-card h2 {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 900;
+}
+
+.backup-restore-header h1 {
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+}
+
+.backup-restore-header > span {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.8rem;
+    font-weight: 900;
+}
+
+.backup-warning-card {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 1px solid #fde68a;
+    border-radius: 16px;
+    background: #fffbeb;
+}
+
+.backup-warning-card strong {
+    color: #78350f;
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
+.backup-warning-card span {
+    color: #92400e;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+.backup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.backup-card,
+.restore-rules-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.backup-card h2,
+.restore-rules-card h2 {
+    font-size: 1rem;
+}
+
+.backup-card p {
+    margin: 0;
+    color: #475569;
+    font-size: 0.86rem;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
+.backup-card ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.backup-card li {
+    position: relative;
+    padding-left: 18px;
+    color: #334155;
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.backup-card li::before {
+    content: "";
+    position: absolute;
+    top: 0.58em;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #16a34a;
+}
+
+.backup-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.backup-status--success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.backup-status--warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.backup-status--info {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.restore-rule-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px;
+}
+
+.restore-rule-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.restore-rule-item span {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+
+.restore-rule-item strong {
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+@media (max-width: 768px) {
+    .backup-restore-header,
+    .backup-card__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

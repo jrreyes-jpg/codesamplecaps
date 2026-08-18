@@ -5,6 +5,7 @@ function initProjectSearchUI() {
     const searchClear = document.getElementById('project-search-clear');
     const searchDropdown = document.getElementById('project-search-dropdown');
     const projectCards = Array.from(document.querySelectorAll('[data-project-card]'));
+    const sortSelect = document.getElementById('project-sort-select');
     const statusInput = searchForm?.querySelector('input[name="status"]');
     const viewInput = searchForm?.querySelector('input[name="view"]');
     let activeSuggestionIndex = -1;
@@ -235,6 +236,56 @@ function initProjectSearchUI() {
         searchDebounceId = window.setTimeout(runSearch, 3000);
     }
 
+    function getDateSortValue(card, attributeName) {
+        const rawValue = card.getAttribute(attributeName) || '';
+        const timestamp = Date.parse(rawValue);
+        return Number.isNaN(timestamp) ? 0 : timestamp;
+    }
+
+    function sortVisibleProjectCards() {
+        if (!sortSelect) {
+            return;
+        }
+
+        const sortMode = sortSelect.value || 'updated';
+        const grids = Array.from(section?.querySelectorAll('.projects-grid') || []);
+
+        grids.forEach(function (grid) {
+            const cards = Array.from(grid.querySelectorAll('[data-project-card]'));
+
+            cards.sort(function (a, b) {
+                if (sortMode === 'title') {
+                    return (a.getAttribute('data-title') || '').localeCompare(b.getAttribute('data-title') || '');
+                }
+
+                if (sortMode === 'start') {
+                    return getDateSortValue(b, 'data-start') - getDateSortValue(a, 'data-start');
+                }
+
+                if (sortMode === 'progress') {
+                    return Number(b.getAttribute('data-progress') || 0) - Number(a.getAttribute('data-progress') || 0);
+                }
+
+                return getDateSortValue(b, 'data-updated') - getDateSortValue(a, 'data-updated');
+            });
+
+            cards.forEach(function (card) {
+                grid.appendChild(card);
+            });
+        });
+    }
+
+    function syncProjectProgressBars() {
+        const fills = Array.from(section?.querySelectorAll('[data-progress-width]') || []);
+
+        fills.forEach(function (fill) {
+            const percent = Math.max(0, Math.min(100, Number(fill.getAttribute('data-progress-width') || 0)));
+            fill.style.width = percent + '%';
+        });
+    }
+
+    sortSelect?.addEventListener('change', sortVisibleProjectCards);
+
     if (searchInput) {
         searchInput.addEventListener('input', function () {
             updateClearVisibility();
@@ -329,6 +380,8 @@ function initProjectSearchUI() {
 
     updateClearVisibility();
     updateSearchDropdown();
+    syncProjectProgressBars();
+    sortVisibleProjectCards();
     if (savedFocusState && searchInput) {
         const restoredValue = typeof savedFocusState.value === 'string' ? savedFocusState.value : searchInput.value;
         searchInput.value = restoredValue;

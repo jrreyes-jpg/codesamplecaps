@@ -334,6 +334,21 @@ function format_display_datetime(?string $value): string {
     }
 }
 
+function project_target_is_past_due(?string $targetDate, string $status): bool {
+    $targetDate = trim((string)$targetDate);
+    $status = strtolower(trim($status));
+
+    if ($targetDate === '' || in_array($status, ['completed', 'cancelled', 'archived'], true)) {
+        return false;
+    }
+
+    try {
+        return (new DateTimeImmutable($targetDate))->format('Y-m-d') < (new DateTimeImmutable('today'))->format('Y-m-d');
+    } catch (Throwable $exception) {
+        return false;
+    }
+}
+
 function project_requires_po_date(string $status): bool {
     return in_array($status, ['pending', 'ongoing'], true);
 }
@@ -2761,8 +2776,23 @@ if ($statusCountsResult) {
     }
 }
 $totalProjects = array_sum($statusCounts);
+$activeProjects = (int)($statusCounts['pending'] ?? 0)
+    + (int)($statusCounts['ongoing'] ?? 0)
+    + (int)($statusCounts['on-hold'] ?? 0);
 $ongoingProjects = (int)($statusCounts['ongoing'] ?? 0);
 $completedProjects = (int)($statusCounts['completed'] ?? 0);
+$atRiskProjects = (int)($statusCounts['on-hold'] ?? 0);
+$overdueProjectsResult = $conn->query("
+    SELECT COUNT(*) AS total
+    FROM projects
+    WHERE deleted_at IS NULL
+    AND status IN ('pending', 'ongoing')
+    AND estimated_completion_date IS NOT NULL
+    AND estimated_completion_date < CURDATE()
+");
+if ($overdueProjectsResult) {
+    $atRiskProjects += (int)(($overdueProjectsResult->fetch_assoc() ?: [])['total'] ?? 0);
+}
 
 $trashMetricsResult = $conn->query("
     SELECT COUNT(*) AS total_trashed
@@ -2980,20 +3010,20 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
             <?php if (!$isTrashView): ?>
             <section class="metrics-grid">
                 <article class="metric-card">
-                    <span>Active Project Budget</span>
-                    <strong><?php echo htmlspecialchars(format_money($totalBudgetAmount)); ?></strong>
+                    <span>Active Projects</span>
+                    <strong><?php echo $activeProjects; ?></strong>
                 </article>
                 <article class="metric-card">
-                    <span>Active Recorded Cost</span>
-                    <strong><?php echo htmlspecialchars(format_money($totalTrackedCost)); ?></strong>
+                    <span>Ongoing Projects</span>
+                    <strong><?php echo $ongoingProjects; ?></strong>
                 </article>
                 <article class="metric-card">
-                    <span>Active Remaining Budget</span>
-                    <strong><?php echo htmlspecialchars(format_money($portfolioRemainingBudget)); ?></strong>
+                    <span>Delayed / At Risk</span>
+                    <strong><?php echo $atRiskProjects; ?></strong>
                 </article>
                 <article class="metric-card">
-                    <span>Coverage / Entries</span>
-                    <strong><?php echo $budgetCoverageRate; ?>% / <?php echo $totalCostEntries; ?></strong>
+                    <span>Completed Projects</span>
+                    <strong><?php echo $completedProjects; ?></strong>
                 </article>
             </section>
             <?php endif; ?>
@@ -3457,6 +3487,16 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                             </div>
                             <div class="project-search-dropdown" id="project-search-dropdown" role="listbox" hidden></div>
                         </div>
+                        <?php if (!$isTrashView): ?>
+                            <div class="project-sort-shell">
+                                <select id="project-sort-select" class="project-sort-select" aria-label="Sort projects by">
+                                    <option value="updated">Sort: Recently Updated</option>
+                                    <option value="title">Sort: Project Title</option>
+                                    <option value="start">Sort: Start Date</option>
+                                    <option value="progress">Sort: Progress</option>
+                                </select>
+                            </div>
+                        <?php endif; ?>
                     </form>
                     <?php if ($isTrashView): ?>
                         <div class="archive-tabs" role="tablist" aria-label="Archive filters">
@@ -3485,10 +3525,16 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                             </div>
                         <?php else: ?>
                             <h3 class="section-title-inline">Trashed Projects</h3>
-                            <div class="project-results-meta">
-                                <span>Showing <?php echo count($projects); ?> of <?php echo $filteredProjects; ?> matching trashed projects</span>
-                                <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
-                            </div>
+                            <?php if ($searchQuery !== '' || $statusFilter !== '' || $totalPages > 1): ?>
+                                <div class="project-results-meta">
+                                    <?php if ($searchQuery !== '' || $statusFilter !== '' || $filteredProjects > count($projects)): ?>
+                                        <span>Showing <?php echo count($projects); ?> of <?php echo $filteredProjects; ?> matching trashed projects</span>
+                                    <?php endif; ?>
+                                    <?php if ($totalPages > 1): ?>
+                                        <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
 
                             <div class="projects-grid" id="projects-grid">
                                 <?php foreach ($projects as $project): ?>
@@ -3507,6 +3553,22 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                     $projectContactPerson = trim((string)($project['contact_person'] ?? ''));
                                     $projectContactNumber = trim((string)($project['contact_number'] ?? ''));
                                     $projectSite = trim((string)($project['project_site'] ?? ''));
+                                    $projectProgress = build_role_project_progress($project, 'super_admin');
+                                    $projectProgressPercent = (int)($projectProgress['percent'] ?? 0);
+                                    $targetDate = trim((string)($project['estimated_completion_date'] ?? ''));
+                                    if ($targetDate === '') {
+                                        $targetDate = trim((string)($project['end_date'] ?? ''));
+                                    }
+                                    if ($targetDate === '') {
+                                        $targetDate = trim((string)($project['project_start_date'] ?? ''));
+                                    }
+                                    $isTargetPastDue = project_target_is_past_due($targetDate, (string)($project['status'] ?? ''));
+                                    $projectRiskLabel = '';
+                                    if ($isTargetPastDue) {
+                                        $projectRiskLabel = 'OVERDUE';
+                                    } elseif (($project['status'] ?? '') === 'on-hold') {
+                                        $projectRiskLabel = 'AT RISK';
+                                    }
                                     $projectAdditionalInfoRows = decode_project_additional_info($project['additional_info_json'] ?? null);
                                     $projectAdditionalInfoSearchText = project_additional_info_search_text($projectAdditionalInfoRows);
                                     $assignedEngineerNames = trim((string)($project['engineer_names'] ?? ''));
@@ -3537,27 +3599,59 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                     ])));
                                     $detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=' . (int)$project['id'];
                                     ?>
-                                    <article class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>" data-project-card data-status="<?php echo htmlspecialchars($project['status']); ?>" data-search="<?php echo htmlspecialchars($searchText); ?>" data-title="<?php echo htmlspecialchars($project['project_name']); ?>" data-link="<?php echo htmlspecialchars($detailsPath); ?>" data-client="<?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?>" data-engineer="<?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?>">
+                                    <article
+                                        class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>"
+                                        data-project-card
+                                        data-status="<?php echo htmlspecialchars($project['status']); ?>"
+                                        data-search="<?php echo htmlspecialchars($searchText); ?>"
+                                        data-title="<?php echo htmlspecialchars($project['project_name']); ?>"
+                                        data-link="<?php echo htmlspecialchars($detailsPath); ?>"
+                                        data-client="<?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?>"
+                                        data-engineer="<?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?>"
+                                        data-updated="<?php echo htmlspecialchars((string)($project['updated_at'] ?? $project['created_at'] ?? '')); ?>"
+                                        data-start="<?php echo htmlspecialchars((string)($project['project_start_date'] ?? $project['start_date'] ?? '')); ?>"
+                                        data-progress="<?php echo $projectProgressPercent; ?>"
+                                    >
+                                        <div class="project-card__topline">
+                                            <?php if ($projectCode !== ''): ?>
+                                                <span class="project-card__reference"><?php echo htmlspecialchars($projectCode); ?></span>
+                                            <?php else: ?>
+                                                <span class="project-card__reference">PROJECT #<?php echo (int)$project['id']; ?></span>
+                                            <?php endif; ?>
+                                            <div class="project-card__badges">
+                                                <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
+                                                    <?php echo htmlspecialchars(ucfirst($project['status'])); ?>
+                                                </span>
+                                                <?php if ($projectRiskLabel !== ''): ?>
+                                                    <span class="project-risk-badge"><?php echo htmlspecialchars($projectRiskLabel); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
                                         <div class="card-split">
-                                            <div>
-                                                <div class="project-card__eyebrow-row">
-                                                    <span class="project-card__eyebrow">Project Title</span>
-                                                    <?php if ($projectCode !== ''): ?>
-                                                        <span class="project-card__reference"><?php echo htmlspecialchars($projectCode); ?></span>
-                                                    <?php endif; ?>
-                                                </div>
+                                            <div class="project-card__main">
                                                 <h3><?php echo htmlspecialchars($project['project_name']); ?></h3>
-                                                <div class="status-pill-wrap">
-                                                    <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
-                                                        <?php echo htmlspecialchars(ucfirst($project['status'])); ?>
-                                                    </span>
+                                                <div class="project-meta">
+                                                    <div><strong>Client:</strong> <?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></div>
+                                                    <div><strong>Assigned Team:</strong> <?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?></div>
+                                                    <div><strong>Site:</strong> <?php echo htmlspecialchars($projectSite !== '' ? $projectSite : 'Not set'); ?></div>
+                                                    <div class="project-progress">
+                                                        <div class="project-progress__label">
+                                                            <strong>Progress</strong>
+                                                            <span><?php echo $projectProgressPercent; ?>%</span>
+                                                        </div>
+                                                        <div class="project-progress__track">
+                                                            <span class="project-progress__fill" data-progress-width="<?php echo $projectProgressPercent; ?>"></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="<?php echo $isTargetPastDue ? 'project-target-warning' : ''; ?>"><strong>Target:</strong> <?php echo htmlspecialchars(format_display_date($targetDate)); ?></div>
+                                                    <div><strong>Deleted:</strong> <?php echo htmlspecialchars(format_display_datetime($deletedAt)); ?></div>
+                                                    <div><strong>Auto delete:</strong> <?php echo htmlspecialchars(format_display_datetime($deleteScheduledAt)); ?></div>
                                                 </div>
                                             </div>
-                                            <div class="project-meta">
-                                                <div><strong>Client:</strong> <?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></div>
-                                                <div><strong>Deleted:</strong> <?php echo htmlspecialchars(format_display_datetime($deletedAt)); ?></div>
-                                                <div><strong>Auto delete:</strong> <?php echo htmlspecialchars(format_display_datetime($deleteScheduledAt)); ?></div>
-                                                <div><strong>Budget:</strong> <?php echo htmlspecialchars(format_money($budgetAmount)); ?></div>
+                                            <div class="project-card__finance">
+                                                <strong>Budget:</strong> <?php echo htmlspecialchars(format_money($budgetAmount)); ?>
+                                                <span aria-hidden="true">&bull;</span>
+                                                <strong>Spent:</strong> <?php echo htmlspecialchars(format_money($totalCost)); ?>
                                             </div>
                                         </div>
                                         <div class="form-actions project-card__actions project-card__actions--trash">
@@ -3813,10 +3907,16 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                             <?php echo ($searchQuery !== '' || $statusFilter !== '') ? 'No matching projects found.' : 'No active projects found right now.'; ?>
                         </div>
                     <?php else: ?>
-                        <div class="project-results-meta">
-                            <span>Showing <?php echo count($projects); ?> of <?php echo $filteredProjects; ?> matching projects</span>
-                            <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
-                        </div>
+                        <?php if ($searchQuery !== '' || $statusFilter !== '' || $totalPages > 1): ?>
+                            <div class="project-results-meta">
+                                <?php if ($searchQuery !== '' || $statusFilter !== '' || $filteredProjects > count($projects)): ?>
+                                    <span>Showing <?php echo count($projects); ?> of <?php echo $filteredProjects; ?> matching projects</span>
+                                <?php endif; ?>
+                                <?php if ($totalPages > 1): ?>
+                                    <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
 
                         <div class="projects-grid" id="projects-grid">
                             <?php foreach ($projects as $project): ?>
@@ -3831,6 +3931,22 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                 $projectContactPerson = trim((string)($project['contact_person'] ?? ''));
                                 $projectContactNumber = trim((string)($project['contact_number'] ?? ''));
                                 $projectSite = trim((string)($project['project_site'] ?? ''));
+                                $projectProgress = build_role_project_progress($project, 'super_admin');
+                                $projectProgressPercent = (int)($projectProgress['percent'] ?? 0);
+                                $targetDate = trim((string)($project['estimated_completion_date'] ?? ''));
+                                if ($targetDate === '') {
+                                    $targetDate = trim((string)($project['end_date'] ?? ''));
+                                }
+                                if ($targetDate === '') {
+                                    $targetDate = trim((string)($project['project_start_date'] ?? ''));
+                                }
+                                $isTargetPastDue = project_target_is_past_due($targetDate, (string)($project['status'] ?? ''));
+                                $projectRiskLabel = '';
+                                if ($isTargetPastDue) {
+                                    $projectRiskLabel = 'OVERDUE';
+                                } elseif (($project['status'] ?? '') === 'on-hold') {
+                                    $projectRiskLabel = 'AT RISK';
+                                }
                                 $projectAdditionalInfoRows = decode_project_additional_info($project['additional_info_json'] ?? null);
                                 $projectAdditionalInfoSearchText = project_additional_info_search_text($projectAdditionalInfoRows);
                                 $assignedEngineerNames = trim((string)($project['engineer_names'] ?? ''));
@@ -3849,28 +3965,57 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
                                 ])));
                                 $detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=' . (int)$project['id'];
                                 ?>
-                                <article class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>" data-project-card data-status="<?php echo htmlspecialchars($project['status']); ?>" data-search="<?php echo htmlspecialchars($searchText); ?>" data-title="<?php echo htmlspecialchars($project['project_name']); ?>" data-link="<?php echo htmlspecialchars($detailsPath); ?>" data-client="<?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?>" data-engineer="<?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?>">
+                                <article
+                                    class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>"
+                                    data-project-card
+                                    data-status="<?php echo htmlspecialchars($project['status']); ?>"
+                                    data-search="<?php echo htmlspecialchars($searchText); ?>"
+                                    data-title="<?php echo htmlspecialchars($project['project_name']); ?>"
+                                    data-link="<?php echo htmlspecialchars($detailsPath); ?>"
+                                    data-client="<?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?>"
+                                    data-engineer="<?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?>"
+                                    data-updated="<?php echo htmlspecialchars((string)($project['updated_at'] ?? $project['created_at'] ?? '')); ?>"
+                                    data-start="<?php echo htmlspecialchars((string)($project['project_start_date'] ?? $project['start_date'] ?? '')); ?>"
+                                    data-progress="<?php echo $projectProgressPercent; ?>"
+                                >
+                                    <div class="project-card__topline">
+                                        <?php if ($projectCode !== ''): ?>
+                                            <span class="project-card__reference"><?php echo htmlspecialchars($projectCode); ?></span>
+                                        <?php else: ?>
+                                            <span class="project-card__reference">PROJECT #<?php echo (int)$project['id']; ?></span>
+                                        <?php endif; ?>
+                                        <div class="project-card__badges">
+                                            <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
+                                                <?php echo htmlspecialchars(ucfirst((string)$project['status'])); ?>
+                                            </span>
+                                            <?php if ($projectRiskLabel !== ''): ?>
+                                                <span class="project-risk-badge"><?php echo htmlspecialchars($projectRiskLabel); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                     <div class="card-split">
-                                        <div>
-                                            <div class="project-card__eyebrow-row">
-                                                <span class="project-card__eyebrow">Project Title</span>
-                                                <?php if ($projectCode !== ''): ?>
-                                                    <span class="project-card__reference"><?php echo htmlspecialchars($projectCode); ?></span>
-                                                <?php endif; ?>
-                                            </div>
+                                        <div class="project-card__main">
                                             <h3><?php echo htmlspecialchars($project['project_name']); ?></h3>
-                                            <div class="status-pill-wrap">
-                                                <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
-                                                    <?php echo htmlspecialchars(ucfirst((string)$project['status'])); ?>
-                                                </span>
+                                            <div class="project-meta">
+                                                <div><strong>Client:</strong> <?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></div>
+                                                <div><strong>Assigned Team:</strong> <?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?></div>
+                                                <div><strong>Site:</strong> <?php echo htmlspecialchars($projectSite !== '' ? $projectSite : 'Not set'); ?></div>
+                                                <div class="project-progress">
+                                                    <div class="project-progress__label">
+                                                        <strong>Progress</strong>
+                                                        <span><?php echo $projectProgressPercent; ?>%</span>
+                                                    </div>
+                                                    <div class="project-progress__track">
+                                                        <span class="project-progress__fill" data-progress-width="<?php echo $projectProgressPercent; ?>"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="<?php echo $isTargetPastDue ? 'project-target-warning' : ''; ?>"><strong>Target:</strong> <?php echo htmlspecialchars(format_display_date($targetDate)); ?></div>
                                             </div>
                                         </div>
-                                        <div class="project-meta">
-                                            <div><strong>Client:</strong> <?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></div>
-                                            <div><strong>Team:</strong> <?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?></div>
-                                            <div><strong>Site:</strong> <?php echo htmlspecialchars($projectSite !== '' ? $projectSite : 'Not set'); ?></div>
-                                            <div><strong>Budget:</strong> <?php echo htmlspecialchars(format_money($budgetAmount)); ?></div>
-                                            <div><strong>Remaining:</strong> <?php echo htmlspecialchars(format_money($remainingBudget)); ?></div>
+                                        <div class="project-card__finance">
+                                            <strong>Budget:</strong> <?php echo htmlspecialchars(format_money($budgetAmount)); ?>
+                                            <span aria-hidden="true">&bull;</span>
+                                            <strong>Spent:</strong> <?php echo htmlspecialchars(format_money($totalCost)); ?>
                                         </div>
                                     </div>
                                     <div class="form-actions project-card__actions">

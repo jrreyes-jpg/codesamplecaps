@@ -239,6 +239,9 @@ if (!function_exists('project_search_fetch_page')) {
         $contactNumberSelect = $hasContactNumberColumn ? 'p.contact_number,' : 'NULL AS contact_number,';
         $projectCodeSelect = $hasProjectCodeColumn ? 'p.project_code,' : 'NULL AS project_code,';
         $poNumberSelect = $hasPoNumberColumn ? 'p.po_number,' : 'NULL AS po_number,';
+        $projectStartDateSelect = project_search_table_has_column($conn, 'projects', 'project_start_date') ? 'p.project_start_date,' : 'NULL AS project_start_date,';
+        $estimatedCompletionDateSelect = project_search_table_has_column($conn, 'projects', 'estimated_completion_date') ? 'p.estimated_completion_date,' : 'NULL AS estimated_completion_date,';
+        $projectUpdatedAtSelect = project_search_table_has_column($conn, 'projects', 'updated_at') ? 'p.updated_at,' : 'p.created_at AS updated_at,';
 
         $sql = "
             SELECT
@@ -253,6 +256,8 @@ if (!function_exists('project_search_fetch_page')) {
                 {$contactNumberSelect}
                 {$projectCodeSelect}
                 {$poNumberSelect}
+                {$projectStartDateSelect}
+                {$estimatedCompletionDateSelect}
                 p.client_id,
                 p.start_date,
                 p.end_date,
@@ -260,6 +265,7 @@ if (!function_exists('project_search_fetch_page')) {
                 p.deleted_at,
                 p.delete_scheduled_at,
                 p.created_at,
+                {$projectUpdatedAtSelect}
                 client.full_name AS client_name,
                 client.email AS client_email,
                 assignment_summary.engineer_ids_csv,

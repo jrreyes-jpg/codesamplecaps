@@ -55,7 +55,8 @@ class EmailService {
             $this->mailer->setFrom(trim((string)$mailConfig['from_address']), trim((string)$mailConfig['from_name']));
         } catch (Exception $e) {
             error_log('SMTP configuration error: ' . $e->getMessage());
-            $this->error = "SMTP Configuration Error: " . $e->getMessage();
+            // Huwag ipakita sa user ang SMTP/config details; sa logs lang dapat makita.
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
         }
     }
 

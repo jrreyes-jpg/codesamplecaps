@@ -243,6 +243,54 @@ class EmailService {
         }
     }
 
+    public function sendInquiryQuotationLink(string $recipientEmail, string $recipientName, string $quotationNo, string $quotationLink, int $expiryDays = 14): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $safeQuotationNo = htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8');
+            $safeQuotationLink = htmlspecialchars($quotationLink, ENT_QUOTES, 'UTF-8');
+            $safeExpiryDays = (int)$expiryDays;
+
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+
+            $logoPath = __DIR__ . '/../IMAGES/edge.jpg';
+            $logoHtml = '';
+            if (is_file($logoPath)) {
+                $this->mailer->addEmbeddedImage($logoPath, 'edgeLogo');
+                $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
+            }
+
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Quotation Ready - ' . $this->config->get('APP_NAME');
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#0f766e;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        {$logoHtml}
+                        <h2 style='margin:0'>Your quotation is ready</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeName},</p>
+                        <p>Your quotation <strong>{$safeQuotationNo}</strong> from Edge Automation is ready for review.</p>
+                        <p><a href='{$safeQuotationLink}' style='display:inline-block;background:#0f766e;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>View Quotation</a></p>
+                        <p>This secure link expires in {$safeExpiryDays} days.</p>
+                        <p>If you did not request this quotation, please ignore this email.</p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Your quotation {$quotationNo} is ready. Open this secure link: {$quotationLink}. This link expires in {$expiryDays} days.";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Inquiry quotation email failed: ' . $e->getMessage());
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
+            return false;
+        }
+    }
+
     /**
      * Get password reset email HTML template
      */

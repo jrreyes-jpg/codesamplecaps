@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryConfirmTitle">',
         '<h3 id="inquiryConfirmTitle">Are you sure?</h3>',
         '<p data-inquiry-confirm-message>This action will update the inquiry.</p>',
+        '<dl class="inquiry-confirm__details" data-inquiry-confirm-details hidden></dl>',
         '<div class="inquiry-confirm__actions">',
         '<button type="button" class="btn-secondary" data-inquiry-confirm-no>No</button>',
         '<button type="button" class="btn-primary" data-inquiry-confirm-yes>Yes</button>',
@@ -86,11 +87,28 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(confirmBox);
 
-    const showConfirm = function (form, message) {
+    const showConfirm = function (form, message, details) {
         pendingConfirmForm = form;
         const messageBox = confirmBox.querySelector('[data-inquiry-confirm-message]');
+        const detailsBox = confirmBox.querySelector('[data-inquiry-confirm-details]');
         if (messageBox) {
             messageBox.textContent = message;
+        }
+
+        if (detailsBox) {
+            detailsBox.replaceChildren();
+            if (details && details.length) {
+                details.forEach(function (detail) {
+                    const term = document.createElement('dt');
+                    const description = document.createElement('dd');
+                    term.textContent = detail.label;
+                    description.textContent = detail.value || 'Not set';
+                    detailsBox.append(term, description);
+                });
+                detailsBox.hidden = false;
+            } else {
+                detailsBox.hidden = true;
+            }
         }
 
         confirmBox.hidden = false;
@@ -559,6 +577,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    document.querySelectorAll('.inquiry-quote-send-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            showConfirm(form, 'Send quotation to this recipient?', [
+                { label: 'Client', value: form.dataset.quoteRecipientName || '' },
+                { label: 'Email', value: form.dataset.quoteRecipientEmail || '' },
+                { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
+                { label: 'Source', value: form.dataset.quoteRecipientSource || '' },
+            ]);
+        });
+    });
+
     document.querySelectorAll('.inquiry-project-create-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
             if (form.dataset.confirmed === '1') {
@@ -566,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            showConfirm(form, 'Create project from this approved quotation?');
+            showConfirm(form, 'Create project from this accepted quotation?');
         });
     });
 

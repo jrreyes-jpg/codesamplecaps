@@ -11,6 +11,7 @@
     const currentRolePath = rolePaths.find((path) => window.location.pathname.startsWith(path));
     const homePath = '/codesamplecaps/LOGIN/php/index.php';
     const loginLogoutPath = '/codesamplecaps/LOGIN/php/login.php?logout=1';
+    const loginTimeoutPath = '/codesamplecaps/LOGIN/php/login.php?timeout=1';
     const logoutPath = '/codesamplecaps/LOGIN/php/logout.php';
     const authStatusPath = '/codesamplecaps/LOGIN/php/auth_status.php';
     const logoutBroadcastKey = 'edge.auth.logout';
@@ -42,12 +43,12 @@
         }
     };
 
-    const redirectToLoggedOutLogin = function () {
+    const redirectToLoggedOutLogin = function (reason) {
         if (window.location.pathname.startsWith('/codesamplecaps/LOGIN/')) {
             return;
         }
 
-        window.location.replace(loginLogoutPath);
+        window.location.replace(reason === 'timeout' ? loginTimeoutPath : loginLogoutPath);
     };
 
     const broadcastLogout = function () {
@@ -81,7 +82,7 @@
             })
             .then(function (payload) {
                 if (!payload || payload.authenticated !== true) {
-                    redirectToLoggedOutLogin();
+                    redirectToLoggedOutLogin(payload && payload.timeout === true ? 'timeout' : 'logout');
                 }
             })
             .catch(function () {

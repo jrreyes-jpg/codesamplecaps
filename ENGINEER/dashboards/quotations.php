@@ -33,12 +33,13 @@ foreach ($quotations as $quotation) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engineer Quotations - Edge Automation</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
     <link rel="stylesheet" href="../css/engineer-sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
     <link rel="stylesheet" href="../css/quotations.css">
 </head>
 <body>
-<?php include __DIR__ . '/../sidebar/sidebar_engineer.php'; ?>
+<?php include __DIR__ . '/../../SHARED/layout/sidebar.php'; ?>
 <main class="main-content">
     <?php
     include __DIR__ . '/../includes/header.php';
@@ -61,7 +62,7 @@ foreach ($quotations as $quotation) {
             <div>
                 <p class="quotation-hero__eyebrow">Engineer Quotation Workspace</p>
                 <h1>Quotation Workspace</h1>
-                <p>Create project quotations, prepare material and manpower estimates, send them through foreman review, and submit them for super admin approval from the Engineer dashboard.</p>
+                <p>Create project quotations, prepare material and manpower estimates, then submit them for Admin review from the Engineer dashboard.</p>
             </div>
             <div class="quotation-actions">
                 <a class="btn-primary" href="/codesamplecaps/ENGINEER/dashboards/quotation_form.php">Create Quotation</a>
@@ -76,7 +77,7 @@ foreach ($quotations as $quotation) {
         <?php else: ?>
             <section class="stats-grid" aria-label="Quotation summary">
                 <article class="stat-card stat-card--draft"><span>Draft Quotations</span><strong><?php echo (int)$statusCounts['draft']; ?></strong></article>
-                <article class="stat-card stat-card--review"><span>Under Foreman Review</span><strong><?php echo (int)$statusCounts['under_review']; ?></strong></article>
+                <article class="stat-card stat-card--review"><span>Legacy Review</span><strong><?php echo (int)$statusCounts['under_review']; ?></strong></article>
                 <article class="stat-card stat-card--approval"><span>Ready For Approval</span><strong><?php echo (int)$statusCounts['for_approval']; ?></strong></article>
                 <article class="stat-card stat-card--approved"><span>Approved / Locked</span><strong><?php echo (int)$statusCounts['approved']; ?></strong></article>
             </section>
@@ -114,7 +115,7 @@ foreach ($quotations as $quotation) {
 
             <section class="quotation-panel">
                 <h2>My Quotations</h2>
-                <p class="helper-copy">Track which quotations are still in draft, under foreman review, or already waiting for super admin approval.</p>
+                <p class="helper-copy">Track which quotations are still in draft, waiting for Admin approval, or already sent to the client.</p>
                 <?php if (!empty($quotations)): ?>
                     <div class="quotation-table-wrap">
                         <table class="quotation-table">
@@ -122,7 +123,7 @@ foreach ($quotations as $quotation) {
                             <tr>
                                 <th>Quotation No.</th>
                                 <th>Project</th>
-                                <th>Foreman Reviewer</th>
+                                <th>Reviewer</th>
                                 <th>Total Cost</th>
                                 <th>Selling Price</th>
                                 <th>Status</th>
@@ -135,7 +136,7 @@ foreach ($quotations as $quotation) {
                                 <tr>
                                     <td data-label="Quotation No."><?php echo htmlspecialchars((string)$quotation['quotation_no']); ?></td>
                                     <td data-label="Project"><?php echo htmlspecialchars((string)$quotation['project_name']); ?></td>
-                                    <td data-label="Foreman Reviewer"><?php echo htmlspecialchars((string)($quotation['foreman_name'] ?? 'Not assigned')); ?></td>
+                                    <td data-label="Reviewer">Admin</td>
                                     <td data-label="Total Cost"><?php echo htmlspecialchars(quotation_module_format_currency($quotation['total_cost'] ?? 0)); ?></td>
                                     <td data-label="Selling Price"><?php echo htmlspecialchars(quotation_module_format_currency($quotation['selling_price'] ?? 0)); ?></td>
                                     <td data-label="Status"><span class="status-pill <?php echo htmlspecialchars(quotation_module_status_class((string)$quotation['status'])); ?>"><?php echo htmlspecialchars(quotation_module_status_label((string)$quotation['status'])); ?></span></td>
@@ -153,6 +154,7 @@ foreach ($quotations as $quotation) {
         <?php endif; ?>
     </div>
 </main>
+<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="../js/engineer.js"></script>
 </body>
 </html>

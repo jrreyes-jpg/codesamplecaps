@@ -85,18 +85,13 @@ try {
     }
 
     if ($action === 'submit_review') {
-        if ((int)($_POST['foreman_reviewer_id'] ?? 0) <= 0) {
-            throw new RuntimeException('Please assign a foreman reviewer before submitting this quotation.');
-        }
-
-        $service->submitForReview($quotationId, $userId, $role, 'Engineer submitted quotation for foreman review.');
-        quotation_module_set_flash('success', 'Quotation submitted to foreman review.');
+        throw new RuntimeException('Foreman review is no longer part of the quotation approval flow. Submit the quotation for Admin review instead.');
         quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $quotationId);
     }
 
     if ($action === 'submit_for_approval') {
-        $service->submitForApproval($quotationId, $userId, $role, 'Engineer submitted quotation for super admin approval.');
-        quotation_module_set_flash('success', 'Quotation submitted for super admin approval.');
+        $service->submitForApproval($quotationId, $userId, $role, 'Engineer submitted quotation for Admin approval.');
+        quotation_module_set_flash('success', 'Quotation submitted for Admin approval.');
         quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $quotationId);
     }
 

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/quotation_module.php';
+require_once __DIR__ . '/../../config/inquiry_quotation_module.php';
 require_once __DIR__ . '/../includes/client_shell.php';
 
 require_role('client');
@@ -15,22 +16,45 @@ $flash = quotation_module_consume_flash();
 $csrfToken = quotation_module_csrf_token();
 $tablesReady = quotation_module_tables_ready($conn);
 $quotations = $tablesReady ? quotation_module_fetch_quotations($conn, 'client', $userId) : [];
+$inquiryQuotations = inquiry_quote_fetch_for_client($conn, $userId);
 $quotationId = (int)($_GET['id'] ?? 0);
+$selectedQuotationSource = (string)($_GET['source'] ?? 'generic');
 $selectedQuotation = null;
+$selectedInquiryItems = [];
 
-if ($quotationId > 0 && $tablesReady) {
+if ($quotationId > 0 && $selectedQuotationSource === 'inquiry') {
+    $selectedQuotation = inquiry_quote_fetch_full($conn, $quotationId);
+    if (!$selectedQuotation || !inquiry_quote_client_can_access($conn, $quotationId, $userId)) {
+        quotation_module_set_flash('error', 'Quotation not found in your account.');
+        quotation_module_redirect('/codesamplecaps/CLIENT/dashboards/quotations.php');
+    }
+    $selectedInquiryItems = inquiry_quote_fetch_items($conn, $quotationId);
+} elseif ($quotationId > 0 && $tablesReady) {
     $selectedQuotation = quotation_module_fetch_quotation($conn, $quotationId);
     if (!$selectedQuotation || !quotation_module_user_can_access($selectedQuotation, 'client', $userId)) {
         quotation_module_set_flash('error', 'Quotation not found in your account.');
         quotation_module_redirect('/codesamplecaps/CLIENT/dashboards/quotations.php');
     }
+    $selectedQuotationSource = 'generic';
+} elseif (!empty($inquiryQuotations)) {
+    $selectedQuotationSource = 'inquiry';
+    $selectedQuotation = inquiry_quote_fetch_full($conn, (int)$inquiryQuotations[0]['id']);
+    $selectedInquiryItems = $selectedQuotation ? inquiry_quote_fetch_items($conn, (int)$selectedQuotation['id']) : [];
 } elseif (!empty($quotations)) {
+    $selectedQuotationSource = 'generic';
     $selectedQuotation = quotation_module_fetch_quotation($conn, (int)$quotations[0]['id']);
 }
 
-$items = $selectedQuotation ? quotation_module_fetch_quotation_items($conn, (int)$selectedQuotation['id']) : [];
-$responseStatus = (string)($selectedQuotation['status'] ?? '');
+$items = $selectedQuotation && $selectedQuotationSource === 'generic'
+    ? quotation_module_fetch_quotation_items($conn, (int)$selectedQuotation['id'])
+    : $selectedInquiryItems;
+$responseStatus = $selectedQuotationSource === 'inquiry'
+    ? inquiry_quote_normalize_status((string)($selectedQuotation['status'] ?? ''))
+    : (string)($selectedQuotation['status'] ?? '');
 $isAwaitingClientDecision = $responseStatus === 'sent';
+$totalQuotationCount = count($quotations) + count($inquiryQuotations);
+$waitingQuotationCount = count(array_filter($quotations, static fn($quotation) => (string)($quotation['status'] ?? '') === 'sent'))
+    + count(array_filter($inquiryQuotations, static fn($quotation) => inquiry_quote_normalize_status((string)($quotation['status'] ?? '')) === 'sent'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -375,11 +399,11 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
             <div class="quotation-stat-grid">
                 <div class="quotation-stat">
                     <span>Total quotations</span>
-                    <strong><?php echo count($quotations); ?></strong>
+                    <strong><?php echo $totalQuotationCount; ?></strong>
                 </div>
                 <div class="quotation-stat">
                     <span>Waiting for your review</span>
-                    <strong><?php echo count(array_filter($quotations, static fn($quotation) => (string)($quotation['status'] ?? '') === 'sent')); ?></strong>
+                    <strong><?php echo $waitingQuotationCount; ?></strong>
                 </div>
                 <div class="quotation-stat">
                     <span>Current quotation</span>
@@ -387,7 +411,7 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
                 </div>
                 <div class="quotation-stat">
                     <span>Status</span>
-                    <strong><?php echo $selectedQuotation ? htmlspecialchars(quotation_module_status_label($responseStatus)) : 'N/A'; ?></strong>
+                    <strong><?php echo $selectedQuotation ? htmlspecialchars($selectedQuotationSource === 'inquiry' ? inquiry_quote_status_label($responseStatus) : quotation_module_status_label($responseStatus)) : 'N/A'; ?></strong>
                 </div>
             </div>
         </section>
@@ -400,9 +424,19 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
                     <h2>Quotation Queue</h2>
                     <p>Open one quotation at a time and decide with a documented reason when changes are needed.</p>
                     <div class="quotation-list-stack">
-                        <?php if (!empty($quotations)): ?>
+                        <?php if (!empty($inquiryQuotations) || !empty($quotations)): ?>
+                            <?php foreach ($inquiryQuotations as $quotation): ?>
+                                <a class="quotation-list-card<?php echo $selectedQuotationSource === 'inquiry' && $selectedQuotation && (int)$selectedQuotation['id'] === (int)$quotation['id'] ? ' is-active' : ''; ?>" href="/codesamplecaps/CLIENT/dashboards/quotations.php?source=inquiry&id=<?php echo (int)$quotation['id']; ?>">
+                                    <div class="quotation-list-card__top">
+                                        <strong><?php echo htmlspecialchars((string)$quotation['quotation_no']); ?></strong>
+                                        <span class="status-pill <?php echo htmlspecialchars(inquiry_quote_status_class((string)$quotation['status'])); ?>"><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotation['status'])); ?></span>
+                                    </div>
+                                    <span><?php echo htmlspecialchars((string)$quotation['service_category']); ?></span>
+                                    <p><?php echo htmlspecialchars((string)($quotation['engineer_name'] ?? 'Assigned engineer')); ?></p>
+                                </a>
+                            <?php endforeach; ?>
                             <?php foreach ($quotations as $quotation): ?>
-                                <a class="quotation-list-card<?php echo $selectedQuotation && (int)$selectedQuotation['id'] === (int)$quotation['id'] ? ' is-active' : ''; ?>" href="/codesamplecaps/CLIENT/dashboards/quotations.php?id=<?php echo (int)$quotation['id']; ?>">
+                                <a class="quotation-list-card<?php echo $selectedQuotationSource === 'generic' && $selectedQuotation && (int)$selectedQuotation['id'] === (int)$quotation['id'] ? ' is-active' : ''; ?>" href="/codesamplecaps/CLIENT/dashboards/quotations.php?id=<?php echo (int)$quotation['id']; ?>">
                                     <div class="quotation-list-card__top">
                                         <strong><?php echo htmlspecialchars((string)$quotation['quotation_no']); ?></strong>
                                         <span class="status-pill <?php echo htmlspecialchars(quotation_module_status_class((string)$quotation['status'])); ?>"><?php echo htmlspecialchars(quotation_module_status_label((string)$quotation['status'])); ?></span>
@@ -419,7 +453,7 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
 
                 <section class="quotation-panel">
                     <?php if ($selectedQuotation): ?>
-                        <h2><?php echo htmlspecialchars((string)$selectedQuotation['quotation_no']); ?> | <?php echo htmlspecialchars((string)$selectedQuotation['project_name']); ?></h2>
+                        <h2><?php echo htmlspecialchars((string)$selectedQuotation['quotation_no']); ?> | <?php echo htmlspecialchars((string)($selectedQuotationSource === 'inquiry' ? $selectedQuotation['service_category'] : $selectedQuotation['project_name'])); ?></h2>
                         <p>This is the client-facing commercial breakdown. Review the scope, compare the price to your budget, then either approve or send it back with a clear revision note.</p>
 
                         <div class="quotation-meta-grid">
@@ -429,16 +463,28 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
                             </div>
                             <div class="quotation-meta-card">
                                 <span>Selling price</span>
-                                <strong><?php echo htmlspecialchars(quotation_module_format_currency($selectedQuotation['selling_price'] ?? 0)); ?></strong>
+                                <strong><?php echo htmlspecialchars($selectedQuotationSource === 'inquiry' ? inquiry_quote_format_money((float)($selectedQuotation['grand_total'] ?? 0)) : quotation_module_format_currency($selectedQuotation['selling_price'] ?? 0)); ?></strong>
                             </div>
                             <div class="quotation-meta-card">
                                 <span>Status</span>
-                                <strong><?php echo htmlspecialchars(quotation_module_status_label($responseStatus)); ?></strong>
+                                <strong><?php echo htmlspecialchars($selectedQuotationSource === 'inquiry' ? inquiry_quote_status_label($responseStatus) : quotation_module_status_label($responseStatus)); ?></strong>
                             </div>
                         </div>
 
+                        <?php if (!empty($selectedQuotation['client_decision_note'])): ?>
+                            <div class="empty-state">
+                                Client note: <?php echo nl2br(htmlspecialchars((string)$selectedQuotation['client_decision_note'])); ?>
+                            </div>
+                        <?php endif; ?>
+
                         <table class="items-table">
-                            <thead><tr><th>Type</th><th>Item</th><th>Unit</th><th>Qty</th><th>Hours</th><th>Rate</th><th>Total</th></tr></thead>
+                            <thead>
+                                <?php if ($selectedQuotationSource === 'inquiry'): ?>
+                                    <tr><th>Type</th><th>Item</th><th>Unit</th><th>Qty</th><th>Unit Cost</th><th>Total</th></tr>
+                                <?php else: ?>
+                                    <tr><th>Type</th><th>Item</th><th>Unit</th><th>Qty</th><th>Hours</th><th>Rate</th><th>Total</th></tr>
+                                <?php endif; ?>
+                            </thead>
                             <tbody>
                             <?php foreach ($items as $item): ?>
                                 <tr>
@@ -446,9 +492,14 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
                                     <td><?php echo htmlspecialchars((string)$item['item_name']); ?></td>
                                     <td><?php echo htmlspecialchars((string)$item['unit']); ?></td>
                                     <td><?php echo htmlspecialchars((string)$item['quantity']); ?></td>
-                                    <td><?php echo htmlspecialchars((string)$item['hours']); ?></td>
-                                    <td><?php echo htmlspecialchars(quotation_module_format_currency($item['rate'] ?? 0)); ?></td>
-                                    <td><?php echo htmlspecialchars(quotation_module_format_currency($item['line_total'] ?? 0)); ?></td>
+                                    <?php if ($selectedQuotationSource === 'inquiry'): ?>
+                                        <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)($item['unit_cost'] ?? 0))); ?></td>
+                                        <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)($item['line_total'] ?? 0))); ?></td>
+                                    <?php else: ?>
+                                        <td><?php echo htmlspecialchars((string)$item['hours']); ?></td>
+                                        <td><?php echo htmlspecialchars(quotation_module_format_currency($item['rate'] ?? 0)); ?></td>
+                                        <td><?php echo htmlspecialchars(quotation_module_format_currency($item['line_total'] ?? 0)); ?></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -461,11 +512,11 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
                             </article>
                             <article class="quotation-guidance-card quotation-guidance-card--warn">
                                 <h3>Too high?</h3>
-                                <p>Reject with a note that includes your target budget, preferred alternatives, or items you want reduced.</p>
+                                <p>Request revision with a note that includes your target budget, preferred alternatives, or items you want reduced.</p>
                             </article>
                             <article class="quotation-guidance-card quotation-guidance-card--danger">
                                 <h3>Wrong scope?</h3>
-                                <p>Reject with a note listing the exact line items, quantities, or inclusions that should be revised.</p>
+                                <p>Reject with a note if you do not want to proceed with this quotation.</p>
                             </article>
                         </div>
 
@@ -473,20 +524,24 @@ $isAwaitingClientDecision = $responseStatus === 'sent';
                             <form method="POST" action="/codesamplecaps/controllers/QuotationClientController.php" style="margin-top:20px; display:grid; gap:12px;">
                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                 <input type="hidden" name="quotation_id" value="<?php echo (int)$selectedQuotation['id']; ?>">
+                                <input type="hidden" name="source" value="<?php echo htmlspecialchars($selectedQuotationSource); ?>">
                                 <div class="form-group">
                                     <label for="note">Response Note</label>
-                                    <textarea id="note" name="note" placeholder="If you want revisions, write the reason clearly here. Example: Reduce labor scope, remove item X, or adjust the total closer to our budget."></textarea>
+                                    <textarea id="note" name="note" placeholder="Required for revision or rejection. Example: Reduce labor scope, remove item X, or adjust the total closer to our budget."></textarea>
                                 </div>
                                 <div class="decision-hint">
-                                    Best workflow if the price feels high: use `Reject` with a specific note, then let the engineer revise and resend the quotation instead of approving a quote you are not comfortable with.
+                                    Best workflow if the price feels high: request a revision with a clear note. Reject only if you do not want to continue.
                                 </div>
                                 <div class="quotation-response-row">
                                     <button class="btn-primary" type="submit" name="action" value="client_accept">Accept</button>
+                                    <?php if ($selectedQuotationSource === 'inquiry'): ?>
+                                        <button class="btn-danger" type="submit" name="action" value="client_revision">Request Revision</button>
+                                    <?php endif; ?>
                                     <button class="btn-danger" type="submit" name="action" value="client_reject">Reject</button>
                                 </div>
                             </form>
                         <?php else: ?>
-                            <div class="empty-state" style="margin-top:20px;">This quotation is currently <strong><?php echo htmlspecialchars(quotation_module_status_label($responseStatus)); ?></strong>. Client response becomes available only after it is sent.</div>
+                            <div class="empty-state" style="margin-top:20px;">This quotation is currently <strong><?php echo htmlspecialchars($selectedQuotationSource === 'inquiry' ? inquiry_quote_status_label($responseStatus) : quotation_module_status_label($responseStatus)); ?></strong>. Client response becomes available only after it is sent.</div>
                         <?php endif; ?>
                     <?php else: ?>
                         <div class="empty-state">Select a quotation to view the full breakdown.</div>

@@ -8,7 +8,7 @@ require_role('admin');
 $flash = quotation_module_consume_flash();
 $csrfToken = quotation_module_csrf_token();
 $tablesReady = quotation_module_tables_ready($conn);
-$quotations = $tablesReady ? quotation_module_fetch_quotations($conn, 'super_admin', (int)($_SESSION['user_id'] ?? 0)) : [];
+$quotations = $tablesReady ? quotation_module_fetch_quotations($conn, 'admin', (int)($_SESSION['user_id'] ?? 0)) : [];
 $quotationId = (int)($_GET['id'] ?? 0);
 $selectedQuotation = null;
 
@@ -27,7 +27,9 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quotation Approval Panel - Edge Automation</title>
+    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">
+    <link rel="stylesheet" href="../css/admin-shared-sidebar.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         .quotation-shell {
@@ -362,6 +364,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
                                     <textarea id="remarks" name="remarks" rows="4" placeholder="Optional approval note for audit trail"></textarea>
                                 </div>
                                 <button class="btn-primary" type="submit" name="action" value="approve">Approve & Lock</button>
+                                <button class="btn-secondary" type="submit" name="action" value="return_to_engineer">Return To Engineer</button>
                             </form>
                         <?php elseif ((string)$selectedQuotation['status'] === 'approved'): ?>
                             <form method="POST" action="/codesamplecaps/controllers/QuotationAdminController.php" class="history-list">
@@ -384,6 +387,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
     </div>
 </main>
 </div>
+<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="../js/super_admin_dashboard.js"></script>
 </body>
 </html>

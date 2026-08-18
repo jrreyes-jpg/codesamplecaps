@@ -34,8 +34,8 @@ if ($tablesReady && $quotationId > 0) {
 }
 
 $canEditDraft = $quotation === null || (((string)$quotation['status'] === 'draft') && (int)($quotation['is_locked'] ?? 0) === 0);
-$canSubmitForReview = $quotation !== null && (string)$quotation['status'] === 'draft' && (int)($quotation['is_locked'] ?? 0) === 0;
-$canSubmitForApproval = $quotation !== null && (string)$quotation['status'] === 'under_review';
+$canSubmitForReview = false;
+$canSubmitForApproval = $quotation !== null && in_array((string)$quotation['status'], ['draft', 'under_review'], true) && (int)($quotation['is_locked'] ?? 0) === 0;
 
 if (empty($items)) {
     $items = [[
@@ -60,12 +60,13 @@ if (empty($items)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engineer Quotation Form - Edge Automation</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
     <link rel="stylesheet" href="../css/engineer-sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
     <link rel="stylesheet" href="../css/quotation-form.css">
 </head>
 <body>
-<?php include __DIR__ . '/../sidebar/sidebar_engineer.php'; ?>
+<?php include __DIR__ . '/../../SHARED/layout/sidebar.php'; ?>
 <main class="main-content">
     <?php
     include __DIR__ . '/../includes/header.php';
@@ -93,7 +94,7 @@ if (empty($items)) {
                     <div>
                         <p class="section-eyebrow">Engineer Draft Builder</p>
                         <h1><?php echo $quotation ? 'Quotation ' . htmlspecialchars((string)$quotation['quotation_no']) : 'Create New Quotation'; ?></h1>
-                        <p class="helper-copy">Engineer owns the quotation draft. Foreman reviews only. Super Admin gives final approval.</p>
+                        <p class="helper-copy">Engineer owns the technical costing draft. Admin reviews and gives final quotation approval.</p>
                     </div>
                     <?php if ($quotation): ?>
                         <div class="btn-row">
@@ -104,7 +105,7 @@ if (empty($items)) {
             </section>
 
             <?php if ($quotation && !$canEditDraft): ?>
-                <div class="readonly-banner">This quotation is no longer editable as a draft. You can still review comments and move it forward if it is under foreman review.</div>
+                <div class="readonly-banner">This quotation is no longer editable as a draft. Review the comments if Admin returned it for revision.</div>
             <?php endif; ?>
 
             <div class="grid two">
@@ -115,7 +116,7 @@ if (empty($items)) {
                     <section class="panel grid">
                         <div>
                             <h2>Quotation Header</h2>
-                            <p class="helper-copy">Link the quotation to the assigned project and choose the foreman reviewer.</p>
+                            <p class="helper-copy">Link the quotation to your assigned project before sending it to Admin review.</p>
                         </div>
                         <div class="grid form">
                             <div class="form-group">
@@ -145,24 +146,6 @@ if (empty($items)) {
                             </div>
                             <div class="form-group">
                                 <div class="field-label-row">
-                                    <label for="foreman_reviewer_id">Foreman Reviewer <span class="required-dot">*</span></label>
-                                    <button type="button" class="field-tip" aria-label="Foreman reviewer help">
-                                        <span class="field-tip__icon" aria-hidden="true">i</span>
-                                        <span class="field-tip__bubble">Assign the foreman who will review manpower feasibility, execution concerns, and revision notes before admin approval.</span>
-                                    </button>
-                                </div>
-                                <select id="foreman_reviewer_id" name="foreman_reviewer_id" <?php echo $canEditDraft ? '' : 'disabled'; ?>>
-                                    <option value="">Select foreman</option>
-                                    <?php foreach ($foremen as $foreman): ?>
-                                        <option value="<?php echo (int)$foreman['id']; ?>" <?php echo (int)($quotation['foreman_reviewer_id'] ?? 0) === (int)$foreman['id'] ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars((string)$foreman['full_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if (!$canEditDraft && !empty($quotation['foreman_reviewer_id'])): ?><input type="hidden" name="foreman_reviewer_id" value="<?php echo (int)$quotation['foreman_reviewer_id']; ?>"><?php endif; ?>
-                            </div>
-                            <div class="form-group">
-                                <div class="field-label-row">
                                     <label for="title">Quotation Title <span class="required-dot">*</span></label>
                                     <button type="button" class="field-tip" aria-label="Quotation title help">
                                         <span class="field-tip__icon" aria-hidden="true">i</span>
@@ -176,7 +159,7 @@ if (empty($items)) {
                                     <label for="estimated_duration_days">Estimated Duration (Days) <span class="required-dot">*</span></label>
                                     <button type="button" class="field-tip" aria-label="Estimated duration help">
                                         <span class="field-tip__icon" aria-hidden="true">i</span>
-                                        <span class="field-tip__bubble">This is read-only here because the system syncs it directly from the project timeline set by Super Admin.</span>
+                                        <span class="field-tip__bubble">This is read-only here because the system syncs it directly from the project timeline set by Admin.</span>
                                     </button>
                                 </div>
                                 <input id="estimated_duration_days" type="number" min="1" name="estimated_duration_days" value="<?php echo htmlspecialchars((string)($quotation['estimated_duration_days'] ?? '')); ?>" readonly required>
@@ -257,11 +240,8 @@ if (empty($items)) {
                             <?php if ($canEditDraft): ?>
                                 <button class="btn-primary" type="submit" name="action" value="save_draft">Save Draft</button>
                             <?php endif; ?>
-                            <?php if ($canSubmitForReview): ?>
-                                <button class="btn-secondary" type="submit" name="action" value="submit_review">Submit For Foreman Review</button>
-                            <?php endif; ?>
                             <?php if ($canSubmitForApproval): ?>
-                                <button class="btn-primary" type="submit" name="action" value="submit_for_approval">Submit For Super Admin Approval</button>
+                                <button class="btn-primary" type="submit" name="action" value="submit_for_approval">Submit For Admin Approval</button>
                             <?php endif; ?>
                         </div>
                     </section>
@@ -368,7 +348,6 @@ if (empty($items)) {
         var quotationForm = document.querySelector('form[action="/codesamplecaps/controllers/QuotationController.php"]');
         var projectField = document.getElementById('project_id');
         var durationField = document.getElementById('estimated_duration_days');
-        var foremanField = document.getElementById('foreman_reviewer_id');
         var catalogTabs = document.querySelectorAll('[data-catalog-tab]');
         var catalogPanels = document.querySelectorAll('[data-catalog-panel]');
 
@@ -539,19 +518,6 @@ if (empty($items)) {
                 return;
             }
 
-            if ((actionValue === 'submit_review' || actionValue === 'save_draft') && foremanField && !foremanField.value.trim()) {
-                if (actionValue === 'submit_review') {
-                    event.preventDefault();
-                    foremanField.focus();
-                    foremanField.setCustomValidity('Select a foreman reviewer before submitting for review.');
-                    foremanField.reportValidity();
-                    return;
-                }
-            }
-
-            if (foremanField) {
-                foremanField.setCustomValidity('');
-            }
         });
 
         if (projectField) {
@@ -567,6 +533,7 @@ if (empty($items)) {
         recalcTotals();
     })();
 </script>
+<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="../js/engineer.js"></script>
 </body>
 </html>

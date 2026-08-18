@@ -23,23 +23,7 @@ $message = quotation_module_normalize_text($_POST['message'] ?? '');
 $service = new QuotationService();
 
 try {
-    if ($quotationId <= 0) {
-        throw new RuntimeException('Quotation not found.');
-    }
-
-    if ($message === '') {
-        throw new RuntimeException('Please enter your review note.');
-    }
-
-    if ($action === 'save_suggestion') {
-        $service->addForemanReview($quotationId, $userId, $role, $message, false);
-        quotation_module_set_flash('success', 'Foreman feedback saved for the engineer.');
-    } elseif ($action === 'return_to_engineer') {
-        $service->addForemanReview($quotationId, $userId, $role, $message, true);
-        quotation_module_set_flash('success', 'Quotation returned to the engineer.');
-    } else {
-        throw new RuntimeException('Invalid review action.');
-    }
+    throw new RuntimeException('Foreman quotation review is disabled. Admin now handles quotation review and approval.');
 
     quotation_module_redirect('/codesamplecaps/FOREMAN/dashboards/quotation_reviews.php?id=' . $quotationId);
 } catch (Throwable $throwable) {

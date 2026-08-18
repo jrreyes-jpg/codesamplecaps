@@ -11,7 +11,7 @@ if (!function_exists('quotation_permissions_for_role')) {
             'engineer' => [
                 'create' => true,
                 'edit_draft' => true,
-                'submit_for_review' => true,
+                'submit_for_review' => false,
                 'submit_for_approval' => true,
                 'review' => false,
                 'adjust_pricing' => false,
@@ -24,13 +24,13 @@ if (!function_exists('quotation_permissions_for_role')) {
                 'edit_draft' => false,
                 'submit_for_review' => false,
                 'submit_for_approval' => false,
-                'review' => true,
+                'review' => false,
                 'adjust_pricing' => false,
                 'approve' => false,
                 'send_to_client' => false,
                 'respond' => false,
             ],
-            'super_admin' => [
+            'admin' => [
                 'create' => false,
                 'edit_draft' => false,
                 'submit_for_review' => false,
@@ -39,6 +39,17 @@ if (!function_exists('quotation_permissions_for_role')) {
                 'adjust_pricing' => true,
                 'approve' => true,
                 'send_to_client' => true,
+                'respond' => false,
+            ],
+            'super_admin' => [
+                'create' => false,
+                'edit_draft' => false,
+                'submit_for_review' => false,
+                'submit_for_approval' => false,
+                'review' => false,
+                'adjust_pricing' => false,
+                'approve' => false,
+                'send_to_client' => false,
                 'respond' => false,
             ],
             'client' => [
@@ -80,9 +91,9 @@ if (!function_exists('quotation_allowed_transitions')) {
     function quotation_allowed_transitions(): array
     {
         return [
-            'draft' => ['under_review'],
+            'draft' => ['for_approval'],
             'under_review' => ['draft', 'for_approval'],
-            'for_approval' => ['under_review', 'approved'],
+            'for_approval' => ['draft', 'approved'],
             'approved' => ['sent'],
             'sent' => ['accepted', 'rejected'],
             'accepted' => [],

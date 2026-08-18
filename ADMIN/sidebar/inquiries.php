@@ -337,7 +337,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     null,
                     ['quotation_draft_id' => $draftId, 'inquiry_id' => $inquiryId]
                 );
-                inquiry_center_redirect_with_project($projectId, 'Project created from approved quotation.');
+                inquiry_center_redirect_with_project($projectId, 'Project created from accepted quotation.');
+            } catch (Throwable $throwable) {
+                $error = $throwable->getMessage();
+            }
+        }
+    } elseif (($_POST['action'] ?? '') === 'send_quotation_to_client') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $draftId = (int)($_POST['draft_id'] ?? 0);
+
+        if ($inquiryId <= 0 || $draftId <= 0) {
+            $error = 'Invalid quotation send request.';
+        } else {
+            try {
+                inquiry_quote_send_to_client($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
+                audit_log_event(
+                    $conn,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    'send_inquiry_quotation_to_client',
+                    'quotation',
+                    $draftId,
+                    ['status' => 'approved'],
+                    ['status' => 'sent']
+                );
+                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation sent to client.');
+            } catch (Throwable $throwable) {
+                $error = $throwable->getMessage();
+            }
+        }
+    } elseif (($_POST['action'] ?? '') === 'reopen_quotation_revision') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $draftId = (int)($_POST['draft_id'] ?? 0);
+
+        if ($inquiryId <= 0 || $draftId <= 0) {
+            $error = 'Invalid quotation revision request.';
+        } else {
+            try {
+                inquiry_quote_reopen_for_revision($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
+                audit_log_event(
+                    $conn,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    'reopen_inquiry_quotation_revision',
+                    'quotation',
+                    $draftId,
+                    ['status' => 'revision_requested'],
+                    ['status' => 'draft']
+                );
+                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation reopened for revision.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -357,8 +403,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'approve_inquiry_quotation_draft',
                     'quotation',
                     $draftId,
-                    ['status' => 'Draft'],
-                    ['status' => 'Approved']
+                    ['status' => 'draft'],
+                    ['status' => 'approved']
                 );
                 inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation draft approved.');
             } catch (Throwable $throwable) {
@@ -961,7 +1007,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                             </div>
                                             <div>
                                                 <span>Status</span>
-                                                <strong><?php echo htmlspecialchars((string)$quotationDraft['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <strong><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
                                                 <span>Total</span>
@@ -973,7 +1019,18 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 </a>
                                             </div>
                                         </div>
-                                        <?php if ((string)$quotationDraft['status'] === 'Draft'): ?>
+                                        <?php $quotationStatus = inquiry_quote_normalize_status((string)$quotationDraft['status']); ?>
+                                        <?php $quotationRecipient = null; ?>
+                                        <?php if (in_array($quotationStatus, ['approved', 'accepted'], true)): ?>
+                                            <?php try { $quotationRecipient = inquiry_quote_resolve_recipient($conn, (int)$quotationDraft['id']); } catch (Throwable $throwable) { $quotationRecipient = null; } ?>
+                                        <?php endif; ?>
+                                        <?php if (!empty($quotationDraft['client_decision_note'])): ?>
+                                            <div class="inquiry-detail inquiry-detail--wide">
+                                                <span>Client Note</span>
+                                                <strong><?php echo nl2br(htmlspecialchars((string)$quotationDraft['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($quotationStatus === 'draft'): ?>
                                             <form method="POST" class="inquiry-quote-approve-form">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="action" value="approve_quotation_draft">
@@ -981,14 +1038,51 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
                                                 <button type="submit" class="btn-primary">Approve Quotation Draft</button>
                                             </form>
-                                        <?php elseif ((string)$quotationDraft['status'] === 'Approved' && empty($quotationDraft['project_id'])): ?>
-                                            <form method="POST" class="inquiry-project-create-form">
+                                        <?php elseif ($quotationStatus === 'approved' && empty($quotationDraft['project_id'])): ?>
+                                            <?php if (!$quotationRecipient || empty($quotationRecipient['email'])): ?>
+                                                <div class="inquiry-detail inquiry-detail--wide">
+                                                    <span>Send Quotation</span>
+                                                    <strong>Recipient email is missing. Update the inquiry or client account first.</strong>
+                                                </div>
+                                            <?php else: ?>
+                                            <form
+                                                method="POST"
+                                                class="inquiry-quote-send-form"
+                                                data-quote-recipient-name="<?php echo htmlspecialchars((string)$quotationRecipient['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-quote-recipient-email="<?php echo htmlspecialchars((string)$quotationRecipient['email'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-quote-recipient-contact="<?php echo htmlspecialchars((string)$quotationRecipient['contact'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-quote-recipient-source="<?php echo htmlspecialchars((string)$quotationRecipient['source_label'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            >
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="create_project_from_quote">
+                                                <input type="hidden" name="action" value="send_quotation_to_client">
                                                 <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                 <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-primary">Create Project</button>
+                                                <button type="submit" class="btn-primary">Send To Client</button>
                                             </form>
+                                            <?php endif; ?>
+                                        <?php elseif ($quotationStatus === 'revision_requested' && empty($quotationDraft['project_id'])): ?>
+                                            <form method="POST" class="inquiry-quote-revision-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="reopen_quotation_revision">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                                <button type="submit" class="btn-secondary">Reopen For Revision</button>
+                                            </form>
+                                        <?php elseif ($quotationStatus === 'accepted' && empty($quotationDraft['project_id'])): ?>
+                                            <?php if (!$quotationRecipient || empty($quotationRecipient['client_id'])): ?>
+                                                <div class="inquiry-detail inquiry-detail--wide">
+                                                    <span>Project Creation</span>
+                                                    <strong>Create or link a Client account first. Use this accepted inquiry data to avoid retyping.</strong>
+                                                </div>
+                                            <?php else: ?>
+                                                <form method="POST" class="inquiry-project-create-form">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="action" value="create_project_from_quote">
+                                                    <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                    <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                                    <button type="submit" class="btn-primary">Create Project</button>
+                                                </form>
+                                            <?php endif; ?>
                                         <?php elseif (!empty($quotationDraft['project_id'])): ?>
                                             <div class="inquiry-created-project">
                                                 <span>Project Created</span>

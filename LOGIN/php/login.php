@@ -61,9 +61,10 @@ $flash_email = filter_var((string)($login_flash['email'] ?? ''), FILTER_VALIDATE
     : '';
 
 if (isset($_GET['timeout'])) {
-    $error = 'Your session expired after 15 minutes of inactivity. Please log in again.';
+    $error = 'You were logged out after 15 minutes of inactivity. Please log in again.';
+    $error_class = 'login-toast-warning';
 } elseif (isset($_GET['logout'])) {
-    $error = 'You have been logged out successfully.';
+    $error = 'Logged out successfully.';
     $error_class = 'login-toast-success';
     login_debug_log('logout_page_rendered');
 } else {
@@ -421,9 +422,10 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <?php if (isset($_GET['logout']) && $error !== ''): ?>
+    <?php if ((isset($_GET['logout']) || isset($_GET['timeout'])) && $error !== ''): ?>
         <div class="login-toast <?php echo htmlspecialchars($error_class, ENT_QUOTES, 'UTF-8'); ?>" role="status" aria-live="polite">
-            <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
+            <strong><?php echo isset($_GET['timeout']) ? 'Session expired' : 'Logged out'; ?></strong>
+            <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
     <?php endif; ?>
 
@@ -453,7 +455,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
                     </div>
                     <h2>Login</h2>
 
-                    <?php if ($error && !isset($_GET['logout'])): ?>
+                    <?php if ($error && !isset($_GET['logout']) && !isset($_GET['timeout'])): ?>
                         <div class="error-box <?php echo htmlspecialchars($error_class, ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
                            <?php if ($error_class === 'error-locked'): ?>
@@ -530,7 +532,8 @@ window.lockoutConfig = {
     unlockAt: <?php echo (int)(time() + (int)$remaining_seconds); ?>,
     lockType: <?php echo json_encode($lock_type); ?>,
     statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php',
-    isLogoutPage: <?php echo isset($_GET['logout']) ? 'true' : 'false'; ?>
+    isLogoutPage: <?php echo isset($_GET['logout']) ? 'true' : 'false'; ?>,
+    isTimeoutPage: <?php echo isset($_GET['timeout']) ? 'true' : 'false'; ?>
 };
 </script>
     <script src="../js/login.js"></script>

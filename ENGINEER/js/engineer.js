@@ -10,101 +10,6 @@
     document.head.appendChild(guardScript);
 })();
 
-const ENGINEER_SIDEBAR_STORAGE_KEY = 'engineer.sidebar.shrink';
-
-const persistSidebarState = (isShrink) => {
-    try {
-        window.localStorage.setItem(ENGINEER_SIDEBAR_STORAGE_KEY, isShrink ? '1' : '0');
-    } catch (error) {
-        // Ignore storage failures.
-    }
-};
-
-const readSidebarState = () => {
-    try {
-        return window.localStorage.getItem(ENGINEER_SIDEBAR_STORAGE_KEY) === '1';
-    } catch (error) {
-        return false;
-    }
-};
-
-const createUiSound = () => {
-    let audioContext = null;
-
-    const play = (frequency = 520, duration = 0.045, volume = 0.025) => {
-        try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) {
-                return;
-            }
-
-            audioContext = audioContext || new AudioContextClass();
-
-            const startSound = () => {
-                const oscillator = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-
-                oscillator.type = 'sine';
-                oscillator.frequency.value = frequency;
-                gain.gain.setValueAtTime(volume, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
-                oscillator.connect(gain);
-                gain.connect(audioContext.destination);
-                oscillator.start();
-                oscillator.stop(audioContext.currentTime + duration);
-            };
-
-            if (audioContext.state === 'suspended') {
-                audioContext.resume().then(startSound).catch(() => {});
-                return;
-            }
-
-            startSound();
-        } catch (error) {
-            // Tahimik lang kapag blocked ng browser ang sound.
-        }
-    };
-
-    return {
-        tap: () => play(520, 0.04, 0.018),
-        toggle: () => play(660, 0.05, 0.022),
-        logout: () => play(320, 0.06, 0.024),
-    };
-};
-
-const setSidebarState = (isShrink, shouldPersist = false) => {
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content, .dashboard-main');
-    const toggleButton = document.querySelector('[data-sidebar-toggle]');
-
-    if (!sidebar || !mainContent) {
-        return;
-    }
-
-    sidebar.classList.toggle('shrink', isShrink);
-    mainContent.classList.toggle('sidebar-shrink', isShrink);
-    document.documentElement.classList.toggle('ops-sidebar-shrink-pref', isShrink && window.innerWidth > 768);
-
-    if (toggleButton) {
-        toggleButton.setAttribute('aria-label', isShrink ? 'Expand menu' : 'Collapse menu');
-        toggleButton.setAttribute('aria-expanded', String(!isShrink));
-    }
-
-    if (shouldPersist) {
-        persistSidebarState(isShrink);
-    }
-};
-
-const closeMobileSidebar = () => {
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.querySelector('[data-sidebar-overlay]');
-    const mobileToggle = document.querySelector('[data-sidebar-mobile-toggle]');
-
-    sidebar?.classList.remove('mobile-open');
-    overlay?.classList.remove('active');
-    mobileToggle?.classList.remove('active');
-};
-
 const spotlightTask = (taskId) => {
     if (!taskId) {
         return;
@@ -655,86 +560,12 @@ const initEngineerPasswordChange = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
-    const mobileToggle = document.querySelector('[data-sidebar-mobile-toggle]');
-    const overlay = document.querySelector('[data-sidebar-overlay]');
-    const uiSound = createUiSound();
-    const applyStoredSidebarState = () => {
-        const isDesktop = window.innerWidth > 768;
-        setSidebarState(isDesktop ? readSidebarState() : false, false);
-    };
-
-    sidebarToggle?.addEventListener('click', () => {
-        uiSound.toggle();
-        const sidebar = document.querySelector('.sidebar');
-        const nextShrinkState = !sidebar?.classList.contains('shrink');
-        setSidebarState(nextShrinkState, true);
-    });
-
-    mobileToggle?.addEventListener('click', () => {
-        uiSound.toggle();
-        const sidebar = document.querySelector('.sidebar');
-        const isOpen = sidebar?.classList.toggle('mobile-open');
-        overlay?.classList.toggle('active', Boolean(isOpen));
-        mobileToggle.classList.toggle('active', Boolean(isOpen));
-    });
-
-    overlay?.addEventListener('click', closeMobileSidebar);
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 768) {
-            closeMobileSidebar();
-        }
-
-        applyStoredSidebarState();
-    });
-
-    document.querySelectorAll('.menu-link').forEach((link) => {
-        link.addEventListener('click', (event) => {
-            const isLogout = link.classList.contains('logout');
-            const href = link.getAttribute('href');
-            uiSound[isLogout ? 'logout' : 'tap']();
-
-            if (window.innerWidth <= 768) {
-                closeMobileSidebar();
-            }
-
-            if (
-                event.defaultPrevented ||
-                event.button !== 0 ||
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey ||
-                link.target === '_blank' ||
-                !href ||
-                href.startsWith('#')
-            ) {
-                return;
-            }
-
-            const linkUrl = new URL(href, window.location.href);
-            const currentUrl = new URL(window.location.href);
-            const isSamePage = linkUrl.pathname === currentUrl.pathname && linkUrl.search === currentUrl.search && !linkUrl.hash;
-
-            if (isSamePage) {
-                return;
-            }
-
-            event.preventDefault();
-            window.setTimeout(() => {
-                window.location.href = linkUrl.href;
-            }, isLogout ? 100 : 75);
-        });
-    });
-
     const taskFromQuery = new URLSearchParams(window.location.search).get('task');
     initEngineerClock();
     initEngineerProfileMenu();
     initProfilePhotoPreview();
     initEngineerPasswordChange();
     initTaskFilters();
-    applyStoredSidebarState();
 
     if (taskFromQuery) {
         window.setTimeout(() => {

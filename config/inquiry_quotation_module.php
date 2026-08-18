@@ -2,6 +2,8 @@
 // Shared Inquiry Quotation helpers para system-generated quote galing sa Engineer costing.
 
 require_once __DIR__ . '/project_history.php';
+require_once __DIR__ . '/Config.php';
+require_once __DIR__ . '/../services/EmailService.php';
 
 function inquiry_quote_table_exists(mysqli $conn, string $tableName): bool
 {
@@ -62,6 +64,101 @@ function inquiry_quote_ensure_tables(mysqli $conn): void
     if (!inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id')) {
         $conn->query("ALTER TABLE inquiry_quotation_drafts ADD COLUMN project_id INT NULL AFTER inspection_id");
     }
+
+    $draftColumns = [
+        'sent_by' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_by INT NULL AFTER approved_at",
+        'sent_to_client_id' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_client_id INT NULL AFTER sent_by",
+        'sent_to_name' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_name VARCHAR(190) NULL AFTER sent_to_client_id",
+        'sent_to_email' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_email VARCHAR(190) NULL AFTER sent_to_name",
+        'sent_to_contact' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_contact VARCHAR(40) NULL AFTER sent_to_email",
+        'recipient_source' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN recipient_source VARCHAR(40) NULL AFTER sent_to_contact",
+        'public_access_token_hash' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN public_access_token_hash VARCHAR(255) NULL AFTER recipient_source",
+        'public_token_expires_at' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN public_token_expires_at DATETIME NULL AFTER public_access_token_hash",
+        'client_decision_note' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN client_decision_note TEXT NULL AFTER sent_at",
+        'client_decision_at' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN client_decision_at DATETIME NULL AFTER client_decision_note",
+    ];
+
+    foreach ($draftColumns as $column => $sql) {
+        if (!inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', $column)) {
+            $conn->query($sql);
+        }
+    }
+
+    $conn->query(
+        "CREATE TABLE IF NOT EXISTS inquiry_quotation_status_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            draft_id INT NOT NULL,
+            from_status VARCHAR(40) NULL,
+            to_status VARCHAR(40) NOT NULL,
+            note TEXT NULL,
+            actor_id INT NOT NULL,
+            actor_role VARCHAR(40) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_inquiry_quote_history_draft (draft_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+}
+
+function inquiry_quote_normalize_status(?string $status): string
+{
+    $status = strtolower(trim((string)$status));
+    return str_replace(' ', '_', $status);
+}
+
+function inquiry_quote_status_label(?string $status): string
+{
+    $labels = [
+        'draft' => 'Draft',
+        'approved' => 'Approved',
+        'sent' => 'Sent',
+        'accepted' => 'Accepted',
+        'revision_requested' => 'Revision Requested',
+        'rejected' => 'Rejected',
+    ];
+
+    $normalized = inquiry_quote_normalize_status($status);
+    return $labels[$normalized] ?? ucwords(str_replace('_', ' ', $normalized));
+}
+
+function inquiry_quote_status_class(?string $status): string
+{
+    $map = [
+        'draft' => 'is-draft',
+        'approved' => 'is-approved',
+        'sent' => 'is-sent',
+        'accepted' => 'is-accepted',
+        'revision_requested' => 'is-sent',
+        'rejected' => 'is-rejected',
+    ];
+
+    return $map[inquiry_quote_normalize_status($status)] ?? 'is-draft';
+}
+
+function inquiry_quote_public_token_hash(string $token): string
+{
+    return hash('sha256', $token);
+}
+
+function inquiry_quote_public_link(string $token): string
+{
+    $appUrl = rtrim((string)Config::getInstance()->get('APP_URL', 'http://localhost/codesamplecaps'), '/');
+    return $appUrl . '/LOGIN/php/inquiry_quotation.php?token=' . urlencode($token);
+}
+
+function inquiry_quote_add_history(mysqli $conn, int $draftId, ?string $fromStatus, string $toStatus, string $note, int $actorId, string $actorRole): void
+{
+    $stmt = $conn->prepare(
+        'INSERT INTO inquiry_quotation_status_history (draft_id, from_status, to_status, note, actor_id, actor_role)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    if (!$stmt) {
+        return;
+    }
+
+    $from = $fromStatus !== null ? inquiry_quote_normalize_status($fromStatus) : null;
+    $to = inquiry_quote_normalize_status($toStatus);
+    $stmt->bind_param('isssis', $draftId, $from, $to, $note, $actorId, $actorRole);
+    $stmt->execute();
 }
 
 function inquiry_quote_column_exists(mysqli $conn, string $tableName, string $columnName): bool
@@ -199,6 +296,187 @@ function inquiry_quote_fetch_full(mysqli $conn, int $draftId): ?array
     return $row ?: null;
 }
 
+function inquiry_quote_resolve_recipient(mysqli $conn, int $draftId): array
+{
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation) {
+        throw new RuntimeException('Quotation draft not found.');
+    }
+
+    $inquiryEmail = strtolower(trim((string)($quotation['email'] ?? '')));
+    $inquiryName = trim((string)($quotation['client_name'] ?? ''));
+    $inquiryContact = trim((string)($quotation['contact_no'] ?? ''));
+
+    $client = null;
+    if (inquiry_quote_column_exists($conn, 'service_inquiries', 'client_id')) {
+        $stmt = $conn->prepare(
+            'SELECT u.id, u.full_name, u.email, u.phone
+             FROM service_inquiries si
+             INNER JOIN users u ON u.id = si.client_id
+             WHERE si.id = ? AND u.role = "client" AND u.status = "active"
+             LIMIT 1'
+        );
+        if ($stmt) {
+            $inquiryId = (int)($quotation['inquiry_id'] ?? 0);
+            $stmt->bind_param('i', $inquiryId);
+            $stmt->execute();
+            $client = $stmt->get_result()->fetch_assoc() ?: null;
+        }
+    }
+
+    if (!$client && filter_var($inquiryEmail, FILTER_VALIDATE_EMAIL)) {
+        $stmt = $conn->prepare(
+            'SELECT id, full_name, email, phone
+             FROM users
+             WHERE LOWER(email) = ? AND role = "client" AND status = "active"
+             LIMIT 1'
+        );
+        if ($stmt) {
+            $stmt->bind_param('s', $inquiryEmail);
+            $stmt->execute();
+            $client = $stmt->get_result()->fetch_assoc() ?: null;
+        }
+    }
+
+    if ($client) {
+        return [
+            'client_id' => (int)$client['id'],
+            'name' => trim((string)($client['full_name'] ?? '')) ?: $inquiryName,
+            'email' => strtolower(trim((string)($client['email'] ?? ''))),
+            'contact' => trim((string)($client['phone'] ?? '')) ?: $inquiryContact,
+            'source' => 'existing_client',
+            'source_label' => 'Existing Client Account',
+        ];
+    }
+
+    return [
+        'client_id' => null,
+        'name' => $inquiryName,
+        'email' => $inquiryEmail,
+        'contact' => $inquiryContact,
+        'source' => 'inquiry',
+        'source_label' => 'Inquiry',
+    ];
+}
+
+function inquiry_quote_fetch_by_public_token(mysqli $conn, string $token): ?array
+{
+    inquiry_quote_ensure_tables($conn);
+    $token = trim($token);
+    if ($token === '') {
+        return null;
+    }
+
+    $tokenHash = inquiry_quote_public_token_hash($token);
+    $stmt = $conn->prepare(
+        "SELECT id
+         FROM inquiry_quotation_drafts
+         WHERE public_access_token_hash = ?
+         AND public_token_expires_at > NOW()
+         AND status IN ('sent', 'accepted', 'revision_requested', 'rejected')
+         LIMIT 1"
+    );
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('s', $tokenHash);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    if (!$row) {
+        return null;
+    }
+
+    return inquiry_quote_fetch_full($conn, (int)$row['id']);
+}
+
+function inquiry_quote_fetch_history(mysqli $conn, int $draftId): array
+{
+    if (!inquiry_quote_table_exists($conn, 'inquiry_quotation_status_history')) {
+        return [];
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT h.*, u.full_name
+         FROM inquiry_quotation_status_history h
+         LEFT JOIN users u ON u.id = h.actor_id
+         WHERE h.draft_id = ?
+         ORDER BY h.created_at ASC, h.id ASC"
+    );
+    if (!$stmt) {
+        return [];
+    }
+
+    $stmt->bind_param('i', $draftId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function inquiry_quote_fetch_for_client(mysqli $conn, int $clientId): array
+{
+    inquiry_quote_ensure_tables($conn);
+
+    $stmt = $conn->prepare('SELECT email FROM users WHERE id = ? AND role = "client" LIMIT 1');
+    if (!$stmt) {
+        return [];
+    }
+
+    $stmt->bind_param('i', $clientId);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $email = strtolower(trim((string)($user['email'] ?? '')));
+    if ($email === '') {
+        return [];
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT
+            q.*,
+            inquiry.client_name,
+            inquiry.email,
+            inquiry.service_category,
+            inquiry.site_address,
+            si.engineer_id,
+            e.full_name AS engineer_name
+         FROM inquiry_quotation_drafts q
+         INNER JOIN service_inquiries inquiry ON inquiry.id = q.inquiry_id
+         INNER JOIN site_inspections si ON si.id = q.inspection_id
+         INNER JOIN users e ON e.id = si.engineer_id
+         WHERE LOWER(inquiry.email) = ?
+         AND q.status IN ('sent', 'accepted', 'revision_requested', 'rejected')
+         ORDER BY q.updated_at DESC, q.id DESC"
+    );
+    if (!$stmt) {
+        return [];
+    }
+
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function inquiry_quote_client_can_access(mysqli $conn, int $draftId, int $clientId): bool
+{
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation) {
+        return false;
+    }
+
+    $stmt = $conn->prepare('SELECT email FROM users WHERE id = ? AND role = "client" LIMIT 1');
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('i', $clientId);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+
+    $allowedClientStatuses = ['sent', 'accepted', 'revision_requested', 'rejected'];
+    $emailMatches = strtolower(trim((string)($user['email'] ?? ''))) === strtolower(trim((string)($quotation['email'] ?? '')));
+
+    return $emailMatches && in_array(inquiry_quote_normalize_status((string)($quotation['status'] ?? '')), $allowedClientStatuses, true);
+}
+
 function inquiry_quote_fetch_items(mysqli $conn, int $draftId): array
 {
     $stmt = $conn->prepare(
@@ -296,10 +574,13 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
 
 function inquiry_quote_approve(mysqli $conn, int $draftId, int $adminId): void
 {
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
+
     $stmt = $conn->prepare(
         "UPDATE inquiry_quotation_drafts
-         SET status = 'Approved', approved_by = ?, approved_at = NOW()
-         WHERE id = ? AND status = 'Draft'"
+         SET status = 'approved', approved_by = ?, approved_at = NOW(), client_decision_note = NULL, client_decision_at = NULL
+         WHERE id = ? AND status IN ('Draft', 'draft')"
     );
     if (!$stmt) {
         throw new RuntimeException('Unable to prepare quotation approval.');
@@ -311,6 +592,196 @@ function inquiry_quote_approve(mysqli $conn, int $draftId, int $adminId): void
     if ($stmt->affected_rows <= 0) {
         throw new RuntimeException('Only draft quotations can be approved.');
     }
+
+    inquiry_quote_add_history($conn, $draftId, $fromStatus, 'approved', 'Admin approved quotation draft.', $adminId, 'admin');
+}
+
+function inquiry_quote_send_to_client(mysqli $conn, int $draftId, int $adminId): void
+{
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation) {
+        throw new RuntimeException('Quotation draft not found.');
+    }
+
+    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
+    if ($fromStatus !== 'approved') {
+        throw new RuntimeException('Only approved quotations can be sent to client.');
+    }
+
+    $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
+    $recipientName = trim((string)$recipient['name']);
+    $recipientEmail = strtolower(trim((string)$recipient['email']));
+    $recipientContact = trim((string)$recipient['contact']);
+    $recipientSource = (string)$recipient['source'];
+    $recipientClientId = $recipient['client_id'] !== null ? (int)$recipient['client_id'] : null;
+
+    if ($recipientName === '') {
+        throw new RuntimeException('Recipient name is missing.');
+    }
+
+    if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+        throw new RuntimeException('Recipient email is missing or invalid.');
+    }
+
+    $publicToken = bin2hex(random_bytes(32));
+    $publicTokenHash = inquiry_quote_public_token_hash($publicToken);
+    $publicLink = inquiry_quote_public_link($publicToken);
+    $emailService = new EmailService();
+
+    if (!$emailService->sendInquiryQuotationLink($recipientEmail, $recipientName, (string)$quotation['quotation_no'], $publicLink, 14)) {
+        error_log('Inquiry quotation email failed for draft #' . $draftId . ': ' . $emailService->getError());
+        throw new RuntimeException('Quotation email cannot be sent right now. Please check email settings and try again.');
+    }
+
+    $stmt = $conn->prepare(
+        "UPDATE inquiry_quotation_drafts
+         SET status = 'sent',
+             sent_by = ?,
+             sent_to_client_id = ?,
+             sent_to_name = ?,
+             sent_to_email = ?,
+             sent_to_contact = ?,
+             recipient_source = ?,
+             public_access_token_hash = ?,
+             public_token_expires_at = DATE_ADD(NOW(), INTERVAL 14 DAY),
+             sent_at = NOW(),
+             client_decision_note = NULL,
+             client_decision_at = NULL
+         WHERE id = ? AND status IN ('Approved', 'approved')"
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Unable to prepare quotation send.');
+    }
+
+    $stmt->bind_param(
+        'iisssssi',
+        $adminId,
+        $recipientClientId,
+        $recipientName,
+        $recipientEmail,
+        $recipientContact,
+        $recipientSource,
+        $publicTokenHash,
+        $draftId
+    );
+    $stmt->execute();
+    if ($stmt->affected_rows <= 0) {
+        throw new RuntimeException('Only approved quotations can be sent to client.');
+    }
+
+    inquiry_quote_add_history($conn, $draftId, $fromStatus, 'sent', 'Admin sent quotation to ' . $recipientName . '.', $adminId, 'admin');
+}
+
+function inquiry_quote_client_respond(mysqli $conn, int $draftId, int $clientId, string $decision, string $note): void
+{
+    $decision = inquiry_quote_normalize_status($decision);
+    if (!in_array($decision, ['accepted', 'revision_requested', 'rejected'], true)) {
+        throw new RuntimeException('Invalid client quotation decision.');
+    }
+
+    if (!inquiry_quote_client_can_access($conn, $draftId, $clientId)) {
+        throw new RuntimeException('Quotation not found in your account.');
+    }
+
+    $note = trim($note);
+    if (in_array($decision, ['revision_requested', 'rejected'], true) && strlen($note) < 5) {
+        throw new RuntimeException('Please enter a clear reason before submitting this decision.');
+    }
+
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
+    if ($fromStatus !== 'sent') {
+        throw new RuntimeException('Client decision is only allowed after Admin sends the quotation.');
+    }
+
+    $stmt = $conn->prepare(
+        "UPDATE inquiry_quotation_drafts
+         SET status = ?, client_decision_note = ?, client_decision_at = NOW()
+         WHERE id = ? AND status = 'sent'"
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Unable to prepare client quotation decision.');
+    }
+
+    $stmt->bind_param('ssi', $decision, $note, $draftId);
+    $stmt->execute();
+    if ($stmt->affected_rows <= 0) {
+        throw new RuntimeException('This quotation can no longer be changed.');
+    }
+
+    inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, $clientId, 'client');
+}
+
+function inquiry_quote_public_respond(mysqli $conn, string $token, string $decision, string $note): void
+{
+    $quotation = inquiry_quote_fetch_by_public_token($conn, $token);
+    if (!$quotation) {
+        throw new RuntimeException('Quotation link is invalid or expired.');
+    }
+
+    $decision = inquiry_quote_normalize_status($decision);
+    if (!in_array($decision, ['accepted', 'revision_requested', 'rejected'], true)) {
+        throw new RuntimeException('Invalid quotation decision.');
+    }
+
+    $note = trim($note);
+    if (in_array($decision, ['revision_requested', 'rejected'], true) && strlen($note) < 5) {
+        throw new RuntimeException('Please enter a clear reason before submitting this decision.');
+    }
+
+    $draftId = (int)$quotation['id'];
+    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
+    if ($fromStatus !== 'sent') {
+        throw new RuntimeException('This quotation can no longer be changed.');
+    }
+
+    $stmt = $conn->prepare(
+        "UPDATE inquiry_quotation_drafts
+         SET status = ?, client_decision_note = ?, client_decision_at = NOW()
+         WHERE id = ? AND public_access_token_hash = ? AND status = 'sent'"
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Unable to prepare quotation decision.');
+    }
+
+    $tokenHash = inquiry_quote_public_token_hash($token);
+    $stmt->bind_param('ssis', $decision, $note, $draftId, $tokenHash);
+    $stmt->execute();
+    if ($stmt->affected_rows <= 0) {
+        throw new RuntimeException('This quotation can no longer be changed.');
+    }
+
+    inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, 0, 'prospect');
+}
+
+function inquiry_quote_reopen_for_revision(mysqli $conn, int $draftId, int $adminId): void
+{
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation) {
+        throw new RuntimeException('Quotation draft not found.');
+    }
+
+    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
+    if ($fromStatus !== 'revision_requested') {
+        throw new RuntimeException('Only revision-requested quotations can be reopened.');
+    }
+
+    $stmt = $conn->prepare(
+        "UPDATE inquiry_quotation_drafts
+         SET status = 'draft'
+         WHERE id = ? AND status = 'revision_requested'"
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Unable to prepare quotation revision.');
+    }
+
+    $stmt->bind_param('i', $draftId);
+    $stmt->execute();
+    if ($stmt->affected_rows <= 0) {
+        throw new RuntimeException('Only revision-requested quotations can be reopened.');
+    }
+
+    inquiry_quote_add_history($conn, $draftId, $fromStatus, 'draft', 'Admin reopened quotation for revision.', $adminId, 'admin');
 }
 
 function inquiry_quote_generate_project_code(mysqli $conn): string
@@ -417,15 +888,20 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
         throw new RuntimeException('Quotation draft not found.');
     }
 
-    if ((string)($quotation['status'] ?? '') !== 'Approved') {
-        throw new RuntimeException('Approve the quotation first before creating a project.');
+    if (inquiry_quote_normalize_status($quotation['status'] ?? '') !== 'accepted') {
+        throw new RuntimeException('Client must accept the quotation before creating a project.');
     }
 
     if (!empty($quotation['project_id'])) {
         return (int)$quotation['project_id'];
     }
 
-    $clientId = inquiry_quote_get_or_create_client($conn, $quotation, $adminId);
+    $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
+    $clientId = (int)($recipient['client_id'] ?? 0);
+    if ($clientId <= 0) {
+        throw new RuntimeException('Create or link a Client account before creating a project from this accepted quotation.');
+    }
+
     $projectCode = inquiry_quote_generate_project_code($conn);
     $projectName = inquiry_quote_unique_project_title($conn, $quotation);
     $description = trim((string)($quotation['engineer_findings'] ?: $quotation['description'] ?? ''));
@@ -514,7 +990,7 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
              ON DUPLICATE KEY UPDATE budget_amount = VALUES(budget_amount), budget_notes = VALUES(budget_notes), updated_by = VALUES(updated_by)'
         );
         if ($budget) {
-            $budgetNotes = 'Auto-created from approved quotation ' . $quotationNo;
+            $budgetNotes = 'Auto-created from accepted quotation ' . $quotationNo;
             $budget->bind_param('idsii', $projectId, $budgetAmount, $budgetNotes, $adminId, $adminId);
             $budget->execute();
         }
@@ -549,7 +1025,7 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
             $projectId,
             $adminId,
             'Project Created',
-            'Project was created from approved quotation ' . $quotationNo . '.',
+            'Project was created from accepted quotation ' . $quotationNo . '.',
             null,
             $projectCode,
             'inquiry_quotation',
@@ -560,8 +1036,8 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
             $conn,
             $projectId,
             $adminId,
-            'Quotation Approved',
-            'Approved quotation ' . $quotationNo . ' was used as the project source.',
+            'Quotation Accepted',
+            'Accepted quotation ' . $quotationNo . ' was used as the project source.',
             null,
             inquiry_quote_format_money($budgetAmount),
             'inquiry_quotation',
@@ -573,7 +1049,7 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
             $projectId,
             $adminId,
             'Project Budget Created',
-            'Initial project budget was copied from the approved quotation total.',
+            'Initial project budget was copied from the accepted quotation total.',
             null,
             inquiry_quote_format_money($budgetAmount),
             'inquiry_quotation',

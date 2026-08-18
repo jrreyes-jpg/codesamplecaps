@@ -160,11 +160,14 @@ const initStaleLoginWindowGuard = () => {
     const submitButton = form?.querySelector('button[type="submit"]');
     const defaultSubmitText = submitButton?.textContent || 'Login';
 
-    if (window.lockoutConfig?.isLogoutPage) {
+    const isLogoutPage = window.lockoutConfig?.isLogoutPage;
+    const isTimeoutPage = window.lockoutConfig?.isTimeoutPage;
+
+    if (isLogoutPage || isTimeoutPage) {
         localStorage.removeItem('edge_auth_state');
         try {
             localStorage.setItem('edge_login_flow', JSON.stringify({
-                status: 'logged-out',
+                status: isTimeoutPage ? 'timed-out' : 'logged-out',
                 at: Date.now(),
             }));
         } catch (error) {
@@ -176,8 +179,8 @@ const initStaleLoginWindowGuard = () => {
         }
     }
 
-    if (!form || window.location.search.includes('logout=1')) {
-        if (window.lockoutConfig?.isLogoutPage) {
+    if (!form || window.location.search.includes('logout=1') || window.location.search.includes('timeout=1')) {
+        if (isLogoutPage || isTimeoutPage) {
             form?.reset();
             if (email) email.value = '';
             if (password) password.value = '';
@@ -294,7 +297,7 @@ const initLoginToast = () => {
     window.setTimeout(() => {
         toast.classList.add('is-hiding');
         window.setTimeout(() => toast.remove(), 220);
-    }, 4500);
+    }, 7000);
 };
 
 const initEmailLockStatus = () => {

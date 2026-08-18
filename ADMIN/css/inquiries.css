@@ -843,6 +843,36 @@
     color: #475569;
 }
 
+.inquiry-confirm__details {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 8px 14px;
+    margin: 14px 0 0;
+    padding: 14px;
+    border: 1px solid #dbe7ef;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.inquiry-confirm__details dt,
+.inquiry-confirm__details dd {
+    margin: 0;
+}
+
+.inquiry-confirm__details dt {
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.inquiry-confirm__details dd {
+    min-width: 0;
+    color: #0f172a;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
 .inquiry-confirm__actions {
     display: flex;
     justify-content: flex-end;

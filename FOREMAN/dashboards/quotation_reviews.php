@@ -38,7 +38,6 @@ if ($quotationId > 0 && $tablesReady) {
 }
 
 $items = $selectedQuotation ? quotation_module_fetch_quotation_items($conn, (int)$selectedQuotation['id']) : [];
-$isUnderReview = $selectedQuotation && (string)$selectedQuotation['status'] === 'under_review';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,9 +62,9 @@ $isUnderReview = $selectedQuotation && (string)$selectedQuotation['status'] === 
         <section class="page-hero page-hero--review">
             <div class="page-hero__content">
                 <span class="page-hero__eyebrow">Quotation Review</span>
-                <h1 class="page-hero__title">Foreman Review Queue</h1>
+                <h1 class="page-hero__title">Quotation Review Removed</h1>
                 <p class="page-hero__copy">
-                    Dito review-only ang responsibility mo. Engineer pa rin ang may-ari ng quotation draft at Super Admin pa rin ang final approver.
+                    Foreman is no longer part of the normal quotation approval flow. Admin now reviews Engineer costing and handles final quotation approval.
                 </p>
                 <div class="hero-actions">
                     <a class="btn-primary" href="/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php">Back To Overview</a>
@@ -75,11 +74,11 @@ $isUnderReview = $selectedQuotation && (string)$selectedQuotation['status'] === 
 
             <aside class="page-hero__aside">
                 <div class="aside-stat">
-                    <span>Assigned Reviews</span>
+                    <span>Legacy Assigned</span>
                     <strong><?php echo count($quotations); ?></strong>
                 </div>
                 <div class="aside-stat">
-                    <span>Pending Review</span>
+                    <span>Action Required</span>
                     <strong><?php echo count(array_filter($quotations, static function ($quotation): bool {
                         return (string)($quotation['status'] ?? '') === 'under_review';
                     })); ?></strong>
@@ -106,7 +105,7 @@ $isUnderReview = $selectedQuotation && (string)$selectedQuotation['status'] === 
                         <div>
                             <span class="section-badge">Queue</span>
                             <h2>My Review Queue</h2>
-                            <p>Open a quotation, review execution feasibility, then leave a note or return it to Engineer.</p>
+                            <p>Old assigned quotations can still be viewed, but Foreman can no longer approve or return quotation drafts.</p>
                         </div>
                     </div>
 
@@ -169,46 +168,12 @@ $isUnderReview = $selectedQuotation && (string)$selectedQuotation['status'] === 
                             </div>
                         </article>
 
-                        <?php if ($isUnderReview): ?>
-                            <form method="POST" action="/codesamplecaps/controllers/QuotationReviewController.php" class="panel-card review-form-panel review-form-panel--priority">
-                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                                <input type="hidden" name="quotation_id" value="<?php echo (int)$selectedQuotation['id']; ?>">
-
-                                <div class="section-heading section-heading--responsive">
-                                    <div>
-                                        <span class="section-badge">Action Required</span>
-                                        <h2>Foreman Feedback Panel</h2>
-                                        <p>Dito ka mag-iinput ng feedback. Isulat ang note sa textbox sa ibaba, tapos piliin kung suggestion lang ba ito o ibabalik sa Engineer.</p>
-                                    </div>
-                                </div>
-
-                                <div class="review-action-guide">
-                                    <article class="review-action-card">
-                                        <strong>Save Suggestion</strong>
-                                        <p>Mag-type ng feedback sa textbox, then pindutin ito kung recommendation lang at hindi kailangan ibalik ang quotation.</p>
-                                    </article>
-                                    <article class="review-action-card review-action-card--danger">
-                                        <strong>Return To Engineer</strong>
-                                        <p>Mag-type ng reason sa textbox, then pindutin ito kung may issue na kailangan talagang i-revise ni Engineer.</p>
-                                    </article>
-                                </div>
-
-                                <label class="review-form-label" for="reviewMessage">Input Your Feedback Here</label>
-                                <textarea id="reviewMessage" name="message" class="review-textarea" placeholder="Halimbawa: Kulang ang manpower para matapos sa 7 days. Recommend additional 2 helpers for conduit installation." required></textarea>
-                                <p class="review-form-helper">Textbox ito para sa note ni Foreman. Pagkatapos magsulat, piliin ang button sa ibaba.</p>
-                                <div class="review-form-actions">
-                                    <button class="btn-primary" type="submit" name="action" value="save_suggestion">Save Suggestion</button>
-                                    <button class="btn-secondary btn-secondary--danger" type="submit" name="action" value="return_to_engineer">Return To Engineer</button>
-                                </div>
-                            </form>
-                        <?php else: ?>
-                            <article class="panel-card review-status-panel">
-                                <div class="review-status-banner">
-                                    <strong>Feedback actions are currently unavailable</strong>
-                                    <p>Makikita lang ang input box at ang buttons kapag ang quotation status ay <code>Under Review</code>. Ang current status nito ay <strong><?php echo htmlspecialchars(quotation_module_status_label((string)$selectedQuotation['status'])); ?></strong>.</p>
-                                </div>
-                            </article>
-                        <?php endif; ?>
+                        <article class="panel-card review-status-panel">
+                            <div class="review-status-banner">
+                                <strong>Foreman quotation actions are disabled</strong>
+                                <p>Admin now handles quotation review, return, approval, and sending. Current status: <strong><?php echo htmlspecialchars(quotation_module_status_label((string)$selectedQuotation['status'])); ?></strong>.</p>
+                            </div>
+                        </article>
 
                         <article class="panel-card">
                             <div class="section-heading section-heading--responsive">

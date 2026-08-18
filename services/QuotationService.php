@@ -152,11 +152,7 @@ class QuotationService
     {
         $quotation = $this->requireQuotation($quotationId);
 
-        if (!quotation_user_can('submit_for_review', $actorRole)) {
-            throw new RuntimeException('Only engineers can submit quotation drafts for review.');
-        }
-
-        return $this->transitionQuotation($quotation, 'under_review', $actorId, $actorRole, $remarks ?: 'Submitted for foreman review.');
+        throw new RuntimeException('Foreman review is no longer part of the quotation approval flow. Submit the quotation for Admin review instead.');
     }
 
     public function submitForApproval(int $quotationId, int $actorId, string $actorRole, string $remarks = ''): bool
@@ -164,11 +160,11 @@ class QuotationService
         $quotation = $this->requireQuotation($quotationId);
 
         if (!quotation_user_can('submit_for_approval', $actorRole)) {
-            throw new RuntimeException('Only engineers can submit quotations for super admin approval.');
+            throw new RuntimeException('Only engineers can submit quotations for Admin approval.');
         }
 
-        if ($quotation['status'] !== 'under_review') {
-            throw new RuntimeException('Only reviewed quotations can be submitted for approval.');
+        if (!in_array((string)$quotation['status'], ['draft', 'under_review'], true)) {
+            throw new RuntimeException('Only draft quotations can be submitted for Admin approval.');
         }
 
         return $this->transitionQuotation(
@@ -176,7 +172,7 @@ class QuotationService
             'for_approval',
             $actorId,
             $actorRole,
-            $remarks !== '' ? $remarks : 'Engineer submitted quotation for super admin approval.'
+            $remarks !== '' ? $remarks : 'Engineer submitted quotation for Admin approval.'
         );
     }
 
@@ -185,7 +181,7 @@ class QuotationService
         $quotation = $this->requireQuotation($quotationId);
 
         if (!quotation_user_can('review', $actorRole)) {
-            throw new RuntimeException('Only foreman and super admin users can review quotations.');
+            throw new RuntimeException('Foreman quotation review is disabled. Admin now handles quotation review and approval.');
         }
 
         $this->conn->begin_transaction();
@@ -222,7 +218,11 @@ class QuotationService
         $quotation = $this->requireQuotation($quotationId);
 
         if (!quotation_user_can('approve', $actorRole)) {
-            throw new RuntimeException('Only super admin can approve quotations.');
+            throw new RuntimeException('Only Admin can approve quotations.');
+        }
+
+        if ((string)$quotation['status'] !== 'for_approval') {
+            throw new RuntimeException('Only quotations waiting for Admin approval can be approved.');
         }
 
         $items = $this->quotationRepository->getQuotationItems($quotationId);
@@ -296,7 +296,7 @@ class QuotationService
         $quotation = $this->requireQuotation($quotationId);
 
         if (!quotation_user_can('send_to_client', $actorRole)) {
-            throw new RuntimeException('Only super admin can send quotations to the client.');
+            throw new RuntimeException('Only Admin can send quotations to the client.');
         }
 
         return $this->transitionQuotation(
@@ -305,6 +305,27 @@ class QuotationService
             $actorId,
             $actorRole,
             $remarks !== '' ? $remarks : 'Quotation sent to client.'
+        );
+    }
+
+    public function returnToEngineer(int $quotationId, int $actorId, string $actorRole, string $remarks = ''): bool
+    {
+        $quotation = $this->requireQuotation($quotationId);
+
+        if (!quotation_user_can('review', $actorRole)) {
+            throw new RuntimeException('Only Admin can return quotations to Engineer for revision.');
+        }
+
+        if ((string)$quotation['status'] !== 'for_approval') {
+            throw new RuntimeException('Only quotations waiting for Admin approval can be returned to Engineer.');
+        }
+
+        return $this->transitionQuotation(
+            $quotation,
+            'draft',
+            $actorId,
+            $actorRole,
+            $remarks !== '' ? $remarks : 'Admin returned quotation to Engineer for revision.'
         );
     }
 
@@ -452,7 +473,7 @@ class QuotationService
             ['budget_category' => 'assets', 'amount' => $totals['assets_cost'], 'notes' => 'Quotation asset usage subtotal'],
             ['budget_category' => 'manpower', 'amount' => $totals['manpower_cost'], 'notes' => 'Quotation manpower subtotal'],
             ['budget_category' => 'other', 'amount' => $totals['other_cost'], 'notes' => 'Quotation other subtotal'],
-            ['budget_category' => 'profit', 'amount' => $totals['profit_amount'], 'notes' => 'Super admin-approved quotation margin'],
+            ['budget_category' => 'profit', 'amount' => $totals['profit_amount'], 'notes' => 'Admin-approved quotation margin'],
         ];
 
         $this->quotationRepository->syncBudgetBreakdown($projectId, $quotationId, $breakdowns, $actorId);

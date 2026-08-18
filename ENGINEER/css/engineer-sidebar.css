@@ -15,82 +15,12 @@
 
 /* =========================================================
    ENGINEER BRAND POLISH
-   Sakop: Engineer-only centered brand and soft animations.
+   Sakop: Engineer-only active icon pulse. Shared sidebar handles
+   brand alignment, link style, and shine animation.
 ========================================================= */
-
-.sidebar--engineer .brand-block {
-    position: relative;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.sidebar--engineer .brand-block::after {
-    content: "";
-    position: absolute;
-    inset: -40% auto -40% -70%;
-    width: 55%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
-    transform: skewX(-18deg);
-    animation: engineerBrandSweep 4.8s ease-in-out infinite;
-    pointer-events: none;
-}
-
-.sidebar--engineer .sidebar-toggle {
-    position: absolute;
-    left: 10px;
-    z-index: 1;
-}
-
-.sidebar--engineer .brand-title {
-    z-index: 1;
-    padding-inline: 48px 18px;
-    text-align: center;
-    text-shadow: 0 8px 20px rgba(2, 6, 23, 0.28);
-}
-
-.sidebar--engineer .brand-title-link {
-    color: var(--ops-sidebar-text);
-    text-decoration: none;
-    cursor: pointer;
-    transition: color 0.18s ease, transform 0.18s ease;
-}
-
-.sidebar--engineer .brand-title-link:hover,
-.sidebar--engineer .brand-title-link:focus-visible {
-    color: #bbf7d0;
-    transform: translateY(-1px);
-    outline: none;
-}
 
 .sidebar--engineer .menu-link.active-link .menu-icon {
     animation: engineerActivePulse 2.4s ease-in-out infinite;
-}
-
-.sidebar--engineer.shrink .sidebar-toggle,
-html.ops-sidebar-shrink-pref .sidebar--engineer .sidebar-toggle {
-    position: static;
-}
-
-.sidebar--engineer.shrink .brand-block::after,
-html.ops-sidebar-shrink-pref .sidebar--engineer .brand-block::after {
-    display: none;
-}
-
-@keyframes engineerBrandSweep {
-    0%,
-    64% {
-        left: -70%;
-        opacity: 0;
-    }
-
-    74% {
-        opacity: 1;
-    }
-
-    100% {
-        left: 118%;
-        opacity: 0;
-    }
 }
 
 @keyframes engineerActivePulse {
@@ -105,7 +35,6 @@ html.ops-sidebar-shrink-pref .sidebar--engineer .brand-block::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sidebar--engineer .brand-block::after,
     .sidebar--engineer .menu-link.active-link .menu-icon {
         animation: none;
     }

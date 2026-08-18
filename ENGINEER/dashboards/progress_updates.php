@@ -16,11 +16,12 @@ $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engineer Progress Updates - Edge Automation</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
     <link rel="stylesheet" href="../css/engineer-sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
 </head>
 <body>
-<?php include '../sidebar/sidebar_engineer.php'; ?>
+<?php include __DIR__ . '/../../SHARED/layout/sidebar.php'; ?>
 
 <div class="main-content">
     <?php
@@ -67,6 +68,7 @@ $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
     </div>
 </div>
 
+<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="../js/engineer.js"></script>
 
 </body>

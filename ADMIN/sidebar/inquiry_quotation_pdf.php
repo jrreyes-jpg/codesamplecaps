@@ -16,8 +16,8 @@ if (!$quotation) {
     exit();
 }
 
-$quoteStatus = (string)($quotation['status'] ?? 'Draft');
-$isApproved = $quoteStatus === 'Approved';
+$quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
+$isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -47,7 +47,7 @@ $isApproved = $quoteStatus === 'Approved';
                 <span>Quotation No.</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
                 <small class="<?php echo $isApproved ? 'is-approved' : 'is-draft'; ?>">
-                    <?php echo htmlspecialchars($quoteStatus, ENT_QUOTES, 'UTF-8'); ?>
+                    <?php echo htmlspecialchars(inquiry_quote_status_label($quoteStatus), ENT_QUOTES, 'UTF-8'); ?>
                 </small>
             </div>
         </header>

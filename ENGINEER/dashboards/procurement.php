@@ -1043,12 +1043,13 @@ foreach ($purchaseOrders as $purchaseOrder) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Procurement Workspace - Engineer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
     <link rel="stylesheet" href="../css/engineer-sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
 </head>
 <body>
 <div class="dashboard-layout">
-    <?php include __DIR__ . '/../sidebar/sidebar_engineer.php'; ?>
+    <?php include __DIR__ . '/../../SHARED/layout/sidebar.php'; ?>
 
     <main class="dashboard-main">
         <?php
@@ -1510,6 +1511,7 @@ foreach ($purchaseOrders as $purchaseOrder) {
         </section>
     </main>
 </div>
+<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="../js/engineer.js"></script>
 <script>
     (function () {

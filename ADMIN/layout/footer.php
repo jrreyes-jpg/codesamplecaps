@@ -1,10 +1,15 @@
 <?php
 // Footer ng Admin layout. Dito lang ilalagay ang common JS at closing HTML.
 $adminJsFiles = $adminJsFiles ?? [
+    '/codesamplecaps/SHARED/js/operations-sidebar.js',
     '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
     '/codesamplecaps/ADMIN/js/overview.js',
     '/codesamplecaps/assets/js/realtime-updates.js',
 ];
+
+if (!in_array('/codesamplecaps/SHARED/js/operations-sidebar.js', $adminJsFiles, true)) {
+    array_unshift($adminJsFiles, '/codesamplecaps/SHARED/js/operations-sidebar.js');
+}
 
 if (!in_array('/codesamplecaps/assets/js/app-window-guard.js', $adminJsFiles, true)) {
     array_unshift($adminJsFiles, '/codesamplecaps/assets/js/app-window-guard.js');

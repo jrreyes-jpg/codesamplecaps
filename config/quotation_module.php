@@ -407,7 +407,7 @@ if (!function_exists('quotation_module_fetch_history')) {
 if (!function_exists('quotation_module_user_can_access')) {
     function quotation_module_user_can_access(array $quotation, string $role, int $userId): bool
     {
-        if ($role === 'super_admin') {
+        if ($role === 'admin' || $role === 'super_admin') {
             return true;
         }
 

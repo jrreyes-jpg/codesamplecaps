@@ -768,11 +768,11 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
-    '/codesamplecaps/ADMIN/css/inquiries.css',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
-    '/codesamplecaps/ADMIN/js/inquiries.js',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

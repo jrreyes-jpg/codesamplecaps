@@ -5,7 +5,6 @@
 ========================================================= */
 
 @import url("../../SHARED/css/operations-sidebar.css");
-@import url("../../SHARED/css/operations-header.css");
 
 :root {
     --sidebar-width: var(--ops-sidebar-width);

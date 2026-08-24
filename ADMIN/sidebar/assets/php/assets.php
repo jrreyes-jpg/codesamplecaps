@@ -1321,7 +1321,7 @@ if ($createdAssetId > 0) {
 $adminPageTitle = 'Assets & QR Codes - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
-    '/codesamplecaps/ADMIN/css/assets.css',
+    '/codesamplecaps/ADMIN/sidebar/assets/css/assets.css',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',

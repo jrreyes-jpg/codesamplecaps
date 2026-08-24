@@ -2991,7 +2991,7 @@ $adminPageTitle = 'Project Management - Admin';
 
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
-    '/codesamplecaps/ADMIN/css/projects.css',
+    '/codesamplecaps/ADMIN/css/projects.css', 
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -4053,7 +4053,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 <script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 
-<script src="/codesamplecaps/ADMIN/js/projects.js"></script>
+<script src="/codesamplecaps/ADMIN/sidebar/projects/js/projects.js"></script>
 </body>
 </html>
 

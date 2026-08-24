@@ -5,7 +5,7 @@ function shared_navigation_items_for_role(string $role): array
 {
     $menus = [
         'admin' => [
-            ['module' => 'dashboard', 'label' => 'Overview', 'mini' => 'Home', 'href' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php', 'icon' => 'dashboard', 'active' => ['/ADMIN/sidebar/overview/php/overview.php']],
+            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php', 'icon' => 'dashboard', 'active' => ['/ADMIN/sidebar/dashboard/php/dashboard.php']],
             ['module' => 'projects', 'label' => 'Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php', 'icon' => 'projects', 'active' => ['/ADMIN/sidebar/projects/php/projects.php', '/ADMIN/sidebar/projects/php/project_details.php', '/ADMIN/sidebar/project_details.php'], 'exclude_query' => ['view=trash', 'view=archive']],
             ['module' => 'assets', 'label' => 'Assets', 'mini' => 'Asset', 'href' => '/codesamplecaps/ADMIN/sidebar/assets/php/assets.php', 'icon' => 'assets', 'active' => ['/ADMIN/sidebar/assets/php/assets.php']],
             ['module' => 'quotations', 'label' => 'Quotations', 'mini' => 'Quote', 'href' => '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php', 'icon' => 'quotations', 'active' => ['/ADMIN/sidebar/quotations/php/quotations.php']],
@@ -35,7 +35,7 @@ function shared_navigation_items_for_role(string $role): array
 function shared_navigation_role_home(string $role): string
 {
     return [
-        'admin' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php',
+        'admin' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php',
         'engineer' => '/codesamplecaps/ENGINEER/dashboards/overview.php',
     ][$role] ?? '/codesamplecaps/LOGIN/php/login.php';
 }

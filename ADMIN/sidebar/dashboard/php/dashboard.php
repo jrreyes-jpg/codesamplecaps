@@ -93,13 +93,13 @@ function consumeDashboardFlash(): array
 
 function redirectToDashboardTab(string $tab): void
 {
-    $location = '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php';
+    $location = '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php';
 
     // Mas malinis na URL para sa sidebar pages ng Admin.
     if ($tab === 'dashboard') {
-        $location = '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php';
+        $location = '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php';
     } elseif ($tab === 'users' || $tab === 'create') {
-        $location = '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php';
+        $location = '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php';
     } elseif ($tab !== '') {
         $location .= '?tab=' . rawurlencode($tab);
     }
@@ -1117,7 +1117,7 @@ if ($conn->ping()) {
 }
 
 if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
-    // Admin wala nang User Management tab; balik sa overview para walang white screen.
+    // Admin wala nang User Management tab; balik sa dashboard para walang white screen.
     $activeTab = 'dashboard';
 }
 $userWorkspaceShouldOpenModal = false;
@@ -1127,7 +1127,7 @@ $userWorkspaceShouldOpenModal = false;
 $adminPageTitle = 'Admin Dashboard - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
-    '/codesamplecaps/ADMIN/sidebar/overview/css/overview.css',
+    '/codesamplecaps/ADMIN/sidebar/dashboard/css/dashboard.css',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php'; ?>
@@ -1167,7 +1167,7 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
                         <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                         <small>Need approval</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/overview/php/overview.php" class="metric-tile metric-tile-link metric-tile-alerts">
+                    <a href="/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php" class="metric-tile metric-tile-link metric-tile-alerts">
                         <span>New Inquiries</span>
                         <strong data-live-metric="pending_inquiries"><?php echo $pendingInquiries ?? 0; ?></strong>
                         <small>Pending review</small>
@@ -1460,4 +1460,4 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
 </main>
 <script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
 <script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
-<script src="/codesamplecaps/ADMIN/sidebar/overview/js/overview.js"></script>
+<script src="/codesamplecaps/ADMIN/sidebar/dashboard/js/dashboard.js"></script>

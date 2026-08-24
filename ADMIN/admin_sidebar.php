@@ -4,13 +4,8 @@ require_once __DIR__ . '/../config/profile_photo_storage.php';
 $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
 $currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
 
-$isDashboardPage = str_contains($currentPath, '/ADMIN/sidebar/overview/php/overview.php');
-$isOverviewPage = false;
-$isUserManagementPage = str_contains($currentPath, '/ADMIN/sidebar/user_management.php');
-$isDashboard = $isOverviewPage || ($isDashboardPage && ($currentQuery === '' || str_contains($currentQuery, 'tab=dashboard')));
-$isCreate = $isDashboardPage && str_contains($currentQuery, 'tab=create');
-$isCreate = $isCreate || ($isUserManagementPage && str_contains($currentQuery, 'create=1'));
-$isUsers = $isUserManagementPage || ($isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate));
+$isDashboardPage = str_contains($currentPath, '/ADMIN/sidebar/dashboard/php/dashboard.php');
+$isDashboard = $isDashboardPage && ($currentQuery === '' || str_contains($currentQuery, 'tab=dashboard'));
 $isProjects = str_contains($currentPath, '/ADMIN/sidebar/projects/php/projects.php');
 $isProjectsTrash = $isProjects && str_contains($currentQuery, 'view=trash');
 $isInventory = str_contains($currentPath, '/ADMIN/sidebar/inventory/php/inventory.php');
@@ -435,8 +430,8 @@ $headerProfilePhotoUrl = $superAdminProfilePhotoUrl;
 $headerProfileInitials = $superAdminProfileInitials;
 $headerProfileAlt = 'Admin profile picture';
 $headerProfileLinks = [
-    ['label' => 'Profile', 'href' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php?tab=profile'],
-    ['label' => 'Settings', 'href' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php?tab=profile#security-settings'],
+    ['label' => 'Profile', 'href' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php?tab=profile'],
+    ['label' => 'Settings', 'href' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php?tab=profile#security-settings'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
 include __DIR__ . '/../SHARED/header/profile/profile.php';
@@ -536,10 +531,10 @@ $operationsHeaderClass = 'global-topbar';
 $operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
 $operationsHeaderActionsClass = 'global-topbar__actions';
 $operationsHeaderClockClass = 'global-topbar__clock';
-$operationsHeaderHomeHref = '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php';
+$operationsHeaderHomeHref = '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php';
 $operationsHeaderBrandText = 'EDGE Automation';
 $operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
-$operationsHeaderBrandLabel = 'Go to Admin overview';
+$operationsHeaderBrandLabel = 'Go to Admin dashboard';
 $operationsHeaderTime = '--:--:--';
 $operationsHeaderDate = 'Loading date...';
 $operationsHeaderTimeAttr = 'class="global-topbar__time" data-ph-time';

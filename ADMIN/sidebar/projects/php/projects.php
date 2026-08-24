@@ -2991,7 +2991,7 @@ $adminPageTitle = 'Project Management - Admin';
 
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
-    '/codesamplecaps/ADMIN/css/projects.css', 
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css', 
 ];
 
 include __DIR__ . '/../../../layout/header.php';

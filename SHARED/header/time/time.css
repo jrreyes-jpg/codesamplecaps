@@ -1,0 +1,60 @@
+/* =========================================================
+   HEADER TIME
+   Sakop: shared clock/date display for Admin and Engineer header.
+========================================================= */
+
+:is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
+    min-width: 156px;
+    text-align: right;
+}
+
+:is(.global-topbar__time, .engineer-topbar__clock strong, .operations-topbar__clock strong) {
+    display: block;
+    color: #0f172a;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+:is(.global-topbar__date, .engineer-topbar__clock small, .operations-topbar__clock small) {
+    display: block;
+    margin-top: 6px;
+    color: #475569;
+    font-size: 0.84rem;
+    font-weight: 500;
+}
+
+.global-topbar__clock-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+}
+
+@media (max-width: 768px) {
+    :is(.global-topbar__date, .engineer-topbar__clock small, .operations-topbar__clock small) {
+        display: none;
+    }
+
+    :is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
+        min-width: auto;
+    }
+
+    :is(.global-topbar__time, .engineer-topbar__clock strong, .operations-topbar__clock strong) {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 520px) {
+    :is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
+        min-width: 82px;
+    }
+
+    .global-topbar__clock-label {
+        display: none;
+    }
+
+    :is(.global-topbar__time, .engineer-topbar__clock strong, .operations-topbar__clock strong) {
+        font-size: clamp(0.84rem, 2.8vw, 1rem);
+        white-space: nowrap;
+    }
+}

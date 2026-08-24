@@ -138,7 +138,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     scheduleIdleLogout();
 
-    if (phTime && phDate) {
+    if (
+        phTime &&
+        phDate &&
+        !window.edgeOperationsHeaderClockStarted &&
+        !document.querySelector('script[src$="/SHARED/js/operations-header.js"]')
+    ) {
         const timeFormatter = new Intl.DateTimeFormat('en-PH', {
             timeZone: 'Asia/Manila',
             hour: 'numeric',
@@ -195,7 +200,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (profileRoot && profileToggle && profileDropdown) {
+    if (
+        profileRoot &&
+        profileToggle &&
+        profileDropdown &&
+        !window.edgeHeaderProfileStarted &&
+        !document.querySelector('script[src$="/SHARED/header/profile/js/profile.js"]')
+    ) {
         const setProfileState = function (isOpen) {
             profileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             profileDropdown.hidden = !isOpen;

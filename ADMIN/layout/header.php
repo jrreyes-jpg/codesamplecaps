@@ -1,9 +1,7 @@
 <?php
 // Header ng Admin layout. Dito lang ilalagay ang common CSS, title, at opening HTML.
 $adminPageTitle = $adminPageTitle ?? 'Admin Dashboard - Edge Automation';
-$adminCssFiles = $adminCssFiles ?? [
-    '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
-];
+$adminCssFiles = $adminCssFiles ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -15,6 +13,8 @@ $adminCssFiles = $adminCssFiles ?? [
     <?php foreach ($adminCssFiles as $cssFile): ?>
         <link rel="stylesheet" href="<?php echo htmlspecialchars($cssFile, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endforeach; ?>
+    <!-- Shared header CSS ito. Dito galing ang style ng logo, time, notif, at profile sa taas. -->
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/css/operations-header.css">
     <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/admin-shared-sidebar.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">

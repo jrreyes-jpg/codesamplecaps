@@ -28,8 +28,8 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quotation Approval Panel - Edge Automation</title>
     <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
-    <link rel="stylesheet" href="../css/super_admin_dashboard.css">
-    <link rel="stylesheet" href="../css/admin-shared-sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/super_admin_dashboard.css">
+    <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/admin-shared-sidebar.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         .quotation-shell {
@@ -291,7 +291,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
                         <?php if (!empty($quotations)): ?>
                             <?php foreach ($quotations as $quotation): ?>
                                 <article class="queue-card <?php echo $selectedQuotation && (int)$selectedQuotation['id'] === (int)$quotation['id'] ? 'active' : ''; ?>">
-                                    <a href="/codesamplecaps/ADMIN/sidebar/quotations.php?id=<?php echo (int)$quotation['id']; ?>">
+                                    <a href="/codesamplecaps/ADMIN/hp?id=<?php echo (int)$quotation['id']; ?>">
                                         <strong><?php echo htmlspecialchars((string)$quotation['quotation_no']); ?></strong>
                                         <span><?php echo htmlspecialchars((string)$quotation['project_name']); ?></span>
                                         <span><?php echo htmlspecialchars((string)$quotation['engineer_name']); ?></span>
@@ -388,6 +388,6 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
 </main>
 </div>
 <script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
-<script src="../js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 </body>
 </html>

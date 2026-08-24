@@ -1,0 +1,217 @@
+/* =========================================================
+   HEADER PROFILE
+   Sakop: shared profile avatar, dropdown, chevron, and profile links.
+========================================================= */
+
+.topbar-profile {
+    position: relative;
+}
+
+.topbar-profile__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #0f172a;
+    cursor: pointer;
+    box-shadow: none;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.topbar-profile__toggle:hover,
+.topbar-profile__toggle:focus-visible,
+.topbar-profile__toggle[aria-expanded="true"] {
+    transform: translateY(-1px);
+    filter: drop-shadow(0 10px 20px rgba(15, 23, 42, 0.14));
+}
+
+.topbar-profile__toggle:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, 0.18);
+    outline-offset: 4px;
+}
+
+.topbar-profile__avatar-shell {
+    position: relative;
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    overflow: visible;
+    flex-shrink: 0;
+}
+
+.topbar-profile__avatar-image {
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    display: block;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+    position: relative;
+    z-index: 1;
+}
+
+.topbar-profile__avatar-fallback {
+    position: absolute;
+    inset: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+    z-index: 0;
+}
+
+.topbar-profile__avatar-shell--panel,
+.topbar-profile__avatar-image--panel {
+    width: 48px;
+    height: 48px;
+}
+
+.topbar-profile__chevron {
+    width: 14px;
+    height: 14px;
+    color: #1f2937;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.topbar-profile__chevron-badge {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid rgba(203, 213, 225, 0.92);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.14);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.topbar-profile__chevron svg {
+    width: 100%;
+    height: 100%;
+}
+
+.topbar-profile__chevron path {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.topbar-profile__toggle[aria-expanded="true"] .topbar-profile__chevron {
+    transform: rotate(180deg);
+    color: #16a34a;
+}
+
+.topbar-profile__dropdown {
+    position: absolute;
+    top: calc(100% + 14px);
+    right: 0;
+    width: min(280px, calc(100vw - 32px));
+    padding: 16px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.2);
+}
+
+.topbar-profile__dropdown[hidden] {
+    display: none;
+}
+
+.topbar-profile__panel-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Maliit lang ito: ayusin ang text sa profile dropdown. */
+.topbar-profile__panel-head div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.topbar-profile__panel-head strong {
+    color: #0f172a;
+}
+
+.topbar-profile__panel-head span,
+.topbar-profile__panel-head small {
+    color: #64748b;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.topbar-profile__links {
+    display: grid;
+    gap: 8px;
+}
+
+.topbar-profile__links a,
+.topbar-profile__links button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: 16px;
+    text-decoration: none;
+    color: #0f172a;
+    background: #f8fafc;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.topbar-profile__links a:hover,
+.topbar-profile__links a:focus-visible,
+.topbar-profile__links button:hover,
+.topbar-profile__links button:focus-visible {
+    background: #ecfdf5;
+    transform: translateX(2px);
+}
+
+.topbar-profile__links a:last-child {
+    color: #b91c1c;
+    background: #fef2f2;
+}
+
+.topbar-profile__links a:last-child:hover,
+.topbar-profile__links a:last-child:focus-visible,
+.topbar-profile__links button:last-child:hover,
+.topbar-profile__links button:last-child:focus-visible {
+    background: #fee2e2;
+}
+
+@media (max-width: 768px) {
+    .topbar-profile__avatar-shell,
+    .topbar-profile__avatar-image {
+        width: 46px;
+        height: 46px;
+    }
+}

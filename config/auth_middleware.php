@@ -86,7 +86,7 @@ if (!function_exists('auth_dashboard_path_for_role')) {
     {
         $dashboardPaths = [
             'super_admin' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php',
-            'admin' => '/codesamplecaps/ADMIN/dashboards/admin_dashboard.php',
+            'admin' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php',
             'inventory_clerk' => '/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php',
             'engineer' => '/codesamplecaps/ENGINEER/dashboards/overview.php',
             'foreman' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php',

@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/asset_unit_helpers.php';
-require_once __DIR__ . '/../../config/project_progress.php';
-require_once __DIR__ . '/../../config/project_history.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/project_progress.php';
+require_once __DIR__ . '/../../../../config/project_history.php';
 
 require_role('admin');
 $csrfToken = auth_csrf_token('super_admin');
@@ -436,7 +436,7 @@ if ($supportsArchivedStatus) {
 }
 $todayDate = pm_today_date();
 $projectId = max(0, (int)($_GET['id'] ?? 0));
-$detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=' . $projectId;
+$detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=' . $projectId;
 
 pm_ensure_project_inventory_deployments_table($conn);
 pm_ensure_project_inventory_return_logs_table($conn);
@@ -688,7 +688,7 @@ if ($projectId > 0) {
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-stack">
@@ -838,7 +838,7 @@ if ($projectId > 0) {
                         <div class="project-details-hero__main">
                             <div class="project-details-hero__headline">
                                 <div class="project-details-hero__eyebrow-row">
-                                    <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="btn-secondary btn-back-projects" aria-label="Back to Projects" title="Back to Projects">&#8592;</a>
+                                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="btn-secondary btn-back-projects" aria-label="Back to Projects" title="Back to Projects">&#8592;</a>
 
                                     <span class="project-details-hero__eyebrow">Project Overview</span>
                                     <?php if ($projectCode !== ''): ?>
@@ -984,7 +984,7 @@ if ($projectId > 0) {
                             <span class="project-readonly-badge">Read Only</span>
                         <?php endif; ?>
                     </div>
-                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" data-project-edit-form id="project-details-edit-form">
+                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" data-project-edit-form id="project-details-edit-form">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                         <input type="hidden" name="action" value="update_project_details">
                         <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1277,7 +1277,7 @@ if ($projectId > 0) {
                     </section>
 
                     <div class="project-finance-forms">
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form project-finance-form" data-inline-edit-form>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form project-finance-form" data-inline-edit-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                             <input type="hidden" name="action" value="save_project_budget">
                             <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1302,7 +1302,7 @@ if ($projectId > 0) {
                             </div>
                         </form>
 
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form project-finance-form" data-inline-edit-form>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form project-finance-form" data-inline-edit-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                             <input type="hidden" name="action" value="add_project_cost_entry">
                             <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1340,7 +1340,7 @@ if ($projectId > 0) {
                         <?php elseif ($remainingBalance <= 0): ?>
                             <div class="empty-state">This project is already fully paid.</div>
                         <?php else: ?>
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form project-finance-form" data-inline-edit-form>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form project-finance-form" data-inline-edit-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                 <input type="hidden" name="action" value="add_project_payment">
                                 <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1380,7 +1380,7 @@ if ($projectId > 0) {
                     <?php endif; ?>
                     <?php if ($isCompleted): ?>
                         <div class="lock-note">This project is locked because it is already completed.</div>
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form">
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                             <input type="hidden" name="action" value="reopen_project">
                             <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1393,7 +1393,7 @@ if ($projectId > 0) {
                         <?php if (!$hasBudget): ?>
                             <div class="alert alert-warning">Moving this project to Ongoing without a budget is allowed. Set a budget later if you want planned versus actual tracking.</div>
                         <?php endif; ?>
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form" data-inline-edit-form>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form" data-inline-edit-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                             <input type="hidden" name="action" value="update_project_status">
                             <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1424,7 +1424,7 @@ if ($projectId > 0) {
                         <?php if ($supportsCancelledStatus || $supportsArchivedStatus): ?>
                             <div class="status-quick-actions">
                                 <?php if ($supportsCancelledStatus && ($project['status'] ?? '') !== 'cancelled'): ?>
-                                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="inline-form" data-confirm-action="Cancel this project? This is for projects that will not continue.">
+                                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="inline-form" data-confirm-action="Cancel this project? This is for projects that will not continue.">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                         <input type="hidden" name="action" value="update_project_status">
                                         <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1435,7 +1435,7 @@ if ($projectId > 0) {
                                 <?php endif; ?>
 
                                 <?php if ($supportsArchivedStatus && ($project['status'] ?? '') !== 'archived'): ?>
-                                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="inline-form" data-confirm-action="Archive this project? It will stay in history but should no longer be active.">
+                                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="inline-form" data-confirm-action="Archive this project? It will stay in history but should no longer be active.">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                         <input type="hidden" name="action" value="update_project_status">
                                         <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1475,7 +1475,7 @@ if ($projectId > 0) {
                     <?php elseif ($isDraft): ?>
                         <div class="empty-state">Task creation is disabled while this project is still in draft.</div>
                     <?php else: ?>
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form" data-inline-edit-form>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form" data-inline-edit-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                             <input type="hidden" name="action" value="add_task">
                             <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
@@ -1542,7 +1542,7 @@ if ($projectId > 0) {
                                     <span>Unit Codes: <?php echo htmlspecialchars((string)($deployment['unit_codes'] ?? 'Auto-assigned')); ?></span>
                                     <span>Deployed At: <?php echo htmlspecialchars($deployment['deployed_at']); ?></span>
                                     <span>Notes: <?php echo htmlspecialchars($deployment['notes'] ?: 'None'); ?></span>
-                                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form">
+                                    <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                         <input type="hidden" name="action" value="return_project_inventory">
                                         <input type="hidden" name="deployment_id" value="<?php echo (int)$deployment['id']; ?>">
@@ -1573,7 +1573,7 @@ if ($projectId > 0) {
                     <?php elseif (empty($availableInventory)): ?>
                         <div class="empty-state">No available inventory to deploy right now.</div>
                     <?php else: ?>
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/projects.php" class="mini-form" data-inline-edit-form>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="mini-form" data-inline-edit-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                             <input type="hidden" name="action" value="deploy_inventory_to_project">
                             <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">

@@ -30,7 +30,7 @@ $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
 </head>
 <body>
     <div class="quote-actions">
-        <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php">Back to Inquiries</a>
+        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Back to Inquiries</a>
         <button type="button" data-print-quotation>Print / Save as PDF</button>
     </div>
 

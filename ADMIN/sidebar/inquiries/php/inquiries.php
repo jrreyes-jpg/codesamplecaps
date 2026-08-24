@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/../includes/admin_auth.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/audit_log.php';
-require_once __DIR__ . '/../../config/site_inspections.php';
-require_once __DIR__ . '/../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../includes/admin_auth.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/audit_log.php';
+require_once __DIR__ . '/../../../../config/site_inspections.php';
+require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 
 $message = '';
 $error = '';
@@ -145,14 +145,14 @@ function inquiry_center_redirect(string $view, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
     $query = $view === 'archive' ? '?view=archive' : '';
-    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php' . $query);
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . $query);
     exit();
 }
 
-function inquiry_center_redirect_back(string $message, string $fallback = '/codesamplecaps/ADMIN/sidebar/inquiries.php'): void
+function inquiry_center_redirect_back(string $message, string $fallback = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php'): void
 {
     $returnUrl = (string)($_POST['return_url'] ?? $fallback);
-    if (!str_starts_with($returnUrl, '/codesamplecaps/ADMIN/sidebar/inquiries.php')) {
+    if (!str_starts_with($returnUrl, '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php')) {
         $returnUrl = $fallback;
     }
 
@@ -165,7 +165,7 @@ function inquiry_center_redirect_with_project(int $projectId, string $message): 
 {
     $_SESSION['inquiry_center_flash'] = $message;
     $_SESSION['inquiry_center_flash_project_id'] = $projectId;
-    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php?status=For+Inspection');
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection');
     exit();
 }
 
@@ -183,7 +183,7 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
         $query['search'] = $search;
     }
 
-    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php?' . http_build_query($query));
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query($query));
     exit();
 }
 
@@ -206,7 +206,7 @@ if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_i
     }
 
     unset($_SESSION['super_admin_sidebar_notification_data']);
-    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
     exit();
 }
 
@@ -774,8 +774,8 @@ $adminJsFiles = [
     '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
     '/codesamplecaps/ADMIN/js/inquiries.js',
 ];
-include __DIR__ . '/../layout/header.php';
-include __DIR__ . '/../admin_sidebar.php';
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
 <main class="main-content admin-dashboard-content">
@@ -788,7 +788,7 @@ include __DIR__ . '/../admin_sidebar.php';
             >
                 <span><?php echo htmlspecialchars($message ?: $error, ENT_QUOTES, 'UTF-8'); ?></span>
                 <?php if ($message && $flashProjectId > 0): ?>
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)$flashProjectId; ?>">
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$flashProjectId; ?>">
                         Open Project
                     </a>
                 <?php endif; ?>
@@ -810,17 +810,17 @@ include __DIR__ . '/../admin_sidebar.php';
             </select>
             <div class="inquiry-filter-actions">
                 <button type="submit" class="btn-primary">Filter</button>
-                <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="btn-secondary">Reset</a>
+                <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary">Reset</a>
             </div>
         </form>
 
         <div class="inquiry-status-strip" aria-label="Inquiry status summary">
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Pending Review' ? 'is-active' : ''; ?>" data-status="Pending Review" href="/codesamplecaps/ADMIN/sidebar/inquiries.php?status=Pending+Review<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Pending: <?php echo $pendingCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Verified Lead' ? 'is-active' : ''; ?>" data-status="Verified Lead" href="/codesamplecaps/ADMIN/sidebar/inquiries.php?status=Verified+Lead<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Verified: <?php echo $verifiedCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'For Inspection' ? 'is-active' : ''; ?>" data-status="For Inspection" href="/codesamplecaps/ADMIN/sidebar/inquiries.php?status=For+Inspection<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">For Inspection: <?php echo $inspectionCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Not Qualified' ? 'is-active' : ''; ?>" data-status="Not Qualified" href="/codesamplecaps/ADMIN/sidebar/inquiries.php?status=Not+Qualified<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Not Qualified: <?php echo $notQualifiedCount; ?></a>
-            <a class="inquiry-view-link <?php echo $view === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries.php">Active</a>
-            <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries.php?view=archive">Archive</a>
+            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Pending Review' ? 'is-active' : ''; ?>" data-status="Pending Review" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Pending+Review<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Pending: <?php echo $pendingCount; ?></a>
+            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Verified Lead' ? 'is-active' : ''; ?>" data-status="Verified Lead" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Verified: <?php echo $verifiedCount; ?></a>
+            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'For Inspection' ? 'is-active' : ''; ?>" data-status="For Inspection" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">For Inspection: <?php echo $inspectionCount; ?></a>
+            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Not Qualified' ? 'is-active' : ''; ?>" data-status="Not Qualified" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Not+Qualified<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Not Qualified: <?php echo $notQualifiedCount; ?></a>
+            <a class="inquiry-view-link <?php echo $view === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Active</a>
+            <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?view=archive">Archive</a>
         </div>
 
         <?php if (empty($inquiryRows)): ?>
@@ -1086,7 +1086,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <?php elseif (!empty($quotationDraft['project_id'])): ?>
                                             <div class="inquiry-created-project">
                                                 <span>Project Created</span>
-                                                <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                                                <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
                                                     Open Project
                                                 </a>
                                             </div>
@@ -1215,7 +1215,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                         <input type="hidden" name="action" value="archive_inquiry">
                                         <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                        <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ADMIN/sidebar/inquiries.php'), ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php'), ENT_QUOTES, 'UTF-8'); ?>">
                                         <label>
                                             <span>Archive Reason</span>
                                             <select name="archive_reason" required>

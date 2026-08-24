@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/audit_log.php';
-require_once __DIR__ . '/../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/audit_log.php';
+require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
 
 require_role('admin');
 $csrfToken = auth_csrf_token('super_admin');
@@ -20,7 +20,7 @@ function determine_inventory_status_for_page(int $quantity, ?int $minStock): str
 }
 
 function redirect_inventory_page(): void {
-    header('Location: /codesamplecaps/ADMIN/sidebar/inventory.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php');
     exit();
 }
 
@@ -426,7 +426,7 @@ foreach ($inventoryItems as $item) {
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-stack">
@@ -507,11 +507,11 @@ foreach ($inventoryItems as $item) {
             <section class="page-stack">
                 <h2 class="section-title-inline">Inventory Items</h2>
                 <div class="dashboard-actions">
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory.php" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory.php?status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory.php?status=low-stock" class="action-chip<?php echo $statusFilter === 'low-stock' ? ' active-chip' : ''; ?>">Low Stock</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory.php?status=out-of-stock" class="action-chip<?php echo $statusFilter === 'out-of-stock' ? ' active-chip' : ''; ?>">Out of Stock</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory.php?status=available" class="action-chip<?php echo $statusFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=low-stock" class="action-chip<?php echo $statusFilter === 'low-stock' ? ' active-chip' : ''; ?>">Low Stock</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=out-of-stock" class="action-chip<?php echo $statusFilter === 'out-of-stock' ? ' active-chip' : ''; ?>">Out of Stock</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=available" class="action-chip<?php echo $statusFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
                 </div>
 
                 <?php if (empty($inventoryItems)): ?>

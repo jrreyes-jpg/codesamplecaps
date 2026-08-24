@@ -1152,17 +1152,17 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
                     </div>
                 </div>
                 <div class="metric-strip metric-strip-compact overview-summary-grid">
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-projects">
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-projects">
                         <span>Active Projects</span>
                         <strong data-live-metric="active_projects"><?php echo $activeProjectCount; ?></strong>
                         <small><?php echo $ongoingProjects; ?> ongoing, <?php echo $pendingProjects; ?> pending</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-tasks">
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?status=active" class="metric-tile metric-tile-link metric-tile-tasks">
                         <span>Open Tasks</span>
                         <strong data-live-metric="open_tasks"><?php echo $openTasks; ?></strong>
                         <small><?php echo $delayedTasks; ?> delayed</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/quotations.php" class="metric-tile metric-tile-link metric-tile-quotations">
+                    <a href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php" class="metric-tile metric-tile-link metric-tile-quotations">
                         <span>Pending Quotations</span>
                         <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                         <small>Need approval</small>
@@ -1187,22 +1187,22 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
                     </div>
                 </div>
                 <div class="overview-attention-grid">
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=active" class="overview-attention-card overview-attention-card--danger<?php echo $delayedTasks > 0 ? ' is-active' : ' is-clear'; ?>">
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?status=active" class="overview-attention-card overview-attention-card--danger<?php echo $delayedTasks > 0 ? ' is-active' : ' is-clear'; ?>">
                         <span>Delayed Tasks</span>
                         <strong data-live-metric="delayed_tasks"><?php echo $delayedTasks; ?></strong>
                         <small><?php echo $totalTasks; ?> total tasks</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory.php" class="overview-attention-card overview-attention-card--warning<?php echo $inventoryAlertCount > 0 ? ' is-active' : ' is-clear'; ?>">
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php" class="overview-attention-card overview-attention-card--warning<?php echo $inventoryAlertCount > 0 ? ' is-active' : ' is-clear'; ?>">
                         <span>Inventory Alerts</span>
                         <strong data-live-metric="inventory_alerts"><?php echo $inventoryAlertCount; ?></strong>
                         <small><?php echo $lowStockItems; ?> low, <?php echo $outOfStockItems; ?> out</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=on-hold" class="overview-attention-card overview-attention-card--neutral<?php echo $onHoldProjects > 0 ? ' is-active' : ' is-clear'; ?>">
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?status=on-hold" class="overview-attention-card overview-attention-card--neutral<?php echo $onHoldProjects > 0 ? ' is-active' : ' is-clear'; ?>">
                         <span>On-Hold Projects</span>
                         <strong data-live-metric="on_hold_projects"><?php echo $onHoldProjects; ?></strong>
                         <small>Needs follow-up</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/quotations.php" class="overview-attention-card overview-attention-card--neutral<?php echo $pendingQuotations > 0 ? ' is-active' : ' is-clear'; ?>">
+                    <a href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php" class="overview-attention-card overview-attention-card--neutral<?php echo $pendingQuotations > 0 ? ' is-active' : ' is-clear'; ?>">
                         <span>Pending Approvals</span>
                         <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                         <small>Quotation review queue</small>
@@ -1215,7 +1215,7 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
                     <div>
                         <h2 class="dashboard-section-title">Recent Activity</h2>
                     </div>
-                    <a href="/codesamplecaps/ADMIN/sidebar/activity_history.php" class="action-chip">View all</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/activity_history/php/activity_history.php" class="action-chip">View all</a>
                 </div>
                 <div class="activity-feed activity-feed-compact" data-live-activity-feed>
                     <?php if (empty($recentDashboardActivity)): ?>
@@ -1350,10 +1350,10 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
             </details>
 
             <section class="overview-quick-actions" aria-label="Quick actions">
-                <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php#create-project">Create Project</a>
+                <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php#create-project">Create Project</a>
                 <a href="/codesamplecaps/ADMIN/sidebar/user_management.php?create=1">Add User</a>
-                <a href="/codesamplecaps/ADMIN/sidebar/assets.php">Add Asset</a>
-                <a href="/codesamplecaps/ADMIN/sidebar/quotations.php">Review Quotations</a>
+                <a href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">Add Asset</a>
+                <a href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">Review Quotations</a>
             </section>
         </section>
     </div>

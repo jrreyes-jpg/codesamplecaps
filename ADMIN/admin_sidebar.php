@@ -11,14 +11,14 @@ $isDashboard = $isOverviewPage || ($isDashboardPage && ($currentQuery === '' || 
 $isCreate = $isDashboardPage && str_contains($currentQuery, 'tab=create');
 $isCreate = $isCreate || ($isUserManagementPage && str_contains($currentQuery, 'create=1'));
 $isUsers = $isUserManagementPage || ($isDashboardPage && (str_contains($currentQuery, 'tab=users') || $isCreate));
-$isProjects = str_contains($currentPath, '/ADMIN/sidebar/projects/projects.php');
+$isProjects = str_contains($currentPath, '/ADMIN/sidebar/projects/php/projects.php');
 $isProjectsTrash = $isProjects && str_contains($currentQuery, 'view=trash');
-$isInventory = str_contains($currentPath, '/ADMIN/sidebar/inventory.php');
-$isAssets = str_contains($currentPath, '/ADMIN/sidebar/assets.php');
-$isQuotations = str_contains($currentPath, '/ADMIN/sidebar/quotations.php');
-$isReports = str_contains($currentPath, '/ADMIN/sidebar/reports.php');
-$isActivityHistory = str_contains($currentPath, '/ADMIN/sidebar/activity_history.php');
-$isInquiries = str_contains($currentPath, '/ADMIN/sidebar/inquiries.php');
+$isInventory = str_contains($currentPath, '/ADMIN/sidebar/inventory/php/inventory.php');
+$isAssets = str_contains($currentPath, '/ADMIN/sidebar/assets/php/assets.php');
+$isQuotations = str_contains($currentPath, '/ADMIN/sidebar/quotations/php/quotations.php');
+$isReports = str_contains($currentPath, '/ADMIN/sidebar/reports/php/reports.php');
+$isActivityHistory = str_contains($currentPath, '/ADMIN/sidebar/activity_history/php/activity_history.php');
+$isInquiries = str_contains($currentPath, '/ADMIN/sidebar/inquiries/php/inquiries.php');
 $superAdminProfileName = (string)($_SESSION['name'] ?? 'Admin');
 $superAdminProfileRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'super_admin')));
 $superAdminProfilePhotoUrl = '';
@@ -475,7 +475,7 @@ include __DIR__ . '/../SHARED/header/profile/profile.php';
 
         <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
             <div class="topbar-notifications__summary">
-                <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
+                <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
                     <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
                     <span>Project risks</span>
                 </a>
@@ -483,7 +483,7 @@ include __DIR__ . '/../SHARED/header/profile/profile.php';
         <?php endif; ?>
         <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
             <div class="topbar-notifications__summary">
-                <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="notification-summary-chip notification-summary-chip--info">
+                <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="notification-summary-chip notification-summary-chip--info">
                     <strong><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?></strong>
                     <span>New inquiries</span>
                 </a>
@@ -498,7 +498,7 @@ include __DIR__ . '/../SHARED/header/profile/profile.php';
                 </div>
             <?php else: ?>
                 <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
                         <span class="notification-item__dot"></span>
                         <div class="notification-item__copy">
                             <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>
@@ -515,7 +515,7 @@ include __DIR__ . '/../SHARED/header/profile/profile.php';
                     </a>
                 <?php endforeach; ?>
                 <?php foreach ($superAdminNotificationData['inquiry_alerts'] as $inquiryAlert): ?>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed">
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed">
                         <span class="notification-item__dot"></span>
                         <div class="notification-item__copy">
                             <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>

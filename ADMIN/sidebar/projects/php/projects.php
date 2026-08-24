@@ -1,11 +1,11 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/audit_log.php';
-require_once __DIR__ . '/../../config/asset_unit_helpers.php';
-require_once __DIR__ . '/../../config/project_progress.php';
-require_once __DIR__ . '/../../services/project_service.php';
-require_once __DIR__ . '/../../php/projects/project_search_support.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/audit_log.php';
+require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/project_progress.php';
+require_once __DIR__ . '/../../../services/project_service.php';
+require_once __DIR__ . '/../../../php/projects/project_search_support.php';
 
 require_role('admin');
 
@@ -462,7 +462,7 @@ function get_projects_redirect_target(): string {
         return $redirectTo;
     }
 
-    return '/codesamplecaps/ADMIN/sidebar/projects/projects.php';
+    return '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php';
 }
 
 function redirect_projects_page(): void {
@@ -1112,7 +1112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header('Location: /codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash');
+        header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash');
         exit;
     }
 
@@ -1184,7 +1184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header('Location: /codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash');
+        header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash');
         exit;
     }
 
@@ -2994,8 +2994,8 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/css/projects.css',
 ];
 
-include __DIR__ . '/../layout/header.php';
-include __DIR__ . '/../admin_sidebar.php';
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
     <main class="main-content projects-content">
@@ -3389,7 +3389,7 @@ include __DIR__ . '/../admin_sidebar.php';
             <section
                 class="page-stack"
                 id="projects-list-section"
-                data-reset-url="/codesamplecaps/ADMIN/sidebar/projects/projects.php<?php
+                data-reset-url="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php<?php
                     $resetParams = [];
                     if ($statusFilter !== '') {
                         $resetParams['status'] = $statusFilter;
@@ -3419,7 +3419,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                     if ($chipValue !== '') {
                                         $chipParams['status'] = $chipValue;
                                     }
-                                    $chipLink = '/codesamplecaps/ADMIN/sidebar/projects/projects.php' . ($chipParams ? '?' . http_build_query($chipParams) : '');
+                                    $chipLink = '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php' . ($chipParams ? '?' . http_build_query($chipParams) : '');
                                     $isActiveChip = $statusFilter === $chipValue;
                                     $chipTone = $chipValue === '' ? 'all' : str_replace('_', '-', $chipValue);
                                 ?>
@@ -3436,7 +3436,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                     + Create Project
                                 </button>
                                 <div class="project-create-menu__list" data-project-create-menu-list hidden>
-                                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php?status=For+Inspection" class="project-create-menu__item">
+                                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection" class="project-create-menu__item">
                                         <strong>From Inquiry / Appointment</strong>
                                         <span>Use approved inquiry or quotation</span>
                                     </a>
@@ -3596,7 +3596,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         $projectAdditionalInfoSearchText,
                                         $project['status'] ?? '',
                                     ])));
-                                    $detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=' . (int)$project['id'];
+                                    $detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=' . (int)$project['id'];
                                     ?>
                                     <article
                                         class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>"
@@ -3658,14 +3658,14 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_project">
                                                 <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
                                             <form method="POST" class="project-card__inline-form" data-confirm="Permanently delete this project? This cannot be undone.">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="permanently_delete_project">
                                                 <input type="hidden" name="project_id" value="<?php echo (int)$project['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                 <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                             </form>
                                         </div>
@@ -3688,7 +3688,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                             $pageParams['view'] = 'trash';
                                         }
                                         $pageParams['page'] = $page;
-                                        $pageLink = '/codesamplecaps/ADMIN/sidebar/projects/projects.php?' . http_build_query($pageParams);
+                                        $pageLink = '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?' . http_build_query($pageParams);
                                         ?>
                                         <a href="<?php echo htmlspecialchars($pageLink); ?>" class="pagination-link<?php echo $page === $currentPage ? ' is-active' : ''; ?>">
                                             <?php echo $page; ?>
@@ -3778,7 +3778,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_purchase_request">
                                                 <input type="hidden" name="purchase_request_id" value="<?php echo (int)$trashedRequest['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
                                             <?php if ((int)($trashedRequest['linked_purchase_orders'] ?? 0) > 0): ?>
@@ -3788,7 +3788,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_purchase_request">
                                                     <input type="hidden" name="purchase_request_id" value="<?php echo (int)$trashedRequest['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                                 </form>
                                             <?php endif; ?>
@@ -3833,7 +3833,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_supplier">
                                                 <input type="hidden" name="supplier_id" value="<?php echo (int)$trashedSupplier['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
                                             <?php if ((int)($trashedSupplier['linked_purchase_orders'] ?? 0) > 0): ?>
@@ -3843,7 +3843,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_supplier">
                                                     <input type="hidden" name="supplier_id" value="<?php echo (int)$trashedSupplier['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                                 </form>
                                             <?php endif; ?>
@@ -3880,18 +3880,18 @@ include __DIR__ . '/../admin_sidebar.php';
                                             </div>
                                         </div>
                                         <div class="form-actions project-card__actions project-card__actions--trash">
-                                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/assets.php" class="project-card__inline-form" data-confirm="Restore this asset from trash?">
+                                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php" class="project-card__inline-form" data-confirm="Restore this asset from trash?">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="restore_asset">
                                                 <input type="hidden" name="asset_id" value="<?php echo (int)$trashedAsset['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                 <button type="submit" class="btn-secondary btn-restore">Restore</button>
                                             </form>
-                                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/assets.php" class="project-card__inline-form" data-confirm="Permanently delete this asset? This cannot be undone.">
+                                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php" class="project-card__inline-form" data-confirm="Permanently delete this asset? This cannot be undone.">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                 <input type="hidden" name="action" value="permanently_delete_asset">
                                                 <input type="hidden" name="asset_id" value="<?php echo (int)$trashedAsset['id']; ?>">
-                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                 <button type="submit" class="btn-danger btn-permanent-delete">Delete Permanently</button>
                                             </form>
                                         </div>
@@ -3962,7 +3962,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                     $projectAdditionalInfoSearchText,
                                     $project['status'] ?? '',
                                 ])));
-                                $detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=' . (int)$project['id'];
+                                $detailsPath = '/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=' . (int)$project['id'];
                                 ?>
                                 <article
                                     class="project-card<?php echo $isCompleted ? ' is-locked' : ''; ?><?php echo $isDraft ? ' is-draft' : ''; ?>"
@@ -4036,7 +4036,7 @@ include __DIR__ . '/../admin_sidebar.php';
                                         $pageParams['status'] = $statusFilter;
                                     }
                                     $pageParams['page'] = $page;
-                                    $pageLink = '/codesamplecaps/ADMIN/sidebar/projects/projects.php?' . http_build_query($pageParams);
+                                    $pageLink = '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?' . http_build_query($pageParams);
                                     ?>
                                     <a href="<?php echo htmlspecialchars($pageLink); ?>" class="pagination-link<?php echo $page === $currentPage ? ' is-active' : ''; ?>">
                                         <?php echo $page; ?>

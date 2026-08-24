@@ -9,12 +9,12 @@ $userId = (int)current_user_id();
 $role = (string)current_user_role();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php');
+    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php/quotations.php');
 }
 
 if (!quotation_module_is_valid_csrf($_POST['csrf_token'] ?? null)) {
     quotation_module_set_flash('error', 'Security check failed. Please try again.');
-    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php');
+    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php/quotations.php');
 }
 
 $quotationId = (int)($_POST['quotation_id'] ?? 0);
@@ -41,8 +41,8 @@ try {
         throw new RuntimeException('Invalid approval action.');
     }
 
-    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?id=' . $quotationId);
+    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php/quotations.php?id=' . $quotationId);
 } catch (Throwable $throwable) {
     quotation_module_set_flash('error', $throwable->getMessage());
-    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php' . ($quotationId > 0 ? '?id=' . $quotationId : ''));
+    quotation_module_redirect('/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php/quotations.php' . ($quotationId > 0 ? '?id=' . $quotationId : ''));
 }

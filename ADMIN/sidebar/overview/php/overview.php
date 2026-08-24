@@ -1456,7 +1456,6 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
                 </form>
             </section>
         </div>
-        </section>
     </div>
 </main>
 <script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>

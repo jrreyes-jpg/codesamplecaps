@@ -4,9 +4,9 @@
    responsive offset, and imports for header parts.
 ========================================================= */
 
-@import url("../profile/css/profile.css");
-@import url("../notifications/css/notifications.css");
-@import url("../time/css/time.css");
+@import url("../header/profile/profile.css");
+@import url("../header/notifications/notifications.css");
+@import url("../header/time/time.css");
 
 :is(.global-topbar, .engineer-topbar) {
     position: fixed;

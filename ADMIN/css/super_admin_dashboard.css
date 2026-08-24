@@ -2753,10 +2753,12 @@ tbody tr:hover {
     display: grid;
     gap: 20px;
 }
+.input-group input,
+.input-group select,
+.input-group textarea {
         width: 100%;
         min-height: 46px;
     }
-}
 
         .input-group textarea {
             min-height: 110px;
@@ -3269,6 +3271,7 @@ tbody tr:hover {
     line-height: 1.5;
     word-break: break-word;
 }
+.status-pill {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -4059,6 +4062,10 @@ input[data-inline-editable]:disabled {
     text-transform: uppercase;
 }
 
+@media (max-width: 768px) {
+    .projects-content .project-meta,
+    .projects-content .task-list,
+    .projects-content .card-split {
         gap: 12px;
     }
 
@@ -4149,6 +4156,7 @@ input[data-inline-editable]:disabled {
         grid-template-columns: 1fr;
     }
 }
+.project-additional-info-card {
     display: grid;
     gap: 8px;
     padding: 14px 16px;

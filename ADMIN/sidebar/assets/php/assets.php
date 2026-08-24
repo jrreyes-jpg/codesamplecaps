@@ -1722,7 +1722,7 @@ include __DIR__ . '/../admin_sidebar.php';
     </div>
 </div>
 
-<script src="../js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const categoryField = document.getElementById('asset_category');

@@ -1,4 +1,4 @@
-﻿const activateTab = (tabId) => {
+const activateTab = (tabId) => {
     const targetPanel = document.getElementById(tabId);
 
     if (!targetPanel) {

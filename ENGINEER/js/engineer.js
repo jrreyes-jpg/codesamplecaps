@@ -10,6 +10,18 @@
     document.head.appendChild(guardScript);
 })();
 
+// Load shared Admin/Engineer header behavior once.
+(function () {
+    if (document.querySelector('script[src$="/SHARED/js/operations-header.js"]')) {
+        return;
+    }
+
+    const headerScript = document.createElement('script');
+    headerScript.src = '/codesamplecaps/SHARED/js/operations-header.js';
+    headerScript.defer = true;
+    document.head.appendChild(headerScript);
+})();
+
 const spotlightTask = (taskId) => {
     if (!taskId) {
         return;
@@ -111,7 +123,12 @@ const initEngineerClock = () => {
     const timeElement = document.querySelector('[data-engineer-time]');
     const dateElement = document.querySelector('[data-engineer-date]');
 
-    if (!timeElement || !dateElement) {
+    if (
+        !timeElement ||
+        !dateElement ||
+        window.edgeOperationsHeaderClockStarted ||
+        document.querySelector('script[src$="/SHARED/js/operations-header.js"]')
+    ) {
         return;
     }
 
@@ -145,7 +162,7 @@ const initEngineerProfileMenu = () => {
     const toggle = document.querySelector('[data-engineer-profile-toggle]');
     const dropdown = document.querySelector('[data-engineer-profile-dropdown]');
     const profileModal = document.querySelector('[data-engineer-profile-modal]');
-    const profileOpen = document.querySelector('[data-engineer-profile-modal-open]');
+    const profileOpenButtons = document.querySelectorAll('[data-engineer-profile-modal-open]');
     const profileClose = document.querySelector('[data-engineer-profile-modal-close]');
     const photoModal = document.querySelector('[data-engineer-photo-modal]');
     const photoOpenButtons = document.querySelectorAll('[data-engineer-photo-preview]');
@@ -196,7 +213,9 @@ const initEngineerProfileMenu = () => {
         dropdown.hidden ? openMenu() : closeMenu();
     });
 
-    profileOpen?.addEventListener('click', () => openModal(profileModal));
+    profileOpenButtons.forEach((button) => {
+        button.addEventListener('click', () => openModal(profileModal));
+    });
     profileClose?.addEventListener('click', () => closeModal(profileModal));
     photoOpenButtons.forEach((button) => {
         button.addEventListener('click', () => openModal(photoModal));

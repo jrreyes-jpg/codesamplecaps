@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/profile_photo_storage.php';
 $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
 $currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
 
-$isDashboardPage = str_contains($currentPath, '/ADMIN/dashboards/admin_dashboard.php');
+$isDashboardPage = str_contains($currentPath, '/ADMIN/sidebar/overview/php/overview.php');
 $isOverviewPage = false;
 $isUserManagementPage = str_contains($currentPath, '/ADMIN/sidebar/user_management.php');
 $isDashboard = $isOverviewPage || ($isDashboardPage && ($currentQuery === '' || str_contains($currentQuery, 'tab=dashboard')));
@@ -25,7 +25,8 @@ $superAdminProfilePhotoUrl = '';
 $superAdminProfileInitials = '';
 
 if (!function_exists('build_default_profile_avatar_data_uri')) {
-    function build_default_profile_avatar_data_uri(): string {
+    function build_default_profile_avatar_data_uri(): string
+    {
         $relativePath = '/codesamplecaps/IMAGES/nodp.jpg';
         $absoluteFile = __DIR__ . '/../IMAGES/nodp.jpg';
 
@@ -52,7 +53,8 @@ SVG;
 }
 
 if (!function_exists('super_admin_sidebar_table_exists')) {
-    function super_admin_sidebar_table_exists(mysqli $conn, string $tableName): bool {
+    function super_admin_sidebar_table_exists(mysqli $conn, string $tableName): bool
+    {
         static $tableCache = [];
         $cacheKey = $conn->thread_id . ':' . $tableName;
 
@@ -82,7 +84,8 @@ if (!function_exists('super_admin_sidebar_table_exists')) {
 }
 
 if (!function_exists('super_admin_sidebar_column_exists')) {
-    function super_admin_sidebar_column_exists(mysqli $conn, string $tableName, string $columnName): bool {
+    function super_admin_sidebar_column_exists(mysqli $conn, string $tableName, string $columnName): bool
+    {
         static $columnCache = [];
         $cacheKey = $conn->thread_id . ':' . $tableName . ':' . $columnName;
 
@@ -113,7 +116,8 @@ if (!function_exists('super_admin_sidebar_column_exists')) {
 }
 
 if (!function_exists('super_admin_notification_relative_time')) {
-    function super_admin_notification_relative_time(?string $dateTime): string {
+    function super_admin_notification_relative_time(?string $dateTime): string
+    {
         if (!$dateTime) {
             return 'Unknown time';
         }
@@ -147,13 +151,15 @@ if (!function_exists('super_admin_notification_relative_time')) {
 }
 
 if (!function_exists('super_admin_notification_action_label')) {
-    function super_admin_notification_action_label(string $action): string {
+    function super_admin_notification_action_label(string $action): string
+    {
         return ucwords(str_replace('_', ' ', $action));
     }
 }
 
 if (!function_exists('super_admin_fetch_notification_data')) {
-    function super_admin_fetch_notification_data(mysqli $conn): array {
+    function super_admin_fetch_notification_data(mysqli $conn): array
+    {
         $cacheKey = 'super_admin_sidebar_notification_data';
         $cacheTtlSeconds = 30;
         $cached = $_SESSION[$cacheKey] ?? null;
@@ -389,7 +395,8 @@ if (
 }
 
 if (!function_exists('super_admin_profile_initials')) {
-    function super_admin_profile_initials(string $name): string {
+    function super_admin_profile_initials(string $name): string
+    {
         $name = trim($name);
         if ($name === '') {
             return 'SA';
@@ -420,146 +427,123 @@ if ($superAdminProfilePhotoUrl === '') {
 $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName);
 ?>
 <?php include __DIR__ . '/../SHARED/layout/sidebar.php'; ?>
-<header class="global-topbar" aria-live="polite">
-    <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Admin overview">
-        <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
-        <strong>EDGE Automation</strong>
-    </a>
-    <div class="global-topbar__actions">
-        <div class="topbar-profile" data-profile-root>
-            <button 
-                title="Account"
-                id="topbarProfileToggle"
-                class="topbar-profile__toggle"
-                type="button"
-                aria-label="Open profile menu"
-                aria-controls="topbarProfileDropdown"
-                aria-expanded="false"
-            >
-                <span class="topbar-profile__avatar-shell" aria-hidden="true">
-                    <img src="<?php echo htmlspecialchars($superAdminProfilePhotoUrl); ?>" alt="Super admin profile picture" class="topbar-profile__avatar-image">
-                    <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($superAdminProfileInitials); ?></span>
-                    <span class="topbar-profile__chevron-badge">
-                        <span class="topbar-profile__chevron" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" focusable="false">
-                                <path d="M5 7.5 10 12.5 15 7.5"></path>
-                            </svg>
-                        </span>
-                    </span>
-                </span>
-            </button>
+<?php ob_start(); ?>
+<?php
+$headerProfileName = $superAdminProfileName;
+$headerProfileRole = $superAdminProfileRole;
+$headerProfilePhotoUrl = $superAdminProfilePhotoUrl;
+$headerProfileInitials = $superAdminProfileInitials;
+$headerProfileAlt = 'Admin profile picture';
+$headerProfileLinks = [
+    ['label' => 'Profile', 'href' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php?tab=profile'],
+    ['label' => 'Settings', 'href' => '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php?tab=profile#security-settings'],
+    ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
+];
+include __DIR__ . '/../SHARED/header/profile/profile.php';
+?>
 
-            <div id="topbarProfileDropdown" class="topbar-profile__dropdown" hidden>
-                <div class="topbar-profile__panel-head">
-                    <span class="topbar-profile__avatar-shell topbar-profile__avatar-shell--panel" aria-hidden="true">
-                        <img src="<?php echo htmlspecialchars($superAdminProfilePhotoUrl); ?>" alt="Super admin profile picture" class="topbar-profile__avatar-image topbar-profile__avatar-image--panel">
-                        <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($superAdminProfileInitials); ?></span>
-                    </span>
-                    <div>
-                        <strong><?php echo htmlspecialchars($superAdminProfileName); ?></strong>
-                        <span><?php echo htmlspecialchars($superAdminProfileRole); ?></span>
-                    </div>
-                </div>
-                <div class="topbar-profile__links">
-                    <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php?tab=profile">Profile</a>
-                    <a href="/codesamplecaps/ADMIN/dashboards/admin_dashboard.php?tab=profile#security-settings">Settings</a>
-                    <a href="/codesamplecaps/LOGIN/php/logout.php">Logout</a>
-                </div>
+<div class="topbar-notifications" data-notification-root>
+    <button
+        title="Notifications"
+        id="topbarNotificationToggle"
+        class="topbar-notifications__toggle"
+        type="button"
+        aria-label="Open notifications"
+        aria-controls="topbarNotificationDropdown"
+        aria-expanded="false">
+        <span class="topbar-notifications__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor" />
+            </svg>
+        </span>
+        <?php if (($superAdminNotificationData['urgent_count'] ?? 0) > 0): ?>
+            <span class="topbar-notifications__badge">
+                <?php echo $superAdminNotificationData['urgent_count'] > 99 ? '99+' : (int)$superAdminNotificationData['urgent_count']; ?>
+            </span>
+        <?php endif; ?>
+    </button>
+
+    <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
+        <div class="topbar-notifications__panel-head">
+            <div>
+                <strong>Notifications</strong>
+                <span>
+                    <?php echo (int)($superAdminNotificationData['urgent_count'] ?? 0); ?> need attention
+                </span>
             </div>
         </div>
 
-        <div class="topbar-notifications" data-notification-root>
-            <button
-            title="Notifications"
-                id="topbarNotificationToggle"
-                class="topbar-notifications__toggle"
-                type="button"
-                aria-label="Open notifications"
-                aria-controls="topbarNotificationDropdown"
-                aria-expanded="false"
-            >
-                <span class="topbar-notifications__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
-                    </svg>
-                </span>
-                <?php if (($superAdminNotificationData['urgent_count'] ?? 0) > 0): ?>
-                    <span class="topbar-notifications__badge">
-                        <?php echo $superAdminNotificationData['urgent_count'] > 99 ? '99+' : (int)$superAdminNotificationData['urgent_count']; ?>
-                    </span>
-                <?php endif; ?>
-            </button>
+        <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
+            <div class="topbar-notifications__summary">
+                <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
+                    <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
+                    <span>Project risks</span>
+                </a>
+            </div>
+        <?php endif; ?>
+        <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
+            <div class="topbar-notifications__summary">
+                <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="notification-summary-chip notification-summary-chip--info">
+                    <strong><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?></strong>
+                    <span>New inquiries</span>
+                </a>
+            </div>
+        <?php endif; ?>
 
-                <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
-                <div class="topbar-notifications__panel-head">
-                    <div>
-                        <strong>Notifications</strong>
-                        <span>
-                            <?php echo (int)($superAdminNotificationData['urgent_count'] ?? 0); ?> need attention
-                        </span>
-                    </div>
+        <div class="topbar-notifications__section">
+            <div class="topbar-notifications__section-title">Needs attention</div>
+            <?php if (($superAdminNotificationData['urgent_count'] ?? 0) === 0): ?>
+                <div class="topbar-notifications__empty">
+                    No urgent alerts right now.
                 </div>
-
-                <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
-                    <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/ADMIN/sidebar/projects/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
-                            <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
-                            <span>Project risks</span>
-                        </a>
-                    </div>
-                <?php endif; ?>
-                <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
-                    <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php" class="notification-summary-chip notification-summary-chip--info">
-                            <strong><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?></strong>
-                            <span>New inquiries</span>
-                        </a>
-                    </div>
-                <?php endif; ?>
-
-                <div class="topbar-notifications__section">
-                    <div class="topbar-notifications__section-title">Needs attention</div>
-                    <?php if (($superAdminNotificationData['urgent_count'] ?? 0) === 0): ?>
-                        <div class="topbar-notifications__empty">
-                            No urgent alerts right now.
+            <?php else: ?>
+                <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
+                    <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
+                        <span class="notification-item__dot"></span>
+                        <div class="notification-item__copy">
+                            <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>
+                            <span>
+                                <?php
+                                $parts = [];
+                                if ((int)($projectAlert['delayed_tasks'] ?? 0) > 0) {
+                                    $parts[] = (int)($projectAlert['delayed_tasks'] . ' delayed task(s)');
+                                }
+                                echo htmlspecialchars(implode(' | ', $parts) ?: 'Needs checking');
+                                ?>
+                            </span>
                         </div>
-                    <?php else: ?>
-                        <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                            <a href="/codesamplecaps/ADMIN/sidebar/projects/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
-                                <span class="notification-item__dot"></span>
-                                <div class="notification-item__copy">
-                                    <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>
-                                    <span>
-                                        <?php
-                                        $parts = [];
-                                        if ((int)($projectAlert['delayed_tasks'] ?? 0) > 0) {
-                                            $parts[] = (int)($projectAlert['delayed_tasks'] . ' delayed task(s)');
-                                        }
-                                        echo htmlspecialchars(implode(' | ', $parts) ?: 'Needs checking');
-                                        ?>
-                                    </span>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                        <?php foreach ($superAdminNotificationData['inquiry_alerts'] as $inquiryAlert): ?>
-                            <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed">
-                                <span class="notification-item__dot"></span>
-                                <div class="notification-item__copy">
-                                    <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>
-                                    <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> &bull; New inquiry</span>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-
-            </div>
+                    </a>
+                <?php endforeach; ?>
+                <?php foreach ($superAdminNotificationData['inquiry_alerts'] as $inquiryAlert): ?>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed">
+                        <span class="notification-item__dot"></span>
+                        <div class="notification-item__copy">
+                            <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>
+                            <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> &bull; New inquiry</span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
 
-        <div class="global-topbar__clock">
-            <span class="global-topbar__clock-label">Philippines Time</span>
-            <strong class="global-topbar__time" data-ph-time>--:--:--</strong>
-            <span class="global-topbar__date" data-ph-date>Loading date...</span>
-        </div>
     </div>
-</header>
+</div>
+
+<?php
+$operationsHeaderActionsHtml = ob_get_clean();
+$operationsHeaderRole = 'admin';
+$operationsHeaderClass = 'global-topbar';
+$operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
+$operationsHeaderActionsClass = 'global-topbar__actions';
+$operationsHeaderClockClass = 'global-topbar__clock';
+$operationsHeaderHomeHref = '/codesamplecaps/ADMIN/sidebar/overview/php/overview.php';
+$operationsHeaderBrandText = 'EDGE Automation';
+$operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
+$operationsHeaderBrandLabel = 'Go to Admin overview';
+$operationsHeaderTime = '--:--:--';
+$operationsHeaderDate = 'Loading date...';
+$operationsHeaderTimeAttr = 'class="global-topbar__time" data-ph-time';
+$operationsHeaderDateAttr = 'class="global-topbar__date" data-ph-date';
+$operationsHeaderAttrs = 'aria-live="polite"';
+include __DIR__ . '/../SHARED/layout/operations_header.php';
+?>

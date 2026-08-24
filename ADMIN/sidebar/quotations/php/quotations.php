@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/quotation_module.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/quotation_module.php';
 
 require_role('admin');
 
@@ -272,7 +272,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
 </head>
 <body>
 <div class="container">
-<?php include __DIR__ . '/../admin_sidebar.php'; ?>
+<?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
 <main class="main-content">
     <div class="quotation-shell">
         <?php if ($flash): ?><div class="flash <?php echo htmlspecialchars((string)$flash['type']); ?>"><?php echo htmlspecialchars((string)$flash['message']); ?></div><?php endif; ?>

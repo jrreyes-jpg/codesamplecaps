@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/project_progress.php';
-require_once __DIR__ . '/../../config/quotation_module.php';
-require_once __DIR__ . '/../includes/db_helpers.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/project_progress.php';
+require_once __DIR__ . '/../../../../config/quotation_module.php';
+require_once __DIR__ . '/../../../includes/db_helpers.php';
 
 require_role('admin');
 
@@ -62,8 +62,8 @@ $adminCssFiles = [
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
 ];
-include __DIR__ . '/../layout/header.php';
-include __DIR__ . '/../admin_sidebar.php';
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
 <main class="main-content">
@@ -128,7 +128,7 @@ include __DIR__ . '/../admin_sidebar.php';
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/projects/projects.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php">
                     <h3>All project reports</h3>
                     <p>Track project pipeline, active execution, completed delivery, and overall workload across the system.</p>
                     <div class="report-link-card__meta">
@@ -136,7 +136,7 @@ include __DIR__ . '/../admin_sidebar.php';
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/quotations.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">
                     <h3>Quotation and approval reports</h3>
                     <p>Review all quotations, approval states, and commercial records tied to project delivery.</p>
                     <div class="report-link-card__meta">
@@ -144,7 +144,7 @@ include __DIR__ . '/../admin_sidebar.php';
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/procurement.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/procurement/php/procurement.php">
                     <h3>Financial and procurement summary</h3>
                     <p>Use purchase-order approval counts as the current admin-level financial checkpoint inside the system.</p>
                     <div class="report-link-card__meta">
@@ -152,7 +152,7 @@ include __DIR__ . '/../admin_sidebar.php';
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/inventory.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">
                     <h3>Inventory and asset reports</h3>
                     <p>Watch stock pressure and asset movement that may affect delivery schedules and procurement needs.</p>
                     <div class="report-link-card__meta">
@@ -160,7 +160,7 @@ include __DIR__ . '/../admin_sidebar.php';
                         <span>Open</span>
                     </div>
                 </a>
-                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/activity_history.php">
+                <a class="report-link-card" href="/codesamplecaps/ADMIN/sidebar/activity_history/php/activity_history.php">
                     <h3>Audit logs and traceability</h3>
                     <p>Check system history, approvals, changes, and accountability trails when you need full oversight.</p>
                     <div class="report-link-card__meta">

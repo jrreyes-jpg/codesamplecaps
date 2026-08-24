@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/audit_log.php';
-require_once __DIR__ . '/../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/audit_log.php';
+require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
 
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions as QRCodeOptions;
@@ -27,9 +27,9 @@ function assets_get_redirect_target(): string {
     $redirectTo = is_string($redirectTo) ? trim($redirectTo) : '';
 
     $allowedPrefixes = [
-        '/codesamplecaps/ADMIN/sidebar/assets.php',
-        '/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash',
-        '/codesamplecaps/ADMIN/sidebar/projects/projects.php',
+        '/codesamplecaps/ADMIN/sidebar/assets/php/assets.php',
+        '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash',
+        '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php',
     ];
 
     foreach ($allowedPrefixes as $allowedPrefix) {
@@ -38,7 +38,7 @@ function assets_get_redirect_target(): string {
         }
     }
 
-    return '/codesamplecaps/ADMIN/sidebar/assets.php';
+    return '/codesamplecaps/ADMIN/sidebar/assets/php/assets.php';
 }
 
 function redirect_assets_page(): void {
@@ -1326,8 +1326,8 @@ $adminCssFiles = [
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
 ];
-include __DIR__ . '/../layout/header.php';
-include __DIR__ . '/../admin_sidebar.php';
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
     <main class="main-content assets-content">
@@ -1609,14 +1609,14 @@ include __DIR__ . '/../admin_sidebar.php';
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="restore_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                     <button type="submit" class="btn-secondary">Restore</button>
                                                 </form>
                                                 <form method="POST" class="asset-inline-form" onsubmit="return confirm('Permanently delete this asset from trash bin?');">
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
-                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/projects.php?view=trash">
+                                                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                     <button type="submit" class="btn-danger">Delete Permanently</button>
                                                 </form>
                                             <?php else: ?>
@@ -1928,4 +1928,4 @@ if (assetQrModal) {
     assetQrModal.addEventListener('click', closeAssetQrModal);
 }
 </script>
-<?php include __DIR__ . '/../layout/footer.php'; ?>
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>

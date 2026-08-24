@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/audit_log.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/audit_log.php';
 
 require_role('admin');
 
@@ -216,7 +216,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
 
     <main class="main-content scan-history-content">
         <div class="header page-header-card">
@@ -248,7 +248,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
                         </select>
                     </label>
                     <button type="submit" class="btn-primary">Filter</button>
-                    <a href="/codesamplecaps/ADMIN/sidebar/activity_history.php" class="btn-secondary">Reset</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/activity_history/php/activity_history.php" class="btn-secondary">Reset</a>
                 </div>
             </form>
 

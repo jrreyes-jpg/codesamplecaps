@@ -212,7 +212,7 @@ function initProjectSearchUI() {
         }
 
         const queryString = params.toString();
-        return '/codesamplecaps/ADMIN/sidebar/projects/projects.php' + (queryString ? '?' + queryString : '');
+        return '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php' + (queryString ? '?' + queryString : '');
     }
 
     function triggerSearchRefresh(immediate) {
@@ -360,7 +360,7 @@ function initProjectSearchUI() {
                 window.clearTimeout(searchDebounceId);
             }
 
-            const resetUrl = section?.getAttribute('data-reset-url') || searchClear.getAttribute('href') || '/codesamplecaps/ADMIN/sidebar/projects/projects.php';
+            const resetUrl = section?.getAttribute('data-reset-url') || searchClear.getAttribute('href') || '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php';
             refreshProjectsSection(resetUrl);
         });
     }

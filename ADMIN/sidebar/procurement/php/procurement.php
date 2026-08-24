@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../../config/auth_middleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/audit_log.php';
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/audit_log.php';
 
 require_role('admin');
 
@@ -17,7 +17,7 @@ function procurement_is_valid_csrf_token(?string $token): bool
 
 function procurement_redirect(): void
 {
-    header('Location: /codesamplecaps/ADMIN/sidebar/procurement.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/procurement/php/procurement.php');
     exit();
 }
 
@@ -286,7 +286,7 @@ if ($statsResult) {
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/../admin_sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-stack">

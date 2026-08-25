@@ -203,23 +203,23 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
         }
     }
 }
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity History - Edge Automation</title>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/common/css/admin-common.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/sidebar/activity_history/css/activity_history.css">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
+$adminPageTitle = 'Activity History - Edge Automation';
 
-    <main class="main-content scan-history-content">
+$adminCssFiles = [
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/ADMIN/sidebar/activity_history/css/activity_history.css',
+];
+
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/activity_history/js/activity_history.js',
+];
+
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
+?>
+
+<main class="main-content scan-history-content">
         <div class="header page-header-card">
             <div class="header-copy">
                 <h1>Activity History</h1>
@@ -295,9 +295,5 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
             </div>
         </section>
     </main>
-</div>
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
-<script src="/codesamplecaps/ADMIN/sidebar/activity_history/js/activity_history.js"></script>
 </body>
 </html>

@@ -24,7 +24,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
 $adminPageTitle = 'Quotation Approval Panel - Edge Automation';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
+    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
     '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css',
 ];
 

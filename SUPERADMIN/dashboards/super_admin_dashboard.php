@@ -1141,7 +1141,7 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-    <link rel="stylesheet" href="../css/super_admin_dashboard.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/common/css/admin-ui.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
     <link rel="stylesheet" href="../css/footer.css">
     <link rel="stylesheet" href="../css/user-management.css">

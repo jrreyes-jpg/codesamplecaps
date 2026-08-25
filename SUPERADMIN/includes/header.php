@@ -17,7 +17,7 @@ if (!isset($pageStyles) || !is_array($pageStyles)) {
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/super_admin_dashboard.css">
+    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/common/css/admin-ui.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
     <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/footer.css">
     <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">

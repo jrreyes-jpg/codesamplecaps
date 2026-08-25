@@ -844,3 +844,142 @@
         flex: 1 1 100%;
     }
 }
+
+.asset-print-body {
+    font-family: 'Poppins', sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 20px;
+}
+
+.asset-print-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.asset-print-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+
+.asset-print-header h1 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.asset-print-button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    background: #2d3a56;
+    color: #fff;
+}
+
+.asset-print-warning {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.asset-print-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+}
+
+.asset-print-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+}
+
+.asset-print-card h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+}
+
+.asset-print-card p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #444;
+}
+
+.asset-print-qr {
+    width: 130px;
+    height: 130px;
+    margin: 10px auto;
+}
+
+.asset-print-qr__image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.asset-print-qr__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+}
+
+.asset-print-scan-value {
+    margin-top: auto;
+    font-size: 12px;
+    color: #555;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+}
+
+.asset-print-label-number {
+    display: inline-flex;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+@media print {
+    @page {
+        size: auto;
+        margin: 10mm;
+    }
+
+    .asset-print-body {
+        padding: 0;
+        background: #fff;
+    }
+
+    .asset-print-header {
+        display: none;
+    }
+
+    .asset-print-cards {
+        gap: 10px;
+    }
+
+    .asset-print-card {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #d1d5db;
+        min-height: 280px;
+    }
+}

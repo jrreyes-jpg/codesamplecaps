@@ -239,11 +239,20 @@
         });
     };
 
+    var setupPrintQrPage = function () {
+        document.querySelectorAll('[data-print-asset-qrs]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                window.print();
+            });
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         setupStockDefaults();
         setupAssetFilters();
         setupAssetActions();
         setupDistributionBars();
         setupQrModal();
+        setupPrintQrPage();
     });
 })();

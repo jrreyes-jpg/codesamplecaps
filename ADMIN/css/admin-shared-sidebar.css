@@ -10,13 +10,6 @@
     --sidebar-width: var(--ops-sidebar-width);
 }
 
-.sidebar--admin {
-    --ops-sidebar-bg: #064e3b;
-    --ops-sidebar-bg-deep: #052e22;
-    --ops-sidebar-active: #16a34a;
-    --ops-sidebar-active-soft: rgba(22, 163, 74, 0.2);
-}
-
 .global-topbar {
     left: var(--ops-sidebar-width);
     width: calc(100% - var(--ops-sidebar-width));
@@ -26,11 +19,6 @@ html.ops-sidebar-shrink-pref .global-topbar,
 .sidebar.shrink ~ .global-topbar {
     left: var(--ops-sidebar-collapsed-width);
     width: calc(100% - var(--ops-sidebar-collapsed-width));
-}
-
-.main-content.sidebar-shrink {
-    margin-left: var(--ops-sidebar-collapsed-width) !important;
-    width: calc(100% - var(--ops-sidebar-collapsed-width)) !important;
 }
 
 /* Cancels old Admin sidebar rules so the shared collapsed arrow stays centered. */

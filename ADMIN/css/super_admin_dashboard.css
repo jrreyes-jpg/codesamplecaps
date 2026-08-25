@@ -309,18 +309,6 @@ body {
     padding: 15px;
 }
 
-.sidebar.collapsed .sidebar-toggle {
-    right: auto;
-    left: 10px;
-    transform: none;
-}
-
-.sidebar.shrink .sidebar-toggle {
-    right: auto;
-    left: 10px;
-    transform: none;
-}
-
 .sidebar.shrink .sidebar-toggle-row,
 .sidebar.collapsed .sidebar-toggle-row {
     justify-content: center;
@@ -577,17 +565,6 @@ body {
 .sidebar.shrink .sidebar-toggle-icon,
 .sidebar.collapsed .sidebar-toggle-icon {
     transform: rotate(180deg);
-}
-
-.sidebar.shrink .sidebar-header.brand-block,
-.sidebar.collapsed .sidebar-header.brand-block {
-    justify-content: center;
-    min-height: 10px;
-    padding: 0;
-    margin-bottom: 10px;
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
 }
 
 .sidebar.shrink .brand-copy,

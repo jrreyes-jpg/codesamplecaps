@@ -413,20 +413,19 @@ foreach ($inventoryItems as $item) {
     }
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management - Admin</title>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/common/css/admin-common.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
+<?php
+$adminPageTitle = 'Inventory Management - Admin';
+$adminCssFiles = [
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css',
+];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js',
+];
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
+?>
 
     <main class="main-content">
         <div class="page-stack">
@@ -616,8 +615,4 @@ foreach ($inventoryItems as $item) {
             </section>
         </div>
     </main>
-</div>
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
-</body>
-</html>
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>

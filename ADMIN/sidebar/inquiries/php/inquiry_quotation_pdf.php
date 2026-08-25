@@ -25,7 +25,7 @@ $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> - Quotation</title>
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/inquiry-quotation-pdf.css">
+    <link rel="stylesheet" href="/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiry-quotation-pdf.css">
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
 </head>
 <body>
@@ -155,6 +155,6 @@ $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
             </div>
         </footer>
     </main>
-    <script src="/codesamplecaps/ADMIN/js/inquiry-quotation-pdf.js"></script>
+    <script src="/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiry-quotation-pdf.js"></script>
 </body>
 </html>

@@ -767,7 +767,7 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
 $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
+    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
 ];
 $adminJsFiles = [

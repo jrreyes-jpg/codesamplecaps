@@ -679,7 +679,7 @@ if ($projectId > 0) {
 $adminPageTitle = 'Project Details - Admin';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/css/super_admin_dashboard.css',
+    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
 ];
 
 include __DIR__ . '/../../../layout/header.php';

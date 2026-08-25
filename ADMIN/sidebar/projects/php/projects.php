@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
 require_once __DIR__ . '/../../../../config/project_progress.php';
 require_once __DIR__ . '/../../../services/project_service.php';
-require_once __DIR__ . '/../../../php/projects/project_search_support.php';
+require_once __DIR__ . '/../../../sidebar/projects/php/project_search_support.php';
 
 require_role('admin');
 
@@ -3399,7 +3399,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     }
                     echo $resetParams ? '?' . http_build_query($resetParams) : '';
                 ?>"
-                data-search-endpoint="/codesamplecaps/ADMIN/php/projects/project_search_api.php"
+                data-search-endpoint="/codesamplecaps/ADMIN/sidebar/projects/php/projects/project_search_api.php"
             >
                 
                 <div class="project-controls">

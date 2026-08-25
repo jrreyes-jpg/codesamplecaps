@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/project_search_support.php';
+require_once __DIR__ . '/../../../sidebar/projects/php/project_search_support.php';
 
 require_role('admin');
 

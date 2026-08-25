@@ -1,6 +1,7 @@
 (function () {
     var storageKey = 'edge.operations.sidebar.shrink';
     var scrollStorageKey = 'edge.operations.sidebar.scroll';
+    var pendingActiveKey = 'edge.operations.sidebar.pendingActive';
     var legacyKeys = ['engineer.sidebar.shrink', 'edgeSidebarCollapsed'];
     var scrollSaveTimer = null;
 
@@ -131,6 +132,24 @@
         }
     };
 
+    var savePendingActiveTarget = function (href) {
+        try {
+            window.sessionStorage.setItem(pendingActiveKey, href);
+        } catch (error) {
+            // Ignore storage failures.
+        }
+    };
+
+    var consumePendingActiveTarget = function () {
+        try {
+            var saved = window.sessionStorage.getItem(pendingActiveKey);
+            window.sessionStorage.removeItem(pendingActiveKey);
+            return saved;
+        } catch (error) {
+            return null;
+        }
+    };
+
     var scheduleSidebarScrollSave = function (sidebar) {
         if (scrollSaveTimer !== null) {
             window.clearTimeout(scrollSaveTimer);
@@ -148,18 +167,12 @@
             return;
         }
 
-        var sidebarTop = sidebar.scrollTop;
-        var sidebarBottom = sidebarTop + sidebar.clientHeight;
-        var itemTop = activeItem.offsetTop;
-        var itemBottom = itemTop + activeItem.offsetHeight;
+        var sidebarRect = sidebar.getBoundingClientRect();
+        var activeRect = activeItem.getBoundingClientRect();
+        var isVisible = activeRect.top >= sidebarRect.top && activeRect.bottom <= sidebarRect.bottom;
 
-        if (itemTop < sidebarTop) {
-            sidebar.scrollTop = Math.max(0, itemTop - 12);
-            return;
-        }
-
-        if (itemBottom > sidebarBottom) {
-            sidebar.scrollTop = Math.max(0, itemBottom - sidebar.clientHeight + 12);
+        if (!isVisible) {
+            activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
     };
 
@@ -168,9 +181,12 @@
             return;
         }
 
-        var savedScroll = readSidebarScroll();
-        var maxScroll = Math.max(0, sidebar.scrollHeight - sidebar.clientHeight);
-        sidebar.scrollTop = Math.min(savedScroll, maxScroll);
+        if (consumePendingActiveTarget() === null) {
+            var savedScroll = readSidebarScroll();
+            var maxScroll = Math.max(0, sidebar.scrollHeight - sidebar.clientHeight);
+            sidebar.scrollTop = Math.min(savedScroll, maxScroll);
+        }
+
         keepActiveItemVisible(sidebar);
     };
 
@@ -250,7 +266,11 @@
                 var isLogout = link.classList.contains('logout');
                 var href = link.getAttribute('href');
                 sound[isLogout ? 'logout' : 'tap']();
-                saveSidebarScroll(sidebar);
+                if (href && !href.startsWith('#') && !isLogout) {
+                    savePendingActiveTarget(href);
+                } else {
+                    saveSidebarScroll(sidebar);
+                }
 
                 if (window.innerWidth <= 768) {
                     closeMobileSidebar();

@@ -57,7 +57,7 @@ $portfolioProgress = $totalProjects > 0
 $adminPageTitle = 'Reports Hub - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/css/reports.css',
+    '/codesamplecaps/ADMIN/sidebar/reports/css/reports.css',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',

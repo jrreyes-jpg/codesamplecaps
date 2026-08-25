@@ -1014,7 +1014,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotationDraft['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div class="inquiry-quote-draft__action">
-                                                <a class="inquiry-quote-pdf-link" href="/codesamplecaps/ADMIN/sidebar/inquiry_quotation_pdf.php?id=<?php echo (int)$quotationDraft['id']; ?>">
+                                                <a class="inquiry-quote-pdf-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo (int)$quotationDraft['id']; ?>">
                                                     View / Print PDF
                                                 </a>
                                             </div>

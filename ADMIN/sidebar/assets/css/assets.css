@@ -623,6 +623,21 @@
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.24);
 }
 
+.asset-qr-modal {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.asset-qr-modal.is-open {
+    display: flex;
+}
+
 .asset-qr-modal__header {
     display: flex;
     align-items: center;

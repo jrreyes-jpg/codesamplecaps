@@ -1325,6 +1325,7 @@ $adminCssFiles = [
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/assets/js/assets.js',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -1577,10 +1578,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <strong><?php echo $availableUnits + $deployedUnits + $maintenanceUnits + $lostUnits; ?> total tracked</strong>
                                                 </div>
                                                 <div class="asset-distribution__bar" aria-hidden="true">
-                                                    <span class="asset-distribution__segment asset-distribution__segment--available" style="width: <?php echo round($availableWidth, 2); ?>%"></span>
-                                                    <span class="asset-distribution__segment asset-distribution__segment--in-use" style="width: <?php echo round($deployedWidth, 2); ?>%"></span>
-                                                    <span class="asset-distribution__segment asset-distribution__segment--maintenance" style="width: <?php echo round($maintenanceWidth, 2); ?>%"></span>
-                                                    <span class="asset-distribution__segment asset-distribution__segment--lost" style="width: <?php echo round($lostWidth, 2); ?>%"></span>
+                                                    <span class="asset-distribution__segment asset-distribution__segment--available" data-segment-width="<?php echo round($availableWidth, 2); ?>"></span>
+                                                    <span class="asset-distribution__segment asset-distribution__segment--in-use" data-segment-width="<?php echo round($deployedWidth, 2); ?>"></span>
+                                                    <span class="asset-distribution__segment asset-distribution__segment--maintenance" data-segment-width="<?php echo round($maintenanceWidth, 2); ?>"></span>
+                                                    <span class="asset-distribution__segment asset-distribution__segment--lost" data-segment-width="<?php echo round($lostWidth, 2); ?>"></span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1589,7 +1590,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="asset-qr-actions">
                                             <?php if (!$isTrashView && !empty($asset['qr_code_value'])): ?>
                                                 <?php if ($qrLibraryReady): ?>
-                                                    <button type="button" onclick="showAssetQrGallery(<?php echo (int)$asset['id']; ?>)" class="btn-secondary">Preview</button>
+                                                    <button type="button" class="btn-secondary" data-asset-qr-preview="<?php echo (int)$asset['id']; ?>">Preview</button>
                                                     <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print</a>
                                                 <?php else: ?>
                                                     <span class="asset-inline-note">QR unavailable</span>
@@ -1605,14 +1606,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <td data-label="Actions">
                                         <div class="asset-row-actions">
                                             <?php if ($isTrashView): ?>
-                                                <form method="POST" class="asset-inline-form" onsubmit="return confirm('Restore this asset from trash bin?');">
+                                                <form method="POST" class="asset-inline-form" data-confirm-message="Restore this asset from trash bin?">
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="restore_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
                                                     <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash">
                                                     <button type="submit" class="btn-secondary">Restore</button>
                                                 </form>
-                                                <form method="POST" class="asset-inline-form" onsubmit="return confirm('Permanently delete this asset from trash bin?');">
+                                                <form method="POST" class="asset-inline-form" data-confirm-message="Permanently delete this asset from trash bin?">
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                     <input type="hidden" name="action" value="permanently_delete_asset">
                                                     <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
@@ -1689,7 +1690,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </form>
                                                 <?php endif; ?>
                                                 <div class="asset-row-actions__secondary">
-                                                    <form method="POST" class="asset-inline-form" onsubmit="return confirm('Move this asset to trash bin?');">
+                                                    <form method="POST" class="asset-inline-form" data-confirm-message="Move this asset to trash bin?">
                                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="trash_asset">
                                                         <input type="hidden" name="asset_id" value="<?php echo $asset['id']; ?>">
@@ -1712,219 +1713,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
     </main>
 </div>
 
-<div id="qrModal" class="modal-backdrop asset-qr-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); justify-content:center; align-items:center; padding:24px; z-index:1000;">
-    <div class="asset-qr-modal__panel" onclick="event.stopPropagation();">
+<div id="qrModal" class="modal-backdrop asset-qr-modal" hidden>
+    <div class="asset-qr-modal__panel">
         <div class="asset-qr-modal__header">
             <h3>Asset QR Preview</h3>
-            <button type="button" class="btn-secondary" onclick="closeAssetQrModal()">Close</button>
+            <button type="button" class="btn-secondary" data-asset-qr-close>Close</button>
         </div>
         <div id="qrModalContent" class="asset-qr-modal__grid"></div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const categoryField = document.getElementById('asset_category');
-    const minStockField = document.getElementById('min_stock');
-    const maxStockField = document.getElementById('max_stock');
-    const quantityField = document.getElementById('quantity');
-
-    if (!categoryField || !minStockField || !maxStockField || !quantityField) {
-        return;
-    }
-
-    const computeSmartMaxStock = (quantityValue, minStockValue, categoryDefaultMax) => {
-        const quantity = Math.max(0, Number(quantityValue || 0));
-        const minStock = Math.max(0, Number(minStockValue || 0));
-        const defaultMax = Number(categoryDefaultMax || 0);
-
-        if (defaultMax > 0) {
-            return Math.max(defaultMax, quantity, minStock);
-        }
-
-        const baseline = Math.max(quantity, minStock);
-        const buffer = Math.max(2, Math.ceil(baseline * 0.5));
-        return Math.max(1, baseline + buffer, minStock * 2);
-    };
-
-    const syncThresholdsFromCategory = () => {
-        const selectedOption = categoryField.options[categoryField.selectedIndex];
-        if (!selectedOption) {
-            return;
-        }
-
-        const recommendedMinStock = selectedOption.getAttribute('data-default-min-stock');
-        const recommendedMaxStock = selectedOption.getAttribute('data-default-max-stock');
-
-        if (recommendedMinStock !== null) {
-            minStockField.value = recommendedMinStock;
-        }
-
-        const shouldAutoSyncMax = maxStockField.dataset.userEdited !== 'true';
-        if (shouldAutoSyncMax) {
-            maxStockField.value = String(
-                computeSmartMaxStock(quantityField.value, recommendedMinStock, recommendedMaxStock)
-            );
-        }
-    };
-
-    categoryField.addEventListener('change', syncThresholdsFromCategory);
-    minStockField.addEventListener('input', () => {
-        if (maxStockField.dataset.userEdited === 'true') {
-            return;
-        }
-        const selectedOption = categoryField.options[categoryField.selectedIndex];
-        maxStockField.value = String(
-            computeSmartMaxStock(
-                quantityField.value,
-                minStockField.value,
-                selectedOption?.getAttribute('data-default-max-stock')
-            )
-        );
-    });
-    quantityField.addEventListener('input', () => {
-        if (maxStockField.dataset.userEdited === 'true') {
-            return;
-        }
-        const selectedOption = categoryField.options[categoryField.selectedIndex];
-        maxStockField.value = String(
-            computeSmartMaxStock(
-                quantityField.value,
-                minStockField.value,
-                selectedOption?.getAttribute('data-default-max-stock')
-            )
-        );
-    });
-    maxStockField.addEventListener('input', () => {
-        maxStockField.dataset.userEdited = 'true';
-    });
-    syncThresholdsFromCategory();
-
-    const filterTabs = Array.from(document.querySelectorAll('.asset-filter-tab'));
-    const assetRows = Array.from(document.querySelectorAll('.asset-table-row'));
-    const filterEmptyRow = document.querySelector('.asset-filter-empty');
-
-    if (filterTabs.length > 0 && assetRows.length > 0) {
-        const applyAssetFilter = (filterValue) => {
-            let visibleRows = 0;
-
-            assetRows.forEach((row) => {
-                const rowStatus = row.getAttribute('data-asset-status') || 'available';
-                const isVisible = filterValue === 'all' || rowStatus === filterValue;
-                row.hidden = !isVisible;
-                if (isVisible) {
-                    visibleRows++;
-                }
-            });
-
-            if (filterEmptyRow) {
-                filterEmptyRow.hidden = visibleRows !== 0;
-            }
-        };
-
-        filterTabs.forEach((tab) => {
-            tab.addEventListener('click', () => {
-                filterTabs.forEach((button) => button.classList.remove('is-active'));
-                tab.classList.add('is-active');
-                applyAssetFilter(tab.getAttribute('data-filter') || 'all');
-            });
-        });
-    }
-
-    document.querySelectorAll('.asset-action-form').forEach((form) => {
-        const actionInput = form.querySelector('.asset-action-input');
-        const actionSelect = form.querySelector('.asset-action-select');
-
-        if (!actionInput || !actionSelect) {
-            return;
-        }
-
-        form.addEventListener('submit', (event) => {
-            actionInput.value = actionSelect.value;
-
-            if (actionSelect.value === 'mark_asset_lost') {
-                const lostMessage = form.getAttribute('data-confirm-lost') || 'Mark the selected quantity as lost?';
-                if (!window.confirm(lostMessage)) {
-                    event.preventDefault();
-                }
-            }
-        });
-    });
-
-    document.querySelectorAll('.asset-recovery-form').forEach((form) => {
-        const actionInput = form.querySelector('.asset-recovery-action-input');
-        const actionSelect = form.querySelector('.asset-recovery-select');
-        const quantityInput = form.querySelector('.asset-action-qty');
-
-        if (!actionInput || !actionSelect || !quantityInput) {
-            return;
-        }
-
-        const syncRecoveryQuantity = () => {
-            const selectedOption = actionSelect.options[actionSelect.selectedIndex];
-            const maxQuantity = Number(selectedOption?.getAttribute('data-max-qty') || '1');
-            quantityInput.max = String(Math.max(1, maxQuantity));
-            if (Number(quantityInput.value) > maxQuantity) {
-                quantityInput.value = String(Math.max(1, maxQuantity));
-            }
-        };
-
-        actionSelect.addEventListener('change', syncRecoveryQuantity);
-        syncRecoveryQuantity();
-
-        form.addEventListener('submit', () => {
-            actionInput.value = actionSelect.value;
-        });
-    });
-});
-
-const assetQrGalleryMap = <?php echo json_encode($assetQrGalleryMap, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-
-function closeAssetQrModal() {
-    const modal = document.getElementById('qrModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-function showAssetQrGallery(assetId) {
-    const modal = document.getElementById('qrModal');
-    const modalContent = document.getElementById('qrModalContent');
-    const galleryItems = assetQrGalleryMap[String(assetId)] || assetQrGalleryMap[assetId] || [];
-
-    if (!modal || !modalContent || galleryItems.length === 0) {
-        return;
-    }
-
-    modalContent.innerHTML = galleryItems.map((item, index) => {
-        const safeLabel = String(item.label || 'Asset QR')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-        const safeScanValue = String(item.scan_value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-        const safeSrc = String(item.src || '').replace(/"/g, '&quot;');
-
-        return `
-            <article class="asset-preview-card">
-                <span class="asset-preview-card__count">#${index + 1}</span>
-                <img class="asset-preview-image" src="${safeSrc}" alt="${safeLabel}">
-                <strong>${safeLabel}</strong>
-                <small class="asset-qr-modal__scan">${safeScanValue}</small>
-            </article>
-        `;
-    }).join('');
-
-    modal.style.display = 'flex';
-}
-
-const assetQrModal = document.getElementById('qrModal');
-if (assetQrModal) {
-    assetQrModal.addEventListener('click', closeAssetQrModal);
-}
-</script>
+<template id="assetQrGalleryData"><?php echo json_encode($assetQrGalleryMap, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></template>
 <?php include __DIR__ . '/../../../layout/footer.php'; ?>

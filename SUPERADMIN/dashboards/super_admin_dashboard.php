@@ -1141,7 +1141,7 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/common/css/admin-ui.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/common/css/admin-common.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
     <link rel="stylesheet" href="../css/footer.css">
     <link rel="stylesheet" href="../css/user-management.css">
@@ -1269,7 +1269,7 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
     </main>
 </div>
 
-<script src="../js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 <script src="../js/user-management.js"></script>
 <script src="/codesamplecaps/assets/js/realtime-updates.js" defer></script>
 </body>

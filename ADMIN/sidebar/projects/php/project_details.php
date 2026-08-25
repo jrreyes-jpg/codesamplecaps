@@ -679,7 +679,7 @@ if ($projectId > 0) {
 $adminPageTitle = 'Project Details - Admin';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -1677,7 +1677,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
     </main>
 </div>
 <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 <script src="/codesamplecaps/ADMIN/sidebar/projects/js/project_details.js"></script>
 </body>
 </html>

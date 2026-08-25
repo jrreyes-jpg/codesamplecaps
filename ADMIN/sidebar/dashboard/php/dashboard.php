@@ -1126,7 +1126,7 @@ $userWorkspaceShouldOpenModal = false;
 <?php
 $adminPageTitle = 'Admin Dashboard - Edge Automation';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/common.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/dashboard/css/dashboard.css',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -1459,5 +1459,5 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
     </div>
 </main>
 <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 <script src="/codesamplecaps/ADMIN/sidebar/dashboard/js/dashboard.js"></script>

@@ -1320,11 +1320,11 @@ if ($createdAssetId > 0) {
 <?php
 $adminPageTitle = 'Assets & QR Codes - Admin';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/assets/css/assets.css',
 ];
 $adminJsFiles = [
-    '/codesamplecaps/ADMIN/js/super_admin_dashboard.js',
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -1722,7 +1722,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
     </div>
 </div>
 
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const categoryField = document.getElementById('asset_category');

@@ -24,7 +24,7 @@ $history = $selectedQuotation ? quotation_module_fetch_history($conn, (int)$sele
 $adminPageTitle = 'Quotation Approval Panel - Edge Automation';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css',
 ];
 
@@ -146,6 +146,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 </main>
 </div>
 <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 </body>
 </html>

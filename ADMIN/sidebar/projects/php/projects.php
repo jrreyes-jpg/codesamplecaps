@@ -2990,7 +2990,7 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
 $adminPageTitle = 'Project Management - Admin';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-ui.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css', 
 ];
 
@@ -4051,7 +4051,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
     </main>
 </div>
 <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 
 <script src="/codesamplecaps/ADMIN/sidebar/projects/js/projects.js"></script>
 </body>

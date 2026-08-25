@@ -45,7 +45,7 @@ if (foreman_table_exists($conn, 'assets')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foreman Asset Status - Edge Automation</title>
-    <link rel="stylesheet" href="../css/sidebar_foreman.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/foreman_dashboard.css">
     <link rel="stylesheet" href="../css/qr_scanner.css">
 </head>
@@ -175,7 +175,8 @@ if (foreman_table_exists($conn, 'assets')) {
     </div>
 </div>
 
-<script src="../js/sidebar_foreman.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
+<script src="/codesamplecaps/FOREMAN/js/sidebar_foreman.js"></script>
 <script src="../js/html5-qrcode.min.js"></script>
 <script src="../js/qr_scanner_foreman.js"></script>
 </body>

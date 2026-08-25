@@ -1458,6 +1458,6 @@ include __DIR__ . '/../../../admin_sidebar.php'; ?>
         </div>
     </div>
 </main>
-<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
 <script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 <script src="/codesamplecaps/ADMIN/sidebar/dashboard/js/dashboard.js"></script>

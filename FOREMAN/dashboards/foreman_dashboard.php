@@ -30,7 +30,7 @@ $projectRoleSummary = project_role_summary_label('foreman');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foreman Overview - Edge Automation</title>
-    <link rel="stylesheet" href="../css/sidebar_foreman.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/foreman_dashboard.css">
     <link rel="stylesheet" href="../css/qr_scanner.css">
 </head>
@@ -298,7 +298,8 @@ $projectRoleSummary = project_role_summary_label('foreman');
     </div>
 </div>
 
-<script src="../js/sidebar_foreman.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
+<script src="/codesamplecaps/FOREMAN/js/sidebar_foreman.js"></script>
 <script src="../js/html5-qrcode.min.js"></script>
 <script src="../js/qr_scanner_foreman.js"></script>
 </body>

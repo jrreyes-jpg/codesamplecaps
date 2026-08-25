@@ -421,7 +421,7 @@ if ($superAdminProfilePhotoUrl === '') {
 
 $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName);
 ?>
-<?php include __DIR__ . '/../SHARED/layout/sidebar.php'; ?>
+<?php include __DIR__ . '/../SHARED/sidebar/php/sidebar.php'; ?>
 <?php ob_start(); ?>
 <?php
 $headerProfileName = $superAdminProfileName;

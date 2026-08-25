@@ -45,7 +45,7 @@ if ($isDownload) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $isPdf ? 'Foreman Report PDF - Edge Automation' : 'Foreman Report Detail - Edge Automation'; ?></title>
     <?php if (!$isPdf): ?>
-    <link rel="stylesheet" href="../css/sidebar_foreman.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/foreman_dashboard.css">
     <?php endif; ?>
     <link rel="stylesheet" href="../css/foreman_reports.css">
@@ -143,6 +143,7 @@ if ($isDownload) {
     </div>
 </main>
 <?php endif; ?>
-<script src="../js/sidebar_foreman.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
+<script src="/codesamplecaps/FOREMAN/js/sidebar_foreman.js"></script>
 </body>
 </html>

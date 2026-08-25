@@ -280,7 +280,7 @@ if ($statsResult) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Procurement Approval - Admin</title>
     <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/common/css/admin-ui.css">
+    <link rel="stylesheet" href="/codesamplecaps/ADMIN/common/css/admin-common.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -411,6 +411,6 @@ if ($statsResult) {
     </main>
 </div>
 <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
+<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 </body>
 </html>

@@ -296,13 +296,13 @@ $csrfToken = engineer_inspection_csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Site Inspections - Engineer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
-    <link rel="stylesheet" href="../css/engineer-sidebar.css">
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/engineer.css">
     <link rel="stylesheet" href="../css/site-inspections.css">
 </head>
 <body>
-<?php include __DIR__ . '/../../SHARED/layout/sidebar.php'; ?>
+<?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 <main class="main-content">
     <?php
     include __DIR__ . '/../includes/header.php';
@@ -474,7 +474,7 @@ $csrfToken = engineer_inspection_csrf_token();
         </section>
     </div>
 </main>
-<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
 <script src="../js/engineer.js"></script>
 <script src="../js/site-inspections.js"></script>
 </body>

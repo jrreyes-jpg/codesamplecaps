@@ -419,9 +419,9 @@ foreach ($inventoryItems as $item) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management - Admin</title>
-    <script src="/codesamplecaps/SHARED/js/operations-sidebar-state.js"></script>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
     <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/super_admin_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/css/admin-shared-sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -617,7 +617,7 @@ foreach ($inventoryItems as $item) {
         </div>
     </main>
 </div>
-<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
 <script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 </body>
 </html>

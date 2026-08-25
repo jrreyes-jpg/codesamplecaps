@@ -440,6 +440,17 @@ html.ops-sidebar-shrink-pref .sidebar .menu-text {
     width: calc(100% - var(--ops-sidebar-collapsed-width));
 }
 
+.global-topbar {
+    left: var(--ops-sidebar-width);
+    width: calc(100% - var(--ops-sidebar-width));
+}
+
+html.ops-sidebar-shrink-pref .global-topbar,
+.sidebar.shrink ~ .global-topbar {
+    left: var(--ops-sidebar-collapsed-width);
+    width: calc(100% - var(--ops-sidebar-collapsed-width));
+}
+
 html.ops-sidebar-shrink-pref .main-content,
 html.ops-sidebar-shrink-pref .dashboard-main {
     margin-left: var(--ops-sidebar-collapsed-width) !important;
@@ -519,6 +530,13 @@ html.ops-sidebar-shrink-pref .dashboard-main {
     html.ops-sidebar-shrink-pref .dashboard-main {
         margin-left: 0 !important;
         width: 100% !important;
+    }
+
+    .global-topbar,
+    html.ops-sidebar-shrink-pref .global-topbar,
+    .sidebar.shrink ~ .global-topbar {
+        left: 0;
+        width: 100%;
     }
 
     .sidebar {

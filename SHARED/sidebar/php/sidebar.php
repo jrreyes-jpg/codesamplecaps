@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config/navigation.php';
+require_once __DIR__ . '/../../config/navigation.php';
 
 if (function_exists('auth_render_back_button_logout_script')) {
     auth_render_back_button_logout_script();
@@ -32,6 +32,15 @@ if (!function_exists('shared_sidebar_icon')) {
             'inventory' => '<path d="M4 6h16"></path><path d="M4 10h16"></path><path d="M6 10v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8"></path><path d="M9 14h6"></path><path d="M9 17h4"></path>',
             'site' => '<path d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11z"></path><circle cx="12" cy="10" r="2"></circle>',
             'progress' => '<path d="M12 6v6l4 2"></path><path d="M21 12a9 9 0 1 1-3-6.7"></path>',
+            'user' => '<path d="M16 20a4 4 0 0 0-8 0"></path><circle cx="12" cy="9" r="3.5"></circle><path d="M19 20a3 3 0 0 0-3-3"></path><path d="M5 20a3 3 0 0 1 3-3"></path>',
+            'security' => '<path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"></path><path d="M9 12l2 2 4-4"></path>',
+            'lock' => '<rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path>',
+            'settings' => '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.05.05-2.12 2.12-.05-.05a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.66V20h-3v-.08A1.8 1.8 0 0 0 10.4 18.3a1.8 1.8 0 0 0-2 .36l-.05.05-2.12-2.12.05-.05a1.8 1.8 0 0 0 .36-2A1.8 1.8 0 0 0 5 13.5H4v-3h1a1.8 1.8 0 0 0 1.66-1.1 1.8 1.8 0 0 0-.36-2l-.05-.05 2.12-2.12.05.05a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 11.5 4h3a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 2-.36l.05-.05 2.12 2.12-.05.05a1.8 1.8 0 0 0-.36 2A1.8 1.8 0 0 0 21 10.5h1v3h-1A1.8 1.8 0 0 0 19.4 15z"></path>',
+            'backup' => '<path d="M4 7h16v12H4z"></path><path d="M8 7V5h8v2"></path><path d="M12 11v5"></path><path d="M9.5 13.5 12 16l2.5-2.5"></path>',
+            'scan' => '<path d="M7 4H5a1 1 0 0 0-1 1v2"></path><path d="M17 4h2a1 1 0 0 1 1 1v2"></path><path d="M20 17v2a1 1 0 0 1-1 1h-2"></path><path d="M4 17v2a1 1 0 0 0 1 1h2"></path><path d="M7 12h10"></path><path d="M12 7v10"></path>',
+            'stock-in' => '<path d="M12 5v14"></path><path d="M7 10l5-5 5 5"></path><path d="M5 19h14"></path>',
+            'stock-out' => '<path d="M12 19V5"></path><path d="M7 14l5 5 5-5"></path><path d="M5 5h14"></path>',
+            'profile' => '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path><path d="M5 20a7 7 0 0 1 14 0"></path>',
         ];
 
         return $icons[$icon] ?? $icons['dashboard'];
@@ -91,11 +100,21 @@ if (!function_exists('shared_sidebar_is_active')) {
         <?php foreach ($sharedSidebarItems as $item): ?>
             <?php $isActive = shared_sidebar_is_active($item, $sharedSidebarPath, $sharedSidebarCurrent); ?>
             <li>
-                <a
-                    href="<?php echo htmlspecialchars((string)$item['href'], ENT_QUOTES, 'UTF-8'); ?>"
-                    class="menu-link<?php echo $isActive ? ' active-link' : ''; ?>"
-                    <?php echo $isActive ? 'aria-current="page" data-active="true"' : ''; ?>
-                >
+                <?php if (($item['type'] ?? 'link') === 'button'): ?>
+                    <button
+                        id="<?php echo htmlspecialchars((string)($item['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        class="menu-link menu-link--button<?php echo $isActive ? ' active-link' : ''; ?>"
+                        type="button"
+                        <?php echo $isActive ? 'data-active="true"' : ''; ?>
+                    >
+                <?php else: ?>
+                    <a
+                        href="<?php echo htmlspecialchars((string)$item['href'], ENT_QUOTES, 'UTF-8'); ?>"
+                        class="menu-link<?php echo $isActive ? ' active-link' : ''; ?>"
+                        <?php echo $isActive ? 'aria-current="page" data-active="true"' : ''; ?>
+                        <?php echo isset($item['data_section_link']) ? 'data-section-link="' . htmlspecialchars((string)$item['data_section_link'], ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
+                    >
+                <?php endif; ?>
                     <span class="menu-visual" aria-hidden="true">
                         <span class="menu-icon">
                             <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -105,7 +124,11 @@ if (!function_exists('shared_sidebar_is_active')) {
                         <span class="menu-mini-label"><?php echo htmlspecialchars((string)$item['mini'], ENT_QUOTES, 'UTF-8'); ?></span>
                     </span>
                     <span class="menu-text"><?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
-                </a>
+                <?php if (($item['type'] ?? 'link') === 'button'): ?>
+                    </button>
+                <?php else: ?>
+                    </a>
+                <?php endif; ?>
             </li>
         <?php endforeach; ?>
         <li>

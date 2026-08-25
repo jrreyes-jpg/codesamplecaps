@@ -23,7 +23,7 @@ $foremanNotifications = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foreman Reports Dashboard - Edge Automation</title>
-    <link rel="stylesheet" href="../css/sidebar_foreman.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/foreman_dashboard.css">
     <link rel="stylesheet" href="../css/foreman_reports.css">
 </head>
@@ -185,6 +185,7 @@ $foremanNotifications = [
         </section>
     </div>
 </main>
-<script src="../js/sidebar_foreman.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
+<script src="/codesamplecaps/FOREMAN/js/sidebar_foreman.js"></script>
 </body>
 </html>

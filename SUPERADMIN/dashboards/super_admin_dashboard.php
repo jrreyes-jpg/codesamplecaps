@@ -1138,7 +1138,7 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Dashboard - Edge Automation</title>
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
     <link rel="stylesheet" href="../css/super_admin_dashboard.css">

@@ -1676,7 +1676,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         </div>
     </main>
 </div>
-<script src="/codesamplecaps/SHARED/js/operations-sidebar.js"></script>
+<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
 <script src="/codesamplecaps/ADMIN/js/super_admin_dashboard.js"></script>
 <script src="/codesamplecaps/ADMIN/sidebar/projects/js/project_details.js"></script>
 </body>

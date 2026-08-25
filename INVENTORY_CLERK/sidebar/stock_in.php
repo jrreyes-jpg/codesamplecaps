@@ -76,7 +76,7 @@ $inventoryItems = inventory_clerk_fetch_items($conn);
     <title>Stock In</title>
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
     <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">

@@ -1,0 +1,6 @@
+/* Shared styles required by the operations header. */
+
+@import url('/codesamplecaps/SHARED/css/operations-header.css');
+@import url('/codesamplecaps/SHARED/header/profile/css/profile.css');
+@import url('/codesamplecaps/SHARED/header/notifications/css/notifications.css');
+@import url('/codesamplecaps/SHARED/header/time/css/time.css');

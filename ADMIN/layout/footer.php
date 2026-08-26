@@ -10,8 +10,8 @@ if (!in_array('/codesamplecaps/SHARED/sidebar/js/sidebar.js', $adminJsFiles, tru
     array_unshift($adminJsFiles, '/codesamplecaps/SHARED/sidebar/js/sidebar.js');
 }
 
-if (!in_array('/codesamplecaps/SHARED/js/operations-header.js', $adminJsFiles, true)) {
-    array_unshift($adminJsFiles, '/codesamplecaps/SHARED/js/operations-header.js');
+if (!in_array('/codesamplecaps/SHARED/header/core/operations-header.js', $adminJsFiles, true)) {
+    array_unshift($adminJsFiles, '/codesamplecaps/SHARED/header/core/operations-header.js');
 }
 
 if (!in_array('/codesamplecaps/assets/js/app-window-guard.js', $adminJsFiles, true)) {

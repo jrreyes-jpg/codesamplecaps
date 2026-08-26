@@ -83,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
         </div>
     </div>
-
+<script src="/codesamplecaps/LOGIN/common/js/particles.js"></script>
     <script src="../js/forgot.js"></script>
 </body>
 </html>

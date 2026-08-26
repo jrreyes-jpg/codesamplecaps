@@ -219,54 +219,76 @@ class AuthService {
      * @return array ['success' => bool, 'error' => string]
      */
     public function requestPasswordReset($email) {
-        $email = filter_var($email, FILTER_SANITIZE_EMAIL);
+    $genericMessage = 'If the email exists, a reset link will be sent.';
 
-        if (empty($email)) {
-            // Generic message for security
-            return ['success' => false, 'error' => 'Please provide your email address.'];
-        }
+    $email = strtolower(trim((string)$email));
 
-        $user = $this->userRepo->findByEmail($email);
-
-        // Cooldown para hindi ma-spam ang reset password email.
-        $resetCooldownSeconds = 5 * 60;
-        if ($user && !empty($user['reset_requested_at'])) {
-            $lastRequest = strtotime($user['reset_requested_at']);
-            $remainingCooldown = $lastRequest !== false
-                ? $resetCooldownSeconds - (time() - $lastRequest)
-                : 0;
-
-            if ($remainingCooldown > 0) {
-                $remainingMinutes = max(1, (int)ceil($remainingCooldown / 60));
-                return [
-                    'success' => false,
-                    'error' => "Please wait $remainingMinutes minute(s) before requesting another reset link."
-                ];
-            }
-        }
-
-
-        if (!$user) {
-            // User not found - don't reveal this
-            return ['success' => true, 'message' => 'If the email exists, a reset link will be sent.'];
-        }
-
-        // Generate reset token
-        $resetToken = bin2hex(random_bytes(50));
-        $expiryMinutes = $this->config->get('PASSWORD_RESET_EXPIRY_MINUTES');
-
-        // Save token in database
-        if (!$this->userRepo->setResetToken($user['id'], $resetToken, $expiryMinutes)) {
-            return ['success' => false, 'error' => 'Failed to generate reset token.'];
-        }
-
-        // Send reset email
-        if (!$this->emailService->sendPasswordReset($email, $user['full_name'], $resetToken, $expiryMinutes)) {
-            return ['success' => false, 'error' => $this->emailService->getError() ?: 'Email service cannot send right now.'];
-        }
-
-        return ['success' => true, 'message' => 'Password reset link sent to your email.'];
+    // Reject malformed email addresses.
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return [
+            'success' => false,
+            'error' => 'Please enter a valid email address.'
+        ];
     }
+
+    $user = $this->userRepo->findByEmail($email);
+
+    // Do not reveal whether the email is registered.
+    if (!$user) {
+        return [
+            'success' => true,
+            'message' => $genericMessage
+        ];
+    }
+
+    // Prevent repeated reset emails for an existing account.
+    $resetCooldownSeconds = 5 * 60;
+
+    if (!empty($user['reset_requested_at'])) {
+        $lastRequest = strtotime($user['reset_requested_at']);
+
+        $remainingCooldown = $lastRequest !== false
+            ? $resetCooldownSeconds - (time() - $lastRequest)
+            : 0;
+
+        if ($remainingCooldown > 0) {
+            return [
+                'success' => true,
+                'message' => $genericMessage
+            ];
+        }
+    }
+
+    $resetToken = bin2hex(random_bytes(50));
+    $expiryMinutes = (int)$this->config->get(
+        'PASSWORD_RESET_EXPIRY_MINUTES',
+        30
+    );
+
+    if (!$this->userRepo->setResetToken(
+        $user['id'],
+        $resetToken,
+        $expiryMinutes
+    )) {
+        // Do not expose account/database state publicly.
+        return [
+            'success' => true,
+            'message' => $genericMessage
+        ];
+    }
+
+    $this->emailService->sendPasswordReset(
+        $email,
+        $user['full_name'],
+        $resetToken,
+        $expiryMinutes
+    );
+
+    return [
+        'success' => true,
+        'message' => $genericMessage
+    ];
+}
 
     /**
      * Reset password with token

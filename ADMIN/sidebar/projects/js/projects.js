@@ -448,10 +448,12 @@ function initCreateProjectForm() {
     });
 
     const projectStartDateField = createProjectForm.elements.namedItem('project_start_date');
-    const estimatedCompletionDateField = createProjectForm.elements.namedItem('estimated_completion_date');
-    const projectDurationField = createProjectForm.elements.namedItem('estimated_duration_days');
-    const poDateField = createProjectForm.elements.namedItem('start_date');
-    const statusField = createProjectForm.elements.namedItem('status');
+const estimatedCompletionDateField = createProjectForm.elements.namedItem('estimated_completion_date');
+const projectDurationField = createProjectForm.elements.namedItem('estimated_duration_days');
+const poDateField = createProjectForm.elements.namedItem('start_date');
+const statusField = createProjectForm.elements.namedItem('status');
+const startDateHelp = document.getElementById('start-date-help');
+const initialStatusHelp = document.getElementById('initial-status-help');
     const requiredWhenActiveFields = [
         createProjectForm.elements.namedItem('contact_person'),
         createProjectForm.elements.namedItem('contact_number'),
@@ -460,11 +462,32 @@ function initCreateProjectForm() {
     ].filter(Boolean);
 
     function syncCreateProjectRequiredFields() {
-        const isDraft = String(statusField?.value || '') === 'draft';
-        requiredWhenActiveFields.forEach(function (field) {
-            field.required = !isDraft;
-        });
+    const status = String(statusField?.value || '');
+    const isDraft = status === 'draft';
+    const isOngoing = status === 'ongoing';
+
+    requiredWhenActiveFields.forEach(function (field) {
+        field.required = !isDraft;
+    });
+
+    if (startDateHelp) {
+        if (isDraft) {
+            startDateHelp.textContent = 'Optional while draft. Add the purchase order date once it is available.';
+        } else if (isOngoing) {
+            startDateHelp.textContent = 'Use the purchase order date for tracking. Completion date will be recorded automatically later.';
+        } else {
+            startDateHelp.textContent = 'Use the purchase order date for approved work. You can still update it before completion.';
+        }
     }
+
+    if (initialStatusHelp) {
+        initialStatusHelp.textContent = isDraft
+            ? 'Draft is safe for incomplete or mistaken entries. Finalize it later before adding tasks.'
+            : isOngoing
+                ? 'Ongoing marks work as active, while the project completion date will only appear once the project is completed.'
+                : 'Pending is the safe default for approved projects that have not started yet.';
+    }
+}
 
     function calculateDurationDays(startDate, endDate) {
         if (!startDate || !endDate) {

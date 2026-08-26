@@ -51,17 +51,21 @@ class UserRepository {
      * Find user by reset token
      */
     public function findByResetToken($token) {
-        $stmt = $this->conn->prepare(
-            "SELECT u.id, u.full_name, u.email 
-             FROM users u 
-             WHERE u.reset_token = ? 
-             AND u.token_expiry > NOW() 
-             LIMIT 1"
-        );
-        $stmt->bind_param("s", $token);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+    $tokenHash = hash('sha256', $token);
+
+    $stmt = $this->conn->prepare(
+        "SELECT u.id, u.full_name, u.email
+         FROM users u
+         WHERE u.reset_token = ?
+         AND u.token_expiry > NOW()
+         LIMIT 1"
+    );
+
+    $stmt->bind_param("s", $tokenHash);
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_assoc();
+}
 
     /**
      * Create new user
@@ -96,17 +100,22 @@ class UserRepository {
     /**
      * Set password reset token
      */
-    public function setResetToken($userId, $token, $expiryMinutes = 60) {
-        $this->ensureResetRequestedAtColumn();
+public function setResetToken($userId, $token, $expiryMinutes = 60) {
+    $this->ensureResetRequestedAtColumn();
 
-        $expiry = date("Y-m-d H:i:s", strtotime("+$expiryMinutes minutes"));
-        $stmt = $this->conn->prepare(
-            "UPDATE users SET reset_token = ?, token_expiry = ?, reset_requested_at = NOW() WHERE id = ?"
-        );
-        $stmt->bind_param("ssi", $token, $expiry, $userId);
-        return $stmt->execute();
-    }
+    $tokenHash = hash('sha256', $token);
+    $expiry = date("Y-m-d H:i:s", strtotime("+$expiryMinutes minutes"));
 
+    $stmt = $this->conn->prepare(
+        "UPDATE users
+         SET reset_token = ?, token_expiry = ?, reset_requested_at = NOW()
+         WHERE id = ?"
+    );
+
+    $stmt->bind_param("ssi", $tokenHash, $expiry, $userId);
+
+    return $stmt->execute();
+}
     /**
      * Siguraduhin na may cooldown column ang forgot password.
      */

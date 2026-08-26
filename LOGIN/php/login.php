@@ -537,5 +537,6 @@ window.lockoutConfig = {
 };
 </script>
     <script src="../js/login.js"></script>
+    <script src="../common/js/particles.js"></script>
 </body>
 </html>

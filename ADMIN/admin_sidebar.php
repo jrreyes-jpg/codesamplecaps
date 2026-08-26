@@ -434,8 +434,7 @@ $headerProfileLinks = [
     ['label' => 'Settings', 'href' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php?tab=profile#security-settings'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
-include __DIR__ . '/../SHARED/header/profile/profile.php';
-?>
+include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
 
 <div class="topbar-notifications" data-notification-root>
     <button
@@ -540,5 +539,5 @@ $operationsHeaderDate = 'Loading date...';
 $operationsHeaderTimeAttr = 'class="global-topbar__time" data-ph-time';
 $operationsHeaderDateAttr = 'class="global-topbar__date" data-ph-date';
 $operationsHeaderAttrs = 'aria-live="polite"';
-include __DIR__ . '/../SHARED/layout/operations_header.php';
+include __DIR__ . '/../SHARED/header/core/operations-header.php';
 ?>

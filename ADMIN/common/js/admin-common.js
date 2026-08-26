@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
         phTime &&
         phDate &&
         !window.edgeOperationsHeaderClockStarted &&
-        !document.querySelector('script[src$="/SHARED/js/operations-header.js"]')
+        !document.querySelector('script[src$="/SHARED/header/core/operations-header.js"]')
     ) {
         const timeFormatter = new Intl.DateTimeFormat('en-PH', {
             timeZone: 'Asia/Manila',

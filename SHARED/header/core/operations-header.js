@@ -1,4 +1,4 @@
-// Shared header loader for Admin and Engineer parts.
+// Shared header loader for header components.
 (function () {
     'use strict';
 

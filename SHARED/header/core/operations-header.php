@@ -33,6 +33,6 @@ $operationsHeaderAttrs = trim((string)($operationsHeaderAttrs ?? ''));
 
     <div class="<?php echo htmlspecialchars($operationsHeaderActionsClass, ENT_QUOTES, 'UTF-8'); ?> operations-topbar__actions">
         <?php echo $operationsHeaderActionsHtml; ?>
-        <?php include __DIR__ . '/../header/time/time.php'; ?>
+        <?php include __DIR__ . '/../time/php/time.php'; ?>
     </div>
 </header>

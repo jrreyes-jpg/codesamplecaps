@@ -136,6 +136,7 @@ if (!function_exists('project_service_create_project')) {
             $status = $data['status'];
             $createdBy = $data['created_by'];
             $engineerIds = $data['engineer_ids'];
+            $quotationDraftId = (int)($data['quotation_draft_id'] ?? 0);
             $budgetAmount = $data['budget_amount'];
             $budgetNotes = $data['budget_notes'];
             $additionalInfoJson = $data['additional_info_json'];
@@ -227,6 +228,23 @@ if (!function_exists('project_service_create_project')) {
                     !$saveBudget->execute()
                 ) {
                     throw new RuntimeException('Failed to save project budget.');
+                }
+            }
+
+            if ($quotationDraftId > 0) {
+                $linkQuotation = $conn->prepare(
+                    "UPDATE inquiry_quotation_drafts
+                     SET project_id = ?
+                     WHERE id = ? AND project_id IS NULL AND LOWER(status) = 'accepted'"
+                );
+
+                if (!$linkQuotation) {
+                    throw new RuntimeException('Failed to prepare quotation project link.');
+                }
+
+                $linkQuotation->bind_param('ii', $projectId, $quotationDraftId);
+                if (!$linkQuotation->execute() || $linkQuotation->affected_rows <= 0) {
+                    throw new RuntimeException('Accepted quotation is already linked or no longer available.');
                 }
             }
 

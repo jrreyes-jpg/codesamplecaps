@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 require_once __DIR__ . '/../../../../config/project_progress.php';
 require_once __DIR__ . '/../../../services/project_service.php';
 require_once __DIR__ . '/../../../sidebar/projects/php/project_search_support.php';
@@ -488,6 +489,9 @@ function set_projects_old_input(array $input, ?string $focusField = null): void 
         'project_email' => trim((string)($input['project_email'] ?? '')),
         'additional_info' => normalize_project_additional_info_input($input['additional_info'] ?? []),
         'project_code' => trim((string)($input['project_code'] ?? '')),
+        'project_source' => trim((string)($input['project_source'] ?? 'walk_in')),
+        'quotation_draft_id' => (string)($input['quotation_draft_id'] ?? ''),
+        'source_inquiry_id' => (string)($input['source_inquiry_id'] ?? ''),
         'po_number' => trim((string)($input['po_number'] ?? '')),
         'client_id' => (string)($input['client_id'] ?? ''),
         'engineer_ids' => array_values(array_map('strval', is_array($input['engineer_ids'] ?? null) ? $input['engineer_ids'] : [])),
@@ -1200,10 +1204,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $additionalInfoJson = encode_project_additional_info($additionalInfoRows);
         $projectCode = $hasProjectCodeColumn ? normalize_text_or_null($_POST['project_code'] ?? null) : null;
         $projectSource = normalize_text($_POST['project_source'] ?? 'walk_in');
-        $allowedProjectSources = ['walk_in', 'returning_client'];
+        $allowedProjectSources = ['walk_in', 'returning_client', 'inquiry_quotation'];
         if (!in_array($projectSource, $allowedProjectSources, true)) {
             $projectSource = 'walk_in';
         }
+        $quotationDraftId = (int)($_POST['quotation_draft_id'] ?? 0);
+        $sourceInquiryId = (int)($_POST['source_inquiry_id'] ?? 0);
         if ($hasProjectCodeColumn && $projectCode === null) {
             // Auto project code para iwas duplicate at hindi na mano-mano si Admin.
             $projectCode = generate_next_project_code($conn);
@@ -1232,6 +1238,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'additional_info' => $_POST['additional_info'] ?? [],
             'project_code' => $_POST['project_code'] ?? '',
             'project_source' => $projectSource,
+            'quotation_draft_id' => $quotationDraftId,
+            'source_inquiry_id' => $sourceInquiryId,
             'po_number' => $_POST['po_number'] ?? '',
             'client_id' => $_POST['client_id'] ?? '',
             'engineer_ids' => $_POST['engineer_ids'] ?? [],
@@ -1266,6 +1274,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_projects_old_input($createProjectInput, 'engineer_ids');
             set_projects_flash('error', 'Project title, client, and assigned team member/s are required.');
             redirect_projects_page();
+        }
+
+        $sourceQuotation = null;
+        if ($projectSource === 'inquiry_quotation') {
+            $sourceQuotation = $quotationDraftId > 0 ? inquiry_quote_fetch_full($conn, $quotationDraftId) : null;
+
+            if (
+                !$sourceQuotation
+                || (int)($sourceQuotation['inquiry_id'] ?? 0) !== $sourceInquiryId
+                || inquiry_quote_normalize_status($sourceQuotation['status'] ?? '') !== 'accepted'
+                || !empty($sourceQuotation['project_id'])
+            ) {
+                set_projects_old_input($createProjectInput);
+                set_projects_flash('error', 'Accepted quotation is invalid or already linked to a project.');
+                redirect_projects_page();
+            }
+
+            $clientStmt = $conn->prepare("SELECT email FROM users WHERE id = ? AND role = 'client' AND status = 'active' LIMIT 1");
+            if (!$clientStmt) {
+                set_projects_old_input($createProjectInput, 'client_id');
+                set_projects_flash('error', 'Unable to verify the selected Client account.');
+                redirect_projects_page();
+            }
+
+            $clientStmt->bind_param('i', $clientId);
+            $clientStmt->execute();
+            $selectedClient = $clientStmt->get_result()->fetch_assoc();
+            $selectedClientEmail = strtolower(trim((string)($selectedClient['email'] ?? '')));
+            $inquiryEmail = strtolower(trim((string)($sourceQuotation['email'] ?? '')));
+            $sentClientId = (int)($sourceQuotation['sent_to_client_id'] ?? 0);
+
+            if (!$selectedClient || (($sentClientId <= 0 || $sentClientId !== $clientId) && $selectedClientEmail !== $inquiryEmail)) {
+                set_projects_old_input($createProjectInput, 'client_id');
+                set_projects_flash('error', 'Select the Client account that matches this accepted inquiry.');
+                redirect_projects_page();
+            }
+
+            $teamIdsSql = implode(',', array_map('intval', $engineerIds));
+            $teamResult = $conn->query(
+                "SELECT COUNT(*) AS total
+                 FROM users
+                 WHERE id IN ({$teamIdsSql})
+                 AND role IN ('engineer', 'foreman')
+                 AND status = 'active'"
+            );
+            $validTeamCount = (int)(($teamResult ? $teamResult->fetch_assoc() : [])['total'] ?? 0);
+            if ($validTeamCount !== count($engineerIds)) {
+                set_projects_old_input($createProjectInput, 'engineer_ids');
+                set_projects_flash('error', 'Select active Engineer or Foreman accounts only.');
+                redirect_projects_page();
+            }
+
+            // Accepted quotation total ang official starting budget ng Project.
+            $budgetAmount = (float)($sourceQuotation['grand_total'] ?? 0);
+            $budgetNotes = 'Accepted quotation ' . (string)($sourceQuotation['quotation_no'] ?? '');
+            $createProjectInput['budget_amount'] = number_format($budgetAmount, 2, '.', '');
+            $createProjectInput['budget_notes'] = $budgetNotes;
         }
 
         if (projectNameExists($conn, $projectName)) {
@@ -1454,6 +1519,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'status' => $status,
                 'created_by' => $createdBy,
                 'engineer_ids' => $engineerIds,
+                'quotation_draft_id' => $projectSource === 'inquiry_quotation' ? $quotationDraftId : 0,
                 'budget_amount' => $budgetAmount,
                 'budget_notes' => $budgetNotes,
                 'additional_info_json' => $additionalInfoJson,
@@ -1488,7 +1554,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]
             );
             clear_projects_old_input();
-            if ($status === 'ongoing' && ($budgetAmount ?? 0) <= 0) {
+            if ($projectSource === 'inquiry_quotation') {
+                set_projects_flash('success', 'Project created and linked to the accepted quotation.');
+            } elseif ($status === 'ongoing' && ($budgetAmount ?? 0) <= 0) {
                 set_projects_flash('warning', 'Project created and moved to Ongoing without a budget. Actual expenses can still be tracked.');
             } else {
                 set_projects_flash('success', 'Project created successfully.');
@@ -2696,7 +2764,7 @@ $createProjectFocusField = trim((string)($createProjectOldInput['focus_field'] ?
 $hasCreateProjectServerInput = !empty($createProjectOldInput);
 $shouldClearCreateProjectDraft = is_array($flash)
     && ($flash['type'] ?? '') === 'success'
-    && ($flash['message'] ?? '') === 'Project created successfully.';
+    && str_starts_with((string)($flash['message'] ?? ''), 'Project created');
 
 $createProjectValues = [
     'project_name' => (string)($createProjectOldInput['project_name'] ?? ''),
@@ -2709,6 +2777,8 @@ $createProjectValues = [
     'additional_info' => project_additional_info_rows_for_form($createProjectOldInput['additional_info'] ?? []),
     'project_code' => (string)($createProjectOldInput['project_code'] ?? ''),
     'project_source' => (string)($createProjectOldInput['project_source'] ?? 'walk_in'),
+    'quotation_draft_id' => (string)($createProjectOldInput['quotation_draft_id'] ?? ''),
+    'source_inquiry_id' => (string)($createProjectOldInput['source_inquiry_id'] ?? ''),
     'po_number' => (string)($createProjectOldInput['po_number'] ?? ''),
     'client_id' => (string)($createProjectOldInput['client_id'] ?? ''),
     'engineer_ids' => array_values(array_map('strval', is_array($createProjectOldInput['engineer_ids'] ?? null) ? $createProjectOldInput['engineer_ids'] : [])),
@@ -3057,6 +3127,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                     <input type="hidden" name="action" value="create_project">
                     <input type="hidden" name="project_source" value="<?php echo htmlspecialchars((string)($createProjectValues['project_source'] ?? 'walk_in'), ENT_QUOTES); ?>" data-project-source-input>
+                    <input type="hidden" name="quotation_draft_id" value="<?php echo (int)$createProjectValues['quotation_draft_id']; ?>">
+                    <input type="hidden" name="source_inquiry_id" value="<?php echo (int)$createProjectValues['source_inquiry_id']; ?>">
 
                     <div class="project-create-card-grid">
                         <div class="project-create-card project-create-card--client">

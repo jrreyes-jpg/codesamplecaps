@@ -507,6 +507,20 @@ html.ops-sidebar-shrink-pref .sidebar .menu-group-arrow {
     display: none;
 }
 
+.sidebar.shrink .nav-menu-group.has-active-child > .menu-link--group-toggle::after,
+html.ops-sidebar-shrink-pref .sidebar .nav-menu-group.has-active-child > .menu-link--group-toggle::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid var(--ops-sidebar-bg);
+    border-radius: 50%;
+    background: var(--ops-sidebar-active);
+    box-shadow: 0 0 0 3px rgba(134, 239, 172, 0.18);
+}
+
 html.ops-sidebar-shrink-pref .sidebar .menu-text {
     position: absolute;
     width: 1px;

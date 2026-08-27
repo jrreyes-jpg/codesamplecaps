@@ -393,6 +393,13 @@
 
                 var isLogout = link.classList.contains('logout');
                 var href = link.getAttribute('href');
+
+                if (isLogout && !window.confirm('Are you sure you want to log out?')) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
+
                 sound[isLogout ? 'logout' : 'tap']();
                 if (href && !href.startsWith('#') && !isLogout) {
                     savePendingActiveTarget(href);

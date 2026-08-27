@@ -212,7 +212,6 @@ $adminCssFiles = [
 
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/activity_history/js/activity_history.js',
 ];
 
 include __DIR__ . '/../../../layout/header.php';

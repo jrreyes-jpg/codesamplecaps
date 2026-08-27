@@ -22,7 +22,6 @@ class UserRepository {
      * Find user by email
      */
     public function findByEmail($email) {
-        $this->ensureResetRequestedAtColumn();
 
         $stmt = $this->conn->prepare(
             "SELECT id, full_name, email, password, role, status, 
@@ -55,9 +54,11 @@ class UserRepository {
 
     $stmt = $this->conn->prepare(
         "SELECT u.id, u.full_name, u.email
-         FROM users u
-         WHERE u.reset_token = ?
-         AND u.token_expiry > NOW()
+         FROM password_reset_tokens prt
+         INNER JOIN users u ON u.id = prt.user_id
+         WHERE prt.token = ?
+         AND prt.used = 0
+         AND prt.expires_at > NOW()
          LIMIT 1"
     );
 
@@ -89,58 +90,135 @@ class UserRepository {
      * Update user password
      */
     public function updatePassword($userId, $passwordHash) {
-        $stmt = $this->conn->prepare(
-            "UPDATE users SET password = ?, reset_token = NULL, token_expiry = NULL 
+    $stmt = $this->conn->prepare(
+        "UPDATE users
+         SET password = ?
+         WHERE id = ?"
+    );
+
+    $stmt->bind_param("si", $passwordHash, $userId);
+
+    return $stmt->execute();
+}
+/**
+ * Reset password using a valid one-time reset token.
+ */
+public function resetPasswordByToken($token, $passwordHash) {
+    $tokenHash = hash('sha256', $token);
+
+    $this->conn->begin_transaction();
+
+    try {
+        $tokenStmt = $this->conn->prepare(
+            "SELECT prt.id AS token_id, prt.user_id
+             FROM password_reset_tokens prt
+             WHERE prt.token = ?
+             AND prt.used = 0
+             AND prt.expires_at > NOW()
+             LIMIT 1
+             FOR UPDATE"
+        );
+
+        $tokenStmt->bind_param("s", $tokenHash);
+        $tokenStmt->execute();
+
+        $resetToken = $tokenStmt->get_result()->fetch_assoc();
+
+        if (!$resetToken) {
+            $this->conn->rollback();
+            return false;
+        }
+
+        $userId = (int)$resetToken['user_id'];
+        $tokenId = (int)$resetToken['token_id'];
+
+        $passwordStmt = $this->conn->prepare(
+            "UPDATE users
+             SET password = ?, reset_token = NULL, token_expiry = NULL
              WHERE id = ?"
         );
-        $stmt->bind_param("si", $passwordHash, $userId);
-        return $stmt->execute();
-    }
 
+        $passwordStmt->bind_param("si", $passwordHash, $userId);
+
+        if (!$passwordStmt->execute()) {
+            throw new RuntimeException('Failed to update password.');
+        }
+
+        $usedStmt = $this->conn->prepare(
+            "UPDATE password_reset_tokens
+             SET used = 1, used_at = NOW()
+             WHERE id = ?
+             AND used = 0"
+        );
+
+        $usedStmt->bind_param("i", $tokenId);
+
+        if (!$usedStmt->execute() || $usedStmt->affected_rows !== 1) {
+            throw new RuntimeException('Failed to consume reset token.');
+        }
+
+        $this->conn->commit();
+
+        return true;
+    } catch (Throwable $error) {
+        $this->conn->rollback();
+        return false;
+    }
+}
     /**
      * Set password reset token
      */
 public function setResetToken($userId, $token, $expiryMinutes = 60) {
-    $this->ensureResetRequestedAtColumn();
-
     $tokenHash = hash('sha256', $token);
     $expiry = date("Y-m-d H:i:s", strtotime("+$expiryMinutes minutes"));
 
-    $stmt = $this->conn->prepare(
-        "UPDATE users
-         SET reset_token = ?, token_expiry = ?, reset_requested_at = NOW()
-         WHERE id = ?"
-    );
+    $this->conn->begin_transaction();
 
-    $stmt->bind_param("ssi", $tokenHash, $expiry, $userId);
-
-    return $stmt->execute();
-}
-    /**
-     * Siguraduhin na may cooldown column ang forgot password.
-     */
-    private function ensureResetRequestedAtColumn() {
-        static $checked = false;
-
-        if ($checked) {
-            return;
-        }
-
-        $result = $this->conn->query(
-            "SELECT 1
-             FROM INFORMATION_SCHEMA.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE()
-             AND TABLE_NAME = 'users'
-             AND COLUMN_NAME = 'reset_requested_at'
-             LIMIT 1"
+    try {
+        // Invalidate previous unused reset links for this user.
+        $invalidateStmt = $this->conn->prepare(
+            "UPDATE password_reset_tokens
+             SET used = 1, used_at = NOW()
+             WHERE user_id = ?
+             AND used = 0"
         );
+        $invalidateStmt->bind_param("i", $userId);
 
-        if ($result && $result->num_rows === 0) {
-            $this->conn->query("ALTER TABLE users ADD COLUMN reset_requested_at DATETIME DEFAULT NULL AFTER token_expiry");
+        if (!$invalidateStmt->execute()) {
+            throw new RuntimeException('Failed to invalidate previous reset tokens.');
         }
 
-        $checked = true;
+        // Save only the SHA-256 hash, never the raw token from the email link.
+        $insertStmt = $this->conn->prepare(
+            "INSERT INTO password_reset_tokens
+                (user_id, token, expires_at, used, used_at)
+             VALUES (?, ?, ?, 0, NULL)"
+        );
+        $insertStmt->bind_param("iss", $userId, $tokenHash, $expiry);
+
+        if (!$insertStmt->execute()) {
+            throw new RuntimeException('Failed to save reset token.');
+        }
+
+        // Keep this timestamp for the forgot-password cooldown.
+        $cooldownStmt = $this->conn->prepare(
+            "UPDATE users
+             SET reset_requested_at = NOW()
+             WHERE id = ?"
+        );
+        $cooldownStmt->bind_param("i", $userId);
+
+        if (!$cooldownStmt->execute()) {
+            throw new RuntimeException('Failed to update reset cooldown.');
+        }
+
+        $this->conn->commit();
+        return true;
+    } catch (Throwable $error) {
+        $this->conn->rollback();
+        return false;
     }
+}
 
     /**
      * Record failed login attempt

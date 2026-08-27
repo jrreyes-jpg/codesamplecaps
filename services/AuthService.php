@@ -11,11 +11,13 @@
  */
 
 require_once __DIR__ . '/../repositories/UserRepository.php';
+require_once __DIR__ . '/../repositories/PasswordResetAttemptRepository.php';
 require_once __DIR__ . '/../services/EmailService.php';
 require_once __DIR__ . '/../config/Config.php';
 
 class AuthService {
     private $userRepo;
+    private $passwordResetAttemptRepo;
     private $emailService;
     private $config;
     private $error = '';
@@ -23,6 +25,7 @@ class AuthService {
 
     public function __construct() {
         $this->userRepo = new UserRepository();
+        $this->passwordResetAttemptRepo = new PasswordResetAttemptRepository();
         $this->emailService = new EmailService();
         $this->config = Config::getInstance();
     }
@@ -218,12 +221,17 @@ class AuthService {
      * @param string $email User email
      * @return array ['success' => bool, 'error' => string]
      */
-    public function requestPasswordReset($email) {
+    public function requestPasswordReset($email, $ipAddress) {
     $genericMessage = 'If the email exists, a reset link will be sent.';
 
     $email = strtolower(trim((string)$email));
+    $ipAddress = trim((string)$ipAddress);
 
-    // Reject malformed email addresses.
+    if ($ipAddress === '' || strlen($ipAddress) > 45) {
+        $ipAddress = 'unknown';
+    }
+
+    // Malformed email lang ang ire-reject publicly.
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return [
             'success' => false,
@@ -231,9 +239,38 @@ class AuthService {
         ];
     }
 
+    $windowMinutes = 15;
+    $maxEmailRequests = 5;
+    $maxIpRequests = 10;
+
+    // Record ALL valid-format requests, registered man o hindi.
+    if (!$this->passwordResetAttemptRepo->recordAttempt($ipAddress, $email)) {
+        // Fail closed without exposing internal/database errors.
+        return [
+            'success' => true,
+            'message' => $genericMessage
+        ];
+    }
+
+    $emailAttempts = $this->passwordResetAttemptRepo
+        ->countRecentByEmail($email, $windowMinutes);
+
+    $ipAttempts = $this->passwordResetAttemptRepo
+        ->countRecentByIp($ipAddress, $windowMinutes);
+
+    if (
+        $emailAttempts > $maxEmailRequests ||
+        $ipAttempts > $maxIpRequests
+    ) {
+        return [
+            'success' => true,
+            'message' => $genericMessage
+        ];
+    }
+
     $user = $this->userRepo->findByEmail($email);
 
-    // Do not reveal whether the email is registered.
+    // Do not reveal whether the account exists.
     if (!$user) {
         return [
             'success' => true,
@@ -241,7 +278,7 @@ class AuthService {
         ];
     }
 
-    // Prevent repeated reset emails for an existing account.
+    // Additional cooldown for an actual registered account.
     $resetCooldownSeconds = 5 * 60;
 
     if (!empty($user['reset_requested_at'])) {
@@ -260,6 +297,7 @@ class AuthService {
     }
 
     $resetToken = bin2hex(random_bytes(50));
+
     $expiryMinutes = (int)$this->config->get(
         'PASSWORD_RESET_EXPIRY_MINUTES',
         30
@@ -270,19 +308,23 @@ class AuthService {
         $resetToken,
         $expiryMinutes
     )) {
-        // Do not expose account/database state publicly.
         return [
             'success' => true,
             'message' => $genericMessage
         ];
     }
 
-    $this->emailService->sendPasswordReset(
+    if (!$this->emailService->sendPasswordReset(
         $email,
         $user['full_name'],
         $resetToken,
         $expiryMinutes
-    );
+    )) {
+        error_log(
+            'Password reset email failed: ' .
+            $this->emailService->getError()
+        );
+    }
 
     return [
         'success' => true,
@@ -298,56 +340,46 @@ class AuthService {
      * @return array ['success' => bool, 'error' => string]
      */
     public function resetPassword($token, $newPassword) {
-        // Validation
-        $token = trim($token);
-        $newPassword = trim($newPassword);
+    $token = trim((string)$token);
+    $newPassword = (string)$newPassword;
 
-        if (empty($token)) {
-            return ['success' => false, 'error' => 'Invalid or expired reset link.'];
-        }
-
-        if (strlen($newPassword) < 8) {
-            return ['success' => false, 'error' => 'Password must be at least 8 characters.'];
-        }
-
-      // Find user with valid (non-expired) token
-$user = $this->userRepo->findByResetToken($token);
-
-if (!$user) {
-    return ['success' => false, 'error' => 'Invalid or expired reset link.'];
-}
-
-// Hash new password
-$passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
-
-// Update password and clear token
-if (!$this->userRepo->updatePassword($user['id'], $passwordHash)) {
-    return ['success' => false, 'error' => 'Failed to reset password.'];
-}
-
-return [
-    'success' => true,
-    'message' => 'Password reset successfully. You can now login.'
-];
-        // Hash new password
-        $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
-
-        // Update password and clear token
-        if (!$this->userRepo->updatePassword($user['id'], $passwordHash)) {
-            return ['success' => false, 'error' => 'Failed to reset password.'];
-        }
-
-        return ['success' => true, 'message' => 'Password reset successfully. You can now login.'];
+    if ($token === '') {
+        return [
+            'success' => false,
+            'error' => 'Invalid or expired reset link.'
+        ];
     }
 
-    /**
-     * Change password for logged-in user
-     * 
-     * @param int $userId User ID
-     * @param string $currentPassword Current password for verification
-     * @param string $newPassword New password
-     * @return array ['success' => bool, 'error' => string]
-     */
+    // Reset tokens generated by this system are
+    // 50 random bytes encoded as 100 hexadecimal characters.
+    if (!preg_match('/^[a-f0-9]{100}$/i', $token)) {
+        return [
+            'success' => false,
+            'error' => 'Invalid or expired reset link.'
+        ];
+    }
+
+    if (strlen($newPassword) < 8) {
+        return [
+            'success' => false,
+            'error' => 'Password must be at least 8 characters.'
+        ];
+    }
+
+    $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+
+    if (!$this->userRepo->resetPasswordByToken($token, $passwordHash)) {
+        return [
+            'success' => false,
+            'error' => 'Invalid or expired reset link.'
+        ];
+    }
+
+    return [
+        'success' => true,
+        'message' => 'Password reset successfully. You can now login.'
+    ];
+}
     public function changePassword($userId, $currentPassword, $newPassword) {
         // Validation
         if (empty($currentPassword) || empty($newPassword)) {

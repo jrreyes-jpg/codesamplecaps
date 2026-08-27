@@ -54,7 +54,7 @@ $securityGroups = [
     'Session Security' => [
         [
             'label' => 'Auto logout',
-            'value' => (int)$config->get('SESSION_TIMEOUT_MINUTES', 60) . ' minutes inactive',
+            'value' => (int)$config->get('SESSION_TIMEOUT_MINUTES', 15) . ' minutes inactive',
             'status' => 'Enabled',
             'tone' => 'success',
         ],

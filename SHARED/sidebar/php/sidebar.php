@@ -225,3 +225,4 @@ if (!function_exists('shared_sidebar_has_active_children')) {
 </nav>
 
 <div class="sidebar-overlay" data-sidebar-overlay></div>
+<script src="/codesamplecaps/SHARED/auth/js/session-timeout.js"></script>

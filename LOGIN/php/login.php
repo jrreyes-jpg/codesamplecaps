@@ -61,7 +61,7 @@ $flash_email = filter_var((string)($login_flash['email'] ?? ''), FILTER_VALIDATE
     : '';
 
 if (isset($_GET['timeout'])) {
-    $error = 'You were logged out after 15 minutes of inactivity. Please log in again.';
+    $error = 'Your session expired after 15 minutes of inactivity. Please log in again.';
     $error_class = 'login-toast-warning';
 } elseif (isset($_GET['logout'])) {
     $error = 'Logged out successfully.';

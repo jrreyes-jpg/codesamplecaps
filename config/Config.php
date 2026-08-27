@@ -100,7 +100,7 @@ private function env($key, $default = null)
         $this->settings['LOGIN_MAX_IP_ATTEMPTS'] = 15;
 
         // ============ SESSION ============
-        $this->settings['SESSION_TIMEOUT_MINUTES'] = 60;
+        $this->settings['SESSION_TIMEOUT_MINUTES'] = 15;
         date_default_timezone_set($this->settings['APP_TIMEZONE']);
     }
 

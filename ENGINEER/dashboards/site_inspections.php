@@ -9,9 +9,6 @@ $userId = (int)($_SESSION['user_id'] ?? 0);
 $message = '';
 $error = '';
 
-site_inspection_ensure_table($conn);
-site_inspection_ensure_costing_table($conn);
-
 function engineer_inspection_csrf_token(): string
 {
     return auth_csrf_token('engineer_site_inspections');

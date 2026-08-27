@@ -67,6 +67,10 @@
     min-width: 0;
 }
 
+.inquiry-meta strong {
+    color: #334155;
+}
+
 .inquiry-filter-bar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 220px auto;
@@ -231,6 +235,11 @@
 .inquiry-status[data-status="Archived"] {
     background: #e2e8f0 !important;
     color: #334155 !important;
+}
+
+.inquiry-status[data-status="Converted to Project"] {
+    background: #ccfbf1 !important;
+    color: #115e59 !important;
 }
 
 .inquiry-status-link {
@@ -446,6 +455,29 @@
 
 .inquiry-open-modal:hover {
     color: #15803d;
+}
+
+.inquiry-next-action {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid #166534;
+    border-radius: 10px;
+    background: #166534;
+    color: #ffffff;
+    font-size: 0.86rem;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.inquiry-next-action:hover,
+.inquiry-next-action:focus-visible {
+    background: #15803d;
+    color: #ffffff;
 }
 
 .inquiry-modal[hidden] {

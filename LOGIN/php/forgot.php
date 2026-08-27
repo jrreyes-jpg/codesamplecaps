@@ -15,9 +15,9 @@ $authService = new AuthService();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email'] ?? '');
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-    $result = $authService->requestPasswordReset($email);
-
+    $result = $authService->requestPasswordReset($email, $ipAddress);
     if ($result['success']) {
         $_SESSION['reset_success'] = $result['message'] ?? 'If the email exists, a reset link will be sent.';
         header("Location: " . $_SERVER['PHP_SELF']);

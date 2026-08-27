@@ -123,7 +123,7 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                     : shared_sidebar_is_active($item, $sharedSidebarPath, $sharedSidebarCurrent);
             ?>
             <?php if ($hasChildren): ?>
-                <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open' : ''; ?>">
+                <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open has-active-child' : ''; ?>">
                     <button
                         class="menu-link menu-link--button menu-link--group-toggle"
                         type="button"

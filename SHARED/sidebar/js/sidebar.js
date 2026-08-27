@@ -381,6 +381,7 @@
 
         applyStoredState();
         initializeSidebarGroups(sidebar);
+        restoreSidebarScroll(sidebar);
         restoreAfterLayout();
     });
 })();

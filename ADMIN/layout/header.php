@@ -11,6 +11,7 @@ $adminCssFiles = $adminCssFiles ?? [];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($adminPageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
     <?php foreach ($adminCssFiles as $cssFile): ?>
         <link rel="stylesheet" href="<?php echo htmlspecialchars($cssFile, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endforeach; ?>

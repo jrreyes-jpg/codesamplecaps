@@ -155,7 +155,16 @@ document.addEventListener('DOMContentLoaded', function () {
             event.stopPropagation();
             const modalId = button.getAttribute('data-inquiry-modal-open');
             lastOpenButton = button;
-            openModal(document.getElementById(modalId));
+            const modal = document.getElementById(modalId);
+            openModal(modal);
+
+            const requestedTab = button.getAttribute('data-inquiry-open-tab');
+            if (modal && requestedTab) {
+                const targetTab = Array.from(modal.querySelectorAll('[data-inquiry-tab]')).find(function (tab) {
+                    return tab.getAttribute('data-inquiry-tab') === requestedTab;
+                });
+                targetTab?.click();
+            }
         });
     });
 

@@ -153,7 +153,6 @@ if ($otherServiceDetails !== '') {
     $description .= "\n\nOther service details: " . $otherServiceDetails;
 }
 
-inquiry_otp_ensure_table($conn);
 $otp = (string)random_int(100000, 999999);
 $token = bin2hex(random_bytes(32));
 $payload = [

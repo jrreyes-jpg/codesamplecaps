@@ -20,85 +20,6 @@ function inquiry_quote_table_exists(mysqli $conn, string $tableName): bool
     return (bool)$stmt->get_result()->fetch_assoc();
 }
 
-function inquiry_quote_ensure_tables(mysqli $conn): void
-{
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS inquiry_quotation_drafts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            inquiry_id INT NOT NULL,
-            inspection_id INT NOT NULL,
-            quotation_no VARCHAR(80) NOT NULL,
-            status VARCHAR(40) NOT NULL DEFAULT 'Draft',
-            subtotal DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-            profit_margin_percent DECIMAL(7,2) NOT NULL DEFAULT 0.00,
-            profit_amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-            grand_total DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-            approved_by INT NULL,
-            approved_at DATETIME NULL,
-            sent_at DATETIME NULL,
-            created_by INT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY uniq_inquiry_quote_inspection (inspection_id),
-            KEY idx_inquiry_quote_inquiry (inquiry_id),
-            KEY idx_inquiry_quote_status (status)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-    );
-
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS inquiry_quotation_items (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            draft_id INT NOT NULL,
-            item_type VARCHAR(30) NOT NULL,
-            item_name VARCHAR(180) NOT NULL,
-            quantity DECIMAL(12,2) NOT NULL DEFAULT 1.00,
-            unit VARCHAR(30) NOT NULL DEFAULT 'unit',
-            unit_cost DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-            line_total DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-            notes TEXT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            KEY idx_inquiry_quote_items_draft (draft_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-    );
-
-    if (!inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id')) {
-        $conn->query("ALTER TABLE inquiry_quotation_drafts ADD COLUMN project_id INT NULL AFTER inspection_id");
-    }
-
-    $draftColumns = [
-        'sent_by' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_by INT NULL AFTER approved_at",
-        'sent_to_client_id' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_client_id INT NULL AFTER sent_by",
-        'sent_to_name' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_name VARCHAR(190) NULL AFTER sent_to_client_id",
-        'sent_to_email' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_email VARCHAR(190) NULL AFTER sent_to_name",
-        'sent_to_contact' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN sent_to_contact VARCHAR(40) NULL AFTER sent_to_email",
-        'recipient_source' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN recipient_source VARCHAR(40) NULL AFTER sent_to_contact",
-        'public_access_token_hash' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN public_access_token_hash VARCHAR(255) NULL AFTER recipient_source",
-        'public_token_expires_at' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN public_token_expires_at DATETIME NULL AFTER public_access_token_hash",
-        'client_decision_note' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN client_decision_note TEXT NULL AFTER sent_at",
-        'client_decision_at' => "ALTER TABLE inquiry_quotation_drafts ADD COLUMN client_decision_at DATETIME NULL AFTER client_decision_note",
-    ];
-
-    foreach ($draftColumns as $column => $sql) {
-        if (!inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', $column)) {
-            $conn->query($sql);
-        }
-    }
-
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS inquiry_quotation_status_history (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            draft_id INT NOT NULL,
-            from_status VARCHAR(40) NULL,
-            to_status VARCHAR(40) NOT NULL,
-            note TEXT NULL,
-            actor_id INT NOT NULL,
-            actor_role VARCHAR(40) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            KEY idx_inquiry_quote_history_draft (draft_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-    );
-}
-
 function inquiry_quote_normalize_status(?string $status): string
 {
     $status = strtolower(trim((string)$status));
@@ -195,27 +116,6 @@ function inquiry_quote_project_status(mysqli $conn): string
     }
 
     return str_contains($type, "'draft'") ? 'draft' : 'ongoing';
-}
-
-function inquiry_quote_ensure_project_columns(mysqli $conn): void
-{
-    $columns = [
-        'contact_person' => "ALTER TABLE projects ADD COLUMN contact_person VARCHAR(190) DEFAULT NULL AFTER client_id",
-        'contact_number' => "ALTER TABLE projects ADD COLUMN contact_number VARCHAR(40) DEFAULT NULL AFTER contact_person",
-        'project_site' => "ALTER TABLE projects ADD COLUMN project_site VARCHAR(190) DEFAULT NULL AFTER client_id",
-        'project_address' => "ALTER TABLE projects ADD COLUMN project_address TEXT DEFAULT NULL AFTER client_id",
-        'project_email' => "ALTER TABLE projects ADD COLUMN project_email VARCHAR(190) DEFAULT NULL AFTER project_address",
-        'project_code' => "ALTER TABLE projects ADD COLUMN project_code VARCHAR(80) DEFAULT NULL AFTER project_email",
-        'project_source' => "ALTER TABLE projects ADD COLUMN project_source VARCHAR(40) NOT NULL DEFAULT 'walk_in' AFTER project_code",
-        'project_start_date' => "ALTER TABLE projects ADD COLUMN project_start_date DATE DEFAULT NULL AFTER start_date",
-        'estimated_completion_date' => "ALTER TABLE projects ADD COLUMN estimated_completion_date DATE DEFAULT NULL AFTER project_start_date",
-    ];
-
-    foreach ($columns as $column => $sql) {
-        if (!inquiry_quote_column_exists($conn, 'projects', $column)) {
-            $conn->query($sql);
-        }
-    }
 }
 
 function inquiry_quote_format_money(float $amount): string
@@ -361,7 +261,6 @@ function inquiry_quote_resolve_recipient(mysqli $conn, int $draftId): array
 
 function inquiry_quote_fetch_by_public_token(mysqli $conn, string $token): ?array
 {
-    inquiry_quote_ensure_tables($conn);
     $token = trim($token);
     if ($token === '') {
         return null;
@@ -414,8 +313,6 @@ function inquiry_quote_fetch_history(mysqli $conn, int $draftId): array
 
 function inquiry_quote_fetch_for_client(mysqli $conn, int $clientId): array
 {
-    inquiry_quote_ensure_tables($conn);
-
     $stmt = $conn->prepare('SELECT email FROM users WHERE id = ? AND role = "client" LIMIT 1');
     if (!$stmt) {
         return [];
@@ -881,8 +778,6 @@ function inquiry_quote_get_or_create_client(mysqli $conn, array $quotation, int 
 
 function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId): int
 {
-    inquiry_quote_ensure_project_columns($conn);
-
     $quotation = inquiry_quote_fetch_full($conn, $draftId);
     if (!$quotation) {
         throw new RuntimeException('Quotation draft not found.');
@@ -916,18 +811,6 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
     $conn->begin_transaction();
 
     try {
-        $conn->query(
-            "CREATE TABLE IF NOT EXISTS project_budget_profiles (
-                project_id INT(11) NOT NULL PRIMARY KEY,
-                budget_amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-                budget_notes TEXT DEFAULT NULL,
-                created_by INT(11) NOT NULL,
-                updated_by INT(11) DEFAULT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-        );
-
         $stmt = $conn->prepare(
             'INSERT INTO projects
              (project_name, description, client_id, contact_person, contact_number, project_site, project_address, project_email, project_code, start_date, project_start_date, estimated_completion_date, end_date, status, created_by)

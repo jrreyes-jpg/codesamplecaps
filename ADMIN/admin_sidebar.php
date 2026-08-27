@@ -243,10 +243,6 @@ if (!function_exists('super_admin_fetch_notification_data')) {
         $inquiryCount = 0;
         $inquiryAlerts = [];
         if (super_admin_sidebar_table_exists($conn, 'service_inquiries')) {
-            if (!super_admin_sidebar_column_exists($conn, 'service_inquiries', 'viewed_at')) {
-                $conn->query('ALTER TABLE service_inquiries ADD COLUMN viewed_at TIMESTAMP NULL AFTER reviewed_at');
-            }
-
             $inquiryCountResult = $conn->query(
                 "SELECT COUNT(*) AS total
                  FROM service_inquiries

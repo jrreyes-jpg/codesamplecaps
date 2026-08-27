@@ -4,8 +4,6 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 
-inquiry_otp_ensure_table($conn);
-
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $message = '';
 $error = '';
@@ -14,53 +12,6 @@ function verify_inquiry_redirect_home(string $status): void
 {
     header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=' . rawurlencode($status));
     exit();
-}
-
-function verify_inquiry_ensure_columns(mysqli $conn): void
-{
-    $conn->query(
-        'CREATE TABLE IF NOT EXISTS service_inquiries (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            client_name VARCHAR(150) NOT NULL,
-            company_name VARCHAR(150) DEFAULT NULL,
-            email VARCHAR(150) NOT NULL,
-            contact_no VARCHAR(30) NOT NULL,
-            province VARCHAR(80) DEFAULT NULL,
-            city_municipality VARCHAR(120) DEFAULT NULL,
-            barangay VARCHAR(150) DEFAULT NULL,
-            site_address TEXT NOT NULL,
-            service_category VARCHAR(80) NOT NULL,
-            description TEXT NOT NULL,
-            preferred_inspection_date DATE DEFAULT NULL,
-            status VARCHAR(50) NOT NULL DEFAULT "Pending Review",
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )'
-    );
-
-    $columns = [
-        'province' => 'ALTER TABLE service_inquiries ADD COLUMN province VARCHAR(80) NULL AFTER contact_no',
-        'city_municipality' => 'ALTER TABLE service_inquiries ADD COLUMN city_municipality VARCHAR(120) NULL AFTER province',
-        'barangay' => 'ALTER TABLE service_inquiries ADD COLUMN barangay VARCHAR(150) NULL AFTER city_municipality',
-    ];
-
-    foreach ($columns as $column => $sql) {
-        $stmt = $conn->prepare(
-            'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE()
-             AND TABLE_NAME = "service_inquiries"
-             AND COLUMN_NAME = ?
-             LIMIT 1'
-        );
-        if (!$stmt) {
-            continue;
-        }
-
-        $stmt->bind_param('s', $column);
-        $stmt->execute();
-        if (!$stmt->get_result()->fetch_assoc()) {
-            $conn->query($sql);
-        }
-    }
 }
 
 if ($token === '') {
@@ -107,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             verify_inquiry_redirect_home('invalid');
         }
 
-        verify_inquiry_ensure_columns($conn);
         $insert = $conn->prepare(
             'INSERT INTO service_inquiries (
                 client_name, company_name, email, contact_no, province,

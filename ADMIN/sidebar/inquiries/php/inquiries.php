@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 $message = '';
 $error = '';
 $allowedStatuses = ['Pending Review', 'Verified Lead', 'Not Qualified', 'For Inspection'];
+$inquiryFilterStatuses = array_merge($allowedStatuses, ['Converted to Project']);
 
 function inquiry_center_csrf_token(): string
 {
@@ -33,69 +34,6 @@ function inquiry_center_has_table(mysqli $conn, string $tableName): bool
     $stmt->execute();
     $result = $stmt->get_result();
     return (bool)($result && $result->fetch_assoc());
-}
-
-function inquiry_center_has_column(mysqli $conn, string $columnName): bool
-{
-    $stmt = $conn->prepare(
-        'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = "service_inquiries"
-         AND COLUMN_NAME = ?
-         LIMIT 1'
-    );
-    if (!$stmt) {
-        return false;
-    }
-
-    $stmt->bind_param('s', $columnName);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return (bool)($result && $result->fetch_assoc());
-}
-
-function inquiry_center_ensure_review_columns(mysqli $conn): void
-{
-    // Dagdag fields para may review notes, seen state, at archive ready state si Admin.
-    if (!inquiry_center_has_table($conn, 'service_inquiries')) {
-        return;
-    }
-
-    if (!inquiry_center_has_column($conn, 'admin_notes')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN admin_notes TEXT NULL AFTER status');
-    }
-
-    if (!inquiry_center_has_column($conn, 'reviewed_at')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN reviewed_at TIMESTAMP NULL AFTER admin_notes');
-    }
-
-    if (!inquiry_center_has_column($conn, 'viewed_at')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN viewed_at TIMESTAMP NULL AFTER reviewed_at');
-    }
-
-    if (!inquiry_center_has_column($conn, 'archived_at')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN archived_at TIMESTAMP NULL AFTER viewed_at');
-    }
-
-    if (!inquiry_center_has_column($conn, 'archived_by')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN archived_by INT NULL AFTER archived_at');
-    }
-
-    if (!inquiry_center_has_column($conn, 'archive_reason')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN archive_reason TEXT NULL AFTER archived_by');
-    }
-
-    if (!inquiry_center_has_column($conn, 'province')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN province VARCHAR(80) NULL AFTER contact_no');
-    }
-
-    if (!inquiry_center_has_column($conn, 'city_municipality')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN city_municipality VARCHAR(120) NULL AFTER province');
-    }
-
-    if (!inquiry_center_has_column($conn, 'barangay')) {
-        $conn->query('ALTER TABLE service_inquiries ADD COLUMN barangay VARCHAR(150) NULL AFTER city_municipality');
-    }
 }
 
 function inquiry_center_format_datetime(?string $dateTime): string
@@ -187,12 +125,6 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
     exit();
 }
 
-inquiry_center_ensure_review_columns($conn);
-site_inspection_ensure_table($conn);
-site_inspection_ensure_costing_table($conn);
-inquiry_quote_ensure_tables($conn);
-$conn->query("UPDATE service_inquiries SET status = 'Verified Lead' WHERE status = 'Verified'");
-$conn->query("UPDATE service_inquiries SET status = 'Not Qualified' WHERE status = 'Rejected'");
 $csrfToken = inquiry_center_csrf_token();
 
 if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_inquiries')) {
@@ -653,10 +585,12 @@ $view = trim((string)($_GET['view'] ?? 'active'));
 if (!in_array($view, ['active', 'archive'], true)) {
     $view = 'active';
 }
-if (!in_array($statusFilter, $allowedStatuses, true)) {
+if (!in_array($statusFilter, $inquiryFilterStatuses, true)) {
     $statusFilter = '';
 }
 
+$hasQuotationProjectLink = inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')
+    && inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id');
 $inquiryRows = [];
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     $where = [];
@@ -665,10 +599,24 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
     $where[] = $view === 'archive' ? 'archived_at IS NOT NULL' : 'archived_at IS NULL';
 
-    if ($statusFilter !== '') {
+    if ($statusFilter === 'Converted to Project' && $hasQuotationProjectLink) {
+        $where[] = 'EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts quote_filter
+            WHERE quote_filter.inquiry_id = service_inquiries.id
+            AND quote_filter.project_id IS NOT NULL
+        )';
+    } elseif ($statusFilter !== '') {
         $where[] = 'status = ?';
         $types .= 's';
         $params[] = $statusFilter;
+
+        if ($hasQuotationProjectLink) {
+            $where[] = 'NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts quote_filter
+                WHERE quote_filter.inquiry_id = service_inquiries.id
+                AND quote_filter.project_id IS NOT NULL
+            )';
+        }
     }
 
     if ($search !== '') {
@@ -777,9 +725,17 @@ $pendingCount = 0;
 $verifiedCount = 0;
 $inspectionCount = 0;
 $notQualifiedCount = 0;
+$convertedCount = 0;
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     // Global counts ito, hindi lang current search result.
-    $countResult = $conn->query('SELECT status, COUNT(*) AS total FROM service_inquiries WHERE archived_at IS NULL GROUP BY status');
+    $countWhere = $hasQuotationProjectLink
+        ? ' AND NOT EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts quote_count
+            WHERE quote_count.inquiry_id = service_inquiries.id
+            AND quote_count.project_id IS NOT NULL
+        )'
+        : '';
+    $countResult = $conn->query('SELECT status, COUNT(*) AS total FROM service_inquiries WHERE archived_at IS NULL' . $countWhere . ' GROUP BY status');
     if ($countResult) {
         while ($countRow = $countResult->fetch_assoc()) {
             $status = (string)($countRow['status'] ?? 'Pending Review');
@@ -794,6 +750,16 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
                 $notQualifiedCount = $total;
             }
         }
+    }
+
+    if ($hasQuotationProjectLink) {
+        $convertedResult = $conn->query(
+            'SELECT COUNT(DISTINCT inquiry.id) AS total
+             FROM service_inquiries inquiry
+             INNER JOIN inquiry_quotation_drafts quote ON quote.inquiry_id = inquiry.id
+             WHERE inquiry.archived_at IS NULL AND quote.project_id IS NOT NULL'
+        );
+        $convertedCount = (int)(($convertedResult ? $convertedResult->fetch_assoc() : [])['total'] ?? 0);
     }
 }
 
@@ -834,7 +800,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, email, contact, status, notes, address, service, or archive reason">
             <select name="status">
                 <option value="">All statuses</option>
-                <?php foreach ($allowedStatuses as $status): ?>
+                <?php foreach ($inquiryFilterStatuses as $status): ?>
                     <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
                     </option>
@@ -851,6 +817,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Verified Lead' ? 'is-active' : ''; ?>" data-status="Verified Lead" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Verified: <?php echo $verifiedCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'For Inspection' ? 'is-active' : ''; ?>" data-status="For Inspection" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">For Inspection: <?php echo $inspectionCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Not Qualified' ? 'is-active' : ''; ?>" data-status="Not Qualified" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Not+Qualified<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Not Qualified: <?php echo $notQualifiedCount; ?></a>
+            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Converted to Project' ? 'is-active' : ''; ?>" data-status="Converted to Project" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Converted+to+Project<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Converted: <?php echo $convertedCount; ?></a>
             <a class="inquiry-view-link <?php echo $view === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Active</a>
             <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?view=archive">Archive</a>
         </div>
@@ -867,21 +834,74 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
+                    <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
+                    <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : $currentStatus; ?>
+                    <?php $showInspection = $latestInspection || in_array($currentStatus, ['Verified Lead', 'For Inspection'], true); ?>
+                    <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
+                    <?php $showQuotation = $quotationDraft || $showCosting; ?>
+                    <?php
+                        $nextActionLabel = 'Review Inquiry';
+                        $nextActionTab = 'actions';
+                        $quotationStage = $quotationDraft
+                            ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
+                            : '';
+
+                        if ($quotationStage === 'accepted') {
+                            $nextActionLabel = 'Set Up Project';
+                            $nextActionTab = 'quotation';
+                        } elseif ($quotationStage === 'sent') {
+                            $nextActionLabel = 'Waiting for Client';
+                            $nextActionTab = 'quotation';
+                        } elseif ($quotationStage === 'revision_requested') {
+                            $nextActionLabel = 'Review Revision';
+                            $nextActionTab = 'quotation';
+                        } elseif (in_array($quotationStage, ['draft', 'approved', 'rejected'], true)) {
+                            $nextActionLabel = $quotationStage === 'approved' ? 'Send Quotation' : 'Review Quotation';
+                            $nextActionTab = 'quotation';
+                        } elseif ($showCosting) {
+                            $nextActionLabel = 'Prepare Quotation';
+                            $nextActionTab = 'quotation';
+                        } elseif ($latestInspection) {
+                            $nextActionLabel = (string)($latestInspection['status'] ?? '') === 'Submitted to Admin'
+                                ? 'Review Costing'
+                                : 'View Inspection';
+                            $nextActionTab = (string)($latestInspection['status'] ?? '') === 'Submitted to Admin' && $showCosting
+                                ? 'costing'
+                                : 'inspection';
+                        } elseif (in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)) {
+                            $nextActionLabel = 'Schedule Inspection';
+                        } elseif ($currentStatus === 'Not Qualified') {
+                            $nextActionLabel = 'View Review';
+                        }
+                    ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>">
                         <div class="inquiry-card__head">
                             <div>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <div class="inquiry-meta">
-                                    <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><strong>Company:</strong> <?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><strong>Service:</strong> <?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><strong>Location:</strong> <?php echo htmlspecialchars(trim((string)($inquiry['city_municipality'] ?: $inquiry['province'] ?: 'Not set')), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><strong>Submitted:</strong> <?php echo htmlspecialchars(inquiry_center_format_date($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="button" class="inquiry-open-modal" data-inquiry-modal-open="inquiryModal<?php echo (int)$inquiry['id']; ?>">
-                            View details and review
-                        </button>
+                        <?php if ($isConvertedToProject): ?>
+                            <a class="inquiry-next-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                                Open Project
+                            </a>
+                        <?php else: ?>
+                            <button
+                                type="button"
+                                class="inquiry-open-modal inquiry-next-action"
+                                data-inquiry-modal-open="inquiryModal<?php echo (int)$inquiry['id']; ?>"
+                                data-inquiry-open-tab="<?php echo htmlspecialchars($nextActionTab, ENT_QUOTES, 'UTF-8'); ?>"
+                            >
+                                <?php echo htmlspecialchars($nextActionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                            </button>
+                        <?php endif; ?>
 
                         <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" hidden>
                             <div class="inquiry-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
@@ -893,8 +913,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>
+                                            <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>
                                             </span>
                                         </div>
                                     </div>
@@ -938,16 +958,25 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     </div>
                                 </div>
                                 <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
-                                    <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Client Details</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?>" data-inquiry-tab="inspection">Inspection</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo $costingReview ? ' has-data' : ''; ?>" data-inquiry-tab="costing">Engineer Costing</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo $quotationDraft ? ' has-data' : ''; ?>" data-inquiry-tab="quotation">Quotation</button>
-                                    <button type="button" class="inquiry-modal-tab" data-inquiry-tab="actions">Admin Actions</button>
+                                    <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Request</button>
+                                    <button type="button" class="inquiry-modal-tab" data-inquiry-tab="actions">Admin Review</button>
+                                    <?php if ($showInspection): ?>
+                                        <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?>" data-inquiry-tab="inspection">Inspection</button>
+                                    <?php endif; ?>
+                                    <?php if ($showCosting): ?>
+                                        <button type="button" class="inquiry-modal-tab has-data" data-inquiry-tab="costing">Engineer Costing</button>
+                                    <?php endif; ?>
+                                    <?php if ($showQuotation): ?>
+                                        <button type="button" class="inquiry-modal-tab<?php echo $quotationDraft ? ' has-data' : ''; ?>" data-inquiry-tab="quotation">Quotation</button>
+                                    <?php endif; ?>
                                 </div>
                             <div class="inquiry-modal-panels">
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
-                                    <div class="inquiry-section-title">Client and Project Details</div>
+                                    <div class="inquiry-section-title">Contact and Request Details</div>
                                     <div class="inquiry-details-grid">
+                                        <div class="inquiry-detail"><span>Contact Person</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Province</span><strong><?php echo htmlspecialchars((string)($inquiry['province'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>City / Municipality</span><strong><?php echo htmlspecialchars((string)($inquiry['city_municipality'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
@@ -1140,8 +1169,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 </section>
 
                                 <section class="inquiry-tab-panel inquiry-expanded-actions" data-inquiry-panel="actions" hidden>
-                                    <div class="inquiry-section-title">Admin Actions</div>
-                                    <?php if (!empty($inquiry['archived_at'])): ?>
+                                    <div class="inquiry-section-title">Admin Review</div>
+                                    <?php if ($isConvertedToProject): ?>
+                                        <div class="inquiry-readonly-notice">
+                                            This inquiry is already converted to a Project.
+                                            <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">Open Project</a>
+                                        </div>
+                                    <?php elseif (!empty($inquiry['archived_at'])): ?>
                                         <div class="inquiry-readonly-notice">
                                             This inquiry is archived. Restore it first before changing status, notes, or inspection schedule.
                                         </div>

@@ -4,17 +4,15 @@ require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/project_progress.php';
 require_once __DIR__ . '/../../../../config/profile_photo_storage.php';
-require_once __DIR__ . '/../../../services/admin_metrics.php';
+require_once __DIR__ . '/dashboard_metrics.php';
 require_once __DIR__ . '/../../../services/admin_profile.php';
-require_once __DIR__ . '/../../../services/admin_dashboard_actions.php';
-require_once __DIR__ . '/../../../services/admin_dashboard_profile_actions.php';
+require_once __DIR__ . '/dashboard_profile_actions.php';
 $message = '';
 $error = '';
 $activeTab = $_GET['tab'] ?? 'dashboard';
 if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
     $activeTab = 'dashboard';
 }
-$allowedStatuses = ['active', 'inactive'];
 $action = '';
 
 admin_ensure_user_profile_photo_column($conn);
@@ -23,12 +21,6 @@ if ($dashboardFlash['type'] === 'success') {
     $message = $dashboardFlash['text'];
 } elseif ($dashboardFlash['type'] === 'error') {
     $error = $dashboardFlash['text'];
-}
-
-function normalizeRole(string $role): string
-{
-    $role = strtolower(trim($role));
-    return $role === 'foremen' ? 'foreman' : $role;
 }
 
 function isValidPhMobile(?string $phone): bool
@@ -46,11 +38,6 @@ function isStrongPassword(string $password): bool
         && preg_match('/[a-z]/', $password)
         && preg_match('/\d/', $password)
         && preg_match('/[^A-Za-z0-9]/', $password);
-}
-
-function isValidInquiryStatus(string $status): bool
-{
-    return in_array($status, ['Pending Review', 'Verified Lead', 'Not Qualified', 'For Inspection'], true);
 }
 
 function getCsrfToken(): string
@@ -103,27 +90,6 @@ function redirectToDashboardTab(string $tab): void
     exit;
 }
 
-function hasColumn(mysqli $conn, string $tableName, string $columnName): bool
-{
-    $stmt = $conn->prepare(
-        'SELECT 1
-         FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = ?
-         AND COLUMN_NAME = ?
-         LIMIT 1'
-    );
-
-    if (!$stmt) {
-        return false;
-    }
-
-    $stmt->bind_param('ss', $tableName, $columnName);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    return (bool)($result && $result->fetch_assoc());
-}
 
 if (!function_exists('build_default_profile_avatar_data_uri')) {
     function build_default_profile_avatar_data_uri(): string
@@ -153,412 +119,8 @@ SVG;
     }
 }
 
-function getUserForStatusChange(mysqli $conn, int $userId): ?array
-{
-    $stmt = $conn->prepare('SELECT id, full_name, email, phone, role, status FROM users WHERE id = ? LIMIT 1');
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_assoc() : null;
-}
-
-function getCountByQuery(mysqli $conn, string $sql, int $userId): int
-{
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        return 0;
-    }
-
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result ? $result->fetch_assoc() : null;
-
-    return (int)($row['total'] ?? 0);
-}
-
-function getScalarInt(mysqli $conn, string $sql): int
-{
-    $result = $conn->query($sql);
-    if (!$result) {
-        return 0;
-    }
-
-    $row = $result->fetch_assoc();
-    if (!$row) {
-        return 0;
-    }
-
-    return (int)array_values($row)[0];
-}
-
-function hasTable(mysqli $conn, string $tableName): bool
-{
-    $stmt = $conn->prepare(
-        'SELECT 1
-         FROM INFORMATION_SCHEMA.TABLES
-         WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = ?
-         LIMIT 1'
-    );
-
-    if (!$stmt) {
-        return false;
-    }
-
-    $stmt->bind_param('s', $tableName);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    return (bool)($result && $result->fetch_assoc());
-}
-
-function formatRelativeDate(?string $dateTime): string
-{
-    if (!$dateTime) {
-        return 'Unknown time';
-    }
-
-    try {
-        $date = new DateTimeImmutable($dateTime);
-        $now = new DateTimeImmutable();
-        $diff = $now->getTimestamp() - $date->getTimestamp();
-
-        if ($diff < 60) {
-            return 'Just now';
-        }
-
-        if ($diff < 3600) {
-            return floor($diff / 60) . ' min ago';
-        }
-
-        if ($diff < 86400) {
-            return floor($diff / 3600) . ' hr ago';
-        }
-
-        if ($diff < 604800) {
-            return floor($diff / 86400) . ' day(s) ago';
-        }
-
-        return $date->format('M d, Y g:i A');
-    } catch (Throwable $exception) {
-        return $dateTime;
-    }
-}
-
-function getDateRangeTrend(mysqli $conn, string $tableName, string $dateColumn, int $rangeDays, ?string $whereSql = null): array
-{
-    $days = [];
-    for ($offset = $rangeDays - 1; $offset >= 0; $offset--) {
-        $date = new DateTimeImmutable("-{$offset} days");
-        $key = $date->format('Y-m-d');
-        $days[$key] = [
-            'date' => $key,
-            'label' => $date->format($rangeDays > 14 ? 'M d' : 'D'),
-            'value' => 0,
-        ];
-    }
-
-    $whereClause = $whereSql ? " AND {$whereSql}" : '';
-    $result = $conn->query(
-        "SELECT DATE({$dateColumn}) AS metric_date, COUNT(*) AS total
-         FROM {$tableName}
-         WHERE DATE({$dateColumn}) >= DATE_SUB(CURDATE(), INTERVAL " . ($rangeDays - 1) . " DAY)
-         {$whereClause}
-         GROUP BY DATE({$dateColumn})"
-    );
-
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $metricDate = (string)($row['metric_date'] ?? '');
-            if (isset($days[$metricDate])) {
-                $days[$metricDate]['value'] = (int)($row['total'] ?? 0);
-            }
-        }
-    }
-
-    return array_values($days);
-}
-
-function getTrendPeak(array $trend): int
-{
-    $values = array_map(static fn(array $item): int => (int)($item['value'] ?? 0), $trend);
-    $peak = max($values ?: [0]);
-
-    return $peak > 0 ? $peak : 1;
-}
-
-function buildAuditSummaryClean(array $entry): array
-{
-    $summary = buildAuditSummary($entry);
-    $summary['details'] = str_replace(
-        ['â€¢', '•'],
-        '|',
-        (string)($summary['details'] ?? '')
-    );
-
-    return $summary;
-}
-
-function decodeAuditPayload(?string $payload): array
-{
-    if (!$payload) {
-        return [];
-    }
-
-    $decoded = json_decode($payload, true);
-
-    return is_array($decoded) ? $decoded : [];
-}
-
-function formatAuditActionLabel(string $action): string
-{
-    return ucwords(str_replace('_', ' ', $action));
-}
-
-function buildAuditSummary(array $entry): array
-{
-    $action = (string)($entry['action'] ?? 'activity');
-    $entityType = (string)($entry['entity_type'] ?? 'record');
-    $actorName = (string)($entry['actor_name'] ?? 'System');
-    $oldValues = decodeAuditPayload($entry['old_values'] ?? null);
-    $newValues = decodeAuditPayload($entry['new_values'] ?? null);
-    $title = formatAuditActionLabel($action);
-    $details = 'Actor: ' . $actorName;
-
-    if ($action === 'create_user') {
-        $title = 'User created';
-        $details = ($newValues['full_name'] ?? 'Unknown user') . ' • ' . ucwords(str_replace('_', ' ', (string)($newValues['role'] ?? 'user')));
-    } elseif ($action === 'update_user_status') {
-        $title = 'User status updated';
-        $details = 'Status: ' . ucfirst((string)($oldValues['status'] ?? 'unknown')) . ' -> ' . ucfirst((string)($newValues['status'] ?? 'unknown'));
-    } elseif ($action === 'update_user_profile') {
-        $title = 'User profile updated';
-        $details = ($newValues['full_name'] ?? 'User record updated') . ' • by ' . $actorName;
-    } elseif ($action === 'create_project') {
-        $title = 'Project created';
-        $details = (string)($newValues['project_name'] ?? 'New project') . ' • ' . ucfirst((string)($newValues['status'] ?? 'pending'));
-    } elseif ($action === 'update_project_status') {
-        $title = 'Project status changed';
-        $details = (string)($newValues['project_name'] ?? 'Project') . ' • ' . ucfirst((string)($oldValues['status'] ?? '')) . ' -> ' . ucfirst((string)($newValues['status'] ?? ''));
-    } elseif ($action === 'update_project_details') {
-        $title = 'Project details updated';
-        $details = (string)($newValues['project_name'] ?? 'Project') . ' • by ' . $actorName;
-    } elseif ($action === 'delete_project') {
-        $title = 'Project moved to trash';
-        $details = (string)($oldValues['project_name'] ?? 'Project') . ' • by ' . $actorName;
-    } elseif ($action === 'restore_project') {
-        $title = 'Project restored';
-        $details = (string)($newValues['project_name'] ?? $oldValues['project_name'] ?? 'Project') . ' • by ' . $actorName;
-    } elseif ($action === 'permanently_delete_project') {
-        $title = 'Project permanently deleted';
-        $details = (string)($oldValues['project_name'] ?? 'Project') . ' • by ' . $actorName;
-    } elseif ($action === 'update_project_budget') {
-        $title = 'Project budget updated';
-        $details = (string)($newValues['project_name'] ?? 'Project') . ' â€¢ ' . number_format((float)($newValues['budget_amount'] ?? 0), 2);
-    } elseif ($action === 'add_project_cost') {
-        $title = 'Project cost logged';
-        $details = (string)($newValues['project_name'] ?? 'Project') . ' â€¢ ' . (string)($newValues['cost_category'] ?? 'Cost');
-    } elseif ($action === 'add_task') {
-        $title = 'Task added';
-        $details = (string)($newValues['task_name'] ?? 'Task') . ' • ' . (string)($newValues['project_name'] ?? 'Project');
-    } elseif ($action === 'deploy_inventory_to_project') {
-        $title = 'Inventory deployed';
-        $details = (string)($newValues['asset_name'] ?? 'Inventory item') . ' • Qty ' . (int)($newValues['quantity'] ?? 0);
-    } elseif ($action === 'return_project_inventory') {
-        $title = 'Inventory returned';
-        $details = (string)($newValues['asset_name'] ?? 'Inventory item') . ' • Qty ' . (int)($newValues['quantity'] ?? 0);
-    } elseif ($action === 'create_inventory_item') {
-        $title = 'Inventory record created';
-        $details = (string)($newValues['asset_name'] ?? 'Inventory item') . ' • Qty ' . (int)($newValues['quantity'] ?? 0);
-    } elseif ($action === 'update_inventory_item') {
-        $title = 'Inventory updated';
-        $details = (string)($newValues['asset_name'] ?? 'Inventory item') . ' • Qty ' . (int)($newValues['quantity'] ?? 0);
-    } elseif ($action === 'create_asset') {
-        $title = 'Asset created';
-        $details = (string)($newValues['asset_name'] ?? 'Asset') . ' • ' . (string)($newValues['asset_type'] ?? 'Unspecified');
-    } elseif ($action === 'delete_asset') {
-        $title = 'Asset deleted';
-        $details = (string)($oldValues['asset_name'] ?? 'Asset') . ' • by ' . $actorName;
-    } elseif ($action === 'return_asset') {
-        $title = 'Asset returned';
-        $details = (string)($newValues['asset_name'] ?? 'Asset') . ' • status available';
-    } else {
-        $title = formatAuditActionLabel($action);
-        $details = ucfirst($entityType) . ' • by ' . $actorName;
-    }
-
-    return [
-        'title' => $title,
-        'details' => $details,
-        'badge' => $entityType !== '' ? $entityType : 'audit',
-    ];
-}
-
-function fetchRecentDashboardActivity(mysqli $conn, int $limit = 5): array
-{
-    if (!audit_log_table_exists($conn)) {
-        return [];
-    }
-
-    $limit = max(1, min(10, $limit));
-    $result = $conn->query(
-        "SELECT
-            l.action,
-            l.entity_type,
-            l.entity_id,
-            l.old_values,
-            l.new_values,
-            l.created_at,
-            COALESCE(u.full_name, 'System') AS actor_name
-         FROM audit_logs l
-         LEFT JOIN users u ON u.id = l.user_id
-         ORDER BY l.created_at DESC
-         LIMIT {$limit}"
-    );
-
-    if (!$result) {
-        return [];
-    }
-
-    $activities = [];
-    while ($entry = $result->fetch_assoc()) {
-        $summary = buildAuditSummaryClean($entry);
-        $activities[] = [
-            'title' => $summary['title'],
-            'details' => $summary['details'],
-            'badge' => $summary['badge'],
-            'created_at' => $entry['created_at'] ?? null,
-            'relative_time' => formatRelativeDate($entry['created_at'] ?? null),
-        ];
-    }
-
-    return $activities;
-}
-
-function getDeactivationBlockers(mysqli $conn, int $userId, string $role): array
-{
-    $blockers = [];
-
-    if ($role === 'engineer') {
-        $activeProjects = getCountByQuery(
-            $conn,
-            "SELECT COUNT(*) AS total
-             FROM project_assignments pa
-             INNER JOIN projects p ON p.id = pa.project_id
-             WHERE pa.engineer_id = ?
-             AND p.status IN ('pending', 'ongoing', 'on-hold')" . (hasColumn($conn, 'projects', 'deleted_at') ? "
-             AND p.deleted_at IS NULL" : ''),
-            $userId
-        );
-
-        $openTasks = getCountByQuery(
-            $conn,
-            "SELECT COUNT(*) AS total
-             FROM tasks
-             WHERE assigned_to = ?
-             AND status IN ('pending', 'ongoing', 'delayed')",
-            $userId
-        );
-
-        if ($activeProjects > 0) {
-            $blockers[] = $activeProjects . ' active project(s)';
-        }
-
-        if ($openTasks > 0) {
-            $blockers[] = $openTasks . ' open task(s)';
-        }
-    }
-
-    if ($role === 'client') {
-        $activeProjects = getCountByQuery(
-            $conn,
-            "SELECT COUNT(*) AS total
-             FROM projects
-             WHERE client_id = ?
-             AND status IN ('pending', 'ongoing', 'on-hold')" . (hasColumn($conn, 'projects', 'deleted_at') ? "
-             AND deleted_at IS NULL" : ''),
-            $userId
-        );
-
-        if ($activeProjects > 0) {
-            $blockers[] = $activeProjects . ' active project(s)';
-        }
-    }
-
-    return $blockers;
-}
-
-function ensureUserTrashColumns(mysqli $conn): void
-{
-    static $ensured = false;
-
-    if ($ensured) {
-        return;
-    }
-
-    if (!hasColumn($conn, 'users', 'deleted_at')) {
-        $conn->query("ALTER TABLE users ADD COLUMN deleted_at DATETIME DEFAULT NULL AFTER status");
-    }
-
-    if (!hasColumn($conn, 'users', 'deleted_by')) {
-        $conn->query("ALTER TABLE users ADD COLUMN deleted_by INT(11) DEFAULT NULL AFTER deleted_at");
-    }
-
-    if (!hasColumn($conn, 'users', 'restored_at')) {
-        $conn->query("ALTER TABLE users ADD COLUMN restored_at DATETIME DEFAULT NULL AFTER deleted_by");
-    }
-
-    if (!hasColumn($conn, 'users', 'restored_by')) {
-        $conn->query("ALTER TABLE users ADD COLUMN restored_by INT(11) DEFAULT NULL AFTER restored_at");
-    }
-
-    $indexResult = $conn->query("SHOW INDEX FROM users WHERE Key_name = 'idx_users_deleted_at'");
-    if ($indexResult && $indexResult->num_rows === 0) {
-        $conn->query("ALTER TABLE users ADD INDEX idx_users_deleted_at (deleted_at, role, status)");
-    }
-
-    $ensured = true;
-}
-
-function compareUsersForTable(array $left, array $right): int
-{
-    $statusOrder = [
-        'active' => 0,
-        'inactive' => 1,
-    ];
-    $roleOrder = [
-        'engineer' => 0,
-        'foreman' => 1,
-        'client' => 2,
-    ];
-
-    $leftStatus = strtolower(trim((string)($left['status'] ?? 'inactive')));
-    $rightStatus = strtolower(trim((string)($right['status'] ?? 'inactive')));
-    $leftRole = normalizeRole((string)($left['role'] ?? ''));
-    $rightRole = normalizeRole((string)($right['role'] ?? ''));
-    $leftName = strtolower(trim((string)($left['full_name'] ?? '')));
-    $rightName = strtolower(trim((string)($right['full_name'] ?? '')));
-
-    $statusComparison = ($statusOrder[$leftStatus] ?? 99) <=> ($statusOrder[$rightStatus] ?? 99);
-    if ($statusComparison !== 0) {
-        return $statusComparison;
-    }
-
-    $roleComparison = ($roleOrder[$leftRole] ?? 99) <=> ($roleOrder[$rightRole] ?? 99);
-    if ($roleComparison !== 0) {
-        return $roleComparison;
-    }
-
-    if ($leftName === $rightName) {
-        return ((int)($right['id'] ?? 0)) <=> ((int)($left['id'] ?? 0));
-    }
-
-    return $leftName <=> $rightName;
-}
 
 $supportsProfilePhoto = hasColumn($conn, 'users', 'profile_photo_path');
-ensureUserTrashColumns($conn);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -566,19 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid request. Please try again.';
         $activeTab = in_array($action, ['update_my_profile', 'change_my_password'], true)
             ? 'profile'
-            : ($action === 'update_inquiry_status' ? 'dashboard' : 'users');
-    }
-
-    if ($action === 'update_inquiry_status' && $error === '') {
-        $result = admin_dashboard_handle_update_inquiry_status(
-            $conn,
-            (int)($_SESSION['user_id'] ?? 0),
-            (int)($_POST['inquiry_id'] ?? 0),
-            trim((string)($_POST['status'] ?? ''))
-        );
-        $error = $result['error'];
-        $message = $result['message'];
-        $activeTab = $result['activeTab'];
+            : 'dashboard';
     }
 
     if ($action === 'update_my_profile' && $error === '') {
@@ -615,41 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
-function fetchUsersByRoles(mysqli $conn, array $roles, string $statusFilter = '', bool $trashView = false): array
-{
-    $placeholders = implode(',', array_fill(0, count($roles), '?'));
-    $types = str_repeat('s', count($roles));
-    $sql = "SELECT id, full_name, email, phone, status, role, deleted_at FROM users WHERE role IN ($placeholders)";
-
-    $sql .= $trashView ? ' AND deleted_at IS NOT NULL' : ' AND deleted_at IS NULL';
-
-    if ($statusFilter !== '') {
-        $sql .= ' AND status = ?';
-        $types .= 's';
-        $roles[] = $statusFilter;
-    }
-
-    $sql .= ' ORDER BY id DESC';
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$roles);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
-$userStatusFilter = trim((string)($_GET['status'] ?? ''));
-if (!in_array($userStatusFilter, $allowedStatuses, true)) {
-    $userStatusFilter = '';
-}
-$isUserWorkspaceTab = in_array($activeTab, ['create', 'users'], true);
-$engineers = fetchUsersByRoles($conn, ['engineer'], $isUserWorkspaceTab ? $userStatusFilter : '', false);
-$foremen = fetchUsersByRoles($conn, ['foreman', 'foremen'], $isUserWorkspaceTab ? $userStatusFilter : '', false);
-$clients = fetchUsersByRoles($conn, ['client'], $isUserWorkspaceTab ? $userStatusFilter : '', false);
-$totalUsers = count($engineers) + count($foremen) + count($clients);
-$managedUsers = array_merge($engineers, $foremen, $clients);
-usort($managedUsers, 'compareUsersForTable');
-$activeUsersAll = count(fetchUsersByRoles($conn, ['engineer', 'foreman', 'foremen', 'client'], 'active', false));
-$trashedUsersCount = count(fetchUsersByRoles($conn, ['engineer', 'foreman', 'foremen', 'client'], '', true));
 $csrfToken = getCsrfToken();
 $currentAdmin = admin_get_user_by_id($conn, (int)($_SESSION['user_id'] ?? 0));
 if ($supportsProfilePhoto && $currentAdmin) {
@@ -662,54 +177,21 @@ if ($supportsProfilePhoto && $currentAdmin) {
 $currentAdminName = (string)($currentAdmin['full_name'] ?? ($_SESSION['name'] ?? 'Admin'));
 $currentAdminEmail = (string)($currentAdmin['email'] ?? '');
 $currentAdminPhone = (string)($currentAdmin['phone'] ?? '');
-$currentAdminRole = ucwords(str_replace('_', ' ', (string)($currentAdmin['role'] ?? 'super_admin')));
-$currentAdminStatus = ucfirst((string)($currentAdmin['status'] ?? 'active'));
-$currentAdminCreatedAt = formatRelativeDate($currentAdmin['created_at'] ?? null);
 $defaultAdminPhotoUrl = build_default_profile_avatar_data_uri();
 $currentAdminPhoto = trim((string)($currentAdmin['profile_photo_path'] ?? ''));
 $currentAdminPhotoUrl = $currentAdminPhoto !== ''
     ? profile_photo_public_url($currentAdminPhoto)
     : '';
 $currentAdminPhotoPreviewUrl = $currentAdminPhotoUrl !== '' ? $currentAdminPhotoUrl : $defaultAdminPhotoUrl;
-$adminMetrics = admin_load_dashboard_metrics($conn, $engineers, $foremen, $clients);
+$adminMetrics = admin_load_dashboard_metrics($conn);
 foreach ($adminMetrics as $metricName => $metricValue) {
     ${$metricName} = $metricValue;
-}
-
-$inquiryRows = [];
-if ($conn->ping()) {
-    $inquiryResult = $conn->query(
-        'SELECT id, client_name, company_name, email, contact_no, site_address, service_category, description, preferred_inspection_date, status, created_at
-         FROM service_inquiries
-         ORDER BY created_at DESC
-         LIMIT 8'
-    );
-
-    if ($inquiryResult) {
-        while ($row = $inquiryResult->fetch_assoc()) {
-            $inquiryRows[] = [
-                'id' => (int)($row['id'] ?? 0),
-                'client_name' => (string)($row['client_name'] ?? ''),
-                'company_name' => (string)($row['company_name'] ?? ''),
-                'email' => (string)($row['email'] ?? ''),
-                'contact_no' => (string)($row['contact_no'] ?? ''),
-                'site_address' => (string)($row['site_address'] ?? ''),
-                'service_category' => (string)($row['service_category'] ?? ''),
-                'description' => (string)($row['description'] ?? ''),
-                'preferred_inspection_date' => (string)($row['preferred_inspection_date'] ?? ''),
-                'status' => (string)($row['status'] ?? 'Pending Review'),
-                'created_at' => (string)($row['created_at'] ?? ''),
-            ];
-        }
-    }
 }
 
 if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
     // Admin wala nang User Management tab; balik sa dashboard para walang white screen.
     $activeTab = 'dashboard';
 }
-$userWorkspaceShouldOpenModal = false;
-
 ?>
 <?php
 $adminPageTitle = 'Admin Dashboard - Edge Automation';
@@ -763,15 +245,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <strong data-live-metric="pending_quotations"><?php echo $pendingQuotations; ?></strong>
                         <small>Need approval</small>
                     </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php" class="metric-tile metric-tile-link metric-tile-alerts">
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="metric-tile metric-tile-link metric-tile-alerts">
                         <span>New Inquiries</span>
                         <strong data-live-metric="pending_inquiries"><?php echo $pendingInquiries ?? 0; ?></strong>
                         <small>Pending review</small>
-                    </a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/scan_history.php" class="metric-tile metric-tile-link metric-tile-assets">
-                        <span>Scans Today</span>
-                        <strong data-live-metric="scans_today"><?php echo $scansToday; ?></strong>
-                        <small>Asset activity</small>
                     </a>
                 </div>
             </section>
@@ -836,73 +313,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </section>
 
-            <section class="dashboard-panel overview-inquiries-panel">
-                <div class="panel-heading">
-                    <div>
-                        <h2 class="dashboard-section-title">Latest Inquiries</h2>
-                    </div>
-                    <div class="overview-inquiry-summary">
-                        <span class="action-chip overview-inquiry-summary__pending">Pending review</span>
-                        <?php if (($pendingInquiries ?? 0) > 0): ?>
-                            <span class="overview-inquiry-summary__count">
-                                <span class="overview-inquiry-summary__dot"></span>
-                                <?php echo (int)$pendingInquiries; ?> new
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="activity-feed activity-feed-compact">
-                    <?php if (empty($inquiryRows)): ?>
-                        <div class="alert-empty">No inquiries yet.</div>
-                    <?php else: ?>
-                        <?php foreach ($inquiryRows as $inquiry): ?>
-                            <article class="activity-item">
-                                <span class="activity-badge activity-quotations">
-                                    <?php echo htmlspecialchars(substr((string)($inquiry['status'] ?? 'Pending Review'), 0, 1), ENT_QUOTES, 'UTF-8'); ?>
-                                </span>
-                                <span class="activity-copy">
-                                    <strong><?php echo htmlspecialchars((string)($inquiry['client_name'] ?? 'Unknown'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                    <span><?php echo htmlspecialchars((string)($inquiry['service_category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> • <?php echo htmlspecialchars((string)($inquiry['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
-                                </span>
-                                <div class="activity-item-actions">
-                                    <?php if ((string)($inquiry['status'] ?? 'Pending Review') === 'Pending Review'): ?>
-                                        <form method="POST" class="inline-action-form overview-inquiry-action">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="action" value="update_inquiry_status">
-                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <input type="hidden" name="status" value="Verified Lead">
-                                            <button type="submit" class="btn-secondary">Verify Lead</button>
-                                        </form>
-                                        <form method="POST" class="inline-action-form overview-inquiry-action" data-confirm-message="Reject this inquiry?">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="action" value="update_inquiry_status">
-                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <input type="hidden" name="status" value="Not Qualified">
-                                            <button type="submit" class="btn-danger">Not Qualified</button>
-                                        </form>
-                                    <?php else: ?>
-                                        <span class="activity-status-pill"><?php echo htmlspecialchars((string)($inquiry['status']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <details class="overview-inquiry-details">
-                                    <summary>View details</summary>
-                                    <div class="overview-inquiry-details__body">
-                                        <div class="overview-inquiry-details__row"><strong>Company:</strong> <?php echo htmlspecialchars((string)($inquiry['company_name'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
-                                        <div class="overview-inquiry-details__row"><strong>Contact:</strong> <?php echo htmlspecialchars((string)($inquiry['contact_no'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
-                                        <div class="overview-inquiry-details__row"><strong>Site Address:</strong> <?php echo htmlspecialchars((string)($inquiry['site_address'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
-                                        <div class="overview-inquiry-details__row"><strong>Preferred Inspection Date:</strong> <?php echo htmlspecialchars((string)($inquiry['preferred_inspection_date'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?></div>
-                                        <div><strong>Message:</strong><br><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?? '—'), ENT_QUOTES, 'UTF-8')); ?></div>
-                                    </div>
-                                </details>
-                                <time datetime="<?php echo htmlspecialchars((string)($inquiry['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                    <span class="activity-time-relative"><?php echo htmlspecialchars((string)($inquiry['status'] ?? 'Pending Review'), ENT_QUOTES, 'UTF-8'); ?></span>
-                                </time>
-                            </article>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </section>
-
             <details class="dashboard-panel analytics-panel overview-analytics-details" data-overview-analytics>
                 <summary class="overview-analytics-summary">
                     <span>
@@ -947,7 +357,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
             <section class="overview-quick-actions" aria-label="Quick actions">
                 <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php#create-project">Create Project</a>
-                <a href="/codesamplecaps/ADMIN/sidebar/user_management.php?create=1">Add User</a>
                 <a href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">Add Asset</a>
                 <a href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">Review Quotations</a>
             </section>

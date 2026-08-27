@@ -1,5 +1,7 @@
 <?php
 
+// Dashboard lang ang profile form actions na ito.
+
 function admin_dashboard_handle_update_my_profile(
     mysqli $conn,
     int $userId,

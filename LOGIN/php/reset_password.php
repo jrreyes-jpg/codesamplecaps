@@ -189,6 +189,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
         </div>
     </div>
 
+    <script src="/codesamplecaps/LOGIN/common/js/particles.js"></script>
     <script src="../js/reset_password.js"></script>
 </body>
 </html>

@@ -221,7 +221,7 @@ class AuthService {
      * @param string $email User email
      * @return array ['success' => bool, 'error' => string]
      */
-    public function requestPasswordReset($email, $ipAddress) {
+    public function requestPasswordReset($email, $ipAddress = null) {
     $genericMessage = 'If the email exists, a reset link will be sent.';
 
     $email = strtolower(trim((string)$email));

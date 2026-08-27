@@ -272,21 +272,18 @@ $statsResult = $conn->query(
 if ($statsResult) {
     $approvalStats = array_merge($approvalStats, $statsResult->fetch_assoc() ?: []);
 }
+
+$adminPageTitle = 'Procurement Approval - Admin';
+$adminCssFiles = [
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
+];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+];
+
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procurement Approval - Admin</title>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/ADMIN/common/css/admin-common.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../../../admin_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="page-stack">
@@ -409,8 +406,5 @@ if ($statsResult) {
             </section>
         </div>
     </main>
-</div>
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
-</body>
-</html>
+
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>

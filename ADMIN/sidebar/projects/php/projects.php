@@ -2993,6 +2993,10 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css', 
 ];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js',
+];
 
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -4049,13 +4053,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </section>
         </div>
     </main>
-</div>
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
 
-<script src="/codesamplecaps/ADMIN/sidebar/projects/js/projects.js"></script>
-</body>
-</html>
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>
 
 
 

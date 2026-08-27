@@ -75,6 +75,23 @@ if (!function_exists('shared_sidebar_is_active')) {
         return false;
     }
 }
+
+if (!function_exists('shared_sidebar_has_active_children')) {
+    function shared_sidebar_has_active_children(array $item, string $path, string $current): bool
+    {
+        if (!isset($item['children']) || !is_array($item['children']) || $item['children'] === []) {
+            return false;
+        }
+
+        foreach ($item['children'] as $childItem) {
+            if (is_array($childItem) && shared_sidebar_is_active($childItem, $path, $current)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
 ?>
 <button class="sidebar-mobile-toggle" type="button" aria-label="Toggle menu" data-sidebar-mobile-toggle>
     <span></span>
@@ -98,38 +115,97 @@ if (!function_exists('shared_sidebar_is_active')) {
     <div class="nav-divider"></div>
     <ul class="nav-menu">
         <?php foreach ($sharedSidebarItems as $item): ?>
-            <?php $isActive = shared_sidebar_is_active($item, $sharedSidebarPath, $sharedSidebarCurrent); ?>
-            <li>
-                <?php if (($item['type'] ?? 'link') === 'button'): ?>
+            <?php
+                $hasChildren = isset($item['children']) && is_array($item['children']) && $item['children'] !== [];
+                $hasActiveChild = $hasChildren && shared_sidebar_has_active_children($item, $sharedSidebarPath, $sharedSidebarCurrent);
+                $isActive = $hasChildren
+                    ? $hasActiveChild
+                    : shared_sidebar_is_active($item, $sharedSidebarPath, $sharedSidebarCurrent);
+            ?>
+            <?php if ($hasChildren): ?>
+                <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open' : ''; ?>">
                     <button
-                        id="<?php echo htmlspecialchars((string)($item['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                        class="menu-link menu-link--button<?php echo $isActive ? ' active-link' : ''; ?>"
+                        class="menu-link menu-link--button menu-link--group-toggle<?php echo $isActive ? ' active-link' : ''; ?>"
                         type="button"
+                        data-sidebar-group-toggle
+                        aria-expanded="<?php echo $hasActiveChild ? 'true' : 'false'; ?>"
                         <?php echo $isActive ? 'data-active="true"' : ''; ?>
                     >
-                <?php else: ?>
-                    <a
-                        href="<?php echo htmlspecialchars((string)$item['href'], ENT_QUOTES, 'UTF-8'); ?>"
-                        class="menu-link<?php echo $isActive ? ' active-link' : ''; ?>"
-                        <?php echo $isActive ? 'aria-current="page" data-active="true"' : ''; ?>
-                        <?php echo isset($item['data_section_link']) ? 'data-section-link="' . htmlspecialchars((string)$item['data_section_link'], ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
-                    >
-                <?php endif; ?>
-                    <span class="menu-visual" aria-hidden="true">
-                        <span class="menu-icon">
-                            <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                                <?php echo shared_sidebar_icon((string)$item['icon']); ?>
+                        <span class="menu-visual" aria-hidden="true">
+                            <span class="menu-icon">
+                                <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                    <?php echo shared_sidebar_icon((string)$item['icon']); ?>
+                                </svg>
+                            </span>
+                            <span class="menu-mini-label"><?php echo htmlspecialchars((string)$item['mini'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </span>
+                        <span class="menu-text"><?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="menu-group-arrow" aria-hidden="true">
+                            <svg class="menu-group-arrow-svg" viewBox="0 0 20 20" focusable="false" aria-hidden="true">
+                                <path d="M6 8l4 4 4-4"></path>
                             </svg>
                         </span>
-                        <span class="menu-mini-label"><?php echo htmlspecialchars((string)$item['mini'], ENT_QUOTES, 'UTF-8'); ?></span>
-                    </span>
-                    <span class="menu-text"><?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
-                <?php if (($item['type'] ?? 'link') === 'button'): ?>
                     </button>
-                <?php else: ?>
-                    </a>
-                <?php endif; ?>
-            </li>
+                    <ul class="menu-submenu" data-sidebar-group-panel<?php echo $hasActiveChild ? '' : ' hidden'; ?>>
+                        <?php foreach ($item['children'] as $childItem): ?>
+                            <?php if (!is_array($childItem)): ?>
+                                <?php continue; ?>
+                            <?php endif; ?>
+                            <?php $isChildActive = shared_sidebar_is_active($childItem, $sharedSidebarPath, $sharedSidebarCurrent); ?>
+                            <li>
+                                <a
+                                    href="<?php echo htmlspecialchars((string)$childItem['href'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    class="menu-link menu-submenu-link<?php echo $isChildActive ? ' active-link' : ''; ?>"
+                                    <?php echo $isChildActive ? 'aria-current="page" data-active="true"' : ''; ?>
+                                    <?php echo isset($childItem['data_section_link']) ? 'data-section-link="' . htmlspecialchars((string)$childItem['data_section_link'], ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
+                                >
+                                    <span class="menu-visual" aria-hidden="true">
+                                        <span class="menu-icon">
+                                            <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                                <?php echo shared_sidebar_icon((string)$childItem['icon']); ?>
+                                            </svg>
+                                        </span>
+                                        <span class="menu-mini-label"><?php echo htmlspecialchars((string)$childItem['mini'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </span>
+                                    <span class="menu-text"><?php echo htmlspecialchars((string)$childItem['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </li>
+            <?php else: ?>
+                <li>
+                    <?php if (($item['type'] ?? 'link') === 'button'): ?>
+                        <button
+                            id="<?php echo htmlspecialchars((string)($item['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                            class="menu-link menu-link--button<?php echo $isActive ? ' active-link' : ''; ?>"
+                            type="button"
+                            <?php echo $isActive ? 'data-active="true"' : ''; ?>
+                        >
+                    <?php else: ?>
+                        <a
+                            href="<?php echo htmlspecialchars((string)$item['href'], ENT_QUOTES, 'UTF-8'); ?>"
+                            class="menu-link<?php echo $isActive ? ' active-link' : ''; ?>"
+                            <?php echo $isActive ? 'aria-current="page" data-active="true"' : ''; ?>
+                            <?php echo isset($item['data_section_link']) ? 'data-section-link="' . htmlspecialchars((string)$item['data_section_link'], ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
+                        >
+                    <?php endif; ?>
+                        <span class="menu-visual" aria-hidden="true">
+                            <span class="menu-icon">
+                                <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                    <?php echo shared_sidebar_icon((string)$item['icon']); ?>
+                                </svg>
+                            </span>
+                            <span class="menu-mini-label"><?php echo htmlspecialchars((string)$item['mini'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </span>
+                        <span class="menu-text"><?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php if (($item['type'] ?? 'link') === 'button'): ?>
+                        </button>
+                    <?php else: ?>
+                        </a>
+                    <?php endif; ?>
+                </li>
+            <?php endif; ?>
         <?php endforeach; ?>
         <li>
             <a href="/codesamplecaps/LOGIN/php/logout.php" class="menu-link logout">

@@ -681,6 +681,10 @@ $adminPageTitle = 'Project Details - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
 ];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/project_details.js',
+];
 
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -1675,12 +1679,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <?php endif; ?>
         </div>
     </main>
-</div>
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
-<script src="/codesamplecaps/ADMIN/sidebar/projects/js/project_details.js"></script>
-</body>
-</html>
+
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>
 
 
 

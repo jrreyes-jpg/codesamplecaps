@@ -294,5 +294,5 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         </section>
     </main>
-</body>
-</html>
+
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>

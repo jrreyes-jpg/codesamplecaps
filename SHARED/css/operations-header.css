@@ -4,9 +4,13 @@
    responsive offset, and imports for header parts.
 ========================================================= */
 
-@import url("../header/profile/profile.css");
-@import url("../header/notifications/notifications.css");
-@import url("../header/time/time.css");
+@import url("../header/profile/css/profile.css");
+@import url("../header/notifications/css/notifications.css");
+@import url("../header/time/css/time.css");
+
+html {
+    scrollbar-gutter: stable;
+}
 
 :is(.global-topbar, .engineer-topbar) {
     position: fixed;
@@ -14,17 +18,18 @@
     left: var(--ops-sidebar-width);
     right: 0;
     z-index: 950;
-    min-height: 84px;
+    min-height: 88px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    padding: 14px 28px;
-    background: rgba(255, 255, 255, 0.68);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    gap: 16px;
+    padding: 14px clamp(18px, 2vw, 30px);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.72));
+    border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(18px) saturate(1.08);
+    -webkit-backdrop-filter: blur(18px) saturate(1.08);
 }
 
 /* Ito ang taguan ng logo at pangalan sa header. */
@@ -44,11 +49,14 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
 :is(.global-topbar__brand-link, .engineer-topbar__brand) {
     display: inline-flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
+    padding: 8px 12px;
+    margin: -8px -10px;
     color: #0f172a;
     text-decoration: none;
     border-radius: 18px;
+    transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 :is(.global-topbar__brand-link, .engineer-topbar__brand):focus-visible {
@@ -56,31 +64,36 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     outline-offset: 4px;
 }
 
+:is(.global-topbar__brand-link, .engineer-topbar__brand):hover {
+    background: rgba(255, 255, 255, 0.7);
+    transform: translateY(-1px);
+}
+
 :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
-    width: 52px;
-    height: 52px;
+    width: 50px;
+    height: 50px;
     flex-shrink: 0;
     display: block;
     object-fit: cover;
     padding: 3px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    border: 1px solid rgba(148, 163, 184, 0.18);
     border-radius: 16px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.92));
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.92));
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
     transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
 }
 
 :is(.global-topbar__brand-link, .engineer-topbar__brand):hover :is(.global-topbar__brand-logo, img, .operations-topbar__brand-logo),
 :is(.global-topbar__brand-link, .engineer-topbar__brand):focus-visible :is(.global-topbar__brand-logo, img, .operations-topbar__brand-logo) {
-    transform: scale(1.03);
+    transform: scale(1.04);
     filter: saturate(1.04);
-    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.16);
 }
 
 :is(.global-topbar__copy strong, .engineer-topbar__brand strong) {
-    font-size: 0.98rem;
+    font-size: 1rem;
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     line-height: 1.1;
     white-space: nowrap;
 }
@@ -89,7 +102,7 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 18px;
+    gap: 12px;
     flex-shrink: 0;
 }
 
@@ -98,7 +111,7 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar) {
         left: 0;
         right: 0;
-        min-height: 76px;
+        min-height: 78px;
         padding: 12px 16px 12px 72px;
         gap: 12px;
     }
@@ -113,8 +126,8 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
-        width: 46px;
-        height: 46px;
+        width: 44px;
+        height: 44px;
     }
 
     :is(.global-topbar__actions, .engineer-topbar__actions) {
@@ -145,8 +158,8 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
-        width: 42px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
         border-radius: 13px;
     }
 

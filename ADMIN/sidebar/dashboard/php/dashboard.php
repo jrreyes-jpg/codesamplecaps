@@ -6,21 +6,16 @@ require_once __DIR__ . '/../../../../config/project_progress.php';
 require_once __DIR__ . '/../../../../config/profile_photo_storage.php';
 require_once __DIR__ . '/../../../services/admin_metrics.php';
 require_once __DIR__ . '/../../../services/admin_profile.php';
+require_once __DIR__ . '/../../../services/admin_dashboard_actions.php';
+require_once __DIR__ . '/../../../services/admin_dashboard_profile_actions.php';
 $message = '';
 $error = '';
 $activeTab = $_GET['tab'] ?? 'dashboard';
 if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
     $activeTab = 'dashboard';
 }
-$allowedRoles = ['engineer', 'foreman', 'client'];
 $allowedStatuses = ['active', 'inactive'];
 $action = '';
-$old = [
-    'full_name' => '',
-    'email' => '',
-    'phone' => '',
-    'role' => ''
-];
 
 admin_ensure_user_profile_photo_column($conn);
 $dashboardFlash = consumeDashboardFlash();
@@ -494,35 +489,6 @@ function getDeactivationBlockers(mysqli $conn, int $userId, string $role): array
     return $blockers;
 }
 
-function ensureDeletedUsersArchiveTable(mysqli $conn): void
-{
-    static $ensured = false;
-
-    if ($ensured) {
-        return;
-    }
-
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS deleted_users_archive (
-            id INT(11) NOT NULL AUTO_INCREMENT,
-            original_user_id INT(11) NOT NULL,
-            full_name VARCHAR(150) NOT NULL,
-            email VARCHAR(100) NOT NULL,
-            phone VARCHAR(20) DEFAULT NULL,
-            role VARCHAR(30) NOT NULL,
-            status VARCHAR(20) NOT NULL,
-            deleted_by INT(11) DEFAULT NULL,
-            deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            payload_json LONGTEXT DEFAULT NULL,
-            PRIMARY KEY (id),
-            KEY idx_deleted_users_archive_original (original_user_id),
-            KEY idx_deleted_users_archive_deleted_by (deleted_by)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
-    );
-
-    $ensured = true;
-}
-
 function ensureUserTrashColumns(mysqli $conn): void
 {
     static $ensured = false;
@@ -598,431 +564,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!isValidCsrfToken($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request. Please try again.';
-        $activeTab = $action === 'create_account'
-            ? 'create'
-            : (($action === 'update_my_profile' || $action === 'change_my_password') ? 'profile' : 'users');
-    } elseif ($action === 'create_account') {
-        $fullName = trim($_POST['full_name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $password = trim($_POST['password'] ?? '');
-        $role = normalizeRole($_POST['role'] ?? '');
-        $old['full_name'] = $fullName;
-        $old['email'] = $email;
-        $old['phone'] = $phone;
-        $old['role'] = $role;
-
-        if ($fullName === '' || $email === '' || $password === '' || $role === '') {
-            $error = 'Full name, email, password, and role are required.';
-            $activeTab = 'create';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Invalid email format.';
-            $activeTab = 'create';
-        } elseif (!in_array($role, $allowedRoles, true)) {
-            $error = 'Invalid role selected.';
-            $activeTab = 'create';
-        } elseif (!preg_match('/^09\d{9}$/', $phone)) {
-            $error = 'Phone number must be a valid PH mobile number (09xxxxxxxxx).';
-            $activeTab = 'create';
-        } elseif (!isStrongPassword($password)) {
-            $error = 'Temporary password must be STRONG: 12+ chars with uppercase, lowercase, number, special char.';
-            $activeTab = 'create';
-        } else {
-            $dupStmt = $conn->prepare('SELECT id, full_name, email, phone FROM users WHERE full_name = ? OR email = ? OR phone = ? LIMIT 1');
-            $dupStmt->bind_param('sss', $fullName, $email, $phone);
-            $dupStmt->execute();
-            $dup = $dupStmt->get_result();
-
-            if ($dup->num_rows > 0) {
-                $error = 'Duplicate detected. Full name, email, and phone must all be unique.';
-                $activeTab = 'create';
-            } else {
-                $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-                $createStmt = $conn->prepare('INSERT INTO users (full_name, email, password, role, phone, status, created_by) VALUES (?, ?, ?, ?, ?, "active", ?)');
-                $createStmt->bind_param('sssssi', $fullName, $email, $passwordHash, $role, $phone, $_SESSION['user_id']);
-
-                if ($createStmt->execute()) {
-                    $createdUserId = (int)$createStmt->insert_id;
-                    audit_log_event(
-                        $conn,
-                        (int)($_SESSION['user_id'] ?? 0),
-                        'create_user',
-                        'user',
-                        $createdUserId,
-                        null,
-                        [
-                            'full_name' => $fullName,
-                            'email' => $email,
-                            'phone' => $phone,
-                            'role' => $role,
-                            'status' => 'active',
-                        ]
-                    );
-                    $message = ucfirst($role) . ' account created successfully.';
-                    $activeTab = 'users';
-                } else {
-                    $error = 'Failed to create account. Please check DB columns (role/phone/id) and try again.';
-                    $activeTab = 'create';
-                }
-            }
-        }
-    }
-
-    if ($action === 'update_status' && $error === '') {
-        $userId = (int)($_POST['user_id'] ?? 0);
-        $newStatus = trim($_POST['status'] ?? '');
-        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
-
-        if ($userId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
-            $error = 'Invalid status update request.';
-        } elseif (!$user) {
-            $error = 'User not found.';
-        } elseif (normalizeRole((string)$user['role']) === 'super_admin') {
-            $error = 'Super admin accounts cannot be changed from this screen.';
-        } elseif ($newStatus === 'inactive' && $userId === (int)$_SESSION['user_id']) {
-            $error = 'You cannot deactivate your own super admin account.';
-        } elseif ($newStatus === 'inactive') {
-            $blockers = getDeactivationBlockers($conn, $userId, normalizeRole((string)$user['role']));
-
-            if (!empty($blockers)) {
-                $error = 'Cannot deactivate ' . $user['full_name'] . ' yet. Reassign ' . implode(' and ', $blockers) . ' first.';
-            } else {
-                $stmt = $conn->prepare('UPDATE users SET status = ? WHERE id = ?');
-                $stmt->bind_param('si', $newStatus, $userId);
-                if ($stmt->execute()) {
-                    audit_log_event(
-                        $conn,
-                        (int)($_SESSION['user_id'] ?? 0),
-                        'update_user_status',
-                        'user',
-                        $userId,
-                        ['status' => $user['status'] ?? null],
-                        ['status' => $newStatus]
-                    );
-                    $message = 'User deactivated successfully.';
-                } else {
-                    $error = 'Failed to update user status.';
-                }
-            }
-        } else {
-            $stmt = $conn->prepare('UPDATE users SET status = ? WHERE id = ?');
-            $stmt->bind_param('si', $newStatus, $userId);
-            if ($stmt->execute()) {
-                audit_log_event(
-                    $conn,
-                    (int)($_SESSION['user_id'] ?? 0),
-                    'update_user_status',
-                    'user',
-                    $userId,
-                    ['status' => $user['status'] ?? null],
-                    ['status' => $newStatus]
-                );
-                $message = 'User reactivated successfully.';
-            } else {
-                $error = 'Failed to update user status.';
-            }
-        }
-        $activeTab = 'users';
+        $activeTab = in_array($action, ['update_my_profile', 'change_my_password'], true)
+            ? 'profile'
+            : ($action === 'update_inquiry_status' ? 'dashboard' : 'users');
     }
 
     if ($action === 'update_inquiry_status' && $error === '') {
-        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
-        $newStatus = trim((string)($_POST['status'] ?? ''));
-
-        if ($inquiryId <= 0 || !isValidInquiryStatus($newStatus)) {
-            $error = 'Invalid inquiry status update request.';
-        } else {
-            $statusStmt = $conn->prepare('SELECT status FROM service_inquiries WHERE id = ? LIMIT 1');
-            if (!$statusStmt) {
-                $error = 'Unable to load inquiry for update.';
-            } else {
-                $statusStmt->bind_param('i', $inquiryId);
-                $statusStmt->execute();
-                $statusResult = $statusStmt->get_result();
-                $existingInquiry = $statusResult ? $statusResult->fetch_assoc() : null;
-
-                if (!$existingInquiry) {
-                    $error = 'Inquiry not found.';
-                } elseif ((string)($existingInquiry['status'] ?? '') === $newStatus) {
-                    $error = 'Inquiry is already marked as ' . $newStatus . '.';
-                } else {
-                    $updateStmt = $conn->prepare('UPDATE service_inquiries SET status = ? WHERE id = ?');
-                    if (!$updateStmt) {
-                        $error = 'Failed to prepare inquiry update.';
-                    } else {
-                        $updateStmt->bind_param('si', $newStatus, $inquiryId);
-                        if ($updateStmt->execute()) {
-                            audit_log_event(
-                                $conn,
-                                (int)($_SESSION['user_id'] ?? 0),
-                                'update_inquiry_status',
-                                'service_inquiry',
-                                $inquiryId,
-                                ['status' => (string)($existingInquiry['status'] ?? '')],
-                                ['status' => $newStatus]
-                            );
-                            $message = 'Inquiry status updated to ' . $newStatus . '.';
-                        } else {
-                            $error = 'Failed to update inquiry status.';
-                        }
-                    }
-                }
-            }
-        }
-        $activeTab = 'dashboard';
-    }
-
-    if ($action === 'edit_user' && $error === '') {
-        $userId = (int)($_POST['user_id'] ?? 0);
-        $fullName = trim($_POST['edit_full_name'] ?? '');
-        $email = trim($_POST['edit_email'] ?? '');
-        $phone = trim($_POST['edit_phone'] ?? '');
-        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
-
-        if ($userId <= 0 || $fullName === '' || $email === '') {
-            $error = 'Invalid edit request. Full name and email are required.';
-        } elseif (!$user) {
-            $error = 'User not found.';
-        } elseif (normalizeRole((string)$user['role']) === 'super_admin') {
-            $error = 'Super admin accounts cannot be edited from this screen.';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Invalid email format.';
-        } elseif (!ctype_digit($phone) && $phone !== '') {
-            $error = 'Phone number must contain numbers only.';
-        } elseif (!isValidPhMobile($phone)) {
-            $error = 'Phone number must be a valid PH mobile number (09xxxxxxxxx).';
-        } else {
-            $dupStmt = $conn->prepare('SELECT id FROM users WHERE (full_name = ? OR email = ? OR phone = ?) AND id != ? LIMIT 1');
-            $dupStmt->bind_param('sssi', $fullName, $email, $phone, $userId);
-            $dupStmt->execute();
-            $dup = $dupStmt->get_result();
-
-            if ($dup->num_rows > 0) {
-                $error = 'Duplicate detected. Full name, email, and phone must all be unique.';
-            } else {
-                $stmt = $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?');
-                $stmt->bind_param('sssi', $fullName, $email, $phone, $userId);
-                if ($stmt->execute()) {
-                    audit_log_event(
-                        $conn,
-                        (int)($_SESSION['user_id'] ?? 0),
-                        'update_user_profile',
-                        'user',
-                        $userId,
-                        [
-                            'full_name' => $user['full_name'] ?? null,
-                            'email' => $user['email'] ?? null,
-                            'phone' => $user['phone'] ?? null,
-                        ],
-                        [
-                            'full_name' => $fullName,
-                            'email' => $email,
-                            'phone' => $phone,
-                        ]
-                    );
-                    $message = 'User profile updated successfully.';
-                } else {
-                    $error = 'Failed to update user profile.';
-                }
-            }
-        }
-        $activeTab = 'users';
-    }
-
-    if ($action === 'delete_user' && $error === '') {
-        $userId = (int)($_POST['user_id'] ?? 0);
-        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
-
-        if ($userId <= 0) {
-            $error = 'Invalid delete request.';
-        } elseif (!$user) {
-            $error = 'User not found.';
-        } elseif (normalizeRole((string)$user['role']) === 'super_admin') {
-            $error = 'Super admin accounts cannot be deleted from this screen.';
-        } elseif ($userId === (int)($_SESSION['user_id'] ?? 0)) {
-            $error = 'You cannot delete your own super admin account.';
-        } elseif (($user['status'] ?? 'active') !== 'inactive') {
-            $error = 'Deactivate the user first before deleting the account.';
-        } else {
-            $blockers = getDeactivationBlockers($conn, $userId, normalizeRole((string)$user['role']));
-
-            if (!empty($blockers)) {
-                $error = 'Cannot delete ' . $user['full_name'] . ' yet. Reassign ' . implode(' and ', $blockers) . ' first.';
-            } else {
-                $deletedBy = (int)($_SESSION['user_id'] ?? 0);
-                $stmt = $conn->prepare(
-                    'UPDATE users
-                     SET deleted_at = NOW(),
-                         deleted_by = ?,
-                         restored_at = NULL,
-                         restored_by = NULL
-                     WHERE id = ?
-                     AND deleted_at IS NULL'
-                );
-                $stmt->bind_param('ii', $deletedBy, $userId);
-                if ($stmt->execute() && $stmt->affected_rows > 0) {
-                    audit_log_event(
-                        $conn,
-                        $deletedBy,
-                        'trash_user',
-                        'user',
-                        $userId,
-                        [
-                            'full_name' => $user['full_name'] ?? null,
-                            'email' => $user['email'] ?? null,
-                            'phone' => $user['phone'] ?? null,
-                            'role' => $user['role'] ?? null,
-                            'status' => $user['status'] ?? null,
-                        ],
-                        [
-                            'deleted_at' => date('Y-m-d H:i:s'),
-                        ]
-                    );
-                    $message = 'User moved to trash successfully.';
-                } else {
-                    $error = 'Failed to move user to trash.';
-                }
-            }
-        }
-
-        $activeTab = 'users';
+        $result = admin_dashboard_handle_update_inquiry_status(
+            $conn,
+            (int)($_SESSION['user_id'] ?? 0),
+            (int)($_POST['inquiry_id'] ?? 0),
+            trim((string)($_POST['status'] ?? ''))
+        );
+        $error = $result['error'];
+        $message = $result['message'];
+        $activeTab = $result['activeTab'];
     }
 
     if ($action === 'update_my_profile' && $error === '') {
-        $userId = (int)($_SESSION['user_id'] ?? 0);
-        $fullName = trim($_POST['full_name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $profilePhotoUpload = $_FILES['profile_photo'] ?? null;
-        $currentUser = $userId > 0 ? admin_get_user_by_id($conn, $userId) : null;
+        $result = admin_dashboard_handle_update_my_profile(
+            $conn,
+            (int)($_SESSION['user_id'] ?? 0),
+            trim((string)($_POST['full_name'] ?? '')),
+            trim((string)($_POST['email'] ?? '')),
+            trim((string)($_POST['phone'] ?? '')),
+            $_FILES['profile_photo'] ?? null,
+            $supportsProfilePhoto
+        );
+        $error = $result['error'];
+        $activeTab = $result['activeTab'];
 
-        if ($userId <= 0 || !$currentUser) {
-            $error = 'Unable to load your admin account.';
-        } elseif ($fullName === '' || $email === '') {
-            $error = 'Full name and email are required.';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Please use a valid email address.';
-        } elseif (!ctype_digit($phone) && $phone !== '') {
-            $error = 'Phone number must contain numbers only.';
-        } elseif (!isValidPhMobile($phone)) {
-            $error = 'Phone number must be a valid PH mobile number (09xxxxxxxxx).';
-        } else {
-            $dupStmt = $conn->prepare('SELECT id FROM users WHERE (full_name = ? OR email = ? OR phone = ?) AND id != ? LIMIT 1');
-            $dupStmt->bind_param('sssi', $fullName, $email, $phone, $userId);
-            $dupStmt->execute();
-            $dup = $dupStmt->get_result();
-
-            if ($dup && $dup->num_rows > 0) {
-                $error = 'Full name, email, and phone must stay unique.';
-            } else {
-                $uploadedPhoto = ($supportsProfilePhoto && $profilePhotoUpload)
-                    ? admin_store_profile_photo_upload($profilePhotoUpload, $userId)
-                    : ['path' => null, 'error' => null];
-
-                if ($uploadedPhoto['error'] !== null) {
-                    $error = (string)$uploadedPhoto['error'];
-                } else {
-                    $newPhotoPath = $uploadedPhoto['path'] ?? ($currentUser['profile_photo_path'] ?? null);
-                    $uploadedNewPhoto = $uploadedPhoto['path'] !== null;
-                    $stmt = $supportsProfilePhoto
-                        ? $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ?, profile_photo_path = ? WHERE id = ?')
-                        : $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?');
-
-                    if ($supportsProfilePhoto) {
-                        $stmt->bind_param('ssssi', $fullName, $email, $phone, $newPhotoPath, $userId);
-                    } else {
-                        $stmt->bind_param('sssi', $fullName, $email, $phone, $userId);
-                    }
-
-                    if ($stmt->execute()) {
-                        $_SESSION['name'] = $fullName;
-
-                        if ($uploadedNewPhoto) {
-                            profile_photo_cleanup_duplicates(
-                                $userId,
-                                profile_photo_file_name_from_reference($newPhotoPath)
-                            );
-                        }
-
-                        audit_log_event(
-                            $conn,
-                            $userId,
-                            'update_user_profile',
-                            'user',
-                            $userId,
-                            [
-                                'full_name' => $currentUser['full_name'] ?? null,
-                                'email' => $currentUser['email'] ?? null,
-                                'phone' => $currentUser['phone'] ?? null,
-                                'profile_photo_path' => $currentUser['profile_photo_path'] ?? null,
-                            ],
-                            [
-                                'full_name' => $fullName,
-                                'email' => $email,
-                                'phone' => $phone,
-                                'profile_photo_path' => $newPhotoPath,
-                            ]
-                        );
-
-                        setDashboardFlash('success', 'Your admin profile was updated.');
-                        redirectToDashboardTab('profile');
-                    } else {
-                        $error = 'Failed to update your profile.';
-                    }
-                }
-            }
+        if ($error === '' && !empty($result['shouldRedirectToProfile'])) {
+            setDashboardFlash('success', (string)($result['message'] ?? 'Your admin profile was updated.'));
+            redirectToDashboardTab('profile');
         }
-
-        $activeTab = 'profile';
     }
 
     if ($action === 'change_my_password' && $error === '') {
-        $userId = (int)($_SESSION['user_id'] ?? 0);
-        $currentPassword = (string)($_POST['current_password'] ?? '');
-        $newPassword = (string)($_POST['new_password'] ?? '');
-        $confirmPassword = (string)($_POST['confirm_password'] ?? '');
-        $currentUser = $userId > 0 ? admin_get_user_by_id($conn, $userId) : null;
-
-        if ($userId <= 0 || !$currentUser) {
-            $error = 'Unable to load your admin account.';
-        } elseif ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
-            $error = 'Complete all password fields first.';
-        } elseif ($newPassword !== $confirmPassword) {
-            $error = 'New password and confirmation do not match.';
-        } elseif (!isStrongPassword($newPassword)) {
-            $error = 'Use a strong password with 12+ chars, uppercase, lowercase, number, and special symbol.';
-        } else {
-            $passwordStmt = $conn->prepare('SELECT password FROM users WHERE id = ? LIMIT 1');
-            $passwordStmt->bind_param('i', $userId);
-            $passwordStmt->execute();
-            $passwordResult = $passwordStmt->get_result();
-            $passwordRow = $passwordResult ? $passwordResult->fetch_assoc() : null;
-
-            if (!$passwordRow || !password_verify($currentPassword, (string)($passwordRow['password'] ?? ''))) {
-                $error = 'Current password is incorrect.';
-            } else {
-                $newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
-                $updatePasswordStmt = $conn->prepare('UPDATE users SET password = ? WHERE id = ?');
-                $updatePasswordStmt->bind_param('si', $newPasswordHash, $userId);
-
-                if ($updatePasswordStmt->execute()) {
-                    audit_log_event(
-                        $conn,
-                        $userId,
-                        'change_password',
-                        'user',
-                        $userId,
-                        null,
-                        ['full_name' => $currentUser['full_name'] ?? null]
-                    );
-                    $message = 'Your password was changed successfully.';
-                } else {
-                    $error = 'Failed to change your password.';
-                }
-            }
-        }
-
-        $activeTab = 'profile';
+        $result = admin_dashboard_handle_change_my_password(
+            $conn,
+            (int)($_SESSION['user_id'] ?? 0),
+            (string)($_POST['current_password'] ?? ''),
+            (string)($_POST['new_password'] ?? ''),
+            (string)($_POST['confirm_password'] ?? '')
+        );
+        $error = $result['error'];
+        $message = $result['message'];
+        $activeTab = $result['activeTab'];
     }
 }
 

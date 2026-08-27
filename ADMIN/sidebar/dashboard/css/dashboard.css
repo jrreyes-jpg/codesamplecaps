@@ -60,6 +60,10 @@
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 244, 0.88));
 }
 
+.btn-primary--dark {
+    background: linear-gradient(135deg, #0f172a, #166534);
+}
+
 .panel-heading {
     display: flex;
     justify-content: space-between;

@@ -1248,4 +1248,4 @@ include __DIR__ . '/../../../admin_sidebar.php';
     </div>
 </main>
 
-<?php include __DIR__ . '/../layout/footer.php'; ?>
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>

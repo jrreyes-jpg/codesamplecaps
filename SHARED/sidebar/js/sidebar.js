@@ -1,4 +1,10 @@
 (function () {
+    if (window.__edgeSharedSidebarInitialized) {
+        return;
+    }
+
+    window.__edgeSharedSidebarInitialized = true;
+
     var storageKey = 'edge.operations.sidebar.shrink';
     var scrollStorageKey = 'edge.operations.sidebar.scroll';
     var pendingActiveKey = 'edge.operations.sidebar.pendingActive';
@@ -190,6 +196,44 @@
         keepActiveItemVisible(sidebar);
     };
 
+    var isSidebarCollapsedDesktop = function (sidebar) {
+        if (!sidebar || window.innerWidth <= 768) {
+            return false;
+        }
+
+        return sidebar.classList.contains('shrink') || document.documentElement.classList.contains('ops-sidebar-shrink-pref');
+    };
+
+    var setGroupOpenState = function (group, shouldOpen) {
+        if (!group) {
+            return;
+        }
+
+        var toggle = group.querySelector('[data-sidebar-group-toggle]');
+        var panel = group.querySelector('.menu-submenu');
+
+        group.classList.toggle('is-open', shouldOpen);
+
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        }
+
+        if (panel) {
+            panel.hidden = !shouldOpen;
+        }
+    };
+
+    var initializeSidebarGroups = function (sidebar) {
+        if (!sidebar) {
+            return;
+        }
+
+        sidebar.querySelectorAll('.nav-menu-group').forEach(function (group) {
+            var hasActiveChild = Boolean(group.querySelector('.menu-submenu .menu-link.active-link'));
+            setGroupOpenState(group, hasActiveChild);
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         var sidebar = document.querySelector('[data-shared-sidebar]');
         if (!sidebar) {
@@ -261,8 +305,38 @@
             }
         });
 
+        sidebar.querySelectorAll('[data-sidebar-group-toggle]').forEach(function (toggle) {
+            toggle.addEventListener('click', function (event) {
+                var group = toggle.closest('.nav-menu-group');
+                if (!group) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                sound.toggle();
+
+                if (isSidebarCollapsedDesktop(sidebar)) {
+                    saveSidebarScroll(sidebar);
+                    setSidebarState(false, true);
+                    setGroupOpenState(group, true);
+                    restoreAfterLayout();
+                    return;
+                }
+
+                var shouldOpen = toggle.getAttribute('aria-expanded') !== 'true';
+                setGroupOpenState(group, shouldOpen);
+                saveSidebarScroll(sidebar);
+                keepActiveItemVisible(sidebar);
+            });
+        });
+
         document.querySelectorAll('.menu-link').forEach(function (link) {
             link.addEventListener('click', function (event) {
+                if (link.hasAttribute('data-sidebar-group-toggle')) {
+                    return;
+                }
+
                 var isLogout = link.classList.contains('logout');
                 var href = link.getAttribute('href');
                 sound[isLogout ? 'logout' : 'tap']();
@@ -306,6 +380,7 @@
         });
 
         applyStoredState();
+        initializeSidebarGroups(sidebar);
         restoreAfterLayout();
     });
 })();

@@ -7,11 +7,27 @@ function shared_navigation_items_for_role(string $role): array
         'admin' => [
             ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php', 'icon' => 'dashboard', 'active' => ['/ADMIN/sidebar/dashboard/php/dashboard.php']],
             ['module' => 'projects', 'label' => 'Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php', 'icon' => 'projects', 'active' => ['/ADMIN/sidebar/projects/php/projects.php', '/ADMIN/sidebar/projects/php/project_details.php', '/ADMIN/sidebar/project_details.php'], 'exclude_query' => ['view=trash', 'view=archive']],
-            ['module' => 'assets', 'label' => 'Assets', 'mini' => 'Asset', 'href' => '/codesamplecaps/ADMIN/sidebar/assets/php/assets.php', 'icon' => 'assets', 'active' => ['/ADMIN/sidebar/assets/php/assets.php']],
-            ['module' => 'quotations', 'label' => 'Quotations', 'mini' => 'Quote', 'href' => '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php', 'icon' => 'quotations', 'active' => ['/ADMIN/sidebar/quotations/php/quotations.php']],
-            ['module' => 'procurement', 'label' => 'Procurement', 'mini' => 'Proc', 'href' => '/codesamplecaps/ADMIN/sidebar/procurement/php/procurement.php', 'icon' => 'procurement', 'active' => ['/ADMIN/sidebar/procurement/php/procurement.php']],
-            ['module' => 'inventory', 'label' => 'Inventory', 'mini' => 'Inv', 'href' => '/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php', 'icon' => 'inventory', 'active' => ['/ADMIN/sidebar/inventory/php/inventory.php']],
-            ['module' => 'inquiries', 'label' => 'Inquiries', 'mini' => 'Inq', 'href' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', 'icon' => 'inquiries', 'active' => ['/ADMIN/sidebar/inquiries/php/inquiries.php']],
+            [
+                'module' => 'client_requests',
+                'label' => 'Client Requests',
+                'mini' => 'Req',
+                'icon' => 'inquiries',
+                'children' => [
+                    ['module' => 'inquiries', 'label' => 'Inquiries', 'mini' => 'Inq', 'href' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', 'icon' => 'inquiries', 'active' => ['/ADMIN/sidebar/inquiries/php/inquiries.php']],
+                    ['module' => 'quotations', 'label' => 'Quotations', 'mini' => 'Quote', 'href' => '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php', 'icon' => 'quotations', 'active' => ['/ADMIN/sidebar/quotations/php/quotations.php']],
+                ],
+            ],
+            [
+                'module' => 'resources',
+                'label' => 'Resources',
+                'mini' => 'Res',
+                'icon' => 'assets',
+                'children' => [
+                    ['module' => 'assets', 'label' => 'Assets', 'mini' => 'Asset', 'href' => '/codesamplecaps/ADMIN/sidebar/assets/php/assets.php', 'icon' => 'assets', 'active' => ['/ADMIN/sidebar/assets/php/assets.php']],
+                    ['module' => 'inventory', 'label' => 'Inventory', 'mini' => 'Inv', 'href' => '/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php', 'icon' => 'inventory', 'active' => ['/ADMIN/sidebar/inventory/php/inventory.php']],
+                    ['module' => 'procurement', 'label' => 'Procurement', 'mini' => 'Proc', 'href' => '/codesamplecaps/ADMIN/sidebar/procurement/php/procurement.php', 'icon' => 'procurement', 'active' => ['/ADMIN/sidebar/procurement/php/procurement.php']],
+                ],
+            ],
             ['module' => 'reports', 'label' => 'Reports', 'mini' => 'Rpt', 'href' => '/codesamplecaps/ADMIN/sidebar/reports/php/reports.php', 'icon' => 'reports', 'active' => ['/ADMIN/sidebar/reports/php/reports.php']],
             ['module' => 'activity', 'label' => 'Activity History', 'mini' => 'Audit', 'href' => '/codesamplecaps/ADMIN/sidebar/activity_history/php/activity_history.php', 'icon' => 'activity', 'active' => ['/ADMIN/sidebar/activity_history/php/activity_history.php']],
             ['module' => 'archive', 'label' => 'Archive', 'mini' => 'Arch', 'href' => '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash', 'icon' => 'archive', 'active' => ['/ADMIN/sidebar/projects/php/projects.php?view=trash']],

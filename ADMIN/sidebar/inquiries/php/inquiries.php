@@ -319,25 +319,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-    } elseif (($_POST['action'] ?? '') === 'create_project_from_quote') {
+    } elseif (($_POST['action'] ?? '') === 'prepare_project_from_quote') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $draftId = (int)($_POST['draft_id'] ?? 0);
 
         if ($inquiryId <= 0 || $draftId <= 0) {
-            $error = 'Invalid project creation request.';
+            $error = 'Invalid project setup request.';
         } else {
             try {
-                $projectId = inquiry_quote_create_project($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
-                audit_log_event(
-                    $conn,
-                    (int)($_SESSION['user_id'] ?? 0),
-                    'create_project_from_quotation',
-                    'project',
-                    $projectId,
-                    null,
-                    ['quotation_draft_id' => $draftId, 'inquiry_id' => $inquiryId]
-                );
-                inquiry_center_redirect_with_project($projectId, 'Project created from accepted quotation.');
+                $quotation = inquiry_quote_fetch_full($conn, $draftId);
+                if (!$quotation || (int)($quotation['inquiry_id'] ?? 0) !== $inquiryId) {
+                    throw new RuntimeException('Accepted quotation not found.');
+                }
+
+                if (inquiry_quote_normalize_status($quotation['status'] ?? '') !== 'accepted') {
+                    throw new RuntimeException('Client must accept the quotation before project setup.');
+                }
+
+                if (!empty($quotation['project_id'])) {
+                    inquiry_center_redirect_with_project((int)$quotation['project_id'], 'Project was already created from this quotation.');
+                }
+
+                $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
+                $engineerId = (int)($quotation['engineer_id'] ?? 0);
+                $_SESSION['projects_old_input'] = [
+                    'project_name' => inquiry_quote_unique_project_title($conn, $quotation),
+                    'description' => trim((string)($quotation['engineer_findings'] ?: $quotation['description'] ?? '')),
+                    'contact_person' => trim((string)($quotation['client_name'] ?? '')),
+                    'contact_number' => trim((string)($quotation['contact_no'] ?? '')),
+                    'project_site' => trim((string)($quotation['city_municipality'] ?? '')),
+                    'project_address' => trim((string)($quotation['site_address'] ?? '')),
+                    'project_email' => trim((string)($quotation['email'] ?? '')),
+                    'project_source' => 'inquiry_quotation',
+                    'quotation_draft_id' => (string)$draftId,
+                    'source_inquiry_id' => (string)$inquiryId,
+                    'client_id' => !empty($recipient['client_id']) ? (string)$recipient['client_id'] : '',
+                    'engineer_ids' => $engineerId > 0 ? [(string)$engineerId] : [],
+                    'status' => 'pending',
+                    'start_date' => date('Y-m-d'),
+                    'project_start_date' => date('Y-m-d'),
+                    'estimated_completion_date' => date('Y-m-d', strtotime('+7 days')),
+                    'estimated_duration_days' => '7',
+                    'budget_amount' => number_format((float)($quotation['grand_total'] ?? 0), 2, '.', ''),
+                    'budget_notes' => 'Accepted quotation ' . (string)($quotation['quotation_no'] ?? ''),
+                    'focus_field' => empty($recipient['client_id']) ? 'client_id' : 'engineer_ids',
+                ];
+                $_SESSION['projects_flash'] = [
+                    'type' => 'success',
+                    'message' => 'Review the accepted quotation details, then select the Client and project team.',
+                ];
+                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php#create-project');
+                exit;
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -1072,17 +1104,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <?php if (!$quotationRecipient || empty($quotationRecipient['client_id'])): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide">
                                                     <span>Project Creation</span>
-                                                    <strong>Create or link a Client account first. Use this accepted inquiry data to avoid retyping.</strong>
+                                                    <strong>Select the matching Client account in Project Setup before saving.</strong>
                                                 </div>
-                                            <?php else: ?>
-                                                <form method="POST" class="inquiry-project-create-form">
-                                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                    <input type="hidden" name="action" value="create_project_from_quote">
-                                                    <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                    <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                    <button type="submit" class="btn-primary">Create Project</button>
-                                                </form>
                                             <?php endif; ?>
+                                            <form method="POST" class="inquiry-project-create-form">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="prepare_project_from_quote">
+                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                                <button type="submit" class="btn-primary">Continue to Project Setup</button>
+                                            </form>
                                         <?php elseif (!empty($quotationDraft['project_id'])): ?>
                                             <div class="inquiry-created-project">
                                                 <span>Project Created</span>

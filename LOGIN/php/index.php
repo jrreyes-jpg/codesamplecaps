@@ -527,8 +527,8 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <div class="inquiry-grid">
                 <label>
-                    <span>Full Name <b class="required-mark">*</b></span>
-                    <input type="text" name="client_name" data-label="Full Name" required autocomplete="name">
+                    <span>Contact Person <b class="required-mark">*</b></span>
+                    <input type="text" name="client_name" data-label="Contact Person" required autocomplete="name">
                     <small class="field-error"></small>
                 </label>
 

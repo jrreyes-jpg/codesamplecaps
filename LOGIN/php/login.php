@@ -424,8 +424,12 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 <body>
     <?php if ((isset($_GET['logout']) || isset($_GET['timeout'])) && $error !== ''): ?>
         <div class="login-toast <?php echo htmlspecialchars($error_class, ENT_QUOTES, 'UTF-8'); ?>" role="status" aria-live="polite">
-            <strong><?php echo isset($_GET['timeout']) ? 'Session expired' : 'Logged out'; ?></strong>
-            <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php if (isset($_GET['timeout'])): ?>
+                <strong>Session expired</strong>
+                <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php else: ?>
+                <strong><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></strong>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 

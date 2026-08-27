@@ -550,68 +550,6 @@
 }
 
 /* Mobile-first overview */
-.overview-inquiry-summary {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.overview-inquiry-summary__pending {
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-}
-
-.overview-inquiry-summary__count {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: 999px;
-    color: #ffffff;
-    background: #dc2626;
-    font-size: 0.78rem;
-    font-weight: 700;
-}
-
-.overview-inquiry-summary__dot {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: #ffffff;
-}
-
-.overview-inquiry-action {
-    display: inline-flex;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-}
-
-.overview-inquiry-details {
-    margin-top: 0.75rem;
-    color: #4b5563;
-}
-
-.overview-inquiry-details summary {
-    cursor: pointer;
-    color: #2563eb;
-    font-weight: 600;
-}
-
-.overview-inquiry-details__body {
-    margin-top: 0.6rem;
-    padding: 0.75rem;
-    border-left: 3px solid #2563eb;
-    border-radius: 0.5rem;
-    background: #f8fafc;
-}
-
-.overview-inquiry-details__row {
-    margin-bottom: 0.35rem;
-}
-
 .overview-dashboard {
     gap: 18px;
 }

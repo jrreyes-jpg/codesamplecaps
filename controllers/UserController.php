@@ -57,8 +57,8 @@ class UserController {
     /**
      * Request password reset
      */
-    public function requestPasswordReset($email) {
-        return $this->authService->requestPasswordReset($email);
+    public function requestPasswordReset($email, $ipAddress = null) {
+        return $this->authService->requestPasswordReset($email, $ipAddress);
     }
 
     /**

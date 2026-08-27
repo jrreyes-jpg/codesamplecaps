@@ -134,7 +134,7 @@ public function resetPasswordByToken($token, $passwordHash) {
 
         $passwordStmt = $this->conn->prepare(
             "UPDATE users
-             SET password = ?, reset_token = NULL, token_expiry = NULL
+             SET password = ?
              WHERE id = ?"
         );
 

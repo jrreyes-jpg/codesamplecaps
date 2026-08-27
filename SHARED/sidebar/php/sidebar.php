@@ -125,11 +125,10 @@ if (!function_exists('shared_sidebar_has_active_children')) {
             <?php if ($hasChildren): ?>
                 <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open' : ''; ?>">
                     <button
-                        class="menu-link menu-link--button menu-link--group-toggle<?php echo $isActive ? ' active-link' : ''; ?>"
+                        class="menu-link menu-link--button menu-link--group-toggle"
                         type="button"
                         data-sidebar-group-toggle
                         aria-expanded="<?php echo $hasActiveChild ? 'true' : 'false'; ?>"
-                        <?php echo $isActive ? 'data-active="true"' : ''; ?>
                     >
                         <span class="menu-visual" aria-hidden="true">
                             <span class="menu-icon">

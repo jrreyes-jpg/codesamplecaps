@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/../includes/admin_auth.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/inquiry_quotation_module.php';
-require_once __DIR__ . '/../../config/site_inspections.php';
+require_once __DIR__ . '/../../../includes/admin_auth.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../../config/site_inspections.php';
 
 $draftId = (int)($_GET['id'] ?? 0);
 $quotation = $draftId > 0 ? inquiry_quote_fetch_full($conn, $draftId) : null;

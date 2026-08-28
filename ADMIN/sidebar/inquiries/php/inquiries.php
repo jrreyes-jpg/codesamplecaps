@@ -876,15 +876,29 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>">
                         <div class="inquiry-card__head">
-                            <div>
+                            <div class="inquiry-card__identity">
+                                <span class="inquiry-card__eyebrow">Contact Person</span>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
-                                <div class="inquiry-meta">
-                                    <span><strong>Company:</strong> <?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span><strong>Service:</strong> <?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span><strong>Location:</strong> <?php echo htmlspecialchars(trim((string)($inquiry['city_municipality'] ?: $inquiry['province'] ?: 'Not set')), ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span><strong>Submitted:</strong> <?php echo htmlspecialchars(inquiry_center_format_date($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
-                                </div>
+                            </div>
+                            <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+
+                        <div class="inquiry-card__summary">
+                            <div class="inquiry-card__info">
+                                <span>Company</span>
+                                <strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </div>
+                            <div class="inquiry-card__info">
+                                <span>Service</span>
+                                <strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </div>
+                            <div class="inquiry-card__info">
+                                <span>Location</span>
+                                <strong><?php echo htmlspecialchars(trim((string)($inquiry['city_municipality'] ?: $inquiry['province'] ?: 'Not set')), ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </div>
+                            <div class="inquiry-card__info">
+                                <span>Submitted</span>
+                                <strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                         </div>
 

@@ -1,8 +1,11 @@
 <?php
 // Centralized header ng lahat ng Admin pages.
 $adminPageTitle = $adminPageTitle ?? 'Admin Dashboard - Edge Automation';
-$adminCssFiles = is_array($adminCssFiles ?? null) ? $adminCssFiles : [];
+$adminCssFiles = $adminCssFiles ?? [];
 
+if (!is_array($adminCssFiles)) {
+    $adminCssFiles = [];
+}
 // Shared styles muna bago page-specific styles para puwedeng
 // mag-override ang individual Admin pages kapag kailangan.
 $sharedCssFiles = [

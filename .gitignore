@@ -1,9 +1,11 @@
 # Environment secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Runtime files
 storage/sessions/
 storage/logs/
+storage/profile_photos/
+uploads/profile_photos/
 *.log

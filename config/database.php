@@ -23,9 +23,7 @@ try {
     $conn->set_charset($db_config['charset']);
 } catch (mysqli_sql_exception $exception) {
     http_response_code(500);
-    die(
-        'Database Connection Failed. Please make sure MySQL is running in XAMPP and the database settings are correct.'
-        . '<br><small>' . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . '</small>'
-    );
+    error_log('Database connection failed: ' . $exception->getMessage());
+    die('Database Connection Failed. Please make sure MySQL is running in XAMPP and the database settings are correct.');
 }
 

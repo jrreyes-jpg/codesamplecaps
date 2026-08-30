@@ -1,6 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -87,11 +85,12 @@ private function env($key, $default = null)
         $this->settings['MAIL_DRIVER'] = $this->env('MAIL_DRIVER') ?: 'smtp';
         $this->settings['MAIL_HOST'] = $this->env('MAIL_HOST') ?: 'smtp.gmail.com';
         $this->settings['MAIL_PORT'] = $this->env('MAIL_PORT') ?: 587;
-        $this->settings['MAIL_USERNAME'] = $this->env('MAIL_USERNAME') ?: ($this->env('GMAIL_SMTP_USER') ?: 'ejimenez.edge@gmail.com');
+        $this->settings['MAIL_USERNAME'] = $this->env('MAIL_USERNAME') ?: ($this->env('GMAIL_SMTP_USER') ?: '');
         $this->settings['MAIL_PASSWORD'] = $this->env('MAIL_PASSWORD') ?: ($this->env('GMAIL_SMTP_APP_PASSWORD') ?: '');
         $this->settings['MAIL_ENCRYPTION'] = $this->env('MAIL_ENCRYPTION') ?: 'tls';
         $this->settings['MAIL_FROM_ADDRESS'] = $this->env('MAIL_FROM_ADDRESS') ?: $this->settings['MAIL_USERNAME'];
         $this->settings['MAIL_FROM_NAME'] = $this->env('MAIL_FROM_NAME') ?: 'Edge Automation';
+        $this->settings['CONTACT_EMAIL'] = $this->env('CONTACT_EMAIL') ?: $this->settings['MAIL_FROM_ADDRESS'];
 
         // ============ SECURITY ============
         $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 15;

@@ -8,6 +8,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 session_start();
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../config/Config.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -51,11 +52,19 @@ if (mb_strlen($name) > 100 || mb_strlen($email) > 254 || mb_strlen($message) > 5
     exit('Input is too long.');
 }
 
-// SMTP credentials from environment variables (recommended for security)
-$smtpUser = getenv('GMAIL_SMTP_USER') ?: 'ejimenez.edge@gmail.com';
-$smtpPass = getenv('GMAIL_SMTP_APP_PASSWORD') ?: '';
+$config = Config::getInstance();
+$mailConfig = $config->getMailConfig();
+$smtpUser = trim((string)($mailConfig['username'] ?? ''));
+$smtpPass = (string)($mailConfig['password'] ?? '');
+$fromAddress = trim((string)($mailConfig['from_address'] ?? ''));
+$contactAddress = trim((string)$config->get('CONTACT_EMAIL', ''));
 
-if ($smtpPass === '') {
+if (
+    $smtpUser === '' ||
+    $smtpPass === '' ||
+    !filter_var($fromAddress, FILTER_VALIDATE_EMAIL) ||
+    !filter_var($contactAddress, FILTER_VALIDATE_EMAIL)
+) {
     http_response_code(500);
     exit('Email service is not configured.');
 }
@@ -64,15 +73,15 @@ $mail = new PHPMailer(true);
 
 try {
     $mail->isSMTP();
-    $mail->Host = 'smtp.gmail.com';
+    $mail->Host = (string)($mailConfig['host'] ?? '');
     $mail->SMTPAuth = true;
     $mail->Username = $smtpUser;
-    $mail->Password = $smtpPass; // Gmail App Password (NOT your normal password)
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port = 587;
+    $mail->Password = $smtpPass;
+    $mail->SMTPSecure = (string)($mailConfig['encryption'] ?? 'tls');
+    $mail->Port = (int)($mailConfig['port'] ?? 587);
 
-    $mail->setFrom('ejimenez.edge@gmail.com', 'Edge Automation');
-    $mail->addAddress('ejimenez.edge@gmail.com');
+    $mail->setFrom($fromAddress, (string)($mailConfig['from_name'] ?? 'Edge Automation'));
+    $mail->addAddress($contactAddress);
     $mail->addReplyTo($email, $name);
 
     $mail->isHTML(true);

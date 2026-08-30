@@ -196,9 +196,10 @@ function foreman_asset_status_expression(mysqli $conn, string $tableAlias = 'ass
     $qualifiedStatus = $tableAlias . '.status';
     $qualifiedAssetStatus = $tableAlias . '.asset_status';
 
-    return foreman_column_exists($conn, 'assets', 'status')
-        ? "COALESCE(NULLIF({$qualifiedStatus}, ''), {$qualifiedAssetStatus})"
-        : $qualifiedAssetStatus;
+    // Canonical ang asset_status; fallback lang ang lumang status column.
+    return foreman_column_exists($conn, 'assets', 'asset_status')
+        ? $qualifiedAssetStatus
+        : $qualifiedStatus;
 }
 
 function foreman_fetch_profile(mysqli $conn, int $userId): array

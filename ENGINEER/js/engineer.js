@@ -148,9 +148,9 @@ const initEngineerClock = () => {
 const initEngineerProfileMenu = () => {
     const root = document.querySelector('[data-engineer-profile-root]');
     const toggle = document.querySelector('[data-engineer-profile-toggle]');
-    const dropdown = document.querySelector('[data-engineer-profile-dropdown]');
+    const dropdown = root?.querySelector('.topbar-profile__dropdown');
     const profileModal = document.querySelector('[data-engineer-profile-modal]');
-    const profileOpenButtons = document.querySelectorAll('[data-engineer-profile-modal-open]');
+    const profileOpenButtons = document.querySelectorAll('[data-engineer-profile-modal-open], a[href="#engineer-profile"]');
     const profileClose = document.querySelector('[data-engineer-profile-modal-close]');
     const photoModal = document.querySelector('[data-engineer-photo-modal]');
     const photoOpenButtons = document.querySelectorAll('[data-engineer-photo-preview]');
@@ -202,7 +202,10 @@ const initEngineerProfileMenu = () => {
     });
 
     profileOpenButtons.forEach((button) => {
-        button.addEventListener('click', () => openModal(profileModal));
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            openModal(profileModal);
+        });
     });
     profileClose?.addEventListener('click', () => closeModal(profileModal));
     photoOpenButtons.forEach((button) => {

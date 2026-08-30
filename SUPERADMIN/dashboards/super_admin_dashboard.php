@@ -1130,26 +1130,10 @@ $scanTrendPeak = !empty($scanTrend) ? getTrendPeak($scanTrend) : 0;
 $recentDashboardActivity = fetchRecentDashboardActivity($conn, 5);
 $userWorkspaceShouldOpenModal = $activeTab === 'create';
 
+$pageTitle = 'Super Admin Dashboard - Edge Automation';
+$pageStyles = ['/codesamplecaps/SUPERADMIN/css/user-management.css'];
+require __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Dashboard - Edge Automation</title>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/common/css/admin-common.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
-    <link rel="stylesheet" href="../css/footer.css">
-    <link rel="stylesheet" href="../css/user-management.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-        <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
-
-</head>
-<body class="<?php echo $isUserWorkspaceTab ? 'superadmin-user-management-page' : ''; ?>">
 <div class="container">
     <?php include __DIR__ . '/../super_admin_sidebar.php'; ?>
 
@@ -1268,11 +1252,12 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
 </div>
     </main>
 </div>
-
-<script src="/codesamplecaps/ADMIN/common/js/admin-common.js"></script>
-<script src="../js/user-management.js"></script>
-<script src="/codesamplecaps/assets/js/realtime-updates.js" defer></script>
-</body>
-</html>
+<?php
+$pageScripts = [
+    '/codesamplecaps/SUPERADMIN/js/user-management.js',
+    '/codesamplecaps/assets/js/realtime-updates.js',
+];
+require __DIR__ . '/../includes/footer.php';
+?>
 
 

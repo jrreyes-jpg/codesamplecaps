@@ -11,19 +11,9 @@ $taskStatusOptions = ['pending', 'ongoing', 'completed', 'delayed'];
 $isArchiveView = in_array((string)($_GET['view'] ?? ''), ['trash', 'archive'], true);
 $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
 $projectRows = $isArchiveView ? engineer_fetch_archived_projects($conn, $userId) : $data['assigned_projects'];
+$engineerPageTitle = ($isArchiveView ? 'Engineer Archive' : 'Engineer Projects') . ' - Edge Automation';
+require __DIR__ . '/../layout/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $isArchiveView ? 'Engineer Archive' : 'Engineer Projects'; ?> - Edge Automation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="../css/engineer.css">
-</head>
-<body>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 
 <div class="main-content">
@@ -95,8 +85,4 @@ $projectRows = $isArchiveView ? engineer_fetch_archived_projects($conn, $userId)
     </div>
 </div>
 
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="../js/engineer.js"></script>
-
-</body>
-</html>
+<?php require __DIR__ . '/../layout/footer.php'; ?>

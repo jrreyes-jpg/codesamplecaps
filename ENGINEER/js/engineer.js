@@ -10,18 +10,6 @@
     document.head.appendChild(guardScript);
 })();
 
-// Load shared Admin/Engineer header behavior once.
-(function () {
-    if (document.querySelector('script[src$="/SHARED/js/operations-header.js"]')) {
-        return;
-    }
-
-    const headerScript = document.createElement('script');
-    headerScript.src = '/codesamplecaps/SHARED/js/operations-header.js';
-    headerScript.defer = true;
-    document.head.appendChild(headerScript);
-})();
-
 const spotlightTask = (taskId) => {
     if (!taskId) {
         return;
@@ -127,7 +115,7 @@ const initEngineerClock = () => {
         !timeElement ||
         !dateElement ||
         window.edgeOperationsHeaderClockStarted ||
-        document.querySelector('script[src$="/SHARED/js/operations-header.js"]')
+        document.querySelector('script[src$="/SHARED/header/core/operations-header.js"]')
     ) {
         return;
     }

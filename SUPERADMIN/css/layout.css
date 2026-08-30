@@ -130,3 +130,85 @@
     }
 }
 
+/* =========================================================
+   SUPER ADMIN SIDEBAR BRAND AND COLLAPSE TOGGLE
+   Isang aligned brand box at stable arrow position.
+========================================================= */
+
+.sidebar .brand-block {
+    position: relative;
+    width: 100%;
+    min-height: 58px;
+    box-sizing: border-box;
+    padding: 10px 12px 10px 58px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: hidden;
+}
+
+/* Arrow button ay laging naka-anchor sa parehong position */
+.sidebar .brand-block .sidebar-toggle,
+.sidebar.shrink .brand-block .sidebar-toggle {
+    position: absolute !important;
+    top: 50% !important;
+    left: 10px !important;
+    right: auto !important;
+    z-index: 20 !important;
+
+    width: 42px;
+    height: 42px;
+    margin: 0 !important;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    transform: translateY(-50%) !important;
+}
+
+/* Hover/focus: maliit na lift lang, hindi lilipat ng pwesto */
+.sidebar .brand-block .sidebar-toggle:hover,
+.sidebar .brand-block .sidebar-toggle:focus-visible,
+.sidebar.shrink .brand-block .sidebar-toggle:hover,
+.sidebar.shrink .brand-block .sidebar-toggle:focus-visible {
+    transform: translateY(calc(-50% - 1px)) !important;
+}
+
+/* Text ng brand ay nasa kanan ng arrow */
+.sidebar .brand-block .brand-title {
+    position: relative;
+    z-index: 5;
+    display: block;
+    min-width: 0;
+    width: 100%;
+    padding: 0 !important;
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Kapag collapsed, pareho pa rin ang parent box at arrow position */
+.sidebar.shrink .brand-block {
+    width: 100%;
+    min-height: 58px;
+    padding: 10px;
+    justify-content: center;
+}
+
+/* Itago lang ang text; huwag galawin ang arrow */
+.sidebar.shrink .brand-block .brand-title {
+    width: 0;
+    min-width: 0;
+    padding: 0 !important;
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Siguraduhing ang arrow ang tatanggap ng click */
+.sidebar .brand-block .sidebar-toggle {
+    pointer-events: auto;
+}

@@ -13,19 +13,9 @@ $flash = engineer_consume_flash();
 $csrfToken = engineer_get_csrf_token();
 $quickFilter = trim((string)($_GET['quick'] ?? ''));
 $todayDate = $data['today_date'];
+$engineerPageTitle = 'Engineer Tasks - Edge Automation';
+require __DIR__ . '/../layout/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineer Tasks - Edge Automation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="../css/engineer.css">
-</head>
-<body>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 
 <div class="main-content">
@@ -190,8 +180,4 @@ $todayDate = $data['today_date'];
     </main>
 </div>
 
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="../js/engineer.js"></script>
-
-</body>
-</html>
+<?php require __DIR__ . '/../layout/footer.php'; ?>

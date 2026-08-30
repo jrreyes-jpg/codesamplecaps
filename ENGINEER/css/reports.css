@@ -1,0 +1,138 @@
+.reports-shell,
+.report-card-grid,
+.report-links-grid,
+.report-project-list {
+    display: grid;
+    gap: 20px;
+}
+
+.reports-shell {
+    padding: 0;
+}
+
+.reports-hero,
+.report-surface,
+.report-link-card,
+.report-project-card {
+    border: 1px solid rgba(22, 48, 43, 0.08);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.reports-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+    gap: 20px;
+    padding: 24px;
+    border-radius: 24px;
+    margin-bottom: 24px;
+}
+
+.reports-hero h1,
+.report-surface h2,
+.report-link-card h3,
+.report-project-card h3 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.reports-hero p,
+.report-surface p,
+.report-link-card p,
+.report-project-card p {
+    color: #4f6460;
+}
+
+.report-kicker {
+    margin: 0 0 10px;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #15803d;
+}
+
+.reports-hero h1 {
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    line-height: 1.06;
+}
+
+.report-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.report-stat-card {
+    padding: 18px;
+    border-radius: 20px;
+    background: #f8fafc;
+}
+
+.report-stat-card span {
+    display: block;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.report-stat-card strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 1.8rem;
+    color: #0f172a;
+}
+
+.report-surface {
+    padding: 24px;
+    border-radius: 24px;
+}
+
+.report-links-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-link-card,
+.report-project-card {
+    padding: 20px;
+    border-radius: 20px;
+}
+
+.report-link-card {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-link-card:hover,
+.report-link-card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.12);
+    outline: none;
+}
+
+.report-link-card__meta,
+.report-project-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+    color: #166534;
+    font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+    .report-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .reports-hero,
+    .report-links-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .report-card-grid {
+        grid-template-columns: 1fr;
+    }
+}

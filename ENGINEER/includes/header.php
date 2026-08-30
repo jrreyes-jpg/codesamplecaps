@@ -29,23 +29,23 @@ $engineerHeaderDate = date('F j, Y');
 $engineerHeaderTime = date('g:i A');
 ob_start();
 ?>
-<div class="topbar-profile engineer-topbar__profile-menu" data-engineer-profile-root>
+<div class="topbar-profile" data-engineer-profile-root>
     <button
-        class="topbar-profile__toggle engineer-topbar__profile"
+        class="topbar-profile__toggle"
         type="button"
         title="<?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?>"
         aria-label="Open profile menu"
         aria-expanded="false"
         data-engineer-profile-toggle
     >
-        <span class="topbar-profile__avatar-shell engineer-topbar__profile-frame">
+        <span class="topbar-profile__avatar-shell">
             <?php if ($engineerHeaderPhotoUrl !== ''): ?>
-                <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo" class="topbar-profile__avatar-image engineer-topbar__profile-photo">
+                <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo" class="topbar-profile__avatar-image">
             <?php else: ?>
                 <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($engineerHeaderInitial, ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
         </span>
-        <span class="topbar-profile__chevron-badge engineer-topbar__profile-arrow" aria-hidden="true">
+        <span class="topbar-profile__chevron-badge" aria-hidden="true">
             <span class="topbar-profile__chevron">
             <svg viewBox="0 0 20 20" focusable="false">
                 <path d="M5.5 7.5 10 12l4.5-4.5"></path>
@@ -74,7 +74,7 @@ ob_start();
     </div>
 </div>
 <div class="topbar-notifications">
-    <button class="topbar-notifications__toggle engineer-topbar__bell" type="button" aria-label="Notifications">
+    <button class="topbar-notifications__toggle" type="button" aria-label="Notifications">
         <span class="topbar-notifications__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
@@ -86,18 +86,20 @@ ob_start();
 <?php
 $operationsHeaderActionsHtml = ob_get_clean();
 $operationsHeaderRole = 'engineer';
-$operationsHeaderClass = 'engineer-topbar';
-$operationsHeaderBrandClass = 'engineer-topbar__brand';
-$operationsHeaderActionsClass = 'engineer-topbar__actions';
-$operationsHeaderClockClass = 'engineer-topbar__clock';
+$operationsHeaderClass = 'global-topbar';
+$operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
+$operationsHeaderActionsClass = 'global-topbar__actions';
+$operationsHeaderClockClass = 'global-topbar__clock';
 $operationsHeaderHomeHref = '/codesamplecaps/ENGINEER/dashboards/overview.php';
 $operationsHeaderBrandText = 'EDGE AUTOMATION';
+$operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
 $operationsHeaderBrandLabel = 'Go to Engineer overview';
 $operationsHeaderTime = $engineerHeaderTime;
 $operationsHeaderDate = $engineerHeaderDate;
-$operationsHeaderTimeAttr = 'data-engineer-time';
-$operationsHeaderDateAttr = 'data-engineer-date';
-include __DIR__ . '/../../SHARED/layout/operations_header.php';
+$operationsHeaderTimeAttr = 'class="global-topbar__time" data-engineer-time';
+$operationsHeaderDateAttr = 'class="global-topbar__date" data-engineer-date';
+$operationsHeaderAttrs = 'aria-live="polite"';
+include __DIR__ . '/../../SHARED/header/core/operations-header.php';
 ?>
 
 <div class="engineer-profile-modal" data-engineer-profile-modal hidden>

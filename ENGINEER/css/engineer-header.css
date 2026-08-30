@@ -4,100 +4,9 @@
    Philippines time, and content spacing.
 ========================================================= */
 
-@import url("../../SHARED/css/operations-header.css");
-
 .main-content,
 .dashboard-main {
     padding-top: 112px !important;
-}
-
-.engineer-topbar__profile,
-.engineer-topbar__bell {
-    width: 56px;
-    height: 56px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    border-radius: 18px;
-    background: rgba(248, 250, 252, 0.9);
-    color: #0f172a;
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
-}
-
-.engineer-topbar__profile-menu {
-    position: relative;
-}
-
-.engineer-topbar__profile {
-    position: relative;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #dcfce7, #f8fafc);
-    color: #166534;
-    font-size: 1.1rem;
-    font-weight: 900;
-    cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-    overflow: visible;
-}
-
-.engineer-topbar__profile-frame {
-    width: 100%;
-    height: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: 999px;
-}
-
-.engineer-topbar__profile:hover,
-.engineer-topbar__profile:focus-visible,
-.engineer-topbar__profile[aria-expanded="true"] {
-    transform: translateY(-1px);
-    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
-    outline: none;
-}
-
-.engineer-topbar__profile-arrow {
-    position: absolute;
-    right: -3px;
-    bottom: -2px;
-    width: 22px;
-    height: 22px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #ffffff;
-    border-radius: 999px;
-    background: #f8fafc;
-    color: #166534;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
-    transition: transform 0.18s ease, background 0.18s ease;
-}
-
-.engineer-topbar__profile-arrow svg {
-    width: 14px;
-    height: 14px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.engineer-topbar__profile[aria-expanded="true"] .engineer-topbar__profile-arrow {
-    background: #dcfce7;
-    transform: rotate(180deg);
-}
-
-.engineer-topbar__profile-photo {
-    width: 100%;
-    height: 100%;
-    display: block;
-    object-fit: cover;
-    object-position: center;
-    border-radius: 999px;
 }
 
 .engineer-profile-dropdown {
@@ -852,38 +761,10 @@
     color: #0f172a;
 }
 
-.engineer-topbar__bell {
-    cursor: pointer;
-    transition: transform 0.18s ease, background 0.18s ease;
-}
-
-.engineer-topbar__bell:hover,
-.engineer-topbar__bell:focus-visible {
-    background: #ecfdf5;
-    transform: translateY(-1px);
-    outline: none;
-}
-
-.engineer-topbar__bell svg {
-    width: 21px;
-    height: 21px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
 @media (max-width: 768px) {
     .main-content,
     .dashboard-main {
         padding-top: 100px !important;
-    }
-
-    .engineer-topbar__profile,
-    .engineer-topbar__bell {
-        width: 46px;
-        height: 46px;
     }
 
     .engineer-profile-modal__panel {

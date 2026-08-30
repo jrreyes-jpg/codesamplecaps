@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/project_progress.php';
 require_once __DIR__ . '/../includes/client_helpers.php';
+require_once __DIR__ . '/../includes/client_shell.php';
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 $clientName = trim((string)($_SESSION['name'] ?? 'Client User'));
@@ -228,121 +229,26 @@ $notificationItems = [
         'detail' => $nextDeadlineValue !== null ? 'Closest open deadline in your current project queue.' : 'No urgent due date is currently recorded.',
     ],
 ];
+
+$clientPageTitle = 'Client Dashboard - Edge Automation';
+
+$clientCssFiles = [
+    '/codesamplecaps/CLIENT/css/client_dashboard.css',
+];
+
+require_once __DIR__ . '/../layout/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Dashboard - Edge Automation</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="../css/client_dashboard.css">
-</head>
-<body>
-    <?php include '../sidebar/client_sidebar.php'; ?>
 
+<?php include __DIR__ . '/../sidebar/client_sidebar.php'; ?>
     <main class="main-content" id="mainContent">
-        <header class="global-topbar" aria-live="polite">
-            <div class="global-topbar__copy">
-                <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
-                <div class="global-topbar__copy-text">
-                    <strong>EDGE Automation</strong>
-                    <span>Welcome, <?php echo htmlspecialchars($clientName); ?></span>
-                </div>
-            </div>
-
-            <div class="global-topbar__actions">
-                <div class="topbar-profile" data-profile-root>
-                    <button
-                        id="topbarProfileToggle"
-                        class="topbar-profile__toggle"
-                        type="button"
-                        aria-label="Open profile menu"
-                        aria-controls="topbarProfileDropdown"
-                        aria-expanded="false"
-                    >
-                        <span class="topbar-profile__avatar" aria-hidden="true"><?php echo htmlspecialchars($clientInitial); ?></span>
-                        <span class="topbar-profile__identity">
-                            <strong>Client</strong>
-                            <span><?php echo htmlspecialchars($clientName); ?></span>
-                        </span>
-                        <span class="topbar-profile__chevron" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" focusable="false">
-                                <path d="M5 7.5 10 12.5 15 7.5"></path>
-                            </svg>
-                        </span>
-                    </button>
-
-                    <div id="topbarProfileDropdown" class="topbar-profile__dropdown" hidden>
-                        <div class="topbar-profile__panel-head">
-                            <span class="topbar-profile__avatar topbar-profile__avatar--panel" aria-hidden="true"><?php echo htmlspecialchars($clientInitial); ?></span>
-                            <div>
-                                <strong><?php echo htmlspecialchars($clientName); ?></strong>
-                                <span>Client</span>
-                            </div>
-                        </div>
-                        <div class="topbar-profile__links">
-                            <a href="#overview-section">Dashboard</a>
-                            <a href="#projects-tab">Projects</a>
-                            <a href="#archive-tab">Archive</a>
-                            <a href="#profile-tab">Profile</a>
-                            <a href="../../LOGIN/php/logout.php">Logout</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="topbar-notifications" data-notification-root>
-                    <button
-                        id="topbarNotificationToggle"
-                        class="topbar-notifications__toggle"
-                        type="button"
-                        aria-label="Open notifications"
-                        aria-controls="topbarNotificationDropdown"
-                        aria-expanded="false"
-                    >
-                          <span class="topbar-notifications__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
-                    </svg>
-                </span>
-                        <?php if ($activeProjectCount > 0): ?>
-                            <span class="topbar-notifications__badge"><?php echo $activeProjectCount; ?></span>
-                        <?php endif; ?>
-                    </button>
-
-                    <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
-                        <div class="topbar-notifications__panel-head">
-                            <div>
-                                <strong>Project Updates</strong>
-                                <span><?php echo (int)$activeProjectCount; ?> active items</span>
-                            </div>
-                        </div>
-                        <div class="topbar-notifications__section">
-                            <div class="topbar-notifications__section-title">Recent signals</div>
-                            <?php foreach ($notificationItems as $notification): ?>
-                                <article class="notification-item notification-item--neutral">
-                                    <span class="notification-item__dot"></span>
-                                    <div class="notification-item__copy">
-                                        <strong><?php echo htmlspecialchars($notification['title']); ?></strong>
-                                        <span><?php echo htmlspecialchars($notification['detail']); ?></span>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="global-topbar__clock">
-                    <span class="global-topbar__clock-label">Philippines Time</span>
-                    <strong class="global-topbar__time" data-ph-time>--:--:--</strong>
-                    <span class="global-topbar__date" data-ph-date>Loading date...</span>
-                </div>
-            </div>
-        </header>
-
+        <?php
+client_shell_render_topbar([
+    'client_name' => $clientName,
+    'client_initial' => $clientInitial,
+    'active_project_count' => $activeProjectCount,
+    'notification_items' => $notificationItems,
+]);
+?>
         <section id="overview-section" class="tab-content active">
             <div class="section-heading">
                 <div>
@@ -732,6 +638,10 @@ $notificationItems = [
         </section>
     </main>
 
-    <script src="../js/client_dashboard.js"></script>
-</body>
-</html>
+  <?php
+$clientJsFiles = [
+    '/codesamplecaps/CLIENT/js/client_dashboard.js',
+];
+
+require_once __DIR__ . '/../layout/footer.php';
+?>

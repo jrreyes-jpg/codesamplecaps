@@ -385,14 +385,16 @@
             closeAllGroups(sidebar);
         });
 
-        document.querySelectorAll('.menu-link').forEach(function (link) {
-            link.addEventListener('click', function (event) {
+document.querySelectorAll(
+    '.menu-link, a[href="/codesamplecaps/LOGIN/php/logout.php"]'
+).forEach(function (link) {           link.addEventListener('click', function (event) {
                 if (link.hasAttribute('data-sidebar-group-toggle')) {
                     return;
                 }
 
-                var isLogout = link.classList.contains('logout');
-                var href = link.getAttribute('href');
+var isLogout =
+    link.classList.contains('logout') ||
+    link.getAttribute('href') === '/codesamplecaps/LOGIN/php/logout.php';                var href = link.getAttribute('href');
 
                 if (isLogout && !window.confirm('Are you sure you want to log out?')) {
                     event.preventDefault();

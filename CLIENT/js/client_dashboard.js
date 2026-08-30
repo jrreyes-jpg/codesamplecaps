@@ -12,11 +12,21 @@
 
 document.addEventListener('DOMContentLoaded', function () {
     const body = document.body;
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const mobileToggle = document.getElementById('sidebarMobileToggle');
-    const desktopToggle = document.getElementById('sidebarToggle');
-    const toggleIcon = document.getElementById('toggleIcon');
+const sectionLinks = document.querySelectorAll(
+    '[data-section-link]'
+);
+
+const tabButtons = document.querySelectorAll(
+    '[data-tab-target]'
+);
+
+const jumpButtons = document.querySelectorAll(
+    '[data-jump-section], [data-jump-tab]'
+);
+
+const sectionPanels = document.querySelectorAll(
+    '.tab-content'
+);
     const sectionLinks = document.querySelectorAll('[data-section-link]');
     const tabButtons = document.querySelectorAll('[data-tab-target]');
     const jumpButtons = document.querySelectorAll('[data-jump-section], [data-jump-tab]');

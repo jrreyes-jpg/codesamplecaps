@@ -106,106 +106,84 @@ if (!function_exists('client_shell_render_topbar')) {
         $clientName = (string)($context['client_name'] ?? 'Client User');
         $clientInitial = (string)($context['client_initial'] ?? 'C');
         $activeProjectCount = (int)($context['active_project_count'] ?? 0);
-        $notificationItems = $context['notification_items'] ?? [];
+        $notificationItems = is_array($context['notification_items'] ?? null)
+            ? $context['notification_items']
+            : [];
+
+        ob_start();
+
+        $headerProfileName = $clientName;
+        $headerProfileRole = 'Client';
+        $headerProfilePhotoUrl = '';
+        $headerProfileInitials = $clientInitial;
+        $headerProfileAlt = 'Client profile picture';
+        $headerProfileLinks = [
+            [
+                'label' => 'Logout',
+                'href' => '/codesamplecaps/LOGIN/php/logout.php',
+            ],
+        ];
+
+        include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
         ?>
-        <header class="global-topbar" aria-live="polite">
-            <div class="global-topbar__copy">
-                <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
-                <div class="global-topbar__copy-text">
-                    <strong>EDGE Automation</strong>
-                    <span>Welcome, <?php echo htmlspecialchars($clientName); ?></span>
-                </div>
-            </div>
+        <div class="topbar-notifications" data-notification-root>
+            <button
+                id="topbarNotificationToggle"
+                class="topbar-notifications__toggle"
+                type="button"
+                aria-label="Open notifications"
+                aria-controls="topbarNotificationDropdown"
+                aria-expanded="false"
+            >
+                <span class="topbar-notifications__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
+                    </svg>
+                </span>
+                <?php if ($activeProjectCount > 0): ?>
+                    <span class="topbar-notifications__badge"><?php echo $activeProjectCount; ?></span>
+                <?php endif; ?>
+            </button>
 
-            <div class="global-topbar__actions">
-                <div class="topbar-profile" data-profile-root>
-                    <button
-                        id="topbarProfileToggle"
-                        class="topbar-profile__toggle"
-                        type="button"
-                        aria-label="Open profile menu"
-                        aria-controls="topbarProfileDropdown"
-                        aria-expanded="false"
-                    >
-                        <span class="topbar-profile__avatar" aria-hidden="true"><?php echo htmlspecialchars($clientInitial); ?></span>
-                        <span class="topbar-profile__identity">
-                            <strong>Client</strong>
-                            <span><?php echo htmlspecialchars($clientName); ?></span>
-                        </span>
-                        <span class="topbar-profile__chevron" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" focusable="false">
-                                <path d="M5 7.5 10 12.5 15 7.5"></path>
-                            </svg>
-                        </span>
-                    </button>
-
-                    <div id="topbarProfileDropdown" class="topbar-profile__dropdown" hidden>
-                        <div class="topbar-profile__panel-head">
-                            <span class="topbar-profile__avatar topbar-profile__avatar--panel" aria-hidden="true"><?php echo htmlspecialchars($clientInitial); ?></span>
-                            <div>
-                                <strong><?php echo htmlspecialchars($clientName); ?></strong>
-                                <span>Client</span>
-                            </div>
-                        </div>
-                        <div class="topbar-profile__links">
-                            <a href="/codesamplecaps/CLIENT/dashboards/client_dashboard.php#overview-section">Dashboard</a>
-                            <a href="/codesamplecaps/CLIENT/dashboards/client_dashboard.php#projects-tab">Projects</a>
-                            <a href="/codesamplecaps/CLIENT/dashboards/reports.php">Reports</a>
-                            <a href="/codesamplecaps/CLIENT/dashboards/quotations.php">Quotations</a>
-                            <a href="/codesamplecaps/CLIENT/dashboards/client_dashboard.php#profile-tab">Profile</a>
-                            <a href="/codesamplecaps/LOGIN/php/logout.php">Logout</a>
-                        </div>
+            <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
+                <div class="topbar-notifications__panel-head">
+                    <div>
+                        <strong>Project Updates</strong>
+                        <span><?php echo $activeProjectCount; ?> active item(s)</span>
                     </div>
                 </div>
-
-                <div class="topbar-notifications" data-notification-root>
-                    <button
-                        id="topbarNotificationToggle"
-                        class="topbar-notifications__toggle"
-                        type="button"
-                        aria-label="Open notifications"
-                        aria-controls="topbarNotificationDropdown"
-                        aria-expanded="false"
-                    >
-                        <span class="topbar-notifications__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
-                            </svg>
-                        </span>
-                        <?php if ($activeProjectCount > 0): ?>
-                            <span class="topbar-notifications__badge"><?php echo $activeProjectCount; ?></span>
-                        <?php endif; ?>
-                    </button>
-
-                    <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
-                        <div class="topbar-notifications__panel-head">
-                            <div>
-                                <strong>Project Updates</strong>
-                                <span><?php echo $activeProjectCount; ?> active item(s)</span>
+                <div class="topbar-notifications__section">
+                    <div class="topbar-notifications__section-title">Recent signals</div>
+                    <?php foreach ($notificationItems as $notification): ?>
+                        <article class="notification-item notification-item--neutral">
+                            <span class="notification-item__dot"></span>
+                            <div class="notification-item__copy">
+                                <strong><?php echo htmlspecialchars((string)($notification['title'] ?? 'Update')); ?></strong>
+                                <span><?php echo htmlspecialchars((string)($notification['detail'] ?? '')); ?></span>
                             </div>
-                        </div>
-                        <div class="topbar-notifications__section">
-                            <div class="topbar-notifications__section-title">Recent signals</div>
-                            <?php foreach ($notificationItems as $notification): ?>
-                                <article class="notification-item notification-item--neutral">
-                                    <span class="notification-item__dot"></span>
-                                    <div class="notification-item__copy">
-                                        <strong><?php echo htmlspecialchars((string)$notification['title']); ?></strong>
-                                        <span><?php echo htmlspecialchars((string)$notification['detail']); ?></span>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="global-topbar__clock">
-                    <span class="global-topbar__clock-label">Philippines Time</span>
-                    <strong class="global-topbar__time" data-ph-time>--:--:--</strong>
-                    <span class="global-topbar__date" data-ph-date>Loading date...</span>
+                        </article>
+                    <?php endforeach; ?>
                 </div>
             </div>
-        </header>
+        </div>
         <?php
+
+        $operationsHeaderActionsHtml = (string)ob_get_clean();
+        $operationsHeaderRole = 'client';
+        $operationsHeaderClass = 'global-topbar';
+        $operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
+        $operationsHeaderActionsClass = 'global-topbar__actions';
+        $operationsHeaderClockClass = 'global-topbar__clock';
+        $operationsHeaderHomeHref = '/codesamplecaps/CLIENT/dashboards/client_dashboard.php';
+        $operationsHeaderBrandText = 'EDGE Automation';
+        $operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
+        $operationsHeaderBrandLabel = 'Go to Client dashboard';
+        $operationsHeaderTime = '--:--:--';
+        $operationsHeaderDate = 'Loading date...';
+        $operationsHeaderTimeAttr = 'class="global-topbar__time" data-ph-time';
+        $operationsHeaderDateAttr = 'class="global-topbar__date" data-ph-date';
+        $operationsHeaderAttrs = 'aria-live="polite"';
+
+        include __DIR__ . '/../../SHARED/header/core/operations-header.php';
     }
 }

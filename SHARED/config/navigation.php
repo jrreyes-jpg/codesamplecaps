@@ -75,20 +75,18 @@ function shared_navigation_items_for_role(string $role): array
         'module' => 'dashboard',
         'label' => 'Dashboard',
         'mini' => 'Home',
-        'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#overview-section',
+        'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
         'icon' => 'dashboard',
         'active' => ['/CLIENT/dashboards/client_dashboard.php'],
-        'data_section_link' => 'overview-section',
     ],
 
     [
         'module' => 'projects',
         'label' => 'My Projects',
         'mini' => 'Proj',
-        'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#projects-tab',
+        'href' => '/codesamplecaps/CLIENT/dashboards/projects.php',
         'icon' => 'projects',
-        'active' => [],
-        'data_section_link' => 'projects-tab',
+        'active' => ['/CLIENT/dashboards/projects.php'],
     ],
 
     [

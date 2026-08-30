@@ -9,6 +9,7 @@ if (!is_array($clientJsFiles)) {
 // Shared JavaScript na ginagamit ng lahat ng Client pages.
 $sharedClientJsFiles = [
     '/codesamplecaps/assets/js/app-window-guard.js',
+    '/codesamplecaps/SHARED/header/core/operations-header.js',
 ];
 
 $allClientJsFiles = array_values(

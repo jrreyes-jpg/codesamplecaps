@@ -29,59 +29,48 @@ $engineerHeaderDate = date('F j, Y');
 $engineerHeaderTime = date('g:i A');
 ob_start();
 ?>
-<div class="topbar-profile" data-engineer-profile-root>
+<?php
+$headerProfileRootAttr = 'data-engineer-profile-root';
+$headerProfileToggleId = 'engineerProfileToggle';
+$headerProfileDropdownId = 'engineerProfileDropdown';
+$headerProfileToggleAttr = 'data-engineer-profile-toggle';
+$headerProfileName = $engineerHeaderName;
+$headerProfileRole = 'Engineer';
+$headerProfilePhotoUrl = $engineerHeaderPhotoUrl;
+$headerProfileInitials = $engineerHeaderInitial;
+$headerProfileAlt = 'Engineer profile photo';
+$headerProfileLinks = [
+    ['label' => 'Profile', 'href' => '#engineer-profile'],
+    ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
+];
+include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
+?>
+<div class="topbar-notifications" data-notification-root>
     <button
-        class="topbar-profile__toggle"
+        id="topbarNotificationToggle"
+        class="topbar-notifications__toggle"
         type="button"
-        title="<?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?>"
-        aria-label="Open profile menu"
+        aria-label="Open notifications"
+        aria-controls="topbarNotificationDropdown"
         aria-expanded="false"
-        data-engineer-profile-toggle
     >
-        <span class="topbar-profile__avatar-shell">
-            <?php if ($engineerHeaderPhotoUrl !== ''): ?>
-                <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo" class="topbar-profile__avatar-image">
-            <?php else: ?>
-                <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($engineerHeaderInitial, ENT_QUOTES, 'UTF-8'); ?></span>
-            <?php endif; ?>
-        </span>
-        <span class="topbar-profile__chevron-badge" aria-hidden="true">
-            <span class="topbar-profile__chevron">
-            <svg viewBox="0 0 20 20" focusable="false">
-                <path d="M5.5 7.5 10 12l4.5-4.5"></path>
-            </svg>
-            </span>
-        </span>
-    </button>
-    <div class="topbar-profile__dropdown engineer-profile-dropdown" data-engineer-profile-dropdown hidden>
-        <div class="topbar-profile__panel-head engineer-profile-dropdown__head">
-            <button class="topbar-profile__avatar-shell topbar-profile__avatar-shell--panel engineer-profile-dropdown__avatar" type="button" data-engineer-photo-preview aria-label="View profile photo">
-                <?php if ($engineerHeaderPhotoUrl !== ''): ?>
-                    <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo" class="topbar-profile__avatar-image topbar-profile__avatar-image--panel">
-                <?php else: ?>
-                    <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($engineerHeaderInitial, ENT_QUOTES, 'UTF-8'); ?></span>
-                <?php endif; ?>
-            </button>
-            <button class="engineer-profile-dropdown__summary" type="button" data-engineer-profile-modal-open>
-                <strong><?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                <small>View Profile</small>
-            </button>
-        </div>
-        <div class="topbar-profile__links">
-            <button type="button" data-engineer-profile-modal-open>Profile</button>
-            <a href="/codesamplecaps/LOGIN/php/logout.php" class="engineer-profile-dropdown__logout">Logout</a>
-        </div>
-    </div>
-</div>
-<div class="topbar-notifications">
-    <button class="topbar-notifications__toggle" type="button" aria-label="Notifications">
         <span class="topbar-notifications__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-                <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
+                <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor" />
             </svg>
         </span>
     </button>
+    <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
+        <div class="topbar-notifications__panel-head">
+            <div>
+                <strong>Notifications</strong>
+                <span>0 need attention</span>
+            </div>
+        </div>
+        <div class="topbar-notifications__section">
+            <div class="topbar-notifications__empty">No notifications right now.</div>
+        </div>
+    </div>
 </div>
 <?php
 $operationsHeaderActionsHtml = ob_get_clean();
@@ -91,7 +80,7 @@ $operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
 $operationsHeaderActionsClass = 'global-topbar__actions';
 $operationsHeaderClockClass = 'global-topbar__clock';
 $operationsHeaderHomeHref = '/codesamplecaps/ENGINEER/dashboards/overview.php';
-$operationsHeaderBrandText = 'EDGE AUTOMATION';
+$operationsHeaderBrandText = 'EDGE Automation';
 $operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
 $operationsHeaderBrandLabel = 'Go to Engineer overview';
 $operationsHeaderTime = $engineerHeaderTime;

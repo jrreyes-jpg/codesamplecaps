@@ -8,186 +8,71 @@ require_once __DIR__ . '/../includes/client_shell.php';
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 $clientName = trim((string)($_SESSION['name'] ?? 'Client User'));
-$clientEmail = trim((string)($_SESSION['email'] ?? ''));
-$clientEmailDisplay = $clientEmail !== '' ? $clientEmail : 'No email on record';
-$clientInitial = strtoupper(substr($clientName !== '' ? $clientName : 'C', 0, 1));
+$clientInitial = client_shell_initial($clientName);
+$activeProjectFilter = client_column_exists($conn, 'projects', 'deleted_at')
+    ? ' AND p.deleted_at IS NULL'
+    : '';
 
-/* PROJECT SUMMARY COUNTS */
-$activeProjectFilter = client_column_exists($conn, 'projects', 'deleted_at') ? ' AND deleted_at IS NULL' : '';
-$activeProjectFilterWithAlias = client_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NULL' : '';
-$archiveProjectFilterWithAlias = client_column_exists($conn, 'projects', 'deleted_at') ? ' AND p.deleted_at IS NOT NULL' : ' AND 1 = 0';
-
-$totalProjectsStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status <> 'draft'{$activeProjectFilter}");
-$totalProjectsStmt->bind_param('i', $userId);
-$totalProjectsStmt->execute();
-$totalProjectsStmt->bind_result($totalCount);
-$totalProjectsStmt->fetch();
-$totalProjectsStmt->close();
-
-$ongoingStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status = 'ongoing'{$activeProjectFilter}");
-$ongoingStmt->bind_param('i', $userId);
-$ongoingStmt->execute();
-$ongoingStmt->bind_result($ongoingCount);
-$ongoingStmt->fetch();
-$ongoingStmt->close();
-
-$completedStmt = $conn->prepare("SELECT COUNT(*) FROM projects WHERE client_id = ? AND status = 'completed'{$activeProjectFilter}");
-$completedStmt->bind_param('i', $userId);
-$completedStmt->execute();
-$completedStmt->bind_result($completedCount);
-$completedStmt->fetch();
-$completedStmt->close();
-
-$engineerSummaryRow = [
-    'total_engineers' => 0,
-    'active_engineers' => 0,
-];
-$engineerSummaryResult = $conn->query(
+$summaryStmt = $conn->prepare(
     "SELECT
-        COUNT(*) AS total_engineers,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_engineers
-     FROM users
-     WHERE role = 'engineer'"
+        COUNT(*) AS total_projects,
+        SUM(CASE WHEN p.status = 'ongoing' THEN 1 ELSE 0 END) AS ongoing_projects,
+        SUM(CASE WHEN p.status = 'completed' THEN 1 ELSE 0 END) AS completed_projects,
+        SUM(CASE WHEN p.status = 'pending' THEN 1 ELSE 0 END) AS pending_projects,
+        SUM(CASE WHEN p.status = 'on-hold' THEN 1 ELSE 0 END) AS on_hold_projects
+     FROM projects p
+     WHERE p.client_id = ?
+     AND p.status <> 'draft'
+     {$activeProjectFilter}"
 );
-if ($engineerSummaryResult) {
-    $engineerSummaryRow = $engineerSummaryResult->fetch_assoc() ?: $engineerSummaryRow;
-}
-$totalEngineerCount = (int)($engineerSummaryRow['total_engineers'] ?? 0);
-$activeEngineerCount = (int)($engineerSummaryRow['active_engineers'] ?? 0);
+$summaryStmt->bind_param('i', $userId);
+$summaryStmt->execute();
+$summaryResult = $summaryStmt->get_result();
+$summary = $summaryResult ? ($summaryResult->fetch_assoc() ?: []) : [];
+$summaryStmt->close();
 
-$engineersPreview = [];
-$engineersPreviewResult = $conn->query(
-    "SELECT full_name, status
-     FROM users
-     WHERE role = 'engineer'
-     ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, full_name ASC
-     LIMIT 5"
-);
-if ($engineersPreviewResult) {
-    $engineersPreview = $engineersPreviewResult->fetch_all(MYSQLI_ASSOC);
-}
+$totalCount = (int)($summary['total_projects'] ?? 0);
+$ongoingCount = (int)($summary['ongoing_projects'] ?? 0);
+$completedCount = (int)($summary['completed_projects'] ?? 0);
+$pendingCount = (int)($summary['pending_projects'] ?? 0);
+$onHoldCount = (int)($summary['on_hold_projects'] ?? 0);
+$activeProjectCount = $ongoingCount + $pendingCount + $onHoldCount;
 
-$projectsStmt = $conn->prepare(
+$progressStmt = $conn->prepare(
     "SELECT
-        p.id,
-        p.project_name,
-        p.description,
-        p.start_date,
-        p.end_date,
         p.status,
-        p.created_at,
-        engineer.full_name AS engineer_name,
         COALESCE(task_totals.total_tasks, 0) AS total_tasks,
         COALESCE(task_totals.completed_tasks, 0) AS completed_tasks,
-        COALESCE(task_totals.ongoing_tasks, 0) AS ongoing_tasks,
-        COALESCE(task_totals.delayed_tasks, 0) AS delayed_tasks,
         task_totals.next_deadline
      FROM projects p
-     LEFT JOIN (
-         SELECT pa.project_id, pa.engineer_id
-         FROM project_assignments pa
-         INNER JOIN (
-             SELECT project_id, MAX(id) AS latest_id
-             FROM project_assignments
-             GROUP BY project_id
-         ) latest_assignment ON latest_assignment.latest_id = pa.id
-     ) latest_assignment ON latest_assignment.project_id = p.id
-     LEFT JOIN users engineer ON engineer.id = latest_assignment.engineer_id
      LEFT JOIN (
          SELECT
              project_id,
              COUNT(*) AS total_tasks,
              SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-             SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) AS ongoing_tasks,
-             SUM(CASE WHEN status = 'delayed' THEN 1 ELSE 0 END) AS delayed_tasks,
              MIN(CASE WHEN status <> 'completed' AND deadline IS NOT NULL THEN deadline END) AS next_deadline
          FROM tasks
          GROUP BY project_id
      ) task_totals ON task_totals.project_id = p.id
      WHERE p.client_id = ?
      AND p.status <> 'draft'
-     {$activeProjectFilterWithAlias}
-     ORDER BY
-        CASE p.status
-            WHEN 'ongoing' THEN 1
-            WHEN 'pending' THEN 2
-            WHEN 'on-hold' THEN 3
-            WHEN 'completed' THEN 4
-            ELSE 5
-        END,
-        p.created_at DESC,
-        p.id DESC"
+     {$activeProjectFilter}"
 );
-$projectsStmt->bind_param('i', $userId);
-$projectsStmt->execute();
-$projectsResult = $projectsStmt->get_result();
-$projectRows = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
-$projectsStmt->close();
+$progressStmt->bind_param('i', $userId);
+$progressStmt->execute();
+$progressResult = $progressStmt->get_result();
+$progressRows = $progressResult ? $progressResult->fetch_all(MYSQLI_ASSOC) : [];
+$progressStmt->close();
 
-$archivedProjectsStmt = $conn->prepare(
-    "SELECT
-        p.id,
-        p.project_name,
-        p.description,
-        p.start_date,
-        p.end_date,
-        p.status,
-        p.deleted_at,
-        engineer.full_name AS engineer_name,
-        COALESCE(task_totals.total_tasks, 0) AS total_tasks,
-        COALESCE(task_totals.completed_tasks, 0) AS completed_tasks,
-        COALESCE(task_totals.ongoing_tasks, 0) AS ongoing_tasks,
-        COALESCE(task_totals.delayed_tasks, 0) AS delayed_tasks,
-        task_totals.next_deadline
-     FROM projects p
-     LEFT JOIN (
-         SELECT pa.project_id, pa.engineer_id
-         FROM project_assignments pa
-         INNER JOIN (
-             SELECT project_id, MAX(id) AS latest_id
-             FROM project_assignments
-             GROUP BY project_id
-         ) latest_assignment ON latest_assignment.latest_id = pa.id
-     ) latest_assignment ON latest_assignment.project_id = p.id
-     LEFT JOIN users engineer ON engineer.id = latest_assignment.engineer_id
-     LEFT JOIN (
-         SELECT
-             project_id,
-             COUNT(*) AS total_tasks,
-             SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-             SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) AS ongoing_tasks,
-             SUM(CASE WHEN status = 'delayed' THEN 1 ELSE 0 END) AS delayed_tasks,
-             MIN(CASE WHEN status <> 'completed' AND deadline IS NOT NULL THEN deadline END) AS next_deadline
-         FROM tasks
-         GROUP BY project_id
-     ) task_totals ON task_totals.project_id = p.id
-     WHERE p.client_id = ?
-     {$archiveProjectFilterWithAlias}
-     ORDER BY p.deleted_at DESC, p.id DESC"
-);
-$archivedProjectsStmt->bind_param('i', $userId);
-$archivedProjectsStmt->execute();
-$archivedProjectsResult = $archivedProjectsStmt->get_result();
-$archivedProjectRows = $archivedProjectsResult ? $archivedProjectsResult->fetch_all(MYSQLI_ASSOC) : [];
-$archivedProjectsStmt->close();
-
-$pendingCount = 0;
-$onHoldCount = 0;
 $overallTasks = 0;
 $overallCompletedTasks = 0;
+$progressTotal = 0;
 $nextDeadlineValue = null;
 
-foreach ($projectRows as $project) {
-    $status = (string)($project['status'] ?? 'pending');
-
-    if ($status === 'pending') {
-        $pendingCount++;
-    } elseif ($status === 'on-hold') {
-        $onHoldCount++;
-    }
-
+foreach ($progressRows as $project) {
     $overallTasks += (int)($project['total_tasks'] ?? 0);
     $overallCompletedTasks += (int)($project['completed_tasks'] ?? 0);
+    $progressTotal += (int)build_role_project_progress($project, 'client')['percent'];
 
     $candidateDeadline = trim((string)($project['next_deadline'] ?? ''));
     if ($candidateDeadline !== '' && ($nextDeadlineValue === null || $candidateDeadline < $nextDeadlineValue)) {
@@ -195,16 +80,10 @@ foreach ($projectRows as $project) {
     }
 }
 
-$activeProjectCount = $ongoingCount + $pendingCount + $onHoldCount;
-$clientProgressTotals = 0;
-foreach ($projectRows as $project) {
-    $clientProgressTotals += (int)build_role_project_progress($project, 'client')['percent'];
-}
-$overallProgressPercent = $totalCount > 0 ? (int)round($clientProgressTotals / $totalCount) : 0;
-$nextDeadlineDisplay = $nextDeadlineValue !== null ? client_format_date($nextDeadlineValue) : 'No active deadline';
-$nextDeadlineHint = $nextDeadlineValue !== null
-    ? 'Closest open target across your current projects'
-    : 'No upcoming task deadline is tracked right now';
+$overallProgressPercent = $totalCount > 0 ? (int)round($progressTotal / $totalCount) : 0;
+$nextDeadlineDisplay = $nextDeadlineValue !== null
+    ? client_format_date($nextDeadlineValue)
+    : 'No active deadline';
 
 $portfolioMix = [
     ['label' => 'Completed', 'count' => $completedCount, 'class' => 'is-completed'],
@@ -221,17 +100,18 @@ $notificationItems = [
     [
         'title' => $overallProgressPercent . '% overall progress',
         'detail' => $overallTasks > 0
-            ? $overallCompletedTasks . ' of ' . $overallTasks . ' tracked tasks are already complete.'
+            ? $overallCompletedTasks . ' of ' . $overallTasks . ' tracked tasks are complete.'
             : 'No task progress data is available yet.',
     ],
     [
         'title' => $nextDeadlineDisplay,
-        'detail' => $nextDeadlineValue !== null ? 'Closest open deadline in your current project queue.' : 'No urgent due date is currently recorded.',
+        'detail' => $nextDeadlineValue !== null
+            ? 'Closest open deadline in your project queue.'
+            : 'No urgent due date is recorded.',
     ],
 ];
 
 $clientPageTitle = 'Client Dashboard - Edge Automation';
-
 $clientCssFiles = [
     '/codesamplecaps/CLIENT/css/client_dashboard.css',
 ];
@@ -240,408 +120,97 @@ require_once __DIR__ . '/../layout/header.php';
 ?>
 
 <?php include __DIR__ . '/../sidebar/client_sidebar.php'; ?>
-    <main class="main-content" id="mainContent">
-        <?php
-client_shell_render_topbar([
-    'client_name' => $clientName,
-    'client_initial' => $clientInitial,
-    'active_project_count' => $activeProjectCount,
-    'notification_items' => $notificationItems,
-]);
-?>
-        <section id="overview-section" class="tab-content active">
-            <div class="section-heading">
-                <div>
-                    <span class="section-badge">Dashboard</span>
-                    <h2>Overview</h2>
-                    <p>Quick summary of your projects, live delivery progress, and team visibility.</p>
-                </div>
+<main class="main-content" id="mainContent">
+    <?php
+    client_shell_render_topbar([
+        'client_name' => $clientName,
+        'client_initial' => $clientInitial,
+        'active_project_count' => $activeProjectCount,
+        'notification_items' => $notificationItems,
+    ]);
+    ?>
+
+    <section class="dashboard-overview">
+        <div class="section-heading">
+            <div>
+                <span class="section-badge">Dashboard</span>
+                <h2>Overview</h2>
+                <p>Quick summary of your projects, progress, and next deadline.</p>
             </div>
+        </div>
 
-            <section class="stats-grid" aria-label="Project summary cards">
-                <article class="stat-card">
-                    <div class="stat-card__icon stat-card__icon--projects" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"></path>
-                        </svg>
-                    </div>
-                    <div class="stat-card__content">
-                        <span>Your Projects</span>
-                        <strong><?php echo $totalCount; ?></strong>
-                        <small>All active and completed client projects</small>
-                    </div>
-                </article>
+        <section class="stats-grid" aria-label="Project summary cards">
+            <article class="stat-card">
+                <div class="stat-card__icon stat-card__icon--projects" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"></path>
+                    </svg>
+                </div>
+                <div class="stat-card__content">
+                    <span>Your Projects</span>
+                    <strong><?php echo $totalCount; ?></strong>
+                    <small>All current and completed projects</small>
+                </div>
+            </article>
 
-                <article class="stat-card">
-                    <div class="stat-card__icon stat-card__icon--ongoing" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 6v6l4 2"></path>
-                            <path d="M21 12a9 9 0 1 1-3-6.7"></path>
-                        </svg>
-                    </div>
-                    <div class="stat-card__content">
-                        <span>In Progress</span>
-                        <strong><?php echo $ongoingCount; ?></strong>
-                        <small>Projects currently being delivered</small>
-                    </div>
-                </article>
+            <article class="stat-card">
+                <div class="stat-card__icon stat-card__icon--ongoing" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 6v6l4 2"></path>
+                        <path d="M21 12a9 9 0 1 1-3-6.7"></path>
+                    </svg>
+                </div>
+                <div class="stat-card__content">
+                    <span>In Progress</span>
+                    <strong><?php echo $ongoingCount; ?></strong>
+                    <small>Projects currently being delivered</small>
+                </div>
+            </article>
 
-                <article class="stat-card">
-                    <div class="stat-card__icon stat-card__icon--completed" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M20 6L9 17l-5-5"></path>
-                        </svg>
-                    </div>
-                    <div class="stat-card__content">
-                        <span>Completed</span>
-                        <strong><?php echo $completedCount; ?></strong>
-                        <small>Projects already delivered to completion</small>
-                    </div>
-                </article>
+            <article class="stat-card">
+                <div class="stat-card__icon stat-card__icon--completed" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20 6L9 17l-5-5"></path>
+                    </svg>
+                </div>
+                <div class="stat-card__content">
+                    <span>Completed</span>
+                    <strong><?php echo $completedCount; ?></strong>
+                    <small>Projects already delivered</small>
+                </div>
+            </article>
 
-                <article class="stat-card">
-                    <div class="stat-card__icon stat-card__icon--engineers" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path>
-                            <path d="M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
-                            <path d="M21 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                    </div>
-                    <div class="stat-card__content">
-                        <span>Active Engineers</span>
-                        <strong><?php echo $activeEngineerCount; ?></strong>
-                        <small><?php echo $totalEngineerCount; ?> engineering team members in total</small>
-                    </div>
-                </article>
-            </section>
-
-            <section class="status-strip" aria-label="Portfolio mix">
-                <?php foreach ($portfolioMix as $mix): ?>
-                    <article class="status-strip__item status-strip__item--<?php echo htmlspecialchars($mix['class']); ?>">
-                        <span><?php echo htmlspecialchars($mix['label']); ?></span>
-                        <strong><?php echo (int)$mix['count']; ?></strong>
-                    </article>
-                <?php endforeach; ?>
-            </section>
+            <article class="stat-card">
+                <div class="stat-card__icon stat-card__icon--progress" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M4 19V9"></path>
+                        <path d="M10 19V5"></path>
+                        <path d="M16 19v-7"></path>
+                        <path d="M22 19H2"></path>
+                    </svg>
+                </div>
+                <div class="stat-card__content">
+                    <span>Overall Progress</span>
+                    <strong><?php echo $overallProgressPercent; ?>%</strong>
+                    <small>Based on your tracked project tasks</small>
+                </div>
+            </article>
         </section>
 
-        <section id="projects-tab" class="tab-content">
-            <div class="section-heading">
-                <div>
-                    <span class="section-badge">Projects</span>
-                    <h2>My Projects</h2>
-                    <p>Each card shows delivery status, assigned engineer, and real task-based progress.</p>
-                </div>
-            </div>
-
-            <div class="client-project-search" data-client-project-search>
-                <div class="client-project-search__input-row">
-                    <span class="client-project-search__icon" aria-hidden="true">&#128269;</span>
-                    <input
-                        type="text"
-                        id="client-project-search"
-                        class="client-project-search__input"
-                        placeholder="Search project, engineer, timeline, or status"
-                        autocomplete="off"
-                        aria-label="Search my projects"
-                        aria-controls="client-project-search-dropdown"
-                        aria-expanded="false"
-                    >
-                    <button type="button" class="client-project-search__clear" id="client-project-search-clear" aria-label="Clear client project search">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="client-project-search__meta">
-                    <span id="client-project-search-hint">Type your keyword, then pause for 3 seconds to search.</span>
-                    <span id="client-project-search-count"><?php echo count($projectRows); ?> project(s)</span>
-                </div>
-                <div class="client-project-search__dropdown" id="client-project-search-dropdown" role="listbox" hidden></div>
-            </div>
-
-            <div class="dashboard-content-grid">
-                <div class="projects-grid">
-                    <?php if (!empty($projectRows)): ?>
-                        <?php foreach ($projectRows as $project): ?>
-                            <?php
-                            $projectStatus = (string)($project['status'] ?? 'pending');
-                            $projectProgress = build_role_project_progress($project, 'client');
-                            $deadlineMeta = client_build_deadline_meta($project['next_deadline'] ?? null, $projectStatus);
-                            $projectDescription = trim((string)($project['description'] ?? ''));
-                            if ($projectDescription === '') {
-                                $projectDescription = 'Project details will appear here as the work scope is finalized.';
-                            }
-                            $projectSearchText = strtolower(trim(implode(' ', [
-                                $project['project_name'] ?? '',
-                                $project['engineer_name'] ?? '',
-                                $project['status'] ?? '',
-                                $project['start_date'] ?? '',
-                                $project['end_date'] ?? '',
-                                $projectDescription,
-                            ])));
-                            ?>
-                            <article
-                                class="project-card project-card--<?php echo htmlspecialchars($projectStatus); ?>"
-                                data-client-project-card
-                                data-search="<?php echo htmlspecialchars($projectSearchText); ?>"
-                                data-title="<?php echo htmlspecialchars((string)($project['project_name'] ?? 'Untitled Project')); ?>"
-                                data-engineer="<?php echo htmlspecialchars((string)($project['engineer_name'] ?? 'Not assigned')); ?>"
-                                data-status="<?php echo htmlspecialchars($projectStatus); ?>"
-                                data-timeline="<?php echo htmlspecialchars(client_project_timeline($project['start_date'] ?? null, $project['end_date'] ?? null, $projectStatus)); ?>"
-                            >
-                                <div class="project-card__header">
-                                    <div>
-                                        <span class="project-card__eyebrow">Project #<?php echo (int)($project['id'] ?? 0); ?></span>
-                                        <h3><?php echo htmlspecialchars((string)($project['project_name'] ?? 'Untitled Project')); ?></h3>
-                                    </div>
-                                    <span class="status-badge status-badge--<?php echo htmlspecialchars($projectStatus); ?>">
-                                        <?php echo htmlspecialchars(client_status_label($projectStatus)); ?>
-                                    </span>
-                                </div>
-
-                                <p class="project-card__description"><?php echo htmlspecialchars(substr($projectDescription, 0, 180)); ?></p>
-
-                                <div class="project-card__meta-grid">
-                                    <div class="project-meta">
-                                        <span>Assigned Engineer</span>
-                                        <strong><?php echo htmlspecialchars((string)($project['engineer_name'] ?? 'Not assigned')); ?></strong>
-                                    </div>
-                                    <div class="project-meta">
-                                        <span>Project Dates</span>
-                                        <strong><?php echo htmlspecialchars(client_project_timeline($project['start_date'] ?? null, $project['end_date'] ?? null, $projectStatus)); ?></strong>
-                                    </div>
-                                </div>
-
-                                <div class="project-progress">
-                                    <div class="project-progress__meta">
-                                        <strong><?php echo (int)$projectProgress['percent']; ?>%</strong>
-                                        <span><?php echo htmlspecialchars((string)$projectProgress['summary']); ?></span>
-                                    </div>
-                                    <div class="project-progress__bar" aria-hidden="true">
-                                        <span style="width: <?php echo (int)$projectProgress['percent']; ?>%;"></span>
-                                    </div>
-                                </div>
-                                <p class="project-card__description"><?php echo htmlspecialchars((string)$projectProgress['hint']); ?></p>
-
-                                <div class="project-card__footer">
-                                    <span class="project-pill"><?php echo (int)($project['ongoing_tasks'] ?? 0); ?> active tasks</span>
-                                    <span class="project-pill project-pill--alert"><?php echo (int)($project['delayed_tasks'] ?? 0); ?> delayed</span>
-                                    <span class="deadline-flag <?php echo htmlspecialchars($deadlineMeta['class']); ?>">
-                                        <?php echo htmlspecialchars($deadlineMeta['label']); ?>
-                                    </span>
-                                </div>
-                            </article>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="empty-state">
-                            <h3>No projects yet</h3>
-                            <p>Your active project cards will appear here once work is assigned to your account.</p>
-                        </div>
-                    <?php endif; ?>
-                    <div class="empty-state empty-state--search" id="client-project-search-empty" hidden>
-                        <h3>No matching projects</h3>
-                        <p>Try a different project name, engineer, status, or timeline keyword.</p>
-                    </div>
-                </div>
-
-                <aside class="dashboard-aside">
-                    <article class="aside-card">
-                        <div class="aside-card__head">
-                            <div>
-                                <span class="section-badge">Support</span>
-                                <h3>Engineering Desk</h3>
-                            </div>
-                        </div>
-                        <p>Quick visibility into the engineering team currently supporting delivery work.</p>
-                        <div class="engineer-list">
-                            <?php if (!empty($engineersPreview)): ?>
-                                <?php foreach ($engineersPreview as $engineer): ?>
-                                    <div class="engineer-list__item">
-                                        <div>
-                                            <strong><?php echo htmlspecialchars((string)($engineer['full_name'] ?? 'Engineer')); ?></strong>
-                                            <span>Engineering support</span>
-                                        </div>
-                                        <span class="mini-status mini-status--<?php echo htmlspecialchars((string)($engineer['status'] ?? 'inactive')); ?>">
-                                            <?php echo htmlspecialchars(ucfirst((string)($engineer['status'] ?? 'inactive'))); ?>
-                                        </span>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <p class="aside-card__empty">No engineer availability data yet.</p>
-                            <?php endif; ?>
-                        </div>
-                    </article>
-
-                    <article class="aside-card">
-                        <div class="aside-card__head">
-                            <div>
-                                <span class="section-badge">Portfolio</span>
-                                <h3>Project Mix</h3>
-                            </div>
-                        </div>
-
-                        <div class="mix-bars">
-                            <?php foreach ($portfolioMix as $mix): ?>
-                                <?php
-                                $mixCount = (int)$mix['count'];
-                                $mixWidth = $totalCount > 0 ? (int)round(($mixCount / $totalCount) * 100) : 0;
-                                ?>
-                                <div class="mix-bars__row">
-                                    <div class="mix-bars__meta">
-                                        <span><?php echo htmlspecialchars($mix['label']); ?></span>
-                                        <strong><?php echo $mixCount; ?></strong>
-                                    </div>
-                                    <div class="mix-bars__track">
-                                        <span class="mix-bars__fill <?php echo htmlspecialchars($mix['class']); ?>" style="width: <?php echo $mixWidth; ?>%;"></span>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </article>
-                </aside>
-            </div>
+        <section class="status-strip" aria-label="Project status summary">
+            <?php foreach ($portfolioMix as $mix): ?>
+                <article class="status-strip__item status-strip__item--<?php echo htmlspecialchars($mix['class']); ?>">
+                    <span><?php echo htmlspecialchars($mix['label']); ?></span>
+                    <strong><?php echo (int)$mix['count']; ?></strong>
+                </article>
+            <?php endforeach; ?>
         </section>
 
-        <section id="archive-tab" class="tab-content">
-            <div class="section-heading">
-                <div>
-                    <span class="section-badge">Archive</span>
-                    <h2>Archived Projects</h2>
-                    <p>Projects moved out of active delivery stay here for read-only reference.</p>
-                </div>
-            </div>
+        <article class="deadline-summary">
+            <span>Next deadline</span>
+            <strong><?php echo htmlspecialchars($nextDeadlineDisplay); ?></strong>
+        </article>
+    </section>
+</main>
 
-            <div class="projects-grid">
-                <?php if (!empty($archivedProjectRows)): ?>
-                    <?php foreach ($archivedProjectRows as $project): ?>
-                        <?php
-                        $projectStatus = (string)($project['status'] ?? 'pending');
-                        $projectProgress = build_role_project_progress($project, 'client');
-                        $projectDescription = trim((string)($project['description'] ?? ''));
-                        if ($projectDescription === '') {
-                            $projectDescription = 'Project details were not recorded before this was archived.';
-                        }
-                        ?>
-                        <article class="project-card project-card--archived project-card--<?php echo htmlspecialchars($projectStatus); ?>">
-                            <div class="project-card__header">
-                                <div>
-                                    <span class="project-card__eyebrow">Project #<?php echo (int)($project['id'] ?? 0); ?></span>
-                                    <h3><?php echo htmlspecialchars((string)($project['project_name'] ?? 'Untitled Project')); ?></h3>
-                                </div>
-                                <span class="status-badge status-badge--<?php echo htmlspecialchars($projectStatus); ?>">
-                                    <?php echo htmlspecialchars(client_status_label($projectStatus)); ?>
-                                </span>
-                            </div>
-
-                            <p class="project-card__description"><?php echo htmlspecialchars(substr($projectDescription, 0, 180)); ?></p>
-
-                            <div class="project-card__meta-grid">
-                                <div class="project-meta">
-                                    <span>Assigned Engineer</span>
-                                    <strong><?php echo htmlspecialchars((string)($project['engineer_name'] ?? 'Not assigned')); ?></strong>
-                                </div>
-                                <div class="project-meta">
-                                    <span>Archived</span>
-                                    <strong><?php echo htmlspecialchars(client_format_date($project['deleted_at'] ?? null)); ?></strong>
-                                </div>
-                            </div>
-
-                            <div class="project-progress">
-                                <div class="project-progress__meta">
-                                    <strong><?php echo (int)$projectProgress['percent']; ?>%</strong>
-                                    <span><?php echo htmlspecialchars((string)$projectProgress['summary']); ?></span>
-                                </div>
-                                <div class="project-progress__bar" aria-hidden="true">
-                                    <span style="width: <?php echo (int)$projectProgress['percent']; ?>%;"></span>
-                                </div>
-                            </div>
-
-                            <div class="project-card__footer">
-                                <span class="project-pill"><?php echo (int)($project['ongoing_tasks'] ?? 0); ?> active tasks</span>
-                                <span class="project-pill project-pill--alert"><?php echo (int)($project['delayed_tasks'] ?? 0); ?> delayed</span>
-                                <span class="project-pill">Read-only archive</span>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <h3>No archived projects yet</h3>
-                        <p>Projects moved to archive will appear here for your reference.</p>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
-
-        <section id="profile-tab" class="tab-content">
-            <div class="section-heading">
-                <div>
-                    <span class="section-badge">Profile</span>
-                    <h2>Account Details</h2>
-                    <p>Your account is read-only here so client records stay consistent across the system.</p>
-                </div>
-            </div>
-
-            <div class="profile-grid">
-                <article class="profile-card profile-card--identity">
-                    <div class="profile-card__avatar" aria-hidden="true"><?php echo htmlspecialchars($clientInitial); ?></div>
-                    <div class="profile-card__identity">
-                        <h3><?php echo htmlspecialchars($clientName); ?></h3>
-                        <p><?php echo htmlspecialchars($clientEmailDisplay); ?></p>
-                    </div>
-                    <div class="profile-highlights">
-                        <span>Role: Client</span>
-                        <span>Projects: <?php echo $totalCount; ?></span>
-                        <span>Active: <?php echo $activeProjectCount; ?></span>
-                    </div>
-                </article>
-
-                <article class="profile-card">
-                    <h3>Profile Snapshot</h3>
-                    <div class="profile-form-grid">
-                        <div class="form-field">
-                            <label>Full Name</label>
-                            <input type="text" value="<?php echo htmlspecialchars($clientName); ?>" disabled>
-                        </div>
-                        <div class="form-field">
-                            <label>Email</label>
-                            <input type="email" value="<?php echo htmlspecialchars($clientEmailDisplay); ?>" disabled>
-                        </div>
-                        <div class="form-field">
-                            <label>Account Type</label>
-                            <input type="text" value="Client" disabled>
-                        </div>
-                        <div class="form-field">
-                            <label>Progress Visibility</label>
-                            <input type="text" value="Enabled" disabled>
-                        </div>
-                    </div>
-
-                    <div class="profile-actions">
-                        <button type="button" class="btn-secondary" data-jump-tab="projects-tab">Back to Projects</button>
-                        <a href="/codesamplecaps/LOGIN/php/forgot.php" class="btn-ghost">Reset Password</a>
-                    </div>
-                </article>
-
-                <article class="profile-card profile-card--support">
-                    <h3>Need help?</h3>
-                    <p>
-                        For timeline changes, new scope requests, or account concerns, coordinate with the Edge Automation
-                        admin team so project records and approvals stay aligned.
-                    </p>
-                    <div class="support-notes">
-                        <span>Review live task progress from the project cards.</span>
-                        <span>Use the password reset flow if you need credential help.</span>
-                        <span>Track upcoming deadlines from the top dashboard summary.</span>
-                    </div>
-                </article>
-            </div>
-        </section>
-    </main>
-
-  <?php
-$clientJsFiles = [
-    '/codesamplecaps/CLIENT/js/client_dashboard.js',
-];
-
-require_once __DIR__ . '/../layout/footer.php';
-?>
+<?php require_once __DIR__ . '/../layout/footer.php'; ?>

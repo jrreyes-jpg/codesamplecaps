@@ -71,13 +71,36 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'stock_history', 'label' => 'Stock History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/sidebar/stock_history.php']],
         ],
         'client' => [
-            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#overview-section', 'icon' => 'dashboard', 'active' => ['/CLIENT/dashboards/client_dashboard.php'], 'data_section_link' => 'overview-section'],
-            ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#projects-tab', 'icon' => 'projects', 'active' => [], 'data_section_link' => 'projects-tab'],
-            ['module' => 'archive', 'label' => 'Archive', 'mini' => 'Arch', 'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#archive-tab', 'icon' => 'archive', 'active' => [], 'data_section_link' => 'archive-tab'],
-            ['module' => 'quotations', 'label' => 'My Quotations', 'mini' => 'Quote', 'href' => '/codesamplecaps/CLIENT/dashboards/quotations.php', 'icon' => 'quotations', 'active' => ['/CLIENT/dashboards/quotations.php']],
-            ['module' => 'reports', 'label' => 'Reports', 'mini' => 'Rpt', 'href' => '/codesamplecaps/CLIENT/dashboards/reports.php', 'icon' => 'reports', 'active' => ['/CLIENT/dashboards/reports.php']],
-            ['module' => 'profile', 'label' => 'Profile', 'mini' => 'Prof', 'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#profile-tab', 'icon' => 'profile', 'active' => [], 'data_section_link' => 'profile-tab'],
-        ],
+    [
+        'module' => 'dashboard',
+        'label' => 'Dashboard',
+        'mini' => 'Home',
+        'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#overview-section',
+        'icon' => 'dashboard',
+        'active' => ['/CLIENT/dashboards/client_dashboard.php'],
+        'data_section_link' => 'overview-section',
+    ],
+
+    [
+        'module' => 'projects',
+        'label' => 'My Projects',
+        'mini' => 'Proj',
+        'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php#projects-tab',
+        'icon' => 'projects',
+        'active' => [],
+        'data_section_link' => 'projects-tab',
+    ],
+
+    [
+        'module' => 'quotations',
+        'label' => 'My Quotations',
+        'mini' => 'Quote',
+        'href' => '/codesamplecaps/CLIENT/dashboards/quotations.php',
+        'icon' => 'quotations',
+        'active' => ['/CLIENT/dashboards/quotations.php'],
+    ],
+],
+
     ];
 
     return $menus[$role] ?? [];

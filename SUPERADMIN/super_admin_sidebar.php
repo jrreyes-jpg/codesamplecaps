@@ -65,12 +65,7 @@ if ($superAdminProfilePhotoUrl === '') {
 $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName);
 ?>
 <?php include __DIR__ . '/../SHARED/sidebar/php/sidebar.php'; ?>
-<header class="global-topbar" aria-live="polite">
-    <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Super Admin user management">
-        <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
-        <strong>EDGE Automation</strong>
-    </a>
-    <div class="global-topbar__actions">
+<?php ob_start(); ?>
         <div class="topbar-profile" data-profile-root>
             <button 
                 title="Account"
@@ -184,12 +179,22 @@ $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName
             </div>
         </div>
 
-        <div class="global-topbar__clock">
-            <span class="global-topbar__clock-label">Philippines Time</span>
-            <strong class="global-topbar__time" data-ph-time>--:--:--</strong>
-            <span class="global-topbar__date" data-ph-date>Loading date...</span>
-        </div>
-    </div>
-</header>
+<?php
+$operationsHeaderActionsHtml = ob_get_clean();
+$operationsHeaderRole = 'super_admin';
+$operationsHeaderClass = 'global-topbar';
+$operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
+$operationsHeaderActionsClass = 'global-topbar__actions';
+$operationsHeaderHomeHref = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php';
+$operationsHeaderBrandText = 'EDGE Automation';
+$operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
+$operationsHeaderBrandLabel = 'Go to Super Admin user management';
+$operationsHeaderTime = '--:--:--';
+$operationsHeaderDate = 'Loading date...';
+$operationsHeaderTimeAttr = 'class="global-topbar__time" data-ph-time';
+$operationsHeaderDateAttr = 'class="global-topbar__date" data-ph-date';
+$operationsHeaderAttrs = 'aria-live="polite"';
+include __DIR__ . '/../SHARED/header/core/operations-header.php';
+?>
 
 

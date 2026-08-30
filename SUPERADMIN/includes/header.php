@@ -14,6 +14,7 @@ if (!isset($pageStyles) || !is_array($pageStyles)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?> - Super Admin</title>
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
+    <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/super_admin_dashboard.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/css/layout.css">

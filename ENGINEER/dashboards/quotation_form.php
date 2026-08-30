@@ -52,20 +52,10 @@ if (empty($items)) {
         'line_total' => 0,
     ]];
 }
+$engineerPageTitle = 'Engineer Quotation Form - Edge Automation';
+$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/quotation-form.css'];
+require __DIR__ . '/../layout/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineer Quotation Form - Edge Automation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="../css/engineer.css">
-    <link rel="stylesheet" href="../css/quotation-form.css">
-</head>
-<body>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 <main class="main-content">
     <?php
@@ -533,7 +523,4 @@ if (empty($items)) {
         recalcTotals();
     })();
 </script>
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="../js/engineer.js"></script>
-</body>
-</html>
+<?php require __DIR__ . '/../layout/footer.php'; ?>

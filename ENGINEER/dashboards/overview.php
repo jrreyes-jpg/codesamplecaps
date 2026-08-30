@@ -13,19 +13,9 @@ $flash = engineer_consume_flash();
 $priorityCards = $data['priority_cards'];
 $recentUpdates = array_slice($data['recent_updates'], 0, 4);
 $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
+$engineerPageTitle = 'Engineer Overview - Edge Automation';
+require __DIR__ . '/../layout/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineer Overview - Edge Automation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="../css/engineer.css">
-</head>
-<body>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 
 <div class="main-content">
@@ -167,9 +157,7 @@ $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
     </main>
 </div>
 
-<script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js"></script>
-<script src="../js/engineer.js"></script>
-<script src="../js/overview.js"></script>
-
-</body>
-</html>
+<?php
+$engineerJsFiles = ['/codesamplecaps/ENGINEER/js/overview.js'];
+require __DIR__ . '/../layout/footer.php';
+?>

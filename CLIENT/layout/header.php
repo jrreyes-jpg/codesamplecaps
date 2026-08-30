@@ -31,6 +31,7 @@ $allClientCssFiles = array_values(
     <title><?php echo htmlspecialchars($clientPageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
 
     <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

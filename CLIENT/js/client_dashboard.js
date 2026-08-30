@@ -11,91 +11,94 @@
 })();
 
 document.addEventListener('DOMContentLoaded', function () {
-    const body = document.body;
-const sectionLinks = document.querySelectorAll(
-    '[data-section-link]'
-);
+    const sectionLinks = document.querySelectorAll(
+        '[data-section-link]'
+    );
 
-const tabButtons = document.querySelectorAll(
-    '[data-tab-target]'
-);
+    const tabButtons = document.querySelectorAll(
+        '[data-tab-target]'
+    );
 
-const jumpButtons = document.querySelectorAll(
-    '[data-jump-section], [data-jump-tab]'
-);
+    const jumpButtons = document.querySelectorAll(
+        '[data-jump-section], [data-jump-tab]'
+    );
 
-const sectionPanels = document.querySelectorAll(
-    '.tab-content'
-);
-    const sectionLinks = document.querySelectorAll('[data-section-link]');
-    const tabButtons = document.querySelectorAll('[data-tab-target]');
-    const jumpButtons = document.querySelectorAll('[data-jump-section], [data-jump-tab]');
-    const sectionPanels = document.querySelectorAll('.tab-content');
+    const sectionPanels = document.querySelectorAll(
+        '.tab-content'
+    );
+
     const hasDashboardSections = sectionPanels.length > 0;
-    const projectSearchRoot = document.querySelector('[data-client-project-search]');
-    const projectSearchInput = document.getElementById('client-project-search');
-    const projectSearchClear = document.getElementById('client-project-search-clear');
-    const projectSearchDropdown = document.getElementById('client-project-search-dropdown');
-    const projectSearchHint = document.getElementById('client-project-search-hint');
-    const projectSearchCount = document.getElementById('client-project-search-count');
-    const projectSearchEmpty = document.getElementById('client-project-search-empty');
-    const projectCards = Array.from(document.querySelectorAll('[data-client-project-card]'));
-    const notificationRoot = document.querySelector('[data-notification-root]');
-    const notificationToggle = document.getElementById('topbarNotificationToggle');
-    const notificationPanel = document.getElementById('topbarNotificationDropdown');
-    const profileRoot = document.querySelector('[data-profile-root]');
-    const profileToggle = document.getElementById('topbarProfileToggle');
-    const profilePanel = document.getElementById('topbarProfileDropdown');
-    const phDate = document.querySelector('[data-ph-date]');
-    const phTime = document.querySelector('[data-ph-time]');
-    const collapsedStorageKey = 'edgeClientSidebarCollapsed';
-    const mobileMedia = window.matchMedia('(max-width: 992px)');
+
+    const projectSearchRoot = document.querySelector(
+        '[data-client-project-search]'
+    );
+
+    const projectSearchInput = document.getElementById(
+        'client-project-search'
+    );
+
+    const projectSearchClear = document.getElementById(
+        'client-project-search-clear'
+    );
+
+    const projectSearchDropdown = document.getElementById(
+        'client-project-search-dropdown'
+    );
+
+    const projectSearchHint = document.getElementById(
+        'client-project-search-hint'
+    );
+
+    const projectSearchCount = document.getElementById(
+        'client-project-search-count'
+    );
+
+    const projectSearchEmpty = document.getElementById(
+        'client-project-search-empty'
+    );
+
+    const projectCards = Array.from(
+        document.querySelectorAll(
+            '[data-client-project-card]'
+        )
+    );
+
+    const notificationRoot = document.querySelector(
+        '[data-notification-root]'
+    );
+
+    const notificationToggle = document.getElementById(
+        'topbarNotificationToggle'
+    );
+
+    const notificationPanel = document.getElementById(
+        'topbarNotificationDropdown'
+    );
+
+    const profileRoot = document.querySelector(
+        '[data-profile-root]'
+    );
+
+    const profileToggle = document.getElementById(
+        'topbarProfileToggle'
+    );
+
+    const profilePanel = document.getElementById(
+        'topbarProfileDropdown'
+    );
+
+    const phDate = document.querySelector(
+        '[data-ph-date]'
+    );
+
+    const phTime = document.querySelector(
+        '[data-ph-time]'
+    );
+
     const defaultSectionId = 'overview-section';
+
     let projectSearchDebounceId = null;
     let activeProjectSuggestionIndex = -1;
-
-    if (!sidebar) {
-        return;
-    }
-
-    const setMobileOpen = function (isOpen) {
-        sidebar.classList.toggle('mobile-open', isOpen);
-        body.classList.toggle('sidebar-mobile-open', isOpen);
-
-        if (overlay) {
-            overlay.classList.toggle('active', isOpen);
-        }
-
-        if (mobileToggle) {
-            mobileToggle.classList.toggle('active', isOpen);
-            mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        }
-    };
-
-    const updateDesktopToggleState = function (isCollapsed) {
-        if (desktopToggle) {
-            desktopToggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-            desktopToggle.setAttribute('aria-label', isCollapsed ? 'Expand sidebar' : 'Collapse sidebar');
-        }
-
-        if (toggleIcon) {
-            toggleIcon.classList.toggle('is-collapsed', isCollapsed);
-        }
-    };
-
-    const setDesktopCollapsed = function (isCollapsed) {
-        if (mobileMedia.matches) {
-            body.classList.remove('sidebar-collapsed');
-            sidebar.classList.remove('shrink');
-            updateDesktopToggleState(false);
-            return;
-        }
-
-        body.classList.toggle('sidebar-collapsed', isCollapsed);
-        sidebar.classList.toggle('shrink', isCollapsed);
-        window.localStorage.setItem(collapsedStorageKey, isCollapsed ? '1' : '0');
-        updateDesktopToggleState(isCollapsed);
-    };
 
     const syncNavigationState = function (activeSectionId) {
         if (!hasDashboardSections) {
@@ -332,28 +335,6 @@ const sectionPanels = document.querySelectorAll(
     const closeNotifications = initDropdown(notificationRoot, notificationToggle, notificationPanel);
     const closeProfile = initDropdown(profileRoot, profileToggle, profilePanel, closeNotifications);
 
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', function () {
-            setMobileOpen(!sidebar.classList.contains('mobile-open'));
-        });
-    }
-
-    if (desktopToggle) {
-        desktopToggle.addEventListener('click', function () {
-            if (mobileMedia.matches) {
-                return;
-            }
-
-            setDesktopCollapsed(!body.classList.contains('sidebar-collapsed'));
-        });
-    }
-
-    if (overlay) {
-        overlay.addEventListener('click', function () {
-            setMobileOpen(false);
-        });
-    }
-
     sectionLinks.forEach(function (link) {
         link.addEventListener('click', function (event) {
             if (!hasDashboardSections) {
@@ -368,7 +349,6 @@ const sectionPanels = document.querySelectorAll(
 
             event.preventDefault();
             activateSection(sectionId, { updateHash: true });
-            setMobileOpen(false);
         });
     });
 
@@ -385,7 +365,6 @@ const sectionPanels = document.querySelectorAll(
             }
 
             activateSection(sectionId, { updateHash: true });
-            setMobileOpen(false);
         });
     });
 
@@ -500,7 +479,6 @@ const sectionPanels = document.querySelectorAll(
 
         closeNotifications();
         closeProfile();
-        setMobileOpen(false);
     });
 
     if (phDate && phTime) {
@@ -528,27 +506,6 @@ const sectionPanels = document.querySelectorAll(
 
         updateClock();
         window.setInterval(updateClock, 1000);
-    }
-
-    const applyResponsiveSidebarState = function () {
-        if (mobileMedia.matches) {
-            setMobileOpen(false);
-            body.classList.remove('sidebar-collapsed');
-            sidebar.classList.remove('shrink');
-            updateDesktopToggleState(false);
-            return;
-        }
-
-        setDesktopCollapsed(window.localStorage.getItem(collapsedStorageKey) === '1');
-    };
-
-    setMobileOpen(false);
-    applyResponsiveSidebarState();
-
-    if (mobileMedia.addEventListener) {
-        mobileMedia.addEventListener('change', applyResponsiveSidebarState);
-    } else if (mobileMedia.addListener) {
-        mobileMedia.addListener(applyResponsiveSidebarState);
     }
 
     if (hasDashboardSections) {

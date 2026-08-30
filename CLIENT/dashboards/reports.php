@@ -110,6 +110,8 @@ $overallProgress = $totalProjects > 0 ? (int)round($clientProgressTotals / $tota
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Reports - Edge Automation</title>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/client_dashboard.css">
     <style>

@@ -1,6 +1,8 @@
 <?php
 function shared_account_settings_render(array $account): void
 {
+    $activeSection = (string)($account['section'] ?? 'profile');
+    $showSecurity = $activeSection === 'security';
     ?>
     <div class="shared-account-settings" data-account-settings>
         <?php if (($account['message'] ?? '') !== ''): ?>
@@ -15,6 +17,7 @@ function shared_account_settings_render(array $account): void
         <?php endif; ?>
 
         <div class="account-settings-grid">
+            <?php if (!$showSecurity): ?>
             <section id="profile-details" class="account-settings-card">
                 <div class="account-settings-heading">
                     <h1>Profile Details</h1>
@@ -68,7 +71,9 @@ function shared_account_settings_render(array $account): void
                     <button type="submit" class="account-primary-button">Save Profile</button>
                 </form>
             </section>
+            <?php endif; ?>
 
+            <?php if ($showSecurity): ?>
             <section id="security-settings" class="account-settings-card account-settings-card--security">
                 <div class="account-settings-heading">
                     <h2>Security</h2>
@@ -112,6 +117,7 @@ function shared_account_settings_render(array $account): void
                     <button type="submit" class="account-primary-button account-primary-button--dark">Update Password</button>
                 </form>
             </section>
+            <?php endif; ?>
         </div>
     </div>
     <?php

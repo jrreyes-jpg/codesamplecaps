@@ -18,12 +18,10 @@ function superadmin_account_consume_flash(): array
     ];
 }
 
-function superadmin_account_redirect(string $anchor = ''): void
+function superadmin_account_redirect(string $section = 'profile'): void
 {
-    $location = '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php';
-    if ($anchor !== '') {
-        $location .= '#' . rawurlencode($anchor);
-    }
+    $safeSection = $section === 'security' ? 'security' : 'profile';
+    $location = '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php?section=' . rawurlencode($safeSection);
 
     header('Location: ' . $location);
     exit;
@@ -35,6 +33,8 @@ function superadmin_account_context(mysqli $conn): array
     $error = '';
     $userId = (int)($_SESSION['user_id'] ?? 0);
     $supportsProfilePhoto = super_admin_sidebar_column_exists($conn, 'users', 'profile_photo_path');
+    $section = (string)($_GET['section'] ?? 'profile');
+    $section = $section === 'security' ? 'security' : 'profile';
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string)($_POST['action'] ?? '');
@@ -59,7 +59,7 @@ function superadmin_account_context(mysqli $conn): array
 
             if ($error === '') {
                 superadmin_account_flash('success', $result['message']);
-                superadmin_account_redirect();
+                superadmin_account_redirect('profile');
             }
         } elseif ($action === 'change_my_password') {
             $result = shared_account_change_password(
@@ -75,7 +75,7 @@ function superadmin_account_context(mysqli $conn): array
 
             if ($error === '') {
                 superadmin_account_flash('success', $result['message']);
-                superadmin_account_redirect('security-settings');
+                superadmin_account_redirect('security');
             }
         }
     }
@@ -103,6 +103,7 @@ function superadmin_account_context(mysqli $conn): array
         'fullName' => (string)($currentUser['full_name'] ?? ($_SESSION['name'] ?? 'Super Admin')),
         'email' => (string)($currentUser['email'] ?? ''),
         'phone' => (string)($currentUser['phone'] ?? ''),
+        'section' => $section,
         'photoUrl' => $photoPath !== '' ? profile_photo_public_url($photoPath) : '',
         'photoPreviewUrl' => $photoPath !== ''
             ? profile_photo_public_url($photoPath)

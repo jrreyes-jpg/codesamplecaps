@@ -695,38 +695,6 @@ body:has([data-user-management-shell]) .user-management-panel {
     }
 }
 
-.password-tip,
-.pass-indicator {
-    display: block;
-    margin-top: 8px;
-    font-size: 13px;
-}
-
-.pass-indicator.weak {
-    color: #dc2626;
-}
-
-.pass-indicator.medium {
-    color: #d97706;
-}
-
-.pass-indicator.strong,
-.pass-indicator.super-strong {
-    color: #15803d;
-}
-
-.weak-border {
-    border-color: #dc2626 !important;
-}
-
-.medium-border {
-    border-color: #d97706 !important;
-}
-
-.strong-border {
-    border-color: #15803d !important;
-}
-
 .modal-backdrop {
     display: none;
     position: fixed;

@@ -1133,6 +1133,7 @@ $userWorkspaceShouldOpenModal = $activeTab === 'create';
 $pageTitle = 'Super Admin Dashboard - Edge Automation';
 $pageStyles = [
     '/codesamplecaps/SUPERADMIN/css/user-management.css',
+    '/codesamplecaps/SUPERADMIN/css/account-settings.css',
     '/codesamplecaps/SUPERADMIN/css/security-settings.css',
 ];
 require __DIR__ . '/../includes/header.php';

@@ -1,0 +1,95 @@
+/* Super Admin account form lang. Shared header design ay nasa SHARED/header/. */
+.alert {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.form-section {
+    margin-top: 30px;
+    padding: 35px;
+    background: var(--glass);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+}
+
+.profile-photo-field {
+    align-items: flex-start;
+}
+
+.profile-photo-upload {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(240, 253, 244, 0.92));
+    border: 1px dashed rgba(22, 163, 74, 0.24);
+}
+
+.profile-photo-upload__preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    object-fit: cover;
+    background: #e2e8f0;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.profile-photo-upload__meta {
+    display: grid;
+    gap: 6px;
+}
+
+.profile-photo-upload__meta strong {
+    color: #0f172a;
+}
+
+.profile-photo-upload__meta span {
+    color: #64748b;
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.profile-form-card {
+    margin-top: 0;
+}
+
+.btn-primary--dark {
+    background: linear-gradient(135deg, #0f172a, #166534);
+}
+
+@media (max-width: 640px) {
+    .profile-photo-upload {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 900px) {
+    .form-section {
+        padding: 18px;
+        border-radius: 16px;
+    }
+}
+
+@media (max-width: 520px) {
+    .form-section {
+        padding: 14px;
+    }
+}

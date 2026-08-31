@@ -11,22 +11,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 3px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 0;
+    border: 0;
     border-radius: 999px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+    background: transparent;
     color: #0f172a;
     cursor: pointer;
-    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
-    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow: none;
+    transition: transform 0.2s ease, filter 0.2s ease;
 }
 
 .topbar-profile__toggle:hover,
 .topbar-profile__toggle:focus-visible,
 .topbar-profile__toggle[aria-expanded="true"] {
     transform: translateY(-1px);
-    border-color: rgba(37, 99, 235, 0.18);
-    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+    filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.14));
 }
 
 .topbar-profile__toggle:focus-visible {

@@ -52,61 +52,29 @@ if (
             $profileRow['profile_photo_path'] ?? null
         );
         $profilePhotoPath = trim((string)$profilePhotoPath);
-        if ($profilePhotoPath !== '') {
+        if ($profilePhotoPath !== '' && profile_photo_resolve_absolute_path($profilePhotoPath) !== null) {
             $superAdminProfilePhotoUrl = profile_photo_public_url($profilePhotoPath);
         }
     }
-}
-
-if ($superAdminProfilePhotoUrl === '') {
-    $superAdminProfilePhotoUrl = build_default_profile_avatar_data_uri();
 }
 
 $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName);
 ?>
 <?php include __DIR__ . '/../SHARED/sidebar/php/sidebar.php'; ?>
 <?php ob_start(); ?>
-        <div class="topbar-profile" data-profile-root>
-            <button 
-                title="Account"
-                id="topbarProfileToggle"
-                class="topbar-profile__toggle"
-                type="button"
-                aria-label="Open profile menu"
-                aria-controls="topbarProfileDropdown"
-                aria-expanded="false"
-            >
-                <span class="topbar-profile__avatar-shell" aria-hidden="true">
-                    <img src="<?php echo htmlspecialchars($superAdminProfilePhotoUrl); ?>" alt="Super admin profile picture" class="topbar-profile__avatar-image">
-                    <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($superAdminProfileInitials); ?></span>
-                    <span class="topbar-profile__chevron-badge">
-                        <span class="topbar-profile__chevron" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" focusable="false">
-                                <path d="M5 7.5 10 12.5 15 7.5"></path>
-                            </svg>
-                        </span>
-                    </span>
-                </span>
-            </button>
-
-            <div id="topbarProfileDropdown" class="topbar-profile__dropdown" hidden>
-                <div class="topbar-profile__panel-head">
-                    <span class="topbar-profile__avatar-shell topbar-profile__avatar-shell--panel" aria-hidden="true">
-                        <img src="<?php echo htmlspecialchars($superAdminProfilePhotoUrl); ?>" alt="Super admin profile picture" class="topbar-profile__avatar-image topbar-profile__avatar-image--panel">
-                        <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($superAdminProfileInitials); ?></span>
-                    </span>
-                    <div>
-                        <strong><?php echo htmlspecialchars($superAdminProfileName); ?></strong>
-                        <span><?php echo htmlspecialchars($superAdminProfileRole); ?></span>
-                    </div>
-                </div>
-                <div class="topbar-profile__links">
-                    <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=profile">Profile</a>
-                    <a href="/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=profile#security-settings">Settings</a>
-                    <a href="/codesamplecaps/LOGIN/php/logout.php">Logout</a>
-                </div>
-            </div>
-        </div>
+<?php
+$headerProfileName = $superAdminProfileName;
+$headerProfileRole = $superAdminProfileRole;
+$headerProfilePhotoUrl = $superAdminProfilePhotoUrl;
+$headerProfileInitials = $superAdminProfileInitials;
+$headerProfileAlt = 'Super Admin profile picture';
+$headerProfileLinks = [
+    ['label' => 'Profile', 'href' => '/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=profile'],
+    ['label' => 'Settings', 'href' => '/codesamplecaps/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=profile#security-settings'],
+    ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
+];
+include __DIR__ . '/../SHARED/header/profile/php/profile.php';
+?>
 
         <div class="topbar-notifications" data-notification-root>
             <button

@@ -69,8 +69,8 @@ $headerProfilePhotoUrl = $superAdminProfilePhotoUrl;
 $headerProfileInitials = $superAdminProfileInitials;
 $headerProfileAlt = 'Super Admin profile picture';
 $headerProfileLinks = [
-    ['label' => 'Profile', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php'],
-    ['label' => 'Settings', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php#security-settings'],
+    ['label' => 'Profile', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php?section=profile'],
+    ['label' => 'Settings', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php?section=security'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
 include __DIR__ . '/../SHARED/header/profile/php/profile.php';

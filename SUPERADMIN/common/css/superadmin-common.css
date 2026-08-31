@@ -212,3 +212,112 @@
 .sidebar .brand-block .sidebar-toggle {
     pointer-events: auto;
 }
+
+/* Shared Super Admin content styles */
+.dashboard-section-title {
+    position: relative;
+    top: 1px;
+    font-size: 1.1rem;
+    line-height: 1.3;
+}
+
+.dashboard-panel {
+    margin-top: 24px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 6px;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
+.form-group input,
+.form-group select {
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.btn-primary,
+.btn-secondary {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 12px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 30px rgba(21, 128, 61, 0.18);
+    filter: saturate(1.03);
+}
+
+.btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.password-input-wrap {
+    position: relative;
+}
+
+.password-input-wrap input {
+    width: 100%;
+    padding-right: 86px;
+}
+
+.password-input-wrap .togglePassword {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    padding: 5px 10px;
+    transform: translateY(-50%);
+    border: 1px solid var(--primary);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--primary-dark);
+    cursor: pointer;
+}

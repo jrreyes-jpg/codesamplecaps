@@ -233,7 +233,7 @@ function initAuditLogsUI() {
         if (event.key === 'Escape' && !modal.hidden) {
             closeModal();
         }
-    }, { once: true });
+    });
 }
 
 document.addEventListener('DOMContentLoaded', initAuditLogsUI);

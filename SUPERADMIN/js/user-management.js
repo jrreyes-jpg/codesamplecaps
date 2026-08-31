@@ -145,16 +145,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    document.querySelectorAll('.togglePassword[data-target]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const target = document.getElementById(button.getAttribute('data-target') || '');
-            if (!target) return;
-            const willShow = target.type === 'password';
-            target.type = willShow ? 'text' : 'password';
-            button.textContent = willShow ? 'Hide' : 'Show';
-        });
-    });
-
     document.addEventListener('submit', function (event) {
         const form = event.target.closest('[data-confirm-message]');
         if (!form) {

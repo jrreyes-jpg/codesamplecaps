@@ -73,6 +73,35 @@
     width: 100%;
 }
 
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #f9fafb;
+}
+
+th,
+td {
+    padding: 14px 18px;
+    font-size: 14px;
+    text-align: left;
+}
+
+th {
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+tbody tr {
+    border-top: 1px solid #f1f5f9;
+}
+
+tbody tr:hover {
+    background: #f0fdf4;
+}
+
 @media (max-width: 1200px) {
     .main-content {
         padding-inline: 28px;

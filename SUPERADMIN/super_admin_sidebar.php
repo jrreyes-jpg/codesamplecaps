@@ -153,6 +153,7 @@ $operationsHeaderRole = 'super_admin';
 $operationsHeaderClass = 'global-topbar';
 $operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
 $operationsHeaderActionsClass = 'global-topbar__actions';
+$operationsHeaderClockClass = 'global-topbar__clock';
 $operationsHeaderHomeHref = '/codesamplecaps/SUPERADMIN/sidebar/user_management.php';
 $operationsHeaderBrandText = 'EDGE Automation';
 $operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';

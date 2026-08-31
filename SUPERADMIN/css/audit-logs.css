@@ -5,6 +5,27 @@
    Paalala: audit logs page lang, hindi sidebar/header.
 ========================================================= */
 
+.table-wrapper {
+    margin-top: 20px;
+    background: var(--glass);
+    border-radius: 18px;
+    overflow: auto;
+    box-shadow: var(--shadow-soft);
+}
+
+.table-empty-cell {
+    padding: 20px;
+    color: #999999;
+    text-align: center;
+}
+
+.mobile-card-table td strong,
+.mobile-card-table td small,
+.mobile-card-table td span,
+.mobile-card-table td a {
+    overflow-wrap: anywhere;
+}
+
 .audit-logs-panel {
     overflow: hidden;
     padding: 14px;

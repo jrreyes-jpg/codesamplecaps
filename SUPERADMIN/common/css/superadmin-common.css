@@ -176,6 +176,45 @@ tbody tr:hover {
     box-shadow: var(--shadow-soft);
 }
 
+.panel-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.panel-copy {
+    margin: 6px 0 0;
+    color: var(--text-light);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .form-row {
     display: flex;
     flex-wrap: wrap;

@@ -49,13 +49,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const labels = ['Weak', 'Weak', 'Weak', 'Medium', 'Strong', 'Super Strong'];
             const classes = ['weak', 'weak', 'weak', 'medium', 'strong', 'super-strong'];
             strengthText.textContent = 'Strength: ' + labels[score];
-            strengthText.className = 'pass-indicator ' + classes[score];
+            strengthText.className = 'account-pass-indicator ' + classes[score];
         }
 
         if (newPassword && confirmPassword && matchText) {
             const matches = confirmPassword.value !== '' && newPassword.value === confirmPassword.value;
             matchText.textContent = matches ? 'Confirmation: Match' : 'Confirmation: Not matched';
-            matchText.className = 'pass-indicator ' + (matches ? 'strong' : 'weak');
+            matchText.className = 'account-pass-indicator ' + (matches ? 'strong' : 'weak');
         }
     }
 

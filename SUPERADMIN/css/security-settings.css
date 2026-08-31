@@ -26,6 +26,10 @@
     padding: 14px;
 }
 
+.profile-form-card--security {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 244, 0.88));
+}
+
 .security-settings-header {
     display: flex;
     align-items: center;

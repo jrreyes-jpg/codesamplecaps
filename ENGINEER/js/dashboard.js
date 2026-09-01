@@ -1,8 +1,8 @@
 /*
 |--------------------------------------------------------------------------
-| Engineer Overview JavaScript
+| Engineer Dashboard JavaScript
 |--------------------------------------------------------------------------
-| Sakop nito ang overview-only actions tulad ng clickable cards at progress bars.
+| Sakop nito ang dashboard-only actions tulad ng clickable cards at progress bars.
 |--------------------------------------------------------------------------
 */
 

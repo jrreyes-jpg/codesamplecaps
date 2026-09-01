@@ -33,7 +33,7 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'archive', 'label' => 'Archive', 'mini' => 'Arch', 'href' => '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash', 'icon' => 'archive', 'active' => ['/ADMIN/sidebar/projects/php/projects.php?view=trash']],
         ],
         'engineer' => [
-            ['module' => 'overview', 'label' => 'Overview', 'mini' => 'Home', 'href' => '/codesamplecaps/ENGINEER/dashboards/overview.php', 'icon' => 'dashboard', 'active' => ['/ENGINEER/dashboards/overview.php', '/ENGINEER/dashboards/engineer_dashboard.php']],
+            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/ENGINEER/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/ENGINEER/dashboards/dashboard.php', '/ENGINEER/dashboards/overview.php', '/ENGINEER/dashboards/engineer_dashboard.php']],
             ['module' => 'tasks', 'label' => 'My Tasks', 'mini' => 'Tasks', 'href' => '/codesamplecaps/ENGINEER/dashboards/tasks.php', 'icon' => 'tasks', 'active' => ['/ENGINEER/dashboards/tasks.php']],
             ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ENGINEER/dashboards/projects.php', 'icon' => 'projects', 'active' => ['/ENGINEER/dashboards/projects.php'], 'exclude_query' => ['view=trash', 'view=archive']],
             ['module' => 'archive', 'label' => 'Archive', 'mini' => 'Arch', 'href' => '/codesamplecaps/ENGINEER/dashboards/projects.php?view=trash', 'icon' => 'archive', 'active' => ['/ENGINEER/dashboards/projects.php?view=trash', '/ENGINEER/dashboards/projects.php?view=archive']],
@@ -108,7 +108,7 @@ function shared_navigation_role_home(string $role): string
 {
     return [
         'admin' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php',
-        'engineer' => '/codesamplecaps/ENGINEER/dashboards/overview.php',
+        'engineer' => '/codesamplecaps/ENGINEER/dashboards/dashboard.php',
         'super_admin' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php',
         'foreman' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php',
         'inventory_clerk' => '/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php',

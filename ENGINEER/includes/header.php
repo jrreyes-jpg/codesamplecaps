@@ -24,23 +24,24 @@ if (isset($conn) && $conn instanceof mysqli) {
 $engineerHeaderInitial = strtoupper(substr(trim($engineerHeaderName) !== '' ? trim($engineerHeaderName) : 'E', 0, 1));
 $engineerHeaderPhotoUrl = $engineerHeaderPhotoPath !== '' ? profile_photo_public_url($engineerHeaderPhotoPath) : '';
 $engineerHeaderCsrfToken = engineer_get_csrf_token();
-$engineerHeaderReturnUrl = $_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ENGINEER/dashboards/overview.php';
+$engineerHeaderReturnUrl = $_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ENGINEER/dashboards/dashboard.php';
 $engineerHeaderDate = date('F j, Y');
 $engineerHeaderTime = date('g:i A');
 ob_start();
 ?>
 <?php
-$headerProfileRootAttr = 'data-engineer-profile-root';
+$headerProfileRootAttr = 'data-profile-root';
 $headerProfileToggleId = 'engineerProfileToggle';
 $headerProfileDropdownId = 'engineerProfileDropdown';
-$headerProfileToggleAttr = 'data-engineer-profile-toggle';
+$headerProfileToggleAttr = 'data-profile-toggle';
 $headerProfileName = $engineerHeaderName;
 $headerProfileRole = 'Engineer';
 $headerProfilePhotoUrl = $engineerHeaderPhotoUrl;
 $headerProfileInitials = $engineerHeaderInitial;
 $headerProfileAlt = 'Engineer profile photo';
 $headerProfileLinks = [
-    ['label' => 'Profile', 'href' => '#engineer-profile'],
+    ['label' => 'Profile', 'href' => '/codesamplecaps/ENGINEER/dashboards/account_settings.php?section=profile'],
+    ['label' => 'Settings', 'href' => '/codesamplecaps/ENGINEER/dashboards/account_settings.php?section=security'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
 include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
@@ -79,10 +80,10 @@ $operationsHeaderClass = 'global-topbar';
 $operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
 $operationsHeaderActionsClass = 'global-topbar__actions';
 $operationsHeaderClockClass = 'global-topbar__clock';
-$operationsHeaderHomeHref = '/codesamplecaps/ENGINEER/dashboards/overview.php';
+$operationsHeaderHomeHref = '/codesamplecaps/ENGINEER/dashboards/dashboard.php';
 $operationsHeaderBrandText = 'EDGE Automation';
 $operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
-$operationsHeaderBrandLabel = 'Go to Engineer overview';
+$operationsHeaderBrandLabel = 'Go to Engineer dashboard';
 $operationsHeaderTime = $engineerHeaderTime;
 $operationsHeaderDate = $engineerHeaderDate;
 $operationsHeaderTimeAttr = 'class="global-topbar__time" data-engineer-time';
@@ -90,124 +91,3 @@ $operationsHeaderDateAttr = 'class="global-topbar__date" data-engineer-date';
 $operationsHeaderAttrs = 'aria-live="polite"';
 include __DIR__ . '/../../SHARED/header/core/operations-header.php';
 ?>
-
-<div class="engineer-profile-modal" data-engineer-profile-modal hidden>
-    <div class="engineer-profile-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerProfileModalTitle">
-        <button class="engineer-profile-modal__close" type="button" data-engineer-profile-modal-close aria-label="Close profile modal">&times;</button>
-        <p class="engineer-profile-modal__kicker">Engineer Profile</p>
-        <h2 id="engineerProfileModalTitle"><?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?></h2>
-        <div class="engineer-profile-modal__content">
-            <form class="engineer-profile-edit-form" method="POST" action="/codesamplecaps/ENGINEER/actions/update_profile.php" enctype="multipart/form-data" data-engineer-profile-form>
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($engineerHeaderCsrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($engineerHeaderReturnUrl, ENT_QUOTES, 'UTF-8'); ?>">
-                <input id="engineerProfilePhotoInput" class="engineer-profile-edit-form__file" type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp" data-profile-photo-input>
-
-                <section class="engineer-profile-settings-card engineer-profile-settings-card--identity">
-                    <div class="engineer-profile-settings-card__head">
-                        <h3>Profile Details</h3>
-                    </div>
-                    <div class="engineer-profile-photo-upload">
-                        <button class="engineer-profile-modal__avatar" type="button" data-engineer-photo-preview aria-label="View profile photo">
-                            <?php if ($engineerHeaderPhotoUrl !== ''): ?>
-                                <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo">
-                            <?php else: ?>
-                                <span><?php echo htmlspecialchars($engineerHeaderInitial, ENT_QUOTES, 'UTF-8'); ?></span>
-                            <?php endif; ?>
-                        </button>
-                        <div class="engineer-profile-photo-upload__meta">
-                            <strong>Profile picture</strong>
-                            <span>JPG, PNG, or WEBP only. Max 3MB.</span>
-                            <button class="engineer-profile-edit-form__photo-button" type="button" data-engineer-photo-change>Change Photo</button>
-                        </div>
-                    </div>
-                    <div class="engineer-profile-readonly">
-                        <div>
-                            <span>Full Name</span>
-                            <strong><?php echo htmlspecialchars($engineerHeaderName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                        </div>
-                        <div>
-                            <span>Email</span>
-                            <strong><?php echo htmlspecialchars($engineerHeaderEmail !== '' ? $engineerHeaderEmail : 'Not set', ENT_QUOTES, 'UTF-8'); ?></strong>
-                        </div>
-                        <div>
-                            <span>Phone</span>
-                            <strong><?php echo htmlspecialchars($engineerHeaderPhone !== '' ? $engineerHeaderPhone : 'Not set', ENT_QUOTES, 'UTF-8'); ?></strong>
-                        </div>
-                    </div>
-                    <p class="engineer-profile-readonly__note">Contact Super Admin to update email, phone, name, or official account details.</p>
-                    <a
-                        class="engineer-profile-contact-link"
-                        href="mailto:ejimenez.edge@gmail.com?subject=Account%20Update%20Request&body=Hello%20Super%20Admin,%0A%0AI%20would%20like%20to%20request%20an%20account%20update.%0A%0AName:%20[Your%20name]%0AEmail:%20[Your%20email]%0ARequested%20change:%20[Email%20/%20Phone%20/%20Name%20/%20Other]%0ANew%20details:%20[Type%20the%20correct%20details%20here]%0AReason:%20[Why%20this%20needs%20to%20be%20updated]%0A%0AThank%20you."
-                    >
-                        Contact Super Admin
-                    </a>
-                </section>
-
-                <p class="engineer-profile-edit-form__error" data-profile-form-error hidden></p>
-            </form>
-
-            <section class="engineer-profile-settings-card engineer-profile-settings-card--security">
-                <div class="engineer-profile-settings-card__head">
-                    <h3>Account Security</h3>
-                </div>
-                <div class="engineer-password-panel" data-engineer-password-panel>
-                    <button class="engineer-password-panel__start" type="button" data-engineer-password-start>Change Password</button>
-                    <div class="engineer-password-panel__form" data-engineer-password-form hidden>
-                        <p class="engineer-password-panel__status" data-engineer-password-status hidden></p>
-                        <button class="engineer-password-panel__send" type="button" data-engineer-password-send>Send Email Code</button>
-                        <label>
-                            <span>6-digit Code</span>
-                            <input type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" data-engineer-password-otp>
-                        </label>
-                        <label>
-                            <span>New Password</span>
-                            <input type="password" autocomplete="new-password" data-engineer-new-password>
-                        </label>
-                        <div class="engineer-password-strength" data-engineer-password-strength>
-                            <span data-rule="length">8+ chars</span>
-                            <span data-rule="upper">Uppercase</span>
-                            <span data-rule="lower">Lowercase</span>
-                            <span data-rule="number">Number</span>
-                            <span data-rule="symbol">Symbol</span>
-                        </div>
-                        <label>
-                            <span>Confirm Password</span>
-                            <input type="password" autocomplete="new-password" data-engineer-confirm-password>
-                        </label>
-                        <button class="engineer-password-panel__save" type="button" data-engineer-password-save>Save New Password</button>
-                    </div>
-                </div>
-            </section>
-        </div>
-    </div>
-</div>
-
-<div class="engineer-photo-modal" data-engineer-photo-modal hidden>
-    <div class="engineer-photo-modal__shell" role="dialog" aria-modal="true" aria-label="Profile photo preview">
-        <button class="engineer-photo-modal__close" type="button" data-engineer-photo-modal-close aria-label="Close photo preview">&times;</button>
-        <div class="engineer-photo-modal__panel">
-            <?php if ($engineerHeaderPhotoUrl !== ''): ?>
-                <img src="<?php echo htmlspecialchars($engineerHeaderPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Profile photo preview">
-            <?php else: ?>
-                <span><?php echo htmlspecialchars($engineerHeaderInitial, ENT_QUOTES, 'UTF-8'); ?></span>
-            <?php endif; ?>
-        </div>
-        <p class="engineer-photo-modal__status" data-engineer-photo-status hidden></p>
-        <button class="engineer-photo-modal__change" type="button" data-engineer-photo-change>Change Photo</button>
-        <div class="engineer-photo-modal__actions" data-engineer-photo-actions hidden>
-            <button class="engineer-photo-modal__save" type="button" data-engineer-photo-save>Save Photo</button>
-            <button class="engineer-photo-modal__cancel" type="button" data-engineer-photo-cancel>Cancel</button>
-        </div>
-    </div>
-</div>
-
-<div class="engineer-confirm-modal" data-engineer-confirm-modal hidden>
-    <div class="engineer-confirm-modal__panel" role="dialog" aria-modal="true" aria-label="Confirm profile changes">
-        <h2>Save profile photo?</h2>
-        <p>Please confirm before saving your new profile picture.</p>
-        <div class="engineer-confirm-modal__actions">
-            <button type="button" class="engineer-confirm-modal__yes" data-engineer-confirm-yes>Yes, Save</button>
-            <button type="button" class="engineer-confirm-modal__no" data-engineer-confirm-no>No</button>
-        </div>
-    </div>
-</div>

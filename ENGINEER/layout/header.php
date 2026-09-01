@@ -6,7 +6,7 @@ $engineerCssFiles = is_array($engineerCssFiles ?? null) ? $engineerCssFiles : []
 $sharedCssFiles = [
     '/codesamplecaps/SHARED/header/core/header.css',
     '/codesamplecaps/SHARED/sidebar/css/sidebar.css',
-    '/codesamplecaps/ENGINEER/css/engineer.css',
+    '/codesamplecaps/ENGINEER/common/css/engineer-common.css',
 ];
 
 $allEngineerCssFiles = array_values(array_unique(array_merge($sharedCssFiles, $engineerCssFiles)));

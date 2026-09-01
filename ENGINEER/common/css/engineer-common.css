@@ -1,4 +1,16 @@
-@import url("engineer-header.css");
+/* Engineer common styles. Shared ng Engineer pages. */
+
+.main-content,
+.dashboard-main {
+    padding-top: 112px !important;
+}
+
+@media (max-width: 768px) {
+    .main-content,
+    .dashboard-main {
+        padding-top: 100px !important;
+    }
+}
 
 * {
     box-sizing: border-box;

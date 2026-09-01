@@ -12,6 +12,8 @@ function superadmin_render_page(
     string $mainClass = ''
 ): void
 {
+    global $conn;
+
     // Isang layout lang para pare-pareho ang header, sidebar, footer, CSS, at JS.
     $pageTitle = $title;
     $mainClassAttr = trim('main-content ' . $mainClass);

@@ -5,7 +5,11 @@ require_once __DIR__ . '/config/profile_photo_storage.php';
 
 require_any_role(['super_admin', 'admin', 'inventory_clerk', 'engineer', 'foreman', 'client']);
 
-$userId = (int)($_SESSION['user_id'] ?? 0);
+$sessionUserId = (int)($_SESSION['user_id'] ?? 0);
+$requestedUserId = isset($_GET['user']) ? (int)$_GET['user'] : 0;
+$userId = $requestedUserId > 0 && $requestedUserId === $sessionUserId
+    ? $requestedUserId
+    : $sessionUserId;
 if ($userId <= 0) {
     profile_photo_output_default_image();
 }

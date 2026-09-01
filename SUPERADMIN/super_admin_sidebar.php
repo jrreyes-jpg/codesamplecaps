@@ -20,6 +20,7 @@ $superAdminProfileName = (string)($_SESSION['name'] ?? 'Super Admin');
 $superAdminProfileRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'super_admin')));
 $superAdminProfilePhotoUrl = '';
 $superAdminProfileInitials = '';
+$superAdminUserId = (int)($_SESSION['user_id'] ?? ($_SESSION['id'] ?? 0));
 
 $superAdminNotificationData = isset($conn) && $conn instanceof mysqli
     ? super_admin_fetch_notification_data($conn)
@@ -38,24 +39,28 @@ if (
     isset($conn)
     && $conn instanceof mysqli
     && super_admin_sidebar_column_exists($conn, 'users', 'profile_photo_path')
-    && isset($_SESSION['user_id'])
+    && $superAdminUserId > 0
 ) {
     $profileStmt = $conn->prepare('SELECT profile_photo_path FROM users WHERE id = ? LIMIT 1');
     if ($profileStmt) {
-        $profileStmt->bind_param('i', $_SESSION['user_id']);
+        $profileStmt->bind_param('i', $superAdminUserId);
         $profileStmt->execute();
         $profileResult = $profileStmt->get_result();
         $profileRow = $profileResult ? $profileResult->fetch_assoc() : null;
         $profilePhotoPath = profile_photo_migrate_legacy_reference(
             $conn,
-            (int)$_SESSION['user_id'],
+            $superAdminUserId,
             $profileRow['profile_photo_path'] ?? null
         );
         $profilePhotoPath = trim((string)$profilePhotoPath);
-        if ($profilePhotoPath !== '' && profile_photo_resolve_absolute_path($profilePhotoPath) !== null) {
-            $superAdminProfilePhotoUrl = profile_photo_public_url($profilePhotoPath);
+        if ($profilePhotoPath !== '') {
+            $superAdminProfilePhotoUrl = profile_photo_public_url($profilePhotoPath, $superAdminUserId);
         }
     }
+}
+
+if ($superAdminProfilePhotoUrl === '') {
+    $superAdminProfilePhotoUrl = build_default_profile_avatar_data_uri();
 }
 
 $superAdminProfileInitials = super_admin_profile_initials($superAdminProfileName);

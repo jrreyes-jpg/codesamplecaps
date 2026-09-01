@@ -195,5 +195,5 @@ function shared_account_change_password(
         ['full_name' => $currentUser['full_name'] ?? null]
     );
 
-    return ['error' => '', 'message' => 'Your password was changed successfully.'];
+    return ['error' => '', 'message' => 'Password updated successfully.'];
 }

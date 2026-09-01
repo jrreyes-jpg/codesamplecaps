@@ -77,7 +77,6 @@ img {
 }
 
 .engineer-hero-panel,
-.stat-card,
 .tasks-list,
 .profile-form {
     border: 1px solid rgba(22, 48, 43, 0.08);
@@ -126,15 +125,24 @@ img {
     border: 1px solid #fca5a5;
 }
 
-.stats-grid,
-.projects-grid {
-    display: grid;
-    gap: 18px;
+.stat-card {
+    padding: 22px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.92);
 }
 
-.stats-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin-bottom: 24px;
+.stat-card h4 {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #5a6f6a;
+}
+
+.stat-card p {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    font-weight: 700;
+    color: #166534;
 }
 
 .metric-card,
@@ -862,11 +870,6 @@ img {
 .field-required {
     color: #dc2626;
     font-weight: 800;
-}
-
-.supplier-form-actions {
-    justify-content: flex-start;
-    padding-top: 4px;
 }
 
 .supplier-card-list {

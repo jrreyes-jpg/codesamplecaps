@@ -33,8 +33,9 @@ $headerProfileLinks = is_array($headerProfileLinks ?? null) ? $headerProfileLink
         <span class="topbar-profile__avatar-shell" aria-hidden="true">
             <?php if ($headerProfilePhotoUrl !== ''): ?>
                 <img src="<?php echo htmlspecialchars($headerProfilePhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($headerProfileAlt, ENT_QUOTES, 'UTF-8'); ?>" class="topbar-profile__avatar-image">
+            <?php else: ?>
+                <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($headerProfileInitials, ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
-            <span class="topbar-profile__avatar-fallback"><?php echo htmlspecialchars($headerProfileInitials, ENT_QUOTES, 'UTF-8'); ?></span>
             <span class="topbar-profile__chevron-badge">
                 <span class="topbar-profile__chevron" aria-hidden="true">
                     <svg viewBox="0 0 20 20" focusable="false">
@@ -50,8 +51,9 @@ $headerProfileLinks = is_array($headerProfileLinks ?? null) ? $headerProfileLink
             <span class="topbar-profile__avatar-shell topbar-profile__avatar-shell--panel" aria-hidden="true">
                 <?php if ($headerProfilePhotoUrl !== ''): ?>
                     <img src="<?php echo htmlspecialchars($headerProfilePhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($headerProfileAlt, ENT_QUOTES, 'UTF-8'); ?>" class="topbar-profile__avatar-image topbar-profile__avatar-image--panel">
+                <?php else: ?>
+                    <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($headerProfileInitials, ENT_QUOTES, 'UTF-8'); ?></span>
                 <?php endif; ?>
-                <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($headerProfileInitials, ENT_QUOTES, 'UTF-8'); ?></span>
             </span>
             <div>
                 <strong><?php echo htmlspecialchars($headerProfileName, ENT_QUOTES, 'UTF-8'); ?></strong>

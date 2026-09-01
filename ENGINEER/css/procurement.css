@@ -139,3 +139,7 @@
 }
 
 
+.supplier-form-actions {
+    justify-content: flex-start;
+    padding-top: 4px;
+}

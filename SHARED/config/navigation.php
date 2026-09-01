@@ -33,7 +33,7 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'archive', 'label' => 'Archive', 'mini' => 'Arch', 'href' => '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?view=trash', 'icon' => 'archive', 'active' => ['/ADMIN/sidebar/projects/php/projects.php?view=trash']],
         ],
         'engineer' => [
-            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/ENGINEER/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/ENGINEER/dashboards/dashboard.php', '/ENGINEER/dashboards/overview.php', '/ENGINEER/dashboards/engineer_dashboard.php']],
+            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/ENGINEER/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/ENGINEER/dashboards/dashboard.php', '/ENGINEER/dashboards/engineer_dashboard.php']],
             ['module' => 'tasks', 'label' => 'My Tasks', 'mini' => 'Tasks', 'href' => '/codesamplecaps/ENGINEER/dashboards/tasks.php', 'icon' => 'tasks', 'active' => ['/ENGINEER/dashboards/tasks.php']],
             ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ENGINEER/dashboards/projects.php', 'icon' => 'projects', 'active' => ['/ENGINEER/dashboards/projects.php']],
             ['module' => 'procurement', 'label' => 'Procurement', 'mini' => 'Proc', 'href' => '/codesamplecaps/ENGINEER/dashboards/procurement.php', 'icon' => 'procurement', 'active' => ['/ENGINEER/dashboards/procurement.php']],
@@ -70,33 +70,33 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'stock_history', 'label' => 'Stock History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/sidebar/stock_history.php']],
         ],
         'client' => [
-    [
-        'module' => 'dashboard',
-        'label' => 'Dashboard',
-        'mini' => 'Home',
-        'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
-        'icon' => 'dashboard',
-        'active' => ['/CLIENT/dashboards/client_dashboard.php'],
-    ],
+            [
+                'module' => 'dashboard',
+                'label' => 'Dashboard',
+                'mini' => 'Home',
+                'href' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
+                'icon' => 'dashboard',
+                'active' => ['/CLIENT/dashboards/client_dashboard.php'],
+            ],
 
-    [
-        'module' => 'projects',
-        'label' => 'My Projects',
-        'mini' => 'Proj',
-        'href' => '/codesamplecaps/CLIENT/dashboards/projects.php',
-        'icon' => 'projects',
-        'active' => ['/CLIENT/dashboards/projects.php'],
-    ],
+            [
+                'module' => 'projects',
+                'label' => 'My Projects',
+                'mini' => 'Proj',
+                'href' => '/codesamplecaps/CLIENT/dashboards/projects.php',
+                'icon' => 'projects',
+                'active' => ['/CLIENT/dashboards/projects.php'],
+            ],
 
-    [
-        'module' => 'quotations',
-        'label' => 'My Quotations',
-        'mini' => 'Quote',
-        'href' => '/codesamplecaps/CLIENT/dashboards/quotations.php',
-        'icon' => 'quotations',
-        'active' => ['/CLIENT/dashboards/quotations.php'],
-    ],
-],
+            [
+                'module' => 'quotations',
+                'label' => 'My Quotations',
+                'mini' => 'Quote',
+                'href' => '/codesamplecaps/CLIENT/dashboards/quotations.php',
+                'icon' => 'quotations',
+                'active' => ['/CLIENT/dashboards/quotations.php'],
+            ],
+        ],
 
     ];
 

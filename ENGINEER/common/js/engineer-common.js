@@ -95,48 +95,9 @@ const initTaskFilters = () => {
     applyFilters();
 };
 
-const initEngineerClock = () => {
-    const timeElement = document.querySelector('[data-engineer-time]');
-    const dateElement = document.querySelector('[data-engineer-date]');
-
-    if (
-        !timeElement ||
-        !dateElement ||
-        window.edgeOperationsHeaderClockStarted ||
-        document.querySelector('script[src$="/SHARED/header/core/operations-header.js"]')
-    ) {
-        return;
-    }
-
-    const timeFormatter = new Intl.DateTimeFormat('en-PH', {
-        timeZone: 'Asia/Manila',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-    });
-
-    const dateFormatter = new Intl.DateTimeFormat('en-PH', {
-        timeZone: 'Asia/Manila',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-    });
-
-    const updateClock = () => {
-        const now = new Date();
-        timeElement.textContent = timeFormatter.format(now);
-        dateElement.textContent = dateFormatter.format(now);
-    };
-
-    updateClock();
-    window.setInterval(updateClock, 1000);
-};
-
 document.addEventListener('DOMContentLoaded', () => {
     const taskFromQuery = new URLSearchParams(window.location.search).get('task');
-    initEngineerClock();
-    initTaskFilters();
+initTaskFilters();
 
     if (taskFromQuery) {
         window.setTimeout(() => {

@@ -14,6 +14,7 @@ $priorityCards = $data['priority_cards'];
 $recentUpdates = array_slice($data['recent_updates'], 0, 4);
 $assignedProjects = array_slice($data['assigned_projects'], 0, 3);
 $engineerPageTitle = 'Engineer Dashboard - Edge Automation';
+$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/dashboard.css'];
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>

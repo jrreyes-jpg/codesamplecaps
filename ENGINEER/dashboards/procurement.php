@@ -1036,12 +1036,13 @@ foreach ($purchaseOrders as $purchaseOrder) {
     }
 }
 $engineerPageTitle = 'Procurement Workspace - Engineer';
+$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/procurement.css'];
 require __DIR__ . '/../layout/header.php';
 ?>
 <div class="dashboard-layout">
     <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 
-    <main class="dashboard-main">
+    <main class="main-content">
         <?php
         include __DIR__ . '/../includes/header.php';
         ?>

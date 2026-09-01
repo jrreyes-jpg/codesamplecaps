@@ -34,9 +34,21 @@ if (!function_exists('profile_photo_legacy_directory')) {
 }
 
 if (!function_exists('profile_photo_public_url')) {
-    function profile_photo_public_url(string $reference): string
+    function profile_photo_public_url(string $reference, ?int $userId = null): string
     {
-        return '/codesamplecaps/profile_photo.php?v=' . rawurlencode(substr(sha1($reference), 0, 16));
+        $path = profile_photo_resolve_absolute_path($reference);
+        $versionSource = $reference;
+
+        if ($path !== null && is_file($path)) {
+            $versionSource .= ':' . (string)filemtime($path);
+        }
+
+        $query = ['v' => substr(sha1($versionSource), 0, 16)];
+        if ($userId !== null && $userId > 0) {
+            $query['user'] = (string)$userId;
+        }
+
+        return '/codesamplecaps/profile_photo.php?' . http_build_query($query);
     }
 }
 

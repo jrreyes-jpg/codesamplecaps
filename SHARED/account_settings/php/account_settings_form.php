@@ -6,13 +6,17 @@ function shared_account_settings_render(array $account): void
     ?>
     <div class="shared-account-settings" data-account-settings>
         <?php if (($account['message'] ?? '') !== ''): ?>
-            <div class="account-alert account-alert--success">
-                <?php echo htmlspecialchars((string)$account['message'], ENT_QUOTES, 'UTF-8'); ?>
+            <div class="shared-toast shared-toast--success" role="status" data-shared-toast>
+                <span data-shared-toast-text><?php echo htmlspecialchars((string)$account['message'], ENT_QUOTES, 'UTF-8'); ?></span>
+                <button type="button" class="shared-toast__close" aria-label="Close notification" data-shared-toast-close>&times;</button>
+                <span class="shared-toast__progress" aria-hidden="true"></span>
             </div>
         <?php endif; ?>
         <?php if (($account['error'] ?? '') !== ''): ?>
-            <div class="account-alert account-alert--error" role="alert">
-                <?php echo htmlspecialchars((string)$account['error'], ENT_QUOTES, 'UTF-8'); ?>
+            <div class="shared-toast shared-toast--error" role="alert" data-shared-toast>
+                <span data-shared-toast-text><?php echo htmlspecialchars((string)$account['error'], ENT_QUOTES, 'UTF-8'); ?></span>
+                <button type="button" class="shared-toast__close" aria-label="Close notification" data-shared-toast-close>&times;</button>
+                <span class="shared-toast__progress" aria-hidden="true"></span>
             </div>
         <?php endif; ?>
 

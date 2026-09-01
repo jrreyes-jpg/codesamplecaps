@@ -58,6 +58,7 @@ function superadmin_account_context(mysqli $conn): array
             $error = $result['error'];
 
             if ($error === '') {
+                $_SESSION['name'] = trim((string)($_POST['full_name'] ?? $_SESSION['name'] ?? 'Super Admin'));
                 superadmin_account_flash('success', $result['message']);
                 superadmin_account_redirect('profile');
             }
@@ -104,9 +105,9 @@ function superadmin_account_context(mysqli $conn): array
         'email' => (string)($currentUser['email'] ?? ''),
         'phone' => (string)($currentUser['phone'] ?? ''),
         'section' => $section,
-        'photoUrl' => $photoPath !== '' ? profile_photo_public_url($photoPath) : '',
+        'photoUrl' => $photoPath !== '' ? profile_photo_public_url($photoPath, $userId) : '',
         'photoPreviewUrl' => $photoPath !== ''
-            ? profile_photo_public_url($photoPath)
+            ? profile_photo_public_url($photoPath, $userId)
             : build_default_profile_avatar_data_uri(),
     ];
 }

@@ -23,6 +23,7 @@ if (!isset($pageStyles) || !is_array($pageStyles)) {
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/toast/css/toast.css">
     <link rel="stylesheet" href="/codesamplecaps/SUPERADMIN/common/css/superadmin-common.css">
     <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">

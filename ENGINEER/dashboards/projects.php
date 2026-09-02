@@ -11,6 +11,7 @@ $taskStatusOptions = ['pending', 'ongoing', 'completed', 'delayed'];
 $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
 $projectRows = $data['assigned_projects'];
 $engineerPageTitle = 'Engineer Projects - Edge Automation';
+$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/projects.css'];
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
@@ -55,7 +56,7 @@ require __DIR__ . '/../layout/header.php';
                             <span><?php echo htmlspecialchars((string)$projectProgress['summary']); ?></span>
                         </div>
                         <div class="project-progress__bar">
-                            <span style="width: <?php echo (int)$projectProgress['percent']; ?>%;"></span>
+                            <span data-progress-width="<?php echo (int)$projectProgress['percent']; ?>"></span>
                         </div>
                     </div>
                     <p class="section-caption"><?php echo htmlspecialchars((string)$projectProgress['hint']); ?></p>
@@ -76,4 +77,7 @@ require __DIR__ . '/../layout/header.php';
     </div>
 </div>
 
-<?php require __DIR__ . '/../layout/footer.php'; ?>
+<?php
+$engineerJsFiles = ['/codesamplecaps/ENGINEER/js/projects.js'];
+require __DIR__ . '/../layout/footer.php';
+?>

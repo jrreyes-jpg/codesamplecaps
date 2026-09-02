@@ -475,11 +475,6 @@ img {
     font-size: 0.92rem;
 }
 
-.project-description {
-    color: #6b7280;
-    font-size: 0.92rem;
-}
-
 .project-progress {
     display: grid;
     gap: 10px;
@@ -515,14 +510,6 @@ img {
     height: 100%;
     border-radius: inherit;
     background: linear-gradient(90deg, #16a34a, #0f766e);
-}
-
-.project-mini-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    color: #64748b;
-    font-size: 0.86rem;
 }
 
 .status {

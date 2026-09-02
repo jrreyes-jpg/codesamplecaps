@@ -20,8 +20,3 @@ document.querySelectorAll('[data-card-url]').forEach((card) => {
         }
     });
 });
-
-document.querySelectorAll('[data-progress-width]').forEach((bar) => {
-    const width = Number.parseInt(bar.getAttribute('data-progress-width') || '0', 10);
-    bar.style.width = `${Math.max(0, Math.min(width, 100))}%`;
-});

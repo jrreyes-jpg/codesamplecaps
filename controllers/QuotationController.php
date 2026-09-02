@@ -76,30 +76,30 @@ try {
         if ($quotationId > 0) {
             $service->updateDraft($quotationId, $payload, $items, $userId, $role);
             quotation_module_set_flash('success', 'Quotation draft updated.');
-            quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $quotationId);
+            quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&id=' . $quotationId);
         }
 
         $newId = $service->createDraft($payload, $items, $userId, $role);
         quotation_module_set_flash('success', 'Quotation draft created.');
-        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $newId);
+        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&id=' . $newId);
     }
 
     if ($action === 'submit_review') {
         throw new RuntimeException('Foreman review is no longer part of the quotation approval flow. Submit the quotation for Admin review instead.');
-        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $quotationId);
+        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&id=' . $quotationId);
     }
 
     if ($action === 'submit_for_approval') {
         $service->submitForApproval($quotationId, $userId, $role, 'Engineer submitted quotation for Admin approval.');
         quotation_module_set_flash('success', 'Quotation submitted for Admin approval.');
-        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $quotationId);
+        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&id=' . $quotationId);
     }
 
     throw new RuntimeException('Invalid quotation action.');
 } catch (Throwable $throwable) {
     quotation_module_set_flash('error', $throwable->getMessage());
     if ($quotationId > 0) {
-        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=' . $quotationId);
+        quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&id=' . $quotationId);
     }
 
     quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php');

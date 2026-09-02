@@ -38,7 +38,7 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ENGINEER/dashboards/projects.php', 'icon' => 'projects', 'active' => ['/ENGINEER/dashboards/projects.php']],
             ['module' => 'procurement', 'label' => 'Procurement', 'mini' => 'Proc', 'href' => '/codesamplecaps/ENGINEER/dashboards/procurement.php', 'icon' => 'procurement', 'active' => ['/ENGINEER/dashboards/procurement.php']],
             ['module' => 'site_inspections', 'label' => 'Site Inspections', 'mini' => 'Site', 'href' => '/codesamplecaps/ENGINEER/dashboards/site_inspections.php', 'icon' => 'site', 'active' => ['/ENGINEER/dashboards/site_inspections.php']],
-            ['module' => 'quotations', 'label' => 'Quotations', 'mini' => 'Quote', 'href' => '/codesamplecaps/ENGINEER/dashboards/quotations.php', 'icon' => 'quotations', 'active' => ['/ENGINEER/dashboards/quotations.php', '/ENGINEER/dashboards/quotation_form.php']],
+            ['module' => 'quotations', 'label' => 'Quotations', 'mini' => 'Quote', 'href' => '/codesamplecaps/ENGINEER/dashboards/quotations.php', 'icon' => 'quotations', 'active' => ['/ENGINEER/dashboards/quotations.php']],
             ['module' => 'reports', 'label' => 'Reports', 'mini' => 'Report', 'href' => '/codesamplecaps/ENGINEER/dashboards/reports.php', 'icon' => 'reports', 'active' => ['/ENGINEER/dashboards/reports.php']],
             ['module' => 'progress', 'label' => 'Progress Updates', 'mini' => 'Update', 'href' => '/codesamplecaps/ENGINEER/dashboards/progress_updates.php', 'icon' => 'progress', 'active' => ['/ENGINEER/dashboards/progress_updates.php']],
         ],

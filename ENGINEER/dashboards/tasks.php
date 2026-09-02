@@ -14,6 +14,7 @@ $csrfToken = engineer_get_csrf_token();
 $quickFilter = trim((string)($_GET['quick'] ?? ''));
 $todayDate = $data['today_date'];
 $engineerPageTitle = 'Engineer Tasks - Edge Automation';
+$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/tasks.css'];
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
@@ -180,4 +181,7 @@ require __DIR__ . '/../layout/header.php';
     </main>
 </div>
 
-<?php require __DIR__ . '/../layout/footer.php'; ?>
+<?php
+$engineerJsFiles = ['/codesamplecaps/ENGINEER/js/tasks.js'];
+require __DIR__ . '/../layout/footer.php';
+?>

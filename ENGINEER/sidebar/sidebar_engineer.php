@@ -6,7 +6,7 @@ $isOverview = in_array($currentFile, ['overview.php', 'engineer_dashboard.php'],
 $isProjects = $currentFile === 'projects.php';
 $isProcurement = $currentFile === 'procurement.php';
 $isInspections = $currentFile === 'site_inspections.php';
-$isQuotations = in_array($currentFile, ['quotations.php', 'quotation_form.php'], true);
+$isQuotations = $currentFile === 'quotations.php';
 $isReports = $currentFile === 'reports.php';
 $isTasks = $currentFile === 'tasks.php';
 $isUpdates = $currentFile === 'progress_updates.php';

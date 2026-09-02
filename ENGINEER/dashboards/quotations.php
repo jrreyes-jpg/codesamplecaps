@@ -9,8 +9,19 @@ $userId = (int)($_SESSION['user_id'] ?? 0);
 $flash = quotation_module_consume_flash();
 $bootstrap = quotation_module_bootstrap_tables($conn);
 $tablesReady = (bool)($bootstrap['ready'] ?? false);
+$isFormMode = isset($_GET['form']) || isset($_GET['project_id']) || isset($_GET['id']);
+$quotationId = (int)($_GET['id'] ?? 0);
+$prefillProjectId = (int)($_GET['project_id'] ?? 0);
 $quotations = $tablesReady ? quotation_module_fetch_quotations($conn, 'engineer', $userId) : [];
 $projects = $tablesReady ? quotation_module_fetch_engineer_projects($conn, $userId) : [];
+$csrfToken = quotation_module_csrf_token();
+$foremen = [];
+$inventoryOptions = [];
+$assetOptions = [];
+$quotation = null;
+$items = [];
+$reviews = [];
+$history = [];
 
 $statusCounts = [
     'draft' => 0,
@@ -19,14 +30,54 @@ $statusCounts = [
     'approved' => 0,
 ];
 
-foreach ($quotations as $quotation) {
-    $status = (string)($quotation['status'] ?? '');
+foreach ($quotations as $quotationRow) {
+    $status = (string)($quotationRow['status'] ?? '');
     if (isset($statusCounts[$status])) {
         $statusCounts[$status]++;
     }
 }
-$engineerPageTitle = 'Engineer Quotations - Edge Automation';
-$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/quotations.css'];
+
+if ($isFormMode && $tablesReady) {
+    $foremen = quotation_module_fetch_foremen($conn);
+    $inventoryOptions = quotation_module_fetch_inventory_options($conn);
+    $assetOptions = quotation_module_fetch_asset_options($conn);
+
+    if ($quotationId > 0) {
+        $quotation = quotation_module_fetch_quotation($conn, $quotationId);
+        if (!$quotation || !quotation_module_user_can_access($quotation, 'engineer', $userId)) {
+            quotation_module_set_flash('error', 'Quotation not found or inaccessible.');
+            quotation_module_redirect('/codesamplecaps/ENGINEER/dashboards/quotations.php');
+        }
+
+        $items = quotation_module_fetch_quotation_items($conn, $quotationId);
+        $reviews = quotation_module_fetch_reviews($conn, $quotationId);
+        $history = quotation_module_fetch_history($conn, $quotationId);
+    }
+}
+
+$canEditDraft = $quotation === null || (((string)($quotation['status'] ?? '') === 'draft') && (int)($quotation['is_locked'] ?? 0) === 0);
+$canSubmitForApproval = $quotation !== null && in_array((string)$quotation['status'], ['draft', 'under_review'], true) && (int)($quotation['is_locked'] ?? 0) === 0;
+
+if ($isFormMode && empty($items)) {
+    $items = [[
+        'item_type' => 'material',
+        'source_table' => '',
+        'source_id' => '',
+        'item_name' => '',
+        'description' => '',
+        'unit' => 'unit',
+        'quantity' => 1,
+        'rate' => 0,
+        'hours' => 0,
+        'days' => 0,
+        'line_total' => 0,
+    ]];
+}
+
+$engineerPageTitle = ($isFormMode ? 'Engineer Quotation Form' : 'Engineer Quotations') . ' - Edge Automation';
+$engineerCssFiles = $isFormMode
+    ? ['/codesamplecaps/ENGINEER/css/quotations.css', '/codesamplecaps/ENGINEER/css/quotation-form.css']
+    : ['/codesamplecaps/ENGINEER/css/quotations.css'];
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
@@ -35,6 +86,9 @@ require __DIR__ . '/../layout/header.php';
     include __DIR__ . '/../includes/header.php';
     ?>
 
+    <?php if ($isFormMode): ?>
+        <?php include __DIR__ . '/../common/php/quotation-form-panel.php'; ?>
+    <?php else: ?>
     <div class="quotation-shell">
         <?php if ($flash): ?>
             <div class="flash <?php echo htmlspecialchars((string)$flash['type']); ?>">
@@ -55,7 +109,7 @@ require __DIR__ . '/../layout/header.php';
                 <p>Create project quotations, prepare material and manpower estimates, then submit them for Admin review from the Engineer dashboard.</p>
             </div>
             <div class="quotation-actions">
-                <a class="btn-primary" href="/codesamplecaps/ENGINEER/dashboards/quotation_form.php">Create Quotation</a>
+                <a class="btn-primary" href="/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1">Create Quotation</a>
             </div>
         </section>
 
@@ -92,7 +146,7 @@ require __DIR__ . '/../layout/header.php';
                                         <?php endif; ?>
                                     </td>
                                     <td data-label="Status"><span class="project-status-pill status-<?php echo htmlspecialchars((string)$project['status']); ?>"><?php echo htmlspecialchars(ucfirst((string)$project['status'])); ?></span></td>
-                                    <td data-label="Action"><a class="btn-secondary" href="/codesamplecaps/ENGINEER/dashboards/quotation_form.php?project_id=<?php echo (int)$project['id']; ?>">Start Quotation</a></td>
+                                    <td data-label="Action"><a class="btn-secondary" href="/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&project_id=<?php echo (int)$project['id']; ?>">Start Quotation</a></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -131,7 +185,7 @@ require __DIR__ . '/../layout/header.php';
                                     <td data-label="Selling Price"><?php echo htmlspecialchars(quotation_module_format_currency($quotation['selling_price'] ?? 0)); ?></td>
                                     <td data-label="Status"><span class="status-pill <?php echo htmlspecialchars(quotation_module_status_class((string)$quotation['status'])); ?>"><?php echo htmlspecialchars(quotation_module_status_label((string)$quotation['status'])); ?></span></td>
                                     <td data-label="Updated"><?php echo htmlspecialchars(quotation_module_format_datetime((string)$quotation['updated_at'])); ?></td>
-                                    <td data-label="Action"><a class="btn-secondary" href="/codesamplecaps/ENGINEER/dashboards/quotation_form.php?id=<?php echo (int)$quotation['id']; ?>">Open</a></td>
+                                    <td data-label="Action"><a class="btn-secondary" href="/codesamplecaps/ENGINEER/dashboards/quotations.php?form=1&id=<?php echo (int)$quotation['id']; ?>">Open</a></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -143,5 +197,9 @@ require __DIR__ . '/../layout/header.php';
             </section>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 </main>
-<?php require __DIR__ . '/../layout/footer.php'; ?>
+<?php
+$engineerJsFiles = $isFormMode ? ['/codesamplecaps/ENGINEER/js/quotations.js'] : [];
+require __DIR__ . '/../layout/footer.php';
+?>

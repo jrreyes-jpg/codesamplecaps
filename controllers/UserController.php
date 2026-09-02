@@ -83,26 +83,20 @@ class UserController {
         return $this->userRepo->getAllUsers($limit, $offset, $role);
     }
 
-    /**
-     * Get engineers list
-     */
-    public function getEngineers() {
-        return $this->userRepo->getUsersByRole('engineer');
-    }
+public function getEngineers() {
+    require_role('super_admin');
+    return $this->userRepo->getUsersByRole('engineer');
+}
 
-    /**
-     * Get manpower list
-     */
-    public function getManpower() {
-        return $this->userRepo->getUsersByRole('manpower');
-    }
+public function getManpower() {
+    require_role('super_admin');
+    return $this->userRepo->getUsersByRole('manpower');
+}
 
-    /**
-     * Get clients list
-     */
-    public function getClients() {
-        return $this->userRepo->getUsersByRole('client');
-    }
+public function getClients() {
+    require_role('super_admin');
+    return $this->userRepo->getUsersByRole('client');
+}
 
     /**
      * Deactivate user
@@ -120,10 +114,8 @@ class UserController {
         return $this->userRepo->updateStatus($userId, 'active');
     }
 
-    /**
-     * Get user by ID
-     */
-    public function getUser($userId) {
-        return $this->userRepo->findById($userId);
-    }
+public function getUser($userId) {
+    require_role('super_admin');
+    return $this->userRepo->findById($userId);
+}
 }

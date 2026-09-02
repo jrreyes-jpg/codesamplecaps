@@ -9,6 +9,7 @@ $userId = (int)($_SESSION['user_id'] ?? 0);
 $taskStatusOptions = ['pending', 'ongoing', 'completed', 'delayed'];
 $data = engineer_fetch_data($conn, $userId, $taskStatusOptions);
 $engineerPageTitle = 'Engineer Progress Updates - Edge Automation';
+$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/progress-updates.css'];
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>

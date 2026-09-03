@@ -21,11 +21,6 @@ if (defined('AUTH_ALLOWED_ROLES') && is_array(AUTH_ALLOWED_ROLES)) {
     return;
 }
 
-require_any_role([
-    'super_admin',
-    'admin',
-    'inventory_clerk',
-    'engineer',
-    'foreman',
-    'client'
-]);
+http_response_code(500);
+exit('Authentication configuration error: specific role is required.');
+

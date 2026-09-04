@@ -540,6 +540,7 @@ const initInquiryForm = () => {
                     button.type = 'button';
                     button.textContent = option;
                     button.addEventListener('click', () => {
+                        input.dataset.comboboxSelectedValue = option;
                         input.value = option;
                         input.dispatchEvent(new Event('change', { bubbles: true }));
                         closeCombobox(input);
@@ -557,15 +558,36 @@ const initInquiryForm = () => {
                 return;
             }
 
+            const showSelectFromListHint = () => {
+                const value = input.value.trim();
+                const exactMatch = getOptions().find((option) => option.toLowerCase() === value.toLowerCase());
+
+                if (exactMatch && value !== (input.dataset.comboboxSelectedValue || '')) {
+                    setFieldError(input, `Please select ${exactMatch} from the list to continue.`);
+                    return;
+                }
+
+                if (!exactMatch) {
+                    clearFieldError(input);
+                }
+            };
+
             const button = input.closest('[data-combobox]')?.querySelector('[data-combobox-toggle]');
             const showOptions = () => {
                 if (!input.disabled) {
+                    if (input.value !== (input.dataset.comboboxSelectedValue || '')) {
+                        delete input.dataset.comboboxSelectedValue;
+                    }
+                    showSelectFromListHint();
                     renderComboboxOptions(input, getOptions());
                 }
             };
 
             input.addEventListener('input', showOptions);
-            input.addEventListener('focus', showOptions);
+            input.addEventListener('focus', () => {
+                showSelectFromListHint();
+                showOptions();
+            });
             button?.addEventListener('click', () => {
                 if (input.closest('[data-combobox]')?.classList.contains('is-open')) {
                     closeCombobox(input);
@@ -577,10 +599,15 @@ const initInquiryForm = () => {
             });
         };
 
-        const isValidProvince = () => Boolean(window.edgeServiceAreas?.[provinceSelect?.value?.trim()]);
+        const isSystemSelected = (input) => {
+            const value = input?.value?.trim() || '';
+            return value !== '' && value === (input?.dataset.comboboxSelectedValue || '');
+        };
+
+        const isValidProvince = () => Boolean(window.edgeServiceAreas?.[provinceSelect?.value?.trim()]) && isSystemSelected(provinceSelect);
         const isValidCity = () => {
             const cities = window.edgeServiceAreas?.[provinceSelect?.value?.trim()] || [];
-            return cities.includes(citySelect?.value?.trim() || '');
+            return cities.includes(citySelect?.value?.trim() || '') && isSystemSelected(citySelect);
         };
         let lastValidCity = '';
 
@@ -590,6 +617,14 @@ const initInquiryForm = () => {
             }
 
             return window.edgeServiceBarangays?.[provinceSelect.value.trim()]?.[citySelect.value.trim()] || [];
+        };
+
+        const isValidBarangay = () => {
+            if (!barangayInput) {
+                return false;
+            }
+
+            return getBarangaySuggestions().includes(barangayInput.value.trim()) && isSystemSelected(barangayInput);
         };
 
         const syncBarangayState = () => {
@@ -620,15 +655,20 @@ const initInquiryForm = () => {
             }
 
             const cities = window.edgeServiceAreas?.[provinceSelect.value.trim()] || [];
-            citySelect.disabled = cities.length === 0;
-            citySelect.placeholder = cities.length === 0 ? 'Select province first' : 'Search or select city / municipality';
+            const provinceReady = isValidProvince();
+            citySelect.disabled = !provinceReady || cities.length === 0;
+            citySelect.placeholder = !provinceReady || cities.length === 0 ? 'Select province first' : 'Search or select city / municipality';
             citySelect.value = '';
+            delete citySelect.dataset.comboboxSelectedValue;
             closeCombobox(citySelect);
             syncBarangayState();
         };
 
         bindCombobox(provinceSelect, () => Object.keys(window.edgeServiceAreas || {}));
         provinceSelect?.addEventListener('input', () => {
+            if (provinceSelect.value !== (provinceSelect.dataset.comboboxSelectedValue || '')) {
+                delete provinceSelect.dataset.comboboxSelectedValue;
+            }
             syncCityOptions();
         });
         provinceSelect?.addEventListener('change', () => {
@@ -765,45 +805,75 @@ const initInquiryForm = () => {
             syncOtherServiceField();
         }
 
-        const saveInquiryDraft = () => {
-            const draft = {};
-            inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
-                draft[field.name] = field.value;
-            });
-            localStorage.setItem(draftKey, JSON.stringify(draft));
-        };
+const saveInquiryDraft = () => {
+    const draft = {};
 
-        const restoreInquiryDraft = () => {
-            if (window.edgeInquiryStatus === 'success') {
-                localStorage.removeItem(draftKey);
-                return;
+    inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
+        if (field.name === 'inquiry_form_token') {
+            return;
+        }
+
+        draft[field.name] = field.value;
+    });
+
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+};
+
+const restoreInquiryDraft = () => {
+    if (window.edgeInquiryStatus === 'success') {
+        localStorage.removeItem(draftKey);
+        return;
+    }
+
+    let draft = {};
+    try {
+        draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+    } catch (error) {
+        localStorage.removeItem(draftKey);
+        return;
+    }
+
+    delete draft.inquiry_form_token;
+
+    if (Object.keys(draft).length === 0) {
+        return;
+    }
+
+    const provinceDraft = typeof draft.province === 'string' && window.edgeServiceAreas?.[draft.province]
+        ? draft.province
+        : '';
+    const cityDraft = provinceDraft && typeof draft.city_municipality === 'string'
+        && (window.edgeServiceAreas?.[provinceDraft] || []).includes(draft.city_municipality)
+        ? draft.city_municipality
+        : '';
+    const barangayDraft = provinceDraft && cityDraft && typeof draft.barangay === 'string'
+        && (window.edgeServiceBarangays?.[provinceDraft]?.[cityDraft] || []).includes(draft.barangay)
+        ? draft.barangay
+        : '';
+
+    inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
+        if (
+            field.name !== 'inquiry_form_token'
+            && !['province', 'city_municipality', 'barangay'].includes(field.name)
+            && Object.prototype.hasOwnProperty.call(draft, field.name)
+        ) {
+            field.value = draft[field.name];
+        }
+    });
+
+            if (provinceSelect && provinceDraft) {
+                provinceSelect.value = provinceDraft;
+                provinceSelect.dataset.comboboxSelectedValue = provinceDraft;
             }
-
-            let draft = {};
-            try {
-                draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
-            } catch (error) {
-                localStorage.removeItem(draftKey);
-                return;
-            }
-
-            if (Object.keys(draft).length === 0) {
-                return;
-            }
-
-            inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
-                if (Object.prototype.hasOwnProperty.call(draft, field.name)) {
-                    field.value = draft[field.name];
-                }
-            });
-
             syncCityOptions();
-            if (citySelect && draft.city_municipality) {
-                citySelect.value = draft.city_municipality;
+            if (citySelect && cityDraft) {
+                citySelect.value = cityDraft;
+                citySelect.dataset.comboboxSelectedValue = cityDraft;
             }
             syncBarangayState();
-            if (barangayInput && draft.barangay) {
-                barangayInput.value = draft.barangay;
+            if (barangayInput && barangayDraft) {
+                barangayInput.value = barangayDraft;
+                barangayInput.dataset.comboboxSelectedValue = barangayDraft;
             }
             syncOtherServiceField();
 
@@ -944,7 +1014,7 @@ const initInquiryForm = () => {
             if (barangayInput && !isValidCity()) {
                 setFieldError(barangayInput, 'Please select a valid city first.');
                 firstInvalidField = firstInvalidField || barangayInput;
-            } else if (barangayInput && !getBarangaySuggestions().includes(barangayInput.value.trim())) {
+            } else if (barangayInput && !isValidBarangay()) {
                 setFieldError(barangayInput, 'Please select a valid barangay under the selected city.');
                 firstInvalidField = firstInvalidField || barangayInput;
             }

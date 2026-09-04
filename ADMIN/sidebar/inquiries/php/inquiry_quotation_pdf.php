@@ -16,6 +16,9 @@ if (!$quotation) {
 
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
+$quotationTimestamp = strtotime((string)($quotation['created_at'] ?? '')) ?: time();
+$quotationDate = date('M j, Y', $quotationTimestamp);
+$validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -58,7 +61,7 @@ $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
             </div>
             <div>
                 <span>Date</span>
-                <strong><?php echo date('M j, Y'); ?></strong>
+                <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <span>Prepared By</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
@@ -79,7 +82,19 @@ $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
             </div>
             <div class="quote-info-card">
                 <span>Inspection Schedule</span>
-                <strong><?php echo htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                <strong>
+                    <?php echo empty($quotation['scheduled_at'])
+                        ? 'To be scheduled after client acceptance'
+                        : htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?>
+                </strong>
+            </div>
+            <div class="quote-info-card">
+                <span>Valid Until</span>
+                <strong><?php echo htmlspecialchars($validUntil, ENT_QUOTES, 'UTF-8'); ?></strong>
+            </div>
+            <div class="quote-info-card">
+                <span>Project Timeline</span>
+                <strong>To be confirmed after site inspection</strong>
             </div>
             <div class="quote-info-card quote-info-card--wide">
                 <span>Site Address</span>
@@ -138,7 +153,7 @@ $isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
         <footer class="quote-footer">
             <div>
                 <strong>Notes</strong>
-                <p>This quotation is based on the site inspection costing and is subject to final client confirmation.</p>
+                <p>This quotation uses the validated scope and itemized costs. New findings during site inspection may require a revised quotation. The payment schedule will be confirmed in the written agreement.</p>
             </div>
             <div>
                 <strong>Approval</strong>

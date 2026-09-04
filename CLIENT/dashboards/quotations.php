@@ -73,7 +73,7 @@ require_once __DIR__ . '/../layout/header.php';
             <div>
                 <p class="quotation-kicker">Client Quotations</p>
                 <h1>Review pricing, scope, and delivery before you commit.</h1>
-                <p>If the quotation looks high or the scope does not feel right, the safest flow is to reject it with a clear note so the engineer can revise and resend a cleaner version.</p>
+                <p>If the price or scope needs changes, send a clear revision note so Admin can update and resend the quotation.</p>
             </div>
             <div class="quotation-stat-grid">
                 <div class="quotation-stat">

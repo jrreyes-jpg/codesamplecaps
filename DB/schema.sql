@@ -214,7 +214,7 @@ CREATE TABLE `foreman_manual_reports` (
 CREATE TABLE `inquiry_quotation_drafts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `inquiry_id` int(11) NOT NULL,
-  `inspection_id` int(11) NOT NULL,
+  `inspection_id` int(11) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
   `quotation_no` varchar(80) NOT NULL,
   `status` varchar(40) NOT NULL DEFAULT 'Draft',

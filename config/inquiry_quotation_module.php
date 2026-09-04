@@ -164,7 +164,7 @@ function inquiry_quote_fetch_full(mysqli $conn, int $draftId): ?array
             si.engineer_findings,
             si.risk_notes,
             si.client_requests,
-            e.full_name AS engineer_name,
+            COALESCE(e.full_name, creator.full_name) AS engineer_name,
             a.full_name AS approved_by_name,
             inquiry.client_name,
             inquiry.company_name,
@@ -179,8 +179,9 @@ function inquiry_quote_fetch_full(mysqli $conn, int $draftId): ?array
             inquiry.preferred_inspection_date
          FROM inquiry_quotation_drafts q
          INNER JOIN service_inquiries inquiry ON inquiry.id = q.inquiry_id
-         INNER JOIN site_inspections si ON si.id = q.inspection_id
-         INNER JOIN users e ON e.id = si.engineer_id
+         LEFT JOIN site_inspections si ON si.id = q.inspection_id
+         LEFT JOIN users e ON e.id = si.engineer_id
+         LEFT JOIN users creator ON creator.id = q.created_by
          LEFT JOIN users a ON a.id = q.approved_by
          WHERE q.id = ?
          LIMIT 1"
@@ -334,11 +335,12 @@ function inquiry_quote_fetch_for_client(mysqli $conn, int $clientId): array
             inquiry.service_category,
             inquiry.site_address,
             si.engineer_id,
-            e.full_name AS engineer_name
+            COALESCE(e.full_name, creator.full_name) AS engineer_name
          FROM inquiry_quotation_drafts q
          INNER JOIN service_inquiries inquiry ON inquiry.id = q.inquiry_id
-         INNER JOIN site_inspections si ON si.id = q.inspection_id
-         INNER JOIN users e ON e.id = si.engineer_id
+         LEFT JOIN site_inspections si ON si.id = q.inspection_id
+         LEFT JOIN users e ON e.id = si.engineer_id
+         LEFT JOIN users creator ON creator.id = q.created_by
          WHERE LOWER(inquiry.email) = ?
          AND q.status IN ('sent', 'accepted', 'revision_requested', 'rejected')
          ORDER BY q.updated_at DESC, q.id DESC"

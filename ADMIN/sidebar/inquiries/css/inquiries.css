@@ -888,6 +888,13 @@
     min-width: 92px;
 }
 
+.inquiry-modal__primary-action {
+    min-height: 36px;
+    padding: 8px 14px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
 .inquiry-modal__tools form {
     margin: 0;
 }

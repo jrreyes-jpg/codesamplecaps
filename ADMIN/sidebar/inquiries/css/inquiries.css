@@ -586,11 +586,32 @@
 
 .inquiry-review-form {
     display: grid;
+    grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
+    grid-template-areas:
+        "status notes"
+        "actions notes";
     gap: 10px;
+    align-items: start;
     padding: 14px;
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 14px;
     background: #ffffff;
+}
+
+.inquiry-review-form__status {
+    grid-area: status;
+}
+
+.inquiry-review-form__notes {
+    grid-area: notes;
+}
+
+.inquiry-review-form__notes textarea {
+    min-height: 132px;
+}
+
+.inquiry-review-form__actions {
+    grid-area: actions;
 }
 
 .inquiry-schedule-form {
@@ -775,9 +796,12 @@
 }
 
 .inquiry-modal__panel {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
     width: min(1180px, calc(100vw - 48px));
-    max-height: min(780px, calc(100vh - 48px));
-    overflow: auto;
+    height: min(780px, calc(100vh - 48px));
+    min-height: min(560px, calc(100vh - 48px));
+    overflow: hidden;
     border-radius: 24px;
     background: #f8fafc;
     border: 1px solid rgba(226, 232, 240, 0.9);
@@ -786,8 +810,7 @@
 }
 
 .inquiry-modal__head {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 2;
     display: grid;
     grid-template-columns: minmax(420px, 1fr) fit-content(620px) auto;
@@ -901,8 +924,7 @@
 }
 
 .inquiry-modal-tabs {
-    position: sticky;
-    top: 82px;
+    position: relative;
     z-index: 2;
     display: flex;
     gap: 8px;
@@ -946,13 +968,17 @@
 }
 
 .inquiry-modal-panels {
+    min-height: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 18px;
 }
 
 .inquiry-tab-panel {
     display: grid;
     gap: 12px;
-    min-height: 360px;
+    min-height: 100%;
     align-content: start;
 }
 
@@ -1059,7 +1085,7 @@
 .inquiry-tab-panel.inquiry-expanded-actions {
     border: 0;
     background: transparent;
-    min-height: 360px;
+    min-height: 100%;
     padding: 0;
 }
 
@@ -1225,7 +1251,8 @@ body.inquiry-modal-open {
 
     .inquiry-modal__panel {
         width: calc(100vw - 24px);
-        max-height: calc(100vh - 24px);
+        height: calc(100vh - 24px);
+        min-height: 0;
     }
 
     .inquiry-modal__head {
@@ -1235,6 +1262,14 @@ body.inquiry-modal-open {
 
     .inquiry-modal__tools {
         justify-content: flex-end;
+    }
+
+    .inquiry-review-form {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "status"
+            "notes"
+            "actions";
     }
 
     .inquiry-costing-table__row,

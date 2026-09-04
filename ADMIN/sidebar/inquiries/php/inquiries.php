@@ -1242,7 +1242,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <form method="POST" class="inquiry-review-form">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                         <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                        <label>
+                                        <label class="inquiry-review-form__status">
                                             <span>Status</span>
                                             <select name="status" required>
                                                 <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
@@ -1252,11 +1252,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php endforeach; ?>
                                             </select>
                                         </label>
-                                        <label>
+                                        <label class="inquiry-review-form__notes">
                                             <span>Admin Notes</span>
-                                            <textarea name="admin_notes" rows="2" placeholder="Call result, budget, seriousness, next step..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                            <textarea name="admin_notes" rows="5" placeholder="Call result, budget, seriousness, next step..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                         </label>
-                                        <div class="inquiry-review-actions">
+                                        <div class="inquiry-review-actions inquiry-review-form__actions">
                                             <button type="submit" class="btn-primary">Save Review</button>
                                         </div>
                                     </form>

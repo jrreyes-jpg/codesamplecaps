@@ -980,6 +980,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </div>
                                     <?php endif; ?>
                                     <div class="inquiry-modal__tools">
+                                        <?php if ($currentStatus === 'Verified Lead' && !$quotationDraft && empty($inquiry['archived_at'])): ?>
+                                            <a class="btn-primary inquiry-modal__primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
+                                        <?php endif; ?>
                                         <?php if (empty($inquiry['archived_at'])): ?>
                                             <button type="button" class="inquiry-icon-button inquiry-icon-button--archive" data-tooltip="Archive inquiry" data-archive-modal-open="archiveModal<?php echo (int)$inquiry['id']; ?>" aria-label="Archive inquiry">
                                                 <span aria-hidden="true">&#8631;</span>
@@ -1213,8 +1216,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </form>
                                     <?php elseif ($currentStatus === 'Verified Lead'): ?>
                                         <div class="inquiry-empty">
-                                            Create the quotation before assigning an Engineer or setting the inspection date.
-                                            <a class="btn-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
+                                            Create the quotation before assigning an Engineer or setting the inspection date. Use the Create Quotation button at the top-right.
                                         </div>
                                     <?php else: ?>
                                         <div class="inquiry-empty">Quotation is not available for this inquiry.</div>
@@ -1254,12 +1256,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <button type="submit" class="btn-primary">Save Review</button>
                                         </div>
                                     </form>
-
-                                    <?php if ($currentStatus === 'Verified Lead' && !$quotationDraft): ?>
-                                        <div class="inquiry-review-actions">
-                                            <a class="btn-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
-                                        </div>
-                                    <?php endif; ?>
 
                                     <?php if ($canScheduleInspection && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <form method="POST" class="inquiry-schedule-form">

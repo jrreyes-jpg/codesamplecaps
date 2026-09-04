@@ -559,8 +559,8 @@
 }
 
 .inquiry-detail {
-    padding: 12px;
-    border-radius: 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
     background: #ffffff;
     border: 1px solid #e2e8f0;
 }
@@ -578,8 +578,9 @@
 
 .inquiry-detail strong {
     display: block;
-    margin-top: 4px;
+    margin-top: 2px;
     color: #0f172a;
+    line-height: 1.35;
     overflow-wrap: anywhere;
 }
 

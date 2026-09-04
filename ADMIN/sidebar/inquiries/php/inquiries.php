@@ -868,6 +868,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
                     <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : $currentStatus; ?>
+                    <?php
+                        $addressParts = array_filter([
+                            trim((string)($inquiry['site_address'] ?? '')),
+                            trim((string)($inquiry['barangay'] ?? '')),
+                            trim((string)($inquiry['city_municipality'] ?? '')),
+                            trim((string)($inquiry['province'] ?? '')),
+                        ], static fn(string $part): bool => $part !== '');
+                        $fullAddress = $addressParts ? implode(', ', $addressParts) : 'Not set';
+                    ?>
                     <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
                     <?php
                         $nextActionLabel = 'Review Inquiry';
@@ -959,8 +968,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>
                                             </span>
@@ -1029,13 +1036,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Province</span><strong><?php echo htmlspecialchars((string)($inquiry['province'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>City / Municipality</span><strong><?php echo htmlspecialchars((string)($inquiry['city_municipality'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Barangay / Landmark</span><strong><?php echo htmlspecialchars((string)($inquiry['barangay'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail inquiry-detail--wide"><span>Complete Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Reviewed</span><strong><?php echo htmlspecialchars(!empty($inquiry['reviewed_at']) ? inquiry_center_format_datetime($inquiry['reviewed_at']) : 'Not yet', ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail inquiry-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)$inquiry['site_address'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     </div>
 
                                     <div class="inquiry-description">

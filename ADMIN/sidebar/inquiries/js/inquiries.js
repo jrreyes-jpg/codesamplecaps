@@ -613,6 +613,62 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const quotationCreate = document.querySelector('[data-quotation-create]');
+    if (quotationCreate) {
+        const form = quotationCreate.querySelector('[data-quotation-create-form]');
+        const items = quotationCreate.querySelector('[data-quotation-items]');
+        const template = quotationCreate.querySelector('[data-quotation-item-template]');
+        const addButton = quotationCreate.querySelector('[data-quotation-add-item]');
+        const subtotalOutput = quotationCreate.querySelector('[data-quotation-subtotal]');
+        const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
+        const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
+        const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
+
+        const updateQuotationPreview = function () {
+            let subtotal = 0;
+            items?.querySelectorAll('[data-quotation-item]').forEach(function (item) {
+                const quantity = Number.parseFloat(item.querySelector('input[name="quantity[]"]')?.value || '0');
+                const unitCost = Number.parseFloat(item.querySelector('input[name="unit_cost[]"]')?.value || '0');
+                subtotal += Math.max(0, quantity) * Math.max(0, unitCost);
+            });
+
+            const margin = Number.parseFloat(marginInput?.value || '0');
+            const profit = subtotal * (Math.max(0, margin) / 100);
+
+            if (subtotalOutput) subtotalOutput.textContent = subtotal.toFixed(2);
+            if (profitOutput) profitOutput.textContent = profit.toFixed(2);
+            if (totalOutput) totalOutput.textContent = (subtotal + profit).toFixed(2);
+
+            const rows = items?.querySelectorAll('[data-quotation-item]') || [];
+            rows.forEach(function (row) {
+                const removeButton = row.querySelector('[data-quotation-remove-item]');
+                if (removeButton) removeButton.disabled = rows.length === 1;
+            });
+        };
+
+        addButton?.addEventListener('click', function () {
+            if (!items || !template || items.children.length >= 50) {
+                return;
+            }
+
+            items.appendChild(template.content.cloneNode(true));
+            updateQuotationPreview();
+        });
+
+        items?.addEventListener('click', function (event) {
+            const removeButton = event.target.closest('[data-quotation-remove-item]');
+            if (!removeButton || items.querySelectorAll('[data-quotation-item]').length <= 1) {
+                return;
+            }
+
+            removeButton.closest('[data-quotation-item]')?.remove();
+            updateQuotationPreview();
+        });
+
+        form?.addEventListener('input', updateQuotationPreview);
+        updateQuotationPreview();
+    }
+
     const queryParams = new URLSearchParams(window.location.search);
     const urlOpenModalId = queryParams.get('open');
     if (urlOpenModalId) {

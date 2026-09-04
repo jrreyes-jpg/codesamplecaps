@@ -2,6 +2,25 @@
 // Official barangay lookup table. Import PSGC/PSA barangays here for accuracy.
 require_once __DIR__ . '/service_areas.php';
 
+function service_barangay_display_name(string $barangay): string
+{
+    $name = service_area_title_case($barangay);
+    $fixes = [
+        'Banadero' => 'Bañadero',
+    ];
+
+    return $fixes[$name] ?? $name;
+}
+
+function service_barangay_storage_name(string $barangay): string
+{
+    $fixes = [
+        'Bañadero' => 'Banadero',
+    ];
+
+    return $fixes[$barangay] ?? $barangay;
+}
+
 function service_barangays_ensure_table(mysqli $conn): void
 {
     $conn->query(
@@ -77,7 +96,7 @@ function service_barangays_import_from_reference(mysqli $conn): int
 
         $province = $cityByCode[$cityCode]['province'];
         $city = $cityByCode[$cityCode]['city'];
-        $barangayName = service_area_title_case((string)($barangay['brgyDesc'] ?? $barangay['barangay'] ?? ''));
+        $barangayName = service_barangay_display_name((string)($barangay['brgyDesc'] ?? $barangay['barangay'] ?? ''));
         $psgcCode = (string)($barangay['psgcCode'] ?? $barangay['brgyCode'] ?? '');
         if ($province === '' || $city === '' || $barangayName === '') {
             continue;
@@ -112,7 +131,15 @@ function service_barangays_grouped(mysqli $conn): array
     while ($row = $result->fetch_assoc()) {
         $province = (string)$row['province'];
         $city = (string)$row['city_municipality'];
-        $rows[$province][$city][] = (string)$row['barangay'];
+        $rows[$province][$city][] = service_barangay_display_name((string)$row['barangay']);
+    }
+
+    foreach ($rows as $province => $cities) {
+        foreach ($cities as $city => $barangays) {
+            $barangays = array_values(array_unique($barangays));
+            sort($barangays, SORT_NATURAL | SORT_FLAG_CASE);
+            $rows[$province][$city] = $barangays;
+        }
     }
 
     return $rows;
@@ -121,10 +148,12 @@ function service_barangays_grouped(mysqli $conn): array
 function service_barangay_is_allowed(mysqli $conn, string $province, string $city, string $barangay): bool
 {
     service_barangays_ensure_table($conn);
+    $storageBarangay = service_barangay_storage_name($barangay);
 
     $stmt = $conn->prepare(
         'SELECT 1 FROM service_barangays
-         WHERE province = ? AND city_municipality = ? AND barangay = ?
+         WHERE province = ? AND city_municipality = ?
+         AND (barangay = ? OR barangay = ?)
          LIMIT 1'
     );
 
@@ -132,7 +161,7 @@ function service_barangay_is_allowed(mysqli $conn, string $province, string $cit
         return false;
     }
 
-    $stmt->bind_param('sss', $province, $city, $barangay);
+    $stmt->bind_param('ssss', $province, $city, $barangay, $storageBarangay);
     $stmt->execute();
     return (bool)$stmt->get_result()->fetch_assoc();
 }

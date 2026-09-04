@@ -66,7 +66,7 @@ function inquiry_center_allowed_next_statuses(string $currentStatus): array
     // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
     $rules = [
         'Pending Review' => ['Pending Review', 'Verified Lead', 'Not Qualified'],
-        'Verified Lead' => ['Verified Lead', 'For Inspection', 'Not Qualified'],
+        'Verified Lead' => ['Verified Lead', 'Not Qualified'],
         'For Inspection' => ['For Inspection', 'Verified Lead'],
         'Not Qualified' => ['Not Qualified', 'Pending Review'],
     ];
@@ -324,7 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ['status' => 'approved'],
                     ['status' => 'sent']
                 );
-                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation sent to client.');
+                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation sent to client.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -347,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ['status' => 'revision_requested'],
                     ['status' => 'draft']
                 );
-                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation reopened for revision.');
+                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation reopened for revision.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ['status' => 'draft'],
                     ['status' => 'approved']
                 );
-                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation draft approved.');
+                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation draft approved.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -416,6 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (($_POST['action'] ?? '') === 'schedule_inspection') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $engineerId = (int)($_POST['engineer_id'] ?? 0);
+        $acceptedQuotationId = 0;
         $scheduledAt = trim((string)($_POST['scheduled_at'] ?? ''));
         if ($scheduledAt === '') {
             $scheduleDate = trim((string)($_POST['inspection_date'] ?? ''));
@@ -445,6 +446,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!in_array($currentInquiryStatus, ['Verified Lead', 'For Inspection'], true)) {
                 $error = 'Only verified leads can be scheduled for site inspection.';
+            }
+
+            if ($error === '') {
+                $quotationStmt = $conn->prepare(
+                    'SELECT id, status FROM inquiry_quotation_drafts
+                     WHERE inquiry_id = ?
+                     ORDER BY updated_at DESC, id DESC
+                     LIMIT 1'
+                );
+                if (!$quotationStmt) {
+                    $error = 'Unable to check the quotation status.';
+                } else {
+                    $quotationStmt->bind_param('i', $inquiryId);
+                    $quotationStmt->execute();
+                    $quotationRow = $quotationStmt->get_result()->fetch_assoc();
+                    if (inquiry_quote_normalize_status((string)($quotationRow['status'] ?? '')) !== 'accepted') {
+                        $error = 'Client must accept the quotation before assigning an engineer or scheduling inspection.';
+                    } else {
+                        $acceptedQuotationId = (int)$quotationRow['id'];
+                    }
+                }
             }
         }
 
@@ -480,6 +502,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->bind_param('iissi', $inquiryId, $engineerId, $scheduleValue, $siteNotes, $createdBy);
                 }
                 if ($stmt->execute()) {
+                    $savedInspectionId = $existingInspectionId > 0 ? $existingInspectionId : (int)$conn->insert_id;
+                    $linkQuotation = $conn->prepare(
+                        'UPDATE inquiry_quotation_drafts SET inspection_id = ? WHERE id = ? AND status = ?'
+                    );
+                    if ($linkQuotation && $savedInspectionId > 0 && $acceptedQuotationId > 0) {
+                        $acceptedStatus = 'accepted';
+                        $linkQuotation->bind_param('iis', $savedInspectionId, $acceptedQuotationId, $acceptedStatus);
+                        $linkQuotation->execute();
+                    }
+
                     $updateInquiry = $conn->prepare("UPDATE service_inquiries SET status = 'For Inspection', reviewed_at = NOW() WHERE id = ?");
                     if ($updateInquiry) {
                         $updateInquiry->bind_param('i', $inquiryId);
@@ -836,19 +868,20 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
                     <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : $currentStatus; ?>
-                    <?php $showInspection = $latestInspection || in_array($currentStatus, ['Verified Lead', 'For Inspection'], true); ?>
                     <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
-                    <?php $showQuotation = $quotationDraft || $showCosting; ?>
                     <?php
                         $nextActionLabel = 'Review Inquiry';
                         $nextActionTab = 'actions';
                         $quotationStage = $quotationDraft
                             ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
                             : '';
+                        $canScheduleInspection = $quotationStage === 'accepted';
+                        $showInspection = $latestInspection || $canScheduleInspection;
+                        $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
 
                         if ($quotationStage === 'accepted') {
-                            $nextActionLabel = 'Set Up Project';
-                            $nextActionTab = 'quotation';
+                            $nextActionLabel = $latestInspection ? 'View Inspection' : 'Schedule Inspection';
+                            $nextActionTab = $latestInspection ? 'inspection' : 'actions';
                         } elseif ($quotationStage === 'sent') {
                             $nextActionLabel = 'Waiting for Client';
                             $nextActionTab = 'quotation';
@@ -868,8 +901,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             $nextActionTab = (string)($latestInspection['status'] ?? '') === 'Submitted to Admin' && $showCosting
                                 ? 'costing'
                                 : 'inspection';
-                        } elseif (in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)) {
-                            $nextActionLabel = 'Schedule Inspection';
+                        } elseif ($currentStatus === 'Verified Lead') {
+                            $nextActionLabel = 'Create Quotation';
+                            $nextActionTab = 'quotation';
                         } elseif ($currentStatus === 'Not Qualified') {
                             $nextActionLabel = 'View Review';
                         }
@@ -1177,8 +1211,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </label>
                                             <button type="submit" class="btn-primary">Generate Quotation Draft</button>
                                         </form>
+                                    <?php elseif ($currentStatus === 'Verified Lead'): ?>
+                                        <div class="inquiry-empty">
+                                            Create the quotation before assigning an Engineer or setting the inspection date.
+                                            <a class="btn-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
+                                        </div>
                                     <?php else: ?>
-                                        <div class="inquiry-empty">Engineer costing is needed before generating a quotation.</div>
+                                        <div class="inquiry-empty">Quotation is not available for this inquiry.</div>
                                     <?php endif; ?>
                                 </section>
 
@@ -1216,7 +1255,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </div>
                                     </form>
 
-                                    <?php if (in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
+                                    <?php if ($currentStatus === 'Verified Lead' && !$quotationDraft): ?>
+                                        <div class="inquiry-review-actions">
+                                            <a class="btn-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($canScheduleInspection && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <form method="POST" class="inquiry-schedule-form">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">

@@ -8,11 +8,15 @@ function service_area_luzon_region_codes(): array
 
 function service_area_title_case(string $value): string
 {
-    $value = strtolower(trim($value));
+    $value = trim($value);
+    $value = function_exists('mb_convert_case')
+        ? mb_convert_case(mb_strtolower($value, 'UTF-8'), MB_CASE_TITLE, 'UTF-8')
+        : ucwords(strtolower($value));
+
     return str_replace(
         ['Ncr', 'Car', 'Iv-A', 'Iv-B'],
         ['NCR', 'CAR', 'IV-A', 'IV-B'],
-        ucwords($value)
+        $value
     );
 }
 

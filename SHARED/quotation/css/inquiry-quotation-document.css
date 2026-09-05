@@ -1,0 +1,362 @@
+/* Shared quotation paper layout para pareho ang Admin at Client document. */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #e8eef6;
+    color: #0f172a;
+    font: 13px Arial, sans-serif;
+}
+
+.public-quote-document {
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
+}
+
+.public-quote-document--standalone {
+    width: min(980px, calc(100% - 32px));
+    margin: 16px auto;
+}
+
+.public-quote-document > :not(.public-quote-watermark) {
+    position: relative;
+    z-index: 1;
+}
+
+.public-quote-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    width: 100%;
+    color: #0f766e;
+    font-size: clamp(2.6rem, 8vw, 5.4rem);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-align: center;
+    opacity: 0.08;
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-24deg);
+    user-select: none;
+}
+
+.public-quote-header,
+.public-quote-title-row,
+.public-quote-grid,
+.public-quote-footer {
+    display: grid;
+    gap: 10px;
+}
+
+.public-quote-header {
+    grid-template-columns: minmax(0, 1fr) 210px;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #0f766e;
+}
+
+.public-quote-brand {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.public-quote-brand img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.public-quote-brand strong {
+    display: block;
+    font-size: 0.98rem;
+}
+
+.public-quote-brand span,
+.public-quote-meta-box span,
+.public-quote-title-row span,
+.public-quote-grid span,
+.public-quote-section h2,
+.public-quote-totals span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.public-quote-meta-box {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 12px;
+    background: #f8fafc;
+    text-align: right;
+}
+
+.public-quote-meta-box > strong {
+    color: #0f766e;
+    overflow-wrap: anywhere;
+}
+
+.public-quote-status {
+    justify-self: end;
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 900;
+}
+
+.public-quote-status--sent {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.public-quote-status--approved,
+.public-quote-status--accepted {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.public-quote-status--revision_requested {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.public-quote-status--rejected {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.public-quote-status--draft {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.public-quote-title-row {
+    grid-template-columns: minmax(0, 1fr) 190px;
+    margin-top: 16px;
+}
+
+.public-quote-title-row h1 {
+    margin: 2px 0 0;
+    font-size: 1.55rem;
+}
+
+.public-quote-title-row p {
+    margin: 2px 0 0;
+    color: #475569;
+}
+
+.public-quote-title-row > div:last-child {
+    display: grid;
+    gap: 3px;
+}
+
+.public-quote-title-row > div:last-child span:not(:first-child) {
+    margin-top: 6px;
+}
+
+.public-quote-prepared-by {
+    line-height: 1.3;
+    text-align: right;
+}
+
+.public-quote-prepared-by small {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.public-quote-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 14px;
+}
+
+.public-quote-grid > div {
+    min-width: 0;
+    padding: 9px 4px;
+    border-bottom: 1px solid #dbe5f1;
+}
+
+.public-quote-grid__wide {
+    grid-column: 1 / -1;
+}
+
+.public-quote-grid strong {
+    display: block;
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+}
+
+.public-quote-section {
+    margin-top: 16px;
+}
+
+.public-quote-section h2 {
+    margin: 0 0 7px;
+    font-size: 0.86rem;
+}
+
+.public-quote-section > p {
+    margin: 0;
+    padding: 10px;
+    border-bottom: 1px solid #dbe5f1;
+    color: #334155;
+    line-height: 1.45;
+}
+
+.public-quote-table-wrap {
+    overflow-x: auto;
+}
+
+.public-quote-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #dbe5f1;
+}
+
+.public-quote-table th,
+.public-quote-table td {
+    padding: 8px;
+    border-bottom: 1px solid #dbe5f1;
+    text-align: left;
+    vertical-align: top;
+}
+
+.public-quote-table th {
+    background: #0f766e;
+    color: #fff;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.public-quote-table th:nth-child(n+3),
+.public-quote-table td:nth-child(n+3) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.public-quote-table small {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+}
+
+.public-quote-totals {
+    display: grid;
+    width: min(440px, 100%);
+    margin: 12px 0 0 auto;
+    overflow: hidden;
+    border: 1px solid #dbe5f1;
+    border-radius: 10px;
+}
+
+.public-quote-totals > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #dbe5f1;
+    background: #f8fafc;
+}
+
+.public-quote-totals > div:last-child {
+    border-bottom: 0;
+}
+
+.public-quote-grand-total {
+    background: #ecfdf5 !important;
+}
+
+.public-quote-grand-total strong {
+    color: #166534;
+    font-size: 1.02rem;
+}
+
+.public-quote-footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #dbe5f1;
+}
+
+.public-quote-footer p {
+    margin: 4px 0 0;
+    color: #475569;
+    line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+    .public-quote-document {
+        padding: 16px;
+    }
+
+    .public-quote-document--standalone {
+        width: min(100% - 20px, 980px);
+    }
+
+    .public-quote-header,
+    .public-quote-title-row,
+    .public-quote-grid,
+    .public-quote-footer {
+        grid-template-columns: 1fr;
+    }
+
+    .public-quote-meta-box,
+    .public-quote-prepared-by {
+        text-align: left;
+    }
+
+    .public-quote-status {
+        justify-self: start;
+    }
+
+    .public-quote-grid__wide {
+        grid-column: auto;
+    }
+}
+
+@page {
+    size: A4;
+    margin: 12mm;
+}
+
+@media print {
+    body {
+        background: #fff;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .public-quote-document,
+    .public-quote-document--standalone {
+        width: 100%;
+        margin: 0;
+        overflow: visible;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .public-quote-table-wrap {
+        overflow: visible;
+    }
+
+    .public-quote-table tr,
+    .public-quote-totals,
+    .public-quote-footer {
+        break-inside: avoid;
+    }
+}

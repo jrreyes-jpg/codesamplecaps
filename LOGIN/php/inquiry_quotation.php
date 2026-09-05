@@ -79,6 +79,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quotation Review - Edge Automation</title>
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css">
     <link rel="stylesheet" href="/codesamplecaps/LOGIN/css/inquiry_quotation.css">
     <script src="/codesamplecaps/LOGIN/js/inquiry_quotation.js" defer></script>
 </head>

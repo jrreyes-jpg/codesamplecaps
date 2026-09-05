@@ -44,6 +44,16 @@ body {
     color: #ffffff;
 }
 
+.quote-actions .quote-edit-link {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+.quote-actions .quote-edit-link:hover,
+.quote-actions .quote-edit-link:focus-visible {
+    background: #d97706;
+}
+
 .quote-page {
     width: min(980px, calc(100vw - 32px));
     margin: 16px auto;

@@ -278,14 +278,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         <?php endif; ?>
 
-        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back" data-inquiry-history-back>Back to Inquiries</a>
+        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back" data-inquiry-history-back>&larr; Back to Inquiries</a>
 
         <section class="quotation-create-card">
             <div class="quotation-create-heading">
                 <div>
                     <span class="reports-kicker"><?php echo $isEditMode ? 'Quotation Draft' : 'Verified Lead'; ?></span>
                     <h1><?php echo $isEditMode ? 'Edit Quotation' : 'Create Quotation'; ?></h1>
-                    <p><?php echo $isEditMode ? 'Update the draft scope costs before approval and sending.' : 'Add the clear scope and itemized price before sending it to the client.'; ?></p>
+                    <?php if ($isEditMode): ?>
+                        <p>Update the draft scope costs before approval and sending.</p>
+                    <?php endif; ?>
                 </div>
                 <div class="quotation-create-number">
                     <span>Quotation No.</span>
@@ -315,7 +317,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <?php endif; ?>
 
                 <div class="quotation-create-section-head">
-                    <div><h2>Cost Breakdown</h2><p>List the materials, labor, equipment, or service costs.</p></div>
+                    <h2>Cost Breakdown</h2>
                 </div>
 
                 <div class="quotation-create-items" data-quotation-items>

@@ -138,11 +138,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     )));
     $inquiryIds = array_slice($inquiryIds, 0, 100);
     $statuses = [];
-    $latestInquiryId = 0;
+    $pendingUnreadInquiryCount = 0;
 
     if (inquiry_center_has_table($conn, 'service_inquiries')) {
-        $latestInquiryResult = $conn->query('SELECT COALESCE(MAX(id), 0) AS latest_id FROM service_inquiries');
-        $latestInquiryId = (int)(($latestInquiryResult ? $latestInquiryResult->fetch_assoc() : [])['latest_id'] ?? 0);
+        $pendingUnreadResult = $conn->query(
+            "SELECT COUNT(*) AS total
+             FROM service_inquiries
+             WHERE status = 'Pending Review' AND viewed_at IS NULL"
+        );
+        $pendingUnreadInquiryCount = (int)(($pendingUnreadResult ? $pendingUnreadResult->fetch_assoc() : [])['total'] ?? 0);
     }
 
     if ($inquiryIds && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
@@ -176,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     echo json_encode([
         'success' => true,
         'quotations' => array_values($statuses),
-        'latest_inquiry_id' => $latestInquiryId,
+        'pending_unread_inquiry_count' => $pendingUnreadInquiryCount,
     ]);
     exit();
 }
@@ -816,10 +820,14 @@ if ($costingReviewResult) {
 }
 
 $quotationDraftByInquiry = inquiry_quote_fetch_by_inquiry($conn);
-$latestInquiryId = 0;
+$pendingUnreadInquiryCount = 0;
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
-    $latestInquiryResult = $conn->query('SELECT COALESCE(MAX(id), 0) AS latest_id FROM service_inquiries');
-    $latestInquiryId = (int)(($latestInquiryResult ? $latestInquiryResult->fetch_assoc() : [])['latest_id'] ?? 0);
+    $pendingUnreadResult = $conn->query(
+        "SELECT COUNT(*) AS total
+         FROM service_inquiries
+         WHERE status = 'Pending Review' AND viewed_at IS NULL"
+    );
+    $pendingUnreadInquiryCount = (int)(($pendingUnreadResult ? $pendingUnreadResult->fetch_assoc() : [])['total'] ?? 0);
 }
 
 $pendingCount = 0;
@@ -878,7 +886,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
 <main class="main-content admin-dashboard-content">
-    <div class="inquiries-shell" data-latest-inquiry-id="<?php echo $latestInquiryId; ?>">
+    <div class="inquiries-shell" data-pending-unread-inquiry-count="<?php echo $pendingUnreadInquiryCount; ?>">
         <?php if ($message || $error): ?>
             <div
                 class="inquiry-toast <?php echo $message ? 'inquiry-toast--success' : 'inquiry-toast--error'; ?>"

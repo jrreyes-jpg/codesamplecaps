@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const archiveOpenButtons = document.querySelectorAll('[data-archive-modal-open]');
     const toast = document.querySelector('[data-inquiry-toast]');
     const inquiryShell = document.querySelector('.inquiries-shell');
-    let latestKnownInquiryId = Number.parseInt(inquiryShell?.dataset.latestInquiryId || '0', 10);
+    let pendingUnreadInquiryCount = Number.parseInt(inquiryShell?.dataset.pendingUnreadInquiryCount || '0', 10);
     let lastOpenButton = null;
     let pendingConfirmForm = null;
 
@@ -656,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let quotationPollInProgress = false;
 
     const pollQuotationStatuses = function () {
-        if (quotationPollInProgress || document.hidden || !inquiryShell?.hasAttribute('data-latest-inquiry-id')) {
+        if (quotationPollInProgress || document.hidden || !inquiryShell?.hasAttribute('data-pending-unread-inquiry-count')) {
             return;
         }
 
@@ -686,15 +686,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const latestInquiryId = Number.parseInt(data.latest_inquiry_id || '0', 10);
-                if (latestInquiryId > latestKnownInquiryId) {
-                    latestKnownInquiryId = latestInquiryId;
-                    if (inquiryShell) {
-                        inquiryShell.dataset.latestInquiryId = String(latestInquiryId);
-                    }
+                const currentPendingUnreadCount = Number.parseInt(data.pending_unread_inquiry_count || '0', 10);
+                if (currentPendingUnreadCount > pendingUnreadInquiryCount) {
                     showNewInquiryBellDot();
                     showLiveInquiryToast('Notification: A new client inquiry has just been received!');
                 }
+                pendingUnreadInquiryCount = currentPendingUnreadCount;
+                inquiryShell.dataset.pendingUnreadInquiryCount = String(currentPendingUnreadCount);
 
                 data.quotations.forEach(function (quotation) {
                     const modal = document.querySelector('.inquiry-modal[data-inquiry-id="' + String(quotation.inquiry_id) + '"]');

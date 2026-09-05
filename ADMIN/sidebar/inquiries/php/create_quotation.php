@@ -279,7 +279,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
         <section class="quotation-create-card">
-            <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back" data-inquiry-history-back>&larr; Back to Inquiries</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>" class="btn-secondary quotation-create-back">&larr; Back to Inquiries</a>
 
             <div class="quotation-create-heading">
                 <div>
@@ -358,8 +358,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? '' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary" data-quotation-cancel>Cancel</a>
+                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>
         </section>

@@ -32,6 +32,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 <body>
     <div class="quote-actions">
         <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Back to Inquiries</a>
+        <?php if ($quoteStatus === 'draft'): ?>
+            <a class="quote-edit-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $draftId; ?>">Edit Details</a>
+        <?php endif; ?>
         <button type="button" data-print-quotation>Print / Save as PDF</button>
     </div>
 

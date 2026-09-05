@@ -4,7 +4,37 @@ require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 
-$inquiryId = (int)($_GET['inquiry_id'] ?? $_POST['inquiry_id'] ?? 0);
+$editId = (int)($_GET['edit_id'] ?? $_POST['edit_id'] ?? 0);
+$isEditMode = $editId > 0;
+$quotationDraft = null;
+$savedItems = [];
+
+if ($isEditMode) {
+    $draftStmt = $conn->prepare(
+        'SELECT id, inquiry_id, quotation_no, status, subtotal, profit_margin_percent, profit_amount, grand_total
+         FROM inquiry_quotation_drafts
+         WHERE id = ? LIMIT 1'
+    );
+    if (!$draftStmt) {
+        http_response_code(500);
+        exit('Unable to load quotation draft.');
+    }
+
+    $draftStmt->bind_param('i', $editId);
+    $draftStmt->execute();
+    $quotationDraft = $draftStmt->get_result()->fetch_assoc();
+
+    if (!$quotationDraft || inquiry_quote_normalize_status((string)$quotationDraft['status']) !== 'draft') {
+        $_SESSION['inquiry_center_flash'] = 'Only draft quotations can be edited.';
+        header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
+        exit();
+    }
+
+    $inquiryId = (int)$quotationDraft['inquiry_id'];
+    $savedItems = inquiry_quote_fetch_items($conn, $editId);
+} else {
+    $inquiryId = (int)($_GET['inquiry_id'] ?? $_POST['inquiry_id'] ?? 0);
+}
 
 if ($inquiryId <= 0) {
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
@@ -27,35 +57,47 @@ $inquiryStmt->bind_param('i', $inquiryId);
 $inquiryStmt->execute();
 $inquiry = $inquiryStmt->get_result()->fetch_assoc();
 
-if (!$inquiry || (string)$inquiry['status'] !== 'Verified Lead') {
+if (!$inquiry || (!$isEditMode && (string)$inquiry['status'] !== 'Verified Lead')) {
     $_SESSION['inquiry_center_flash'] = 'Only verified leads can have quotations created.';
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
     exit();
 }
 
-$existingStmt = $conn->prepare(
-    'SELECT id FROM inquiry_quotation_drafts WHERE inquiry_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1'
-);
-if ($existingStmt) {
-    $existingStmt->bind_param('i', $inquiryId);
-    $existingStmt->execute();
-    if ($existingStmt->get_result()->fetch_assoc()) {
-        $_SESSION['inquiry_center_flash'] = 'This inquiry already has a quotation.';
-        header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . $inquiryId);
-        exit();
+if (!$isEditMode) {
+    $existingStmt = $conn->prepare(
+        'SELECT id FROM inquiry_quotation_drafts WHERE inquiry_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1'
+    );
+    if ($existingStmt) {
+        $existingStmt->bind_param('i', $inquiryId);
+        $existingStmt->execute();
+        if ($existingStmt->get_result()->fetch_assoc()) {
+            $_SESSION['inquiry_center_flash'] = 'This inquiry already has a quotation.';
+            header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . $inquiryId);
+            exit();
+        }
     }
 }
 
 $csrfToken = auth_csrf_token('admin_create_inquiry_quotation');
-$quotationNo = inquiry_quote_generate_number();
+$quotationNo = $isEditMode
+    ? (string)$quotationDraft['quotation_no']
+    : inquiry_quote_generate_number();
 $error = '';
-$postedTypes = is_array($_POST['item_type'] ?? null) ? $_POST['item_type'] : ['material'];
-$postedNames = is_array($_POST['item_name'] ?? null) ? $_POST['item_name'] : [''];
-$postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : ['1'];
-$postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : ['unit'];
-$postedUnitCosts = is_array($_POST['unit_cost'] ?? null) ? $_POST['unit_cost'] : [''];
-$postedNotes = is_array($_POST['item_notes'] ?? null) ? $_POST['item_notes'] : [''];
-$marginPercent = (float)($_POST['profit_margin_percent'] ?? 15);
+$defaultItems = $savedItems ?: [[
+    'item_type' => 'material',
+    'item_name' => '',
+    'quantity' => '1',
+    'unit' => 'unit',
+    'unit_cost' => '',
+    'notes' => '',
+]];
+$postedTypes = is_array($_POST['item_type'] ?? null) ? $_POST['item_type'] : array_column($defaultItems, 'item_type');
+$postedNames = is_array($_POST['item_name'] ?? null) ? $_POST['item_name'] : array_column($defaultItems, 'item_name');
+$postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : array_column($defaultItems, 'quantity');
+$postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : array_column($defaultItems, 'unit');
+$postedUnitCosts = is_array($_POST['unit_cost'] ?? null) ? $_POST['unit_cost'] : array_column($defaultItems, 'unit_cost');
+$postedNotes = is_array($_POST['item_notes'] ?? null) ? $_POST['item_notes'] : array_column($defaultItems, 'notes');
+$marginPercent = (float)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'admin_create_inquiry_quotation')) {
@@ -119,18 +161,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $conn->begin_transaction();
             try {
-                $stmt = $conn->prepare(
-                    'INSERT INTO inquiry_quotation_drafts
-                     (inquiry_id, inspection_id, quotation_no, subtotal, profit_margin_percent, profit_amount, grand_total, status, created_by)
-                     VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)'
-                );
-                if (!$stmt) {
-                    throw new RuntimeException('Unable to prepare quotation.');
-                }
+                if ($isEditMode) {
+                    $lockStmt = $conn->prepare('SELECT status FROM inquiry_quotation_drafts WHERE id = ? FOR UPDATE');
+                    if (!$lockStmt) {
+                        throw new RuntimeException('Unable to lock quotation draft.');
+                    }
+                    $lockStmt->bind_param('i', $editId);
+                    $lockStmt->execute();
+                    $lockedDraft = $lockStmt->get_result()->fetch_assoc();
+                    if (!$lockedDraft || inquiry_quote_normalize_status((string)$lockedDraft['status']) !== 'draft') {
+                        throw new RuntimeException('Only draft quotations can be edited.');
+                    }
 
-                $stmt->bind_param('isddddsi', $inquiryId, $quotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $status, $adminId);
-                $stmt->execute();
-                $draftId = (int)$conn->insert_id;
+                    $stmt = $conn->prepare(
+                        'UPDATE inquiry_quotation_drafts
+                         SET subtotal = ?, profit_margin_percent = ?, profit_amount = ?, grand_total = ?
+                         WHERE id = ?'
+                    );
+                    if (!$stmt) {
+                        throw new RuntimeException('Unable to prepare quotation update.');
+                    }
+                    $stmt->bind_param('ddddi', $subtotal, $marginPercent, $profitAmount, $grandTotal, $editId);
+                    $stmt->execute();
+                    $draftId = $editId;
+
+                    $deleteItems = $conn->prepare('DELETE FROM inquiry_quotation_items WHERE draft_id = ?');
+                    if (!$deleteItems) {
+                        throw new RuntimeException('Unable to prepare quotation item update.');
+                    }
+                    $deleteItems->bind_param('i', $draftId);
+                    $deleteItems->execute();
+                } else {
+                    $stmt = $conn->prepare(
+                        'INSERT INTO inquiry_quotation_drafts
+                         (inquiry_id, inspection_id, quotation_no, subtotal, profit_margin_percent, profit_amount, grand_total, status, created_by)
+                         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)'
+                    );
+                    if (!$stmt) {
+                        throw new RuntimeException('Unable to prepare quotation.');
+                    }
+
+                    $stmt->bind_param('isddddsi', $inquiryId, $quotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $status, $adminId);
+                    $stmt->execute();
+                    $draftId = (int)$conn->insert_id;
+                }
 
                 $itemStmt = $conn->prepare(
                     'INSERT INTO inquiry_quotation_items
@@ -146,10 +220,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $itemStmt->execute();
                 }
 
-                inquiry_quote_add_history($conn, $draftId, null, 'draft', 'Admin created quotation from verified inquiry.', $adminId, 'admin');
+                if (!$isEditMode) {
+                    inquiry_quote_add_history($conn, $draftId, null, 'draft', 'Admin created quotation from verified inquiry.', $adminId, 'admin');
+                }
                 $conn->commit();
 
-                audit_log_event($conn, $adminId, 'create_inquiry_quotation_direct', 'quotation', $draftId, null, [
+                $oldAuditData = $isEditMode ? [
+                    'subtotal' => (float)$quotationDraft['subtotal'],
+                    'profit_margin_percent' => (float)$quotationDraft['profit_margin_percent'],
+                    'profit_amount' => (float)$quotationDraft['profit_amount'],
+                    'grand_total' => (float)$quotationDraft['grand_total'],
+                ] : null;
+                audit_log_event($conn, $adminId, $isEditMode ? 'update_inquiry_quotation_draft' : 'create_inquiry_quotation_direct', 'quotation', $draftId, $oldAuditData, [
                     'inquiry_id' => $inquiryId,
                     'quotation_no' => $quotationNo,
                     'subtotal' => $subtotal,
@@ -157,19 +239,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'grand_total' => $grandTotal,
                 ]);
 
-                $_SESSION['inquiry_center_flash'] = 'Quotation draft created.';
-                header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . $inquiryId . '&status=Verified+Lead');
+                $_SESSION['inquiry_center_flash'] = $isEditMode ? 'Quotation draft updated.' : 'Quotation draft created.';
+                header(
+                    'Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
+                    . $inquiryId
+                    . '&status=' . rawurlencode((string)$inquiry['status'])
+                );
                 exit();
             } catch (Throwable $throwable) {
                 $conn->rollback();
-                error_log('Direct inquiry quotation failed: ' . $throwable->getMessage());
-                $error = 'Unable to create quotation. Please check the quotation database setup.';
+                error_log('Inquiry quotation save failed: ' . $throwable->getMessage());
+                $error = $isEditMode ? 'Unable to update quotation draft.' : 'Unable to create quotation. Please check the quotation database setup.';
             }
         }
     }
 }
 
-$adminPageTitle = 'Create Quotation - Edge Automation';
+$adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
@@ -197,9 +283,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <section class="quotation-create-card">
             <div class="quotation-create-heading">
                 <div>
-                    <span class="reports-kicker">Verified Lead</span>
-                    <h1>Create Quotation</h1>
-                    <p>Add the clear scope and itemized price before sending it to the client.</p>
+                    <span class="reports-kicker"><?php echo $isEditMode ? 'Quotation Draft' : 'Verified Lead'; ?></span>
+                    <h1><?php echo $isEditMode ? 'Edit Quotation' : 'Create Quotation'; ?></h1>
+                    <p><?php echo $isEditMode ? 'Update the draft scope costs before approval and sending.' : 'Add the clear scope and itemized price before sending it to the client.'; ?></p>
                 </div>
                 <div class="quotation-create-number">
                     <span>Quotation No.</span>
@@ -224,6 +310,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <form method="POST" class="quotation-create-form" data-quotation-create-form>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
+                <?php if ($isEditMode): ?>
+                    <input type="hidden" name="edit_id" value="<?php echo $editId; ?>">
+                <?php endif; ?>
 
                 <div class="quotation-create-section-head">
                     <div><h2>Cost Breakdown</h2><p>List the materials, labor, equipment, or service costs.</p></div>
@@ -264,7 +353,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary">Create Quotation Draft</button>
+                    <button type="submit" class="btn-primary"><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
                     <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary">Cancel</a>
                 </div>
             </form>

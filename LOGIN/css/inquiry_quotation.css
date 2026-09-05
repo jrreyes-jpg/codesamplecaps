@@ -1,11 +1,4 @@
-/*
-|--------------------------------------------------------------------------
-| PUBLIC INQUIRY QUOTATION PAGE
-|--------------------------------------------------------------------------
-| Sakop nito ang secure quotation view para sa prospect/client link:
-| layout, cards, status, table, decision form, and responsive states.
-|--------------------------------------------------------------------------
-*/
+/* Client quotation document at print controls. */
 
 * {
     box-sizing: border-box;
@@ -14,90 +7,121 @@
 body {
     margin: 0;
     min-height: 100vh;
-    font-family: Arial, sans-serif;
-    background: #eefdf5;
+    background: #e8eef6;
     color: #0f172a;
+    font: 13px Arial, sans-serif;
 }
 
 .public-quote-shell {
-    width: min(1100px, calc(100% - 32px));
+    width: min(980px, calc(100% - 32px));
     margin: 0 auto;
-    padding: 36px 0;
+    padding: 24px 0 40px;
 }
 
 .public-quote-card {
-    background: #fff;
-    border: 1px solid #d7eadf;
-    border-radius: 24px;
-    padding: 28px;
-    box-shadow: 0 24px 60px rgba(15, 118, 110, 0.14);
-}
-
-.public-quote-brand,
-.public-quote-header,
-.public-quote-grid,
-.public-quote-actions,
-.public-quote-row {
     display: grid;
     gap: 16px;
 }
 
-.public-quote-brand {
-    grid-template-columns: 58px 1fr;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.public-quote-brand img {
-    width: 58px;
-    height: 58px;
+.public-quote-document {
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
     border-radius: 14px;
-    object-fit: cover;
+    background: #fff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
 }
 
-.public-quote-brand span,
-.public-quote-grid span,
-.public-quote-section h2,
-.public-quote-form span {
-    color: #64748b;
-    font-size: 0.82rem;
-    font-weight: 800;
+.public-quote-document > :not(.public-quote-watermark) {
+    position: relative;
+    z-index: 1;
+}
+
+.public-quote-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    width: 100%;
+    color: #0f766e;
+    font-size: clamp(2.6rem, 8vw, 5.4rem);
+    font-weight: 900;
     letter-spacing: 0.08em;
-    text-transform: uppercase;
+    text-align: center;
+    opacity: 0.08;
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-24deg);
+    user-select: none;
 }
 
-.public-quote-brand strong,
-.public-quote-grid strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 1.1rem;
+.public-quote-header,
+.public-quote-title-row,
+.public-quote-grid,
+.public-quote-footer,
+.public-quote-actions {
+    display: grid;
+    gap: 10px;
 }
 
 .public-quote-header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    padding-bottom: 22px;
-    border-bottom: 1px solid #e2e8f0;
+    grid-template-columns: minmax(0, 1fr) 210px;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #0f766e;
 }
 
-.public-quote-header h1 {
-    margin: 6px 0;
-    font-size: clamp(1.9rem, 4vw, 3rem);
-    line-height: 1.05;
+.public-quote-brand {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
-.public-quote-header p {
-    margin: 0;
-    color: #475569;
-    font-weight: 700;
+.public-quote-brand img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
-.public-quote-status,
-.public-quote-alert,
-.public-quote-empty {
-    border-radius: 16px;
-    padding: 12px 16px;
+.public-quote-brand strong {
+    display: block;
+    font-size: 0.98rem;
+}
+
+.public-quote-brand span,
+.public-quote-meta-box span,
+.public-quote-title-row span,
+.public-quote-grid span,
+.public-quote-section h2,
+.public-quote-totals span,
+.public-quote-form span {
+    color: #64748b;
+    font-size: 0.68rem;
     font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.public-quote-meta-box {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 12px;
+    background: #f8fafc;
+    text-align: right;
+}
+
+.public-quote-meta-box > strong {
+    color: #0f766e;
+    overflow-wrap: anywhere;
+}
+
+.public-quote-status {
+    justify-self: end;
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 900;
 }
 
 .public-quote-status--sent {
@@ -106,8 +130,7 @@ body {
 }
 
 .public-quote-status--approved,
-.public-quote-status--accepted,
-.public-quote-alert--success {
+.public-quote-status--accepted {
     background: #dcfce7;
     color: #166534;
 }
@@ -117,66 +140,188 @@ body {
     color: #92400e;
 }
 
-.public-quote-status--rejected,
+.public-quote-status--rejected {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.public-quote-title-row {
+    grid-template-columns: minmax(0, 1fr) 190px;
+    margin-top: 16px;
+}
+
+.public-quote-title-row h1 {
+    margin: 2px 0 0;
+    font-size: 1.55rem;
+}
+
+.public-quote-title-row p {
+    margin: 2px 0 0;
+    color: #475569;
+}
+
+.public-quote-title-row div:last-child {
+    display: grid;
+    gap: 3px;
+}
+
+.public-quote-title-row div:last-child span:not(:first-child) {
+    margin-top: 6px;
+}
+
+.public-quote-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 14px;
+}
+
+.public-quote-grid > div {
+    min-width: 0;
+    padding: 9px 4px;
+    border-bottom: 1px solid #dbe5f1;
+}
+
+.public-quote-grid__wide {
+    grid-column: 1 / -1;
+}
+
+.public-quote-grid strong {
+    display: block;
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+}
+
+.public-quote-section {
+    margin-top: 16px;
+}
+
+.public-quote-section h2 {
+    margin: 0 0 7px;
+    font-size: 0.86rem;
+}
+
+.public-quote-section > p {
+    margin: 0;
+    padding: 10px;
+    border-bottom: 1px solid #dbe5f1;
+    color: #334155;
+    line-height: 1.45;
+}
+
+.public-quote-table-wrap {
+    overflow-x: auto;
+}
+
+.public-quote-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #dbe5f1;
+}
+
+.public-quote-table th,
+.public-quote-table td {
+    padding: 8px;
+    border-bottom: 1px solid #dbe5f1;
+    text-align: left;
+    vertical-align: top;
+}
+
+.public-quote-table th {
+    background: #0f766e;
+    color: #fff;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.public-quote-table th:nth-child(n+3),
+.public-quote-table td:nth-child(n+3) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.public-quote-table small {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+}
+
+.public-quote-totals {
+    display: grid;
+    width: min(440px, 100%);
+    margin: 12px 0 0 auto;
+    overflow: hidden;
+    border: 1px solid #dbe5f1;
+    border-radius: 10px;
+}
+
+.public-quote-totals > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #dbe5f1;
+    background: #f8fafc;
+}
+
+.public-quote-totals > div:last-child {
+    border-bottom: 0;
+}
+
+.public-quote-grand-total {
+    background: #ecfdf5 !important;
+}
+
+.public-quote-grand-total strong {
+    color: #166534;
+    font-size: 1.02rem;
+}
+
+.public-quote-footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #dbe5f1;
+}
+
+.public-quote-footer p {
+    margin: 4px 0 0;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.public-quote-controls,
+.public-quote-alert,
+.public-quote-empty {
+    padding: 18px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
+}
+
+.public-quote-alert,
+.public-quote-empty {
+    font-weight: 800;
+}
+
+.public-quote-alert--success {
+    background: #dcfce7;
+    color: #166534;
+}
+
 .public-quote-alert--error {
     background: #fee2e2;
     color: #b91c1c;
 }
 
-.public-quote-alert {
-    margin-bottom: 18px;
-}
-
-.public-quote-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin: 24px 0;
-}
-
-.public-quote-grid div,
-.public-quote-section {
-    border: 1px solid #dbe7ef;
-    border-radius: 18px;
-    padding: 16px;
-    background: #f8fafc;
-}
-
-.public-quote-section {
-    margin-top: 18px;
-}
-
-.public-quote-section h2 {
-    margin: 0 0 10px;
-}
-
-.public-quote-section p {
-    margin: 0;
-    color: #334155;
-    line-height: 1.6;
-}
-
-.public-quote-table {
-    display: grid;
-    gap: 8px;
-}
-
-.public-quote-row {
-    grid-template-columns: 120px minmax(0, 1fr) 130px 140px;
-    align-items: center;
-    padding: 12px;
-    border-radius: 12px;
-    background: #fff;
-}
-
-.public-quote-row--head {
-    background: #ecfdf5;
-    color: #166534;
-    font-weight: 800;
+.public-quote-empty {
+    color: #475569;
+    text-align: center;
 }
 
 .public-quote-form {
     display: grid;
     gap: 14px;
-    margin-top: 20px;
 }
 
 .public-quote-form label {
@@ -186,11 +331,12 @@ body {
 
 .public-quote-form textarea {
     width: 100%;
-    resize: vertical;
-    border: 1px solid #cbd5e1;
-    border-radius: 16px;
+    min-height: 104px;
     padding: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
     font: inherit;
+    resize: vertical;
 }
 
 .public-quote-actions {
@@ -199,14 +345,15 @@ body {
 
 .public-quote-button {
     border: 0;
-    border-radius: 16px;
-    padding: 14px 18px;
+    border-radius: 12px;
+    padding: 12px 16px;
     font: inherit;
     font-weight: 800;
     cursor: pointer;
 }
 
-.public-quote-button--accept {
+.public-quote-button--accept,
+.public-quote-button--print {
     background: #16a34a;
     color: #fff;
 }
@@ -221,42 +368,42 @@ body {
     color: #b91c1c;
 }
 
-.public-quote-button--print {
-    background: #166534;
-    color: #fff;
-}
-
 .public-quote-finalized {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-top: 20px;
-    padding: 16px;
-    border-radius: 16px;
-    background: #dcfce7;
     color: #166534;
 }
 
-.public-quote-empty {
-    background: #f8fafc;
-    color: #475569;
-    text-align: center;
-}
+@media (max-width: 720px) {
+    .public-quote-shell {
+        width: min(100% - 20px, 980px);
+        padding-top: 10px;
+    }
 
-@media (max-width: 820px) {
-    .public-quote-card {
-        padding: 20px;
+    .public-quote-document {
+        padding: 16px;
     }
 
     .public-quote-header,
+    .public-quote-title-row,
     .public-quote-grid,
+    .public-quote-footer,
     .public-quote-actions {
         grid-template-columns: 1fr;
     }
 
-    .public-quote-row {
-        grid-template-columns: 1fr;
+    .public-quote-meta-box {
+        text-align: left;
+    }
+
+    .public-quote-status {
+        justify-self: start;
+    }
+
+    .public-quote-grid__wide {
+        grid-column: auto;
     }
 
     .public-quote-finalized {
@@ -265,9 +412,16 @@ body {
     }
 }
 
+@page {
+    size: A4;
+    margin: 12mm;
+}
+
 @media print {
     body {
         background: #fff;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
     }
 
     .public-quote-shell {
@@ -276,13 +430,31 @@ body {
     }
 
     .public-quote-card {
-        border: 0;
+        display: block;
+    }
+
+    .public-quote-document {
+        overflow: visible;
+        padding: 0;
+        border-radius: 0;
         box-shadow: none;
     }
 
     .public-quote-alert,
+    .public-quote-controls,
     .public-quote-form,
+    .public-quote-actions,
     .public-quote-finalized {
-        display: none;
+        display: none !important;
+    }
+
+    .public-quote-table-wrap {
+        overflow: visible;
+    }
+
+    .public-quote-table tr,
+    .public-quote-totals,
+    .public-quote-footer {
+        break-inside: avoid;
     }
 }

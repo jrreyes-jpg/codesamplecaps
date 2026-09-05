@@ -66,6 +66,9 @@ $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : 
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
 $canRespond = $status === 'sent';
 $isFinalized = in_array($status, ['approved', 'accepted'], true);
+$quotationTimestamp = $quotation ? (strtotime((string)($quotation['created_at'] ?? '')) ?: time()) : time();
+$quotationDate = date('M j, Y', $quotationTimestamp);
+$validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,14 +83,6 @@ $isFinalized = in_array($status, ['approved', 'accepted'], true);
 <body>
     <main class="public-quote-shell">
         <section class="public-quote-card">
-            <div class="public-quote-brand">
-                <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo">
-                <div>
-                    <span>EDGE AUTOMATION</span>
-                    <strong>Quotation Review</strong>
-                </div>
-            </div>
-
             <?php if ($flash): ?>
                 <div class="public-quote-alert public-quote-alert--<?php echo htmlspecialchars((string)$flash['type'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?php echo htmlspecialchars((string)$flash['message'], ENT_QUOTES, 'UTF-8'); ?>
@@ -99,79 +94,150 @@ $isFinalized = in_array($status, ['approved', 'accepted'], true);
                     This quotation link is invalid or expired.
                 </div>
             <?php else: ?>
-                <header class="public-quote-header">
-                    <div>
-                        <span><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        <h1><?php echo htmlspecialchars((string)$quotation['service_category'], ENT_QUOTES, 'UTF-8'); ?></h1>
-                        <p><?php echo htmlspecialchars((string)$quotation['client_name'], ENT_QUOTES, 'UTF-8'); ?></p>
-                    </div>
-                    <strong class="public-quote-status public-quote-status--<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>">
-                        <?php echo $isFinalized
-                            ? 'Status: Approved / Finalized'
-                            : htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
-                    </strong>
-                </header>
+                <article class="public-quote-document">
+                    <?php if ($status === 'sent'): ?>
+                        <div class="public-quote-watermark" aria-hidden="true">FOR REVIEW ONLY</div>
+                    <?php endif; ?>
 
-                <div class="public-quote-grid">
-                    <div><span>Email</span><strong><?php echo htmlspecialchars((string)$quotation['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                    <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$quotation['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                    <div><span>Inspection</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                    <div><span>Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                </div>
-
-                <section class="public-quote-section">
-                    <h2>Scope Summary</h2>
-                    <p><?php echo nl2br(htmlspecialchars((string)($quotation['engineer_findings'] ?: $quotation['description']), ENT_QUOTES, 'UTF-8')); ?></p>
-                </section>
-
-                <section class="public-quote-section">
-                    <h2>Cost Breakdown</h2>
-                    <div class="public-quote-table">
-                        <div class="public-quote-row public-quote-row--head">
-                            <span>Type</span><span>Item</span><span>Qty</span><span>Total</span>
-                        </div>
-                        <?php foreach ($items as $item): ?>
-                            <div class="public-quote-row">
-                                <span><?php echo htmlspecialchars(ucfirst((string)$item['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                <span><?php echo htmlspecialchars((string)$item['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$item['quantity'], 2), '0'), '.') . ' ' . (string)$item['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <span><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <header class="public-quote-header">
+                        <div class="public-quote-brand">
+                            <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo">
+                            <div>
+                                <strong>EDGE AUTOMATION TECHNOLOGY SERVICES, CO.</strong>
+                                <span>Project Management, Asset Tracking, Inventory, and Quotation System</span>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-
-                <?php if (!empty($quotation['client_decision_note'])): ?>
-                    <section class="public-quote-section">
-                        <h2>Your Note</h2>
-                        <p><?php echo nl2br(htmlspecialchars((string)$quotation['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></p>
-                    </section>
-                <?php endif; ?>
-
-                <?php if ($canRespond): ?>
-                    <form method="POST" class="public-quote-form" data-public-quotation-form>
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
-                        <label>
-                            <span>Decision Note</span>
-                            <textarea name="note" rows="4" placeholder="Required for revision or rejection."></textarea>
-                        </label>
-                        <div class="public-quote-actions">
-                            <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept">Approve Quotation</button>
-                            <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision">Request Revision</button>
-                            <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject">Reject</button>
                         </div>
-                    </form>
-                <?php elseif ($isFinalized): ?>
-                    <div class="public-quote-finalized">
-                        <strong>Status: Approved / Finalized</strong>
-                        <button type="button" class="public-quote-button public-quote-button--print" data-print-final-quotation>Print / Save Final PDF</button>
-                    </div>
-                <?php else: ?>
-                    <div class="public-quote-empty">
-                        This quotation is already <?php echo htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>.
-                    </div>
-                <?php endif; ?>
+                        <div class="public-quote-meta-box">
+                            <span>Quotation No.</span>
+                            <strong><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <small class="public-quote-status public-quote-status--<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php echo $isFinalized
+                                    ? 'Approved / Finalized'
+                                    : htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
+                            </small>
+                        </div>
+                    </header>
+
+                    <section class="public-quote-title-row">
+                        <div>
+                            <span>Prepared For</span>
+                            <h1><?php echo htmlspecialchars((string)$quotation['client_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
+                            <p><?php echo htmlspecialchars((string)($quotation['company_name'] ?: 'Individual Client'), ENT_QUOTES, 'UTF-8'); ?></p>
+                        </div>
+                        <div>
+                            <span>Date</span>
+                            <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <span>Prepared By</span>
+                            <strong><?php echo htmlspecialchars((string)($quotation['engineer_name'] ?: 'Edge Automation'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                        </div>
+                    </section>
+
+                    <section class="public-quote-grid">
+                        <div><span>Email</span><strong><?php echo htmlspecialchars((string)$quotation['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$quotation['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <div><span>Service</span><strong><?php echo htmlspecialchars((string)$quotation['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <div><span>Valid Until</span><strong><?php echo htmlspecialchars($validUntil, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <div class="public-quote-grid__wide">
+                            <span>Site Address</span>
+                            <strong>
+                                <?php echo htmlspecialchars(trim((string)($quotation['site_address'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>
+                                <?php if (!empty($quotation['barangay']) || !empty($quotation['city_municipality']) || !empty($quotation['province'])): ?>
+                                    <br><?php echo htmlspecialchars(trim((string)($quotation['barangay'] ?? '') . ', ' . (string)($quotation['city_municipality'] ?? '') . ', ' . (string)($quotation['province'] ?? ''), ' ,'), ENT_QUOTES, 'UTF-8'); ?>
+                                <?php endif; ?>
+                            </strong>
+                        </div>
+                    </section>
+
+                    <section class="public-quote-section">
+                        <h2>Scope Summary</h2>
+                        <p><?php echo nl2br(htmlspecialchars((string)($quotation['engineer_findings'] ?: $quotation['description']), ENT_QUOTES, 'UTF-8')); ?></p>
+                    </section>
+
+                    <section class="public-quote-section">
+                        <h2>Cost Breakdown</h2>
+                        <div class="public-quote-table-wrap">
+                            <table class="public-quote-table">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>Unit Cost</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($items as $item): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars(ucfirst((string)$item['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td>
+                                                <strong><?php echo htmlspecialchars((string)$item['item_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <?php if (!empty($item['notes'])): ?>
+                                                    <small><?php echo htmlspecialchars((string)$item['notes'], ENT_QUOTES, 'UTF-8'); ?></small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$item['quantity'], 2), '0'), '.') . ' ' . (string)$item['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="public-quote-totals">
+                            <div><span>Subtotal</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['subtotal']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                            <div><span>Margin</span><strong><?php echo htmlspecialchars(number_format((float)$quotation['profit_margin_percent'], 2), ENT_QUOTES, 'UTF-8'); ?>%</strong></div>
+                            <div><span>Profit Amount</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['profit_amount']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                            <div class="public-quote-grand-total"><span>Grand Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        </div>
+                    </section>
+
+                    <?php if (!empty($quotation['client_decision_note'])): ?>
+                        <section class="public-quote-section">
+                            <h2>Client Note</h2>
+                            <p><?php echo nl2br(htmlspecialchars((string)$quotation['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></p>
+                        </section>
+                    <?php endif; ?>
+
+                    <footer class="public-quote-footer">
+                        <div>
+                            <strong>Notes</strong>
+                            <p>This quotation is based on the listed scope and costs. Any approved changes may require a revised quotation.</p>
+                        </div>
+                        <div>
+                            <strong>Client Status</strong>
+                            <p><?php echo $isFinalized ? 'Approved and finalized by the client.' : 'Waiting for client review.'; ?></p>
+                        </div>
+                    </footer>
+                </article>
+
+                <section class="public-quote-controls" aria-label="Quotation response">
+                    <?php if ($canRespond): ?>
+                        <form method="POST" class="public-quote-form" data-public-quotation-form>
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
+                            <label>
+                                <span>Decision Note</span>
+                                <textarea name="note" rows="4" placeholder="Required for revision or rejection."></textarea>
+                            </label>
+                            <div class="public-quote-actions">
+                                <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept">Approve Quotation</button>
+                                <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision">Request Revision</button>
+                                <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject">Reject</button>
+                            </div>
+                        </form>
+                    <?php elseif ($isFinalized): ?>
+                        <div class="public-quote-finalized">
+                            <strong>Status: Approved / Finalized</strong>
+                            <button type="button" class="public-quote-button public-quote-button--print" data-print-final-quotation>Print / Save Final PDF</button>
+                        </div>
+                    <?php else: ?>
+                        <div class="public-quote-empty">
+                            This quotation is already <?php echo htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>.
+                        </div>
+                    <?php endif; ?>
+                </section>
             <?php endif; ?>
         </section>
     </main>

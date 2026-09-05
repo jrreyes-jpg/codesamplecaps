@@ -278,7 +278,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         <?php endif; ?>
 
-        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back">Back to Inquiries</a>
+        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back" data-inquiry-history-back>Back to Inquiries</a>
 
         <section class="quotation-create-card">
             <div class="quotation-create-heading">
@@ -316,7 +316,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                 <div class="quotation-create-section-head">
                     <div><h2>Cost Breakdown</h2><p>List the materials, labor, equipment, or service costs.</p></div>
-                    <button type="button" class="btn-secondary" data-quotation-add-item>Add Item</button>
                 </div>
 
                 <div class="quotation-create-items" data-quotation-items>
@@ -331,6 +330,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item">Remove</button>
                         </div>
                     <?php endforeach; ?>
+                </div>
+
+                <div class="quotation-create-add-row">
+                    <button type="button" class="btn-secondary" data-quotation-add-item>Add Item</button>
                 </div>
 
                 <template data-quotation-item-template>

@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const toast = document.querySelector('[data-inquiry-toast]');
     const inquiryShell = document.querySelector('.inquiries-shell');
     let pendingUnreadInquiryCount = Number.parseInt(inquiryShell?.dataset.pendingUnreadInquiryCount || '0', 10);
+    let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);
+    let latestRevisionUpdatedAt = inquiryShell?.dataset.latestRevisionUpdatedAt || '';
     let lastOpenButton = null;
     let pendingConfirmForm = null;
 
@@ -694,6 +696,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 pendingUnreadInquiryCount = currentPendingUnreadCount;
                 inquiryShell.dataset.pendingUnreadInquiryCount = String(currentPendingUnreadCount);
 
+                const currentRevisionId = Number.parseInt(data.latest_revision_id || '0', 10);
+                const currentRevisionUpdatedAt = String(data.latest_revision_updated_at || '');
+                const hasNewRevision = currentRevisionUpdatedAt > latestRevisionUpdatedAt
+                    || (currentRevisionUpdatedAt === latestRevisionUpdatedAt && currentRevisionId > latestRevisionId);
+
+                if (currentRevisionId > 0 && hasNewRevision) {
+                    showNewInquiryBellDot();
+                    showLiveInquiryToast('Notification: A client has requested a revision on their quotation!');
+                    latestRevisionId = currentRevisionId;
+                    latestRevisionUpdatedAt = currentRevisionUpdatedAt;
+                    inquiryShell.dataset.latestRevisionId = String(currentRevisionId);
+                    inquiryShell.dataset.latestRevisionUpdatedAt = currentRevisionUpdatedAt;
+                }
+
                 data.quotations.forEach(function (quotation) {
                     const modal = document.querySelector('.inquiry-modal[data-inquiry-id="' + String(quotation.inquiry_id) + '"]');
                     if (!modal) {
@@ -703,6 +719,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     const previousStatus = modal.dataset.quotationStatus || '';
                     const currentStatus = String(quotation.status || '');
                     modal.dataset.quotationStatus = currentStatus;
+
+                    if (!['revision_requested', 'for_revision'].includes(previousStatus)
+                        && ['revision_requested', 'for_revision'].includes(currentStatus)) {
+                        const statusLabel = modal.querySelector('[data-quotation-status-label]');
+                        if (statusLabel) {
+                            statusLabel.textContent = quotation.label || 'For Revision';
+                            statusLabel.classList.remove('status-draft', 'status-sent', 'status-accepted');
+                            statusLabel.classList.add('status-revision');
+                        }
+
+                        const revisionNote = modal.querySelector('[data-quotation-revision-note]');
+                        if (revisionNote) {
+                            revisionNote.textContent = quotation.client_decision_note || 'The client requested changes to this quotation.';
+                        }
+
+                        modal.querySelector('[data-quotation-revision-alert]')?.removeAttribute('hidden');
+                        modal.querySelector('[data-quotation-revision-action]')?.removeAttribute('hidden');
+                    }
 
                     if (previousStatus !== 'sent' || currentStatus !== 'accepted') {
                         return;
@@ -719,6 +753,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
                         statusLabel.textContent = quotation.label || 'Accepted';
+                        statusLabel.classList.remove('status-draft', 'status-sent', 'status-revision');
+                        statusLabel.classList.add('status-accepted');
                     }
 
                     const nextAction = modal.closest('.inquiry-card')?.querySelector('.inquiry-open-modal');
@@ -907,6 +943,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (event.submitter?.hasAttribute('data-confirm-quotation-save')
                 && !window.confirm('Are you sure you want to save this quotation draft?')) {
                 event.preventDefault();
+                return;
+            }
+
+            if (event.submitter?.hasAttribute('data-confirm-quotation-update')
+                && !window.confirm('Are you sure you want to save and update these quotation changes?')) {
+                event.preventDefault();
             }
         });
 
@@ -928,7 +970,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const queryParams = new URLSearchParams(window.location.search);
-    const urlOpenModalId = queryParams.get('open');
+    const inquiryIdFromUrl = Number.parseInt(queryParams.get('inquiry_id') || '0', 10);
+    const urlOpenModalId = queryParams.get('open') || (inquiryIdFromUrl > 0 ? 'inquiryModal' + inquiryIdFromUrl : '');
     const urlOpenTab = queryParams.get('tab') || 'client';
     if (urlOpenModalId) {
         const modal = document.getElementById(urlOpenModalId);

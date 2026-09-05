@@ -1451,6 +1451,57 @@ body.inquiry-modal-open {
     overflow-wrap: anywhere;
 }
 
+.status-badge {
+    display: inline-flex;
+    width: fit-content;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-draft,
+.status-badge.status-draft {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.status-sent,
+.status-badge.status-sent {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-revision,
+.status-badge.status-revision {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.status-accepted,
+.status-badge.status-accepted {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.inquiry-quote-revision-alert {
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+}
+
+.inquiry-quote-revision-alert[hidden] {
+    display: none;
+}
+
+.inquiry-quote-revision-alert p {
+    margin: 0;
+    line-height: 1.45;
+    white-space: pre-line;
+}
+
 .inquiry-quote-pdf-link,
 .inquiry-quote-edit-link {
     display: inline-flex;

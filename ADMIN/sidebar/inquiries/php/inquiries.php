@@ -139,6 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     $inquiryIds = array_slice($inquiryIds, 0, 100);
     $statuses = [];
     $pendingUnreadInquiryCount = 0;
+    $latestRevisionId = 0;
+    $latestRevisionUpdatedAt = '';
 
     if (inquiry_center_has_table($conn, 'service_inquiries')) {
         $pendingUnreadResult = $conn->query(
@@ -152,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     if ($inquiryIds && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
         $placeholders = implode(', ', array_fill(0, count($inquiryIds), '?'));
         $stmt = $conn->prepare(
-            "SELECT inquiry_id, status, updated_at
+            "SELECT inquiry_id, status, client_decision_note, updated_at
              FROM inquiry_quotation_drafts
              WHERE inquiry_id IN ($placeholders)
              ORDER BY updated_at DESC, id DESC"
@@ -170,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
                         'inquiry_id' => $inquiryId,
                         'status' => $status,
                         'label' => inquiry_quote_status_label($status),
+                        'client_decision_note' => (string)($row['client_decision_note'] ?? ''),
                         'updated_at' => (string)($row['updated_at'] ?? ''),
                     ];
                 }
@@ -177,10 +180,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
         }
     }
 
+    if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
+        $latestRevisionResult = $conn->query(
+            "SELECT id, updated_at
+             FROM inquiry_quotation_drafts
+             WHERE status IN ('revision_requested', 'for_revision')
+             ORDER BY updated_at DESC, id DESC
+             LIMIT 1"
+        );
+        $latestRevision = $latestRevisionResult ? $latestRevisionResult->fetch_assoc() : null;
+        $latestRevisionId = (int)($latestRevision['id'] ?? 0);
+        $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
+    }
+
     echo json_encode([
         'success' => true,
         'quotations' => array_values($statuses),
         'pending_unread_inquiry_count' => $pendingUnreadInquiryCount,
+        'latest_revision_id' => $latestRevisionId,
+        'latest_revision_updated_at' => $latestRevisionUpdatedAt,
     ]);
     exit();
 }
@@ -420,7 +438,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ['status' => 'revision_requested'],
                     ['status' => 'draft']
                 );
-                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation reopened for revision.');
+                $_SESSION['inquiry_center_flash'] = 'Quotation reopened for revision.';
+                header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $draftId);
+                exit();
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -820,6 +840,20 @@ if ($costingReviewResult) {
 }
 
 $quotationDraftByInquiry = inquiry_quote_fetch_by_inquiry($conn);
+$latestRevisionId = 0;
+$latestRevisionUpdatedAt = '';
+if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
+    $latestRevisionResult = $conn->query(
+        "SELECT id, updated_at
+         FROM inquiry_quotation_drafts
+         WHERE status IN ('revision_requested', 'for_revision')
+         ORDER BY updated_at DESC, id DESC
+         LIMIT 1"
+    );
+    $latestRevision = $latestRevisionResult ? $latestRevisionResult->fetch_assoc() : null;
+    $latestRevisionId = (int)($latestRevision['id'] ?? 0);
+    $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
+}
 $pendingUnreadInquiryCount = 0;
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     $pendingUnreadResult = $conn->query(
@@ -886,7 +920,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
 <main class="main-content admin-dashboard-content">
-    <div class="inquiries-shell" data-pending-unread-inquiry-count="<?php echo $pendingUnreadInquiryCount; ?>">
+    <div
+        class="inquiries-shell"
+        data-pending-unread-inquiry-count="<?php echo $pendingUnreadInquiryCount; ?>"
+        data-latest-revision-id="<?php echo $latestRevisionId; ?>"
+        data-latest-revision-updated-at="<?php echo htmlspecialchars($latestRevisionUpdatedAt, ENT_QUOTES, 'UTF-8'); ?>"
+    >
         <?php if ($message || $error): ?>
             <div
                 class="inquiry-toast <?php echo $message ? 'inquiry-toast--success' : 'inquiry-toast--error'; ?>"
@@ -1232,6 +1271,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
                                     <?php if ($quotationDraft): ?>
+                                        <?php $quotationStatus = inquiry_quote_normalize_status((string)$quotationDraft['status']); ?>
+                                        <?php $isRevisionRequested = in_array($quotationStatus, ['revision_requested', 'for_revision'], true); ?>
+                                        <?php
+                                            $quotationStatusClass = 'status-draft';
+                                            if ($quotationStatus === 'sent') {
+                                                $quotationStatusClass = 'status-sent';
+                                            } elseif ($isRevisionRequested) {
+                                                $quotationStatusClass = 'status-revision';
+                                            } elseif (in_array($quotationStatus, ['accepted', 'approved'], true)) {
+                                                $quotationStatusClass = 'status-accepted';
+                                            }
+                                        ?>
                                         <div class="inquiry-quote-draft">
                                             <div>
                                                 <span>Quotation Draft</span>
@@ -1239,7 +1290,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </div>
                                             <div>
                                                 <span>Status</span>
-                                                <strong data-quotation-status-label><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <strong class="status-badge <?php echo $quotationStatusClass; ?>" data-quotation-status-label><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
                                                 <span>Total</span>
@@ -1256,12 +1307,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </a>
                                             </div>
                                         </div>
-                                        <?php $quotationStatus = inquiry_quote_normalize_status((string)$quotationDraft['status']); ?>
                                         <?php $quotationRecipient = null; ?>
                                         <?php if (in_array($quotationStatus, ['draft', 'approved', 'accepted'], true)): ?>
                                             <?php try { $quotationRecipient = inquiry_quote_resolve_recipient($conn, (int)$quotationDraft['id']); } catch (Throwable $throwable) { $quotationRecipient = null; } ?>
                                         <?php endif; ?>
-                                        <?php if (!empty($quotationDraft['client_decision_note'])): ?>
+                                        <div class="inquiry-quote-revision-alert status-revision" data-quotation-revision-alert <?php echo !$isRevisionRequested ? 'hidden' : ''; ?>>
+                                            <strong>Client Revision Request</strong>
+                                            <p data-quotation-revision-note><?php echo nl2br(htmlspecialchars((string)($quotationDraft['client_decision_note'] ?? ''), ENT_QUOTES, 'UTF-8')); ?></p>
+                                        </div>
+                                        <form method="POST" class="inquiry-quote-revision-form" data-quotation-revision-action <?php echo !$isRevisionRequested || !empty($quotationDraft['project_id']) ? 'hidden' : ''; ?>>
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="action" value="reopen_quotation_revision">
+                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                            <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                            <button type="submit" class="btn-secondary">Edit Quotation</button>
+                                        </form>
+                                        <?php if (!$isRevisionRequested && !empty($quotationDraft['client_decision_note'])): ?>
                                             <div class="inquiry-detail inquiry-detail--wide">
                                                 <span>Client Note</span>
                                                 <strong><?php echo nl2br(htmlspecialchars((string)$quotationDraft['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></strong>
@@ -1289,14 +1350,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <button type="submit" class="btn-primary">Send Quotation to Client</button>
                                             </form>
                                             <?php endif; ?>
-                                        <?php elseif ($quotationStatus === 'revision_requested' && empty($quotationDraft['project_id'])): ?>
-                                            <form method="POST" class="inquiry-quote-revision-form">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="reopen_quotation_revision">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-secondary">Reopen For Revision</button>
-                                            </form>
                                         <?php elseif ($quotationStatus === 'accepted' && empty($quotationDraft['project_id'])): ?>
                                             <?php if (!$quotationRecipient || empty($quotationRecipient['client_id'])): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide">

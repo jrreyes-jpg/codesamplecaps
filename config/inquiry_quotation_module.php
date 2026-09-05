@@ -614,6 +614,12 @@ function inquiry_quote_client_respond(mysqli $conn, int $draftId, int $clientId,
     }
 
     inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, $clientId, 'client');
+
+    if ($decision === 'accepted') {
+        $finalLink = rtrim((string)Config::getInstance()->get('APP_URL', 'http://localhost/codesamplecaps'), '/')
+            . '/CLIENT/dashboards/quotations.php?source=inquiry&id=' . $draftId;
+        inquiry_quote_send_approval_confirmation($quotation, $finalLink);
+    }
 }
 
 function inquiry_quote_public_respond(mysqli $conn, string $token, string $decision, string $note): void
@@ -656,6 +662,41 @@ function inquiry_quote_public_respond(mysqli $conn, string $token, string $decis
     }
 
     inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, 0, 'prospect');
+
+    if ($decision === 'accepted') {
+        inquiry_quote_send_approval_confirmation($quotation, inquiry_quote_public_link($token));
+    }
+}
+
+function inquiry_quote_send_approval_confirmation(array $quotation, string $finalQuotationLink): bool
+{
+    $recipientEmail = strtolower(trim((string)($quotation['sent_to_email'] ?? '')));
+    if ($recipientEmail === '') {
+        $recipientEmail = strtolower(trim((string)($quotation['email'] ?? '')));
+    }
+    if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+        error_log('Inquiry quotation approval email skipped: invalid recipient for draft #' . (int)($quotation['id'] ?? 0));
+        return false;
+    }
+
+    $recipientName = trim((string)($quotation['sent_to_name'] ?? ''));
+    if ($recipientName === '') {
+        $recipientName = trim((string)($quotation['client_name'] ?? 'Client'));
+    }
+    $emailService = new EmailService();
+    $sent = $emailService->sendInquiryQuotationApprovalConfirmation(
+        $recipientEmail,
+        $recipientName,
+        (string)($quotation['quotation_no'] ?? ''),
+        (float)($quotation['grand_total'] ?? 0),
+        $finalQuotationLink
+    );
+
+    if (!$sent) {
+        error_log('Inquiry quotation approval email failed for draft #' . (int)($quotation['id'] ?? 0) . ': ' . $emailService->getError());
+    }
+
+    return $sent;
 }
 
 function inquiry_quote_reopen_for_revision(mysqli $conn, int $draftId, int $adminId): void

@@ -279,7 +279,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
         <section class="quotation-create-card">
-            <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>" class="btn-secondary quotation-create-back">&larr; Back to Inquiries</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>&amp;tab=quotation" class="btn-secondary quotation-create-back">&larr; Back to Inquiries</a>
 
             <div class="quotation-create-heading">
                 <div>
@@ -309,7 +309,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
             </div>
 
-            <form method="POST" class="quotation-create-form" data-quotation-create-form>
+            <form method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
                 <?php if ($isEditMode): ?>
@@ -358,8 +358,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
+                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>&amp;tab=quotation" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>
         </section>

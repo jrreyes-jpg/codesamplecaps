@@ -694,6 +694,10 @@
     animation: inquiryToastIn 0.22s ease-out;
 }
 
+.inquiry-toast--clickable {
+    cursor: pointer;
+}
+
 .inquiry-toast span {
     flex: 1;
 }
@@ -1438,6 +1442,13 @@ body.inquiry-modal-open {
     min-width: 0;
 }
 
+.inquiry-quote-draft > div:not(.inquiry-quote-draft__action) {
+    align-content: center;
+    justify-items: center;
+    min-height: 54px;
+    text-align: center;
+}
+
 .inquiry-quote-draft span,
 .inquiry-quote-form span {
     color: #475569;
@@ -1485,11 +1496,12 @@ body.inquiry-modal-open {
 }
 
 .inquiry-quote-revision-alert {
-    display: grid;
-    gap: 6px;
-    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
     border: 1px solid #f59e0b;
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .inquiry-quote-revision-alert[hidden] {
@@ -1498,8 +1510,36 @@ body.inquiry-modal-open {
 
 .inquiry-quote-revision-alert p {
     margin: 0;
-    line-height: 1.45;
+    line-height: 1.35;
     white-space: pre-line;
+}
+
+.inquiry-send-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: inquirySendSpin 0.7s linear infinite;
+}
+
+.inquiry-send-button--loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.inquiry-modal.is-send-complete .inquiry-modal__dialog {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+@keyframes inquirySendSpin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .inquiry-quote-pdf-link,

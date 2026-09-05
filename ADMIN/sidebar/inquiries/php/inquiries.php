@@ -128,6 +128,52 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
 $csrfToken = inquiry_center_csrf_token();
 $isAjaxRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_quotation_status') {
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store');
+
+    $inquiryIds = array_values(array_unique(array_filter(
+        array_map('intval', explode(',', (string)($_GET['inquiry_ids'] ?? ''))),
+        static fn(int $id): bool => $id > 0
+    )));
+    $inquiryIds = array_slice($inquiryIds, 0, 100);
+    $statuses = [];
+
+    if ($inquiryIds && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
+        $placeholders = implode(', ', array_fill(0, count($inquiryIds), '?'));
+        $stmt = $conn->prepare(
+            "SELECT inquiry_id, status, updated_at
+             FROM inquiry_quotation_drafts
+             WHERE inquiry_id IN ($placeholders)
+             ORDER BY updated_at DESC, id DESC"
+        );
+
+        if ($stmt) {
+            $stmt->bind_param(str_repeat('i', count($inquiryIds)), ...$inquiryIds);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $inquiryId = (int)($row['inquiry_id'] ?? 0);
+                if ($inquiryId > 0 && !isset($statuses[$inquiryId])) {
+                    $status = inquiry_quote_normalize_status((string)($row['status'] ?? 'draft'));
+                    $statuses[$inquiryId] = [
+                        'inquiry_id' => $inquiryId,
+                        'status' => $status,
+                        'label' => inquiry_quote_status_label($status),
+                        'updated_at' => (string)($row['updated_at'] ?? ''),
+                    ];
+                }
+            }
+        }
+    }
+
+    echo json_encode([
+        'success' => true,
+        'quotations' => array_values($statuses),
+    ]);
+    exit();
+}
+
 if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_inquiries')) {
     $viewedInquiryId = (int)$_GET['viewed_inquiry'];
     if ($viewedInquiryId > 0) {
@@ -919,7 +965,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 ? 'Review Costing'
                                 : 'View Inspection';
                             $nextActionTab = (string)($latestInspection['status'] ?? '') === 'Submitted to Admin' && $showCosting
-                                ? 'costing'
+                                ? 'quotation'
                                 : 'inspection';
                         } elseif ($currentStatus === 'Verified Lead') {
                             $nextActionLabel = 'Create Quotation';
@@ -971,7 +1017,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </button>
                         <?php endif; ?>
 
-                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" hidden>
+                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>" hidden>
                             <div class="inquiry-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <div class="inquiry-modal__head">
                                     <div>
@@ -1029,15 +1075,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
                                     <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Request</button>
                                     <button type="button" class="inquiry-modal-tab" data-inquiry-tab="actions">Admin Review</button>
-                                    <?php if ($showInspection): ?>
-                                        <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?>" data-inquiry-tab="inspection">Inspection</button>
-                                    <?php endif; ?>
-                                    <?php if ($showCosting): ?>
-                                        <button type="button" class="inquiry-modal-tab has-data" data-inquiry-tab="costing">Engineer Costing</button>
-                                    <?php endif; ?>
-                                    <?php if ($showQuotation): ?>
-                                        <button type="button" class="inquiry-modal-tab<?php echo $quotationDraft ? ' has-data' : ''; ?>" data-inquiry-tab="quotation">Quotation</button>
-                                    <?php endif; ?>
+                                    <button type="button" class="inquiry-modal-tab<?php echo $quotationDraft ? ' has-data' : ''; ?><?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" <?php echo !$showQuotation ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Quotation</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?><?php echo !$showInspection ? ' chip-disabled' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" <?php echo !$showInspection ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Inspection</button>
                                 </div>
                             <div class="inquiry-modal-panels">
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
@@ -1073,9 +1112,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-empty">No inspection schedule yet.</div>
                                     <?php endif; ?>
 
-                                    <?php if ($canScheduleInspection && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
+                                    <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
-                                        <form method="POST" class="inquiry-schedule-form">
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form <?php echo !$canScheduleInspection ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
@@ -1123,7 +1162,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endif; ?>
                                 </section>
 
-                                <section class="inquiry-tab-panel" data-inquiry-panel="costing" hidden>
+                                <section class="inquiry-tab-panel inquiry-tab-panel--supporting" data-inquiry-panel="quotation" hidden>
                                     <?php if ($costingReview && !empty($latestCostItems)): ?>
                                         <div class="inquiry-section-title">Engineer Costing Review</div>
                                         <div class="inquiry-costing-review">
@@ -1183,7 +1222,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </div>
                                             <div>
                                                 <span>Status</span>
-                                                <strong><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <strong data-quotation-status-label><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
                                                 <span>Total</span>

@@ -1365,7 +1365,6 @@ body.inquiry-modal-open {
 
 .inquiry-quote-draft,
 .inquiry-quote-form,
-.inquiry-quote-approve-form,
 .inquiry-project-create-form {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1457,7 +1456,6 @@ body.inquiry-modal-open {
     min-height: 44px;
 }
 
-.inquiry-quote-approve-form,
 .inquiry-project-create-form,
 .inquiry-created-project {
     grid-template-columns: 1fr;
@@ -1465,7 +1463,6 @@ body.inquiry-modal-open {
     border-color: rgba(22, 101, 52, 0.2);
 }
 
-.inquiry-quote-approve-form button,
 .inquiry-project-create-form button {
     width: fit-content;
 }

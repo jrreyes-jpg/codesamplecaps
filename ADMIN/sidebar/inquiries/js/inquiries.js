@@ -422,10 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            const actionText = form.querySelector('.btn-primary')?.textContent?.includes('Reschedule')
-                ? 'Reschedule this site inspection?'
-                : 'Schedule this site inspection for the selected engineer?';
-            showConfirm(form, actionText);
+            showConfirm(form, 'Finalize this inspection schedule and email the final quotation to the client?');
         });
     });
 

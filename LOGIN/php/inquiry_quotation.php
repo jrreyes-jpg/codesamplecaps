@@ -65,7 +65,9 @@ $quotation = inquiry_quote_fetch_by_public_token($conn, $token);
 $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : [];
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
 $canRespond = $status === 'sent';
-$isFinalized = in_array($status, ['approved', 'accepted'], true);
+$hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !empty($quotation['engineer_name']);
+$isApprovedAwaitingSchedule = $status === 'accepted' && !$hasInspectionSchedule;
+$isFinalized = $status === 'accepted' && $hasInspectionSchedule;
 $quotationTimestamp = $quotation ? (strtotime((string)($quotation['created_at'] ?? '')) ?: time()) : time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -81,6 +83,13 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <script src="/codesamplecaps/LOGIN/js/inquiry_quotation.js" defer></script>
 </head>
 <body>
+    <?php if ($quotation): ?>
+        <div class="sticky-toolbar">
+            <div class="sticky-toolbar__inner">
+                <button type="button" class="sticky-toolbar__download" data-download-review-pdf>Download Review PDF</button>
+            </div>
+        </div>
+    <?php endif; ?>
     <main class="public-quote-shell">
         <section class="public-quote-card">
             <?php if ($flash): ?>
@@ -113,7 +122,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                             <small class="public-quote-status public-quote-status--<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>">
                                 <?php echo $isFinalized
                                     ? 'Approved / Finalized'
-                                    : htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
+                                    : ($isApprovedAwaitingSchedule
+                                        ? 'Approved - Schedule Pending'
+                                        : htmlspecialchars($status === 'sent' ? 'Pending Review' : inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8')); ?>
                             </small>
                         </div>
                     </header>
@@ -124,11 +135,12 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                             <h1><?php echo htmlspecialchars((string)$quotation['client_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
                             <p><?php echo htmlspecialchars((string)($quotation['company_name'] ?: 'Individual Client'), ENT_QUOTES, 'UTF-8'); ?></p>
                         </div>
-                        <div>
+                        <div class="public-quote-prepared-by">
                             <span>Date</span>
                             <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                             <span>Prepared By</span>
-                            <strong><?php echo htmlspecialchars((string)($quotation['engineer_name'] ?: 'Edge Automation'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <strong>Engr. Erika Jeanne P. Jimenez</strong>
+                            <small>CEO / General Manager</small>
                         </div>
                     </section>
 
@@ -137,6 +149,10 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$quotation['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                         <div><span>Service</span><strong><?php echo htmlspecialchars((string)$quotation['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                         <div><span>Valid Until</span><strong><?php echo htmlspecialchars($validUntil, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <?php if ($hasInspectionSchedule): ?>
+                            <div><span>Assigned Engineer</span><strong><?php echo htmlspecialchars((string)$quotation['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                            <div><span>Inspection Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <?php endif; ?>
                         <div class="public-quote-grid__wide">
                             <span>Site Address</span>
                             <strong>
@@ -207,7 +223,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         </div>
                         <div>
                             <strong>Client Status</strong>
-                            <p><?php echo $isFinalized ? 'Approved and finalized by the client.' : 'Waiting for client review.'; ?></p>
+                            <p><?php echo $isFinalized
+                                ? 'Approved and finalized with an inspection schedule.'
+                                : ($isApprovedAwaitingSchedule ? 'Approved. Waiting for the Admin inspection schedule.' : 'Waiting for client review.'); ?></p>
                         </div>
                     </footer>
                 </article>
@@ -217,16 +235,20 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         <form method="POST" class="public-quote-form" data-public-quotation-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
-                            <label>
+                            <label class="public-quote-decision-note" data-decision-note>
                                 <span>Decision Note</span>
-                                <textarea name="note" rows="4" placeholder="Required for revision or rejection."></textarea>
+                                <textarea name="note" rows="4" placeholder="Please select Request Revision or Reject to provide details..." disabled></textarea>
                             </label>
                             <div class="public-quote-actions">
-                                <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept">Approve Quotation</button>
-                                <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision">Request Revision</button>
-                                <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject">Reject</button>
+                                <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept" data-quotation-decision>Approve Quotation</button>
+                                <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision" data-quotation-decision>Request Revision</button>
+                                <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject" data-quotation-decision>Reject</button>
                             </div>
                         </form>
+                    <?php elseif ($isApprovedAwaitingSchedule): ?>
+                        <div class="public-quote-pending-schedule" role="status">
+                            Quotation Approved! Please wait for the Admin to assign your Inspection Schedule.
+                        </div>
                     <?php elseif ($isFinalized): ?>
                         <div class="public-quote-finalized">
                             <strong>Status: Approved / Finalized</strong>

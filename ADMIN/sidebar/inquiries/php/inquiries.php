@@ -523,7 +523,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'scheduled_at' => $scheduleValue,
                         ]
                     );
-                    $message = $existingInspectionId > 0 ? 'Site inspection rescheduled.' : 'Site inspection scheduled.';
+                    try {
+                        inquiry_quote_send_final_confirmation($conn, $acceptedQuotationId);
+                        $message = $existingInspectionId > 0
+                            ? 'Inspection schedule updated and final quotation emailed.'
+                            : 'Inspection finalized and final quotation emailed.';
+                    } catch (Throwable $mailThrowable) {
+                        $error = $mailThrowable->getMessage();
+                    }
                 } else {
                     $error = 'Failed to save inspection schedule.';
                 }
@@ -689,6 +696,7 @@ $inspectionResult = $conn->query(
     "SELECT
         si.id,
         si.inquiry_id,
+        si.engineer_id,
         si.scheduled_at,
         si.status,
         si.site_notes,
@@ -893,7 +901,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                         if ($quotationStage === 'accepted') {
                             $nextActionLabel = $latestInspection ? 'View Inspection' : 'Schedule Inspection';
-                            $nextActionTab = $latestInspection ? 'inspection' : 'actions';
+                            $nextActionTab = 'inspection';
                         } elseif ($quotationStage === 'sent') {
                             $nextActionLabel = 'Waiting for Client';
                             $nextActionTab = 'quotation';
@@ -1063,6 +1071,55 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </div>
                                     <?php else: ?>
                                         <div class="inquiry-empty">No inspection schedule yet.</div>
+                                    <?php endif; ?>
+
+                                    <?php if ($canScheduleInspection && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
+                                        <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
+                                        <form method="POST" class="inquiry-schedule-form">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="action" value="schedule_inspection">
+                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                            <strong><?php echo $latestInspection ? 'Update Final Inspection Schedule' : 'Set Final Inspection Schedule'; ?></strong>
+                                            <div class="inquiry-schedule-grid">
+                                                <label>
+                                                    <span>Engineer</span>
+                                                    <select name="engineer_id" required>
+                                                        <option value="">Select engineer</option>
+                                                        <?php foreach ($engineers as $engineer): ?>
+                                                            <option value="<?php echo (int)$engineer['id']; ?>" <?php echo (int)($latestInspection['engineer_id'] ?? 0) === (int)$engineer['id'] ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars((string)$engineer['full_name'], ENT_QUOTES, 'UTF-8'); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </label>
+                                                <label class="admin-date-field">
+                                                    <span>Inspection Date</span>
+                                                    <span class="admin-date-input-wrap">
+                                                        <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" required>
+                                                        <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
+                                                    </span>
+                                                    <small class="admin-date-tooltip js-admin-date-tooltip">Final schedule is subject to engineer availability.</small>
+                                                </label>
+                                                <label>
+                                                    <span>Inspection Time</span>
+                                                    <select class="js-admin-inspection-time" name="inspection_time" required>
+                                                        <option value="">Select time</option>
+                                                        <?php foreach (['08:00' => '8:00 AM', '09:00' => '9:00 AM', '10:00' => '10:00 AM', '11:00' => '11:00 AM', '13:00' => '1:00 PM', '14:00' => '2:00 PM', '15:00' => '3:00 PM', '16:00' => '4:00 PM'] as $timeValue => $timeLabel): ?>
+                                                            <option value="<?php echo $timeValue; ?>" <?php echo $inspectionTimestamp && date('H:i', $inspectionTimestamp) === $timeValue ? 'selected' : ''; ?>><?php echo $timeLabel; ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                    <input type="hidden" class="js-admin-scheduled-at" name="scheduled_at">
+                                                </label>
+                                            </div>
+                                            <label>
+                                                <span>Site Notes</span>
+                                                <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                            </label>
+                                            <div class="inquiry-review-actions">
+                                                <button type="submit" class="btn-primary" <?php echo empty($engineers) ? 'disabled' : ''; ?>>Finalize &amp; Send Final PDF</button>
+                                                <button type="button" class="btn-secondary inquiry-clear-inputs" data-inquiry-clear-inputs>Clear inputs</button>
+                                            </div>
+                                        </form>
                                     <?php endif; ?>
                                 </section>
 
@@ -1261,58 +1318,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </div>
                                     </form>
 
-                                    <?php if ($canScheduleInspection && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
-                                        <form method="POST" class="inquiry-schedule-form">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="action" value="schedule_inspection">
-                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <strong><?php echo $latestInspection ? 'Reschedule Site Inspection' : 'Schedule Site Inspection'; ?></strong>
-                                            <div class="inquiry-schedule-grid">
-                                                <label>
-                                                    <span>Engineer</span>
-                                                    <select name="engineer_id" required>
-                                                        <option value="">Select engineer</option>
-                                                        <?php foreach ($engineers as $engineer): ?>
-                                                            <option value="<?php echo (int)$engineer['id']; ?>">
-                                                                <?php echo htmlspecialchars((string)$engineer['full_name'], ENT_QUOTES, 'UTF-8'); ?>
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </label>
-                                                <label class="admin-date-field">
-                                                    <span>Inspection Date</span>
-                                                    <span class="admin-date-input-wrap">
-                                                        <input type="date" class="js-admin-inspection-date" name="inspection_date" required>
-                                                        <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
-                                                    </span>
-                                                    <small class="admin-date-tooltip js-admin-date-tooltip">Final schedule is subject to engineer availability.</small>
-                                                </label>
-                                                <label>
-                                                    <span>Inspection Time</span>
-                                                    <select class="js-admin-inspection-time" name="inspection_time" required>
-                                                        <option value="">Select time</option>
-                                                        <option value="08:00">8:00 AM</option>
-                                                        <option value="09:00">9:00 AM</option>
-                                                        <option value="10:00">10:00 AM</option>
-                                                        <option value="11:00">11:00 AM</option>
-                                                        <option value="13:00">1:00 PM</option>
-                                                        <option value="14:00">2:00 PM</option>
-                                                        <option value="15:00">3:00 PM</option>
-                                                        <option value="16:00">4:00 PM</option>
-                                                    </select>
-                                                    <input type="hidden" class="js-admin-scheduled-at" name="scheduled_at">
-                                                </label>
-                                            </div>
-                                            <label>
-                                                <span>Site Notes</span>
-                                                <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."></textarea>
-                                            </label>
-                                            <div class="inquiry-review-actions">
-                                                <button type="submit" class="btn-primary" <?php echo empty($engineers) ? 'disabled' : ''; ?>><?php echo $latestInspection ? 'Save Reschedule' : 'Schedule Inspection'; ?></button>
-                                                <button type="button" class="btn-secondary inquiry-clear-inputs" data-inquiry-clear-inputs>Clear inputs</button>
-                                            </div>
-                                        </form>
-                                    <?php endif; ?>
                                     <?php endif; ?>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
                                         <div class="inquiry-archive-output">

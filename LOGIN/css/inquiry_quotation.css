@@ -12,10 +12,46 @@ body {
     font: 13px Arial, sans-serif;
 }
 
+.sticky-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: 100%;
+    padding: 12px 20px;
+    background: #222;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.24);
+}
+
+.sticky-toolbar__inner {
+    display: flex;
+    width: min(980px, 100%);
+    margin: 0 auto;
+    justify-content: flex-end;
+}
+
+.sticky-toolbar__download {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 10px 16px;
+    background: #f8fafc;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.sticky-toolbar__download:hover,
+.sticky-toolbar__download:focus-visible {
+    background: #e2e8f0;
+    outline: 2px solid #94a3b8;
+    outline-offset: 2px;
+}
+
 .public-quote-shell {
     width: min(980px, calc(100% - 32px));
     margin: 0 auto;
-    padding: 24px 0 40px;
+    padding: 84px 0 40px;
 }
 
 .public-quote-card {
@@ -169,6 +205,17 @@ body {
     margin-top: 6px;
 }
 
+.public-quote-prepared-by {
+    line-height: 1.3;
+    text-align: right;
+}
+
+.public-quote-prepared-by small {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
 .public-quote-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 14px;
@@ -292,7 +339,8 @@ body {
 
 .public-quote-controls,
 .public-quote-alert,
-.public-quote-empty {
+.public-quote-empty,
+.public-quote-pending-schedule {
     padding: 18px;
     border-radius: 14px;
     background: #fff;
@@ -300,7 +348,8 @@ body {
 }
 
 .public-quote-alert,
-.public-quote-empty {
+.public-quote-empty,
+.public-quote-pending-schedule {
     font-weight: 800;
 }
 
@@ -319,6 +368,12 @@ body {
     text-align: center;
 }
 
+.public-quote-pending-schedule {
+    background: #dcfce7;
+    color: #166534;
+    text-align: center;
+}
+
 .public-quote-form {
     display: grid;
     gap: 14px;
@@ -327,6 +382,22 @@ body {
 .public-quote-form label {
     display: grid;
     gap: 8px;
+}
+
+.public-quote-decision-note {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.public-quote-decision-note.is-visible {
+    max-height: 180px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
 }
 
 .public-quote-form textarea {
@@ -379,7 +450,7 @@ body {
 @media (max-width: 720px) {
     .public-quote-shell {
         width: min(100% - 20px, 980px);
-        padding-top: 10px;
+        padding-top: 74px;
     }
 
     .public-quote-document {
@@ -395,6 +466,10 @@ body {
     }
 
     .public-quote-meta-box {
+        text-align: left;
+    }
+
+    .public-quote-prepared-by {
         text-align: left;
     }
 
@@ -441,7 +516,9 @@ body {
     }
 
     .public-quote-alert,
+    .sticky-toolbar,
     .public-quote-controls,
+    .public-quote-pending-schedule,
     .public-quote-form,
     .public-quote-actions,
     .public-quote-finalized {

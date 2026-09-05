@@ -15,7 +15,13 @@ if (!$quotation) {
 }
 
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
-$isApproved = in_array($quoteStatus, ['approved', 'sent', 'accepted'], true);
+$isFinalized = $quoteStatus === 'accepted' && !empty($quotation['scheduled_at']);
+$showInspectionSchedule = $isFinalized && !empty($quotation['engineer_name']);
+$statusClass = $isFinalized ? 'is-approved' : ($quoteStatus === 'sent' ? 'is-pending' : 'is-draft');
+$statusLabel = $isFinalized
+    ? 'Approved / Finalized'
+    : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
+$preparedByName = trim((string)($quotation['approved_by_name'] ?? '')) ?: 'Erika Reyes';
 $quotationTimestamp = strtotime((string)($quotation['created_at'] ?? '')) ?: time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -50,8 +56,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             <div class="quote-meta-box">
                 <span>Quotation No.</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                <small class="<?php echo $isApproved ? 'is-approved' : 'is-draft'; ?>">
-                    <?php echo htmlspecialchars(inquiry_quote_status_label($quoteStatus), ENT_QUOTES, 'UTF-8'); ?>
+                <small class="<?php echo $statusClass; ?>">
+                    <?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?>
                 </small>
             </div>
         </header>
@@ -66,7 +72,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 <span>Date</span>
                 <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <span>Prepared By</span>
-                <strong><?php echo htmlspecialchars((string)$quotation['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                <strong><?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
         </section>
 
@@ -83,21 +89,19 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 <span>Service</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
-            <div class="quote-info-card">
-                <span>Inspection Schedule</span>
-                <strong>
-                    <?php echo empty($quotation['scheduled_at'])
-                        ? 'To be scheduled after client acceptance'
-                        : htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?>
-                </strong>
-            </div>
+            <?php if ($showInspectionSchedule): ?>
+                <div class="quote-info-card">
+                    <span>Assigned Engineer</span>
+                    <strong><?php echo htmlspecialchars((string)$quotation['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                </div>
+                <div class="quote-info-card">
+                    <span>Inspection Schedule</span>
+                    <strong><?php echo htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                </div>
+            <?php endif; ?>
             <div class="quote-info-card">
                 <span>Valid Until</span>
                 <strong><?php echo htmlspecialchars($validUntil, ENT_QUOTES, 'UTF-8'); ?></strong>
-            </div>
-            <div class="quote-info-card">
-                <span>Project Timeline</span>
-                <strong>To be confirmed after site inspection</strong>
             </div>
             <div class="quote-info-card quote-info-card--wide">
                 <span>Site Address</span>
@@ -161,11 +165,12 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             <div>
                 <strong>Approval</strong>
                 <p>
-                    <?php if ($isApproved): ?>
-                        Approved by <?php echo htmlspecialchars((string)($quotation['approved_by_name'] ?: 'Admin'), ENT_QUOTES, 'UTF-8'); ?>
-                        on <?php echo htmlspecialchars(site_inspection_format_datetime($quotation['approved_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>.
+                    <?php if ($isFinalized): ?>
+                        Approved by the client. Inspection schedule finalized by <?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?>.
+                    <?php elseif ($quoteStatus === 'sent'): ?>
+                        Pending client review and approval.
                     <?php else: ?>
-                        Draft only. Admin approval is required before sending to client.
+                        Draft quotation. Not yet sent to the client.
                     <?php endif; ?>
                 </p>
             </div>

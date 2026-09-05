@@ -293,7 +293,7 @@ class EmailService {
         }
     }
 
-    public function sendInquiryQuotationApprovalConfirmation(string $recipientEmail, string $recipientName, string $quotationNo, float $grandTotal, string $finalQuotationLink): bool {
+    public function sendInquiryQuotationFinalConfirmation(string $recipientEmail, string $recipientName, string $quotationNo, float $grandTotal, string $engineerName, string $inspectionSchedule, string $finalQuotationLink): bool {
         try {
             if ($this->error !== '') {
                 return false;
@@ -302,31 +302,35 @@ class EmailService {
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
             $safeQuotationNo = htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8');
             $safeGrandTotal = htmlspecialchars('PHP ' . number_format($grandTotal, 2), ENT_QUOTES, 'UTF-8');
+            $safeEngineerName = htmlspecialchars($engineerName, ENT_QUOTES, 'UTF-8');
+            $safeInspectionSchedule = htmlspecialchars($inspectionSchedule, ENT_QUOTES, 'UTF-8');
             $safeFinalQuotationLink = htmlspecialchars($finalQuotationLink, ENT_QUOTES, 'UTF-8');
 
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Quotation Approved - ' . $this->config->get('APP_NAME');
+            $this->mailer->Subject = 'Final Quotation and Inspection Schedule - ' . $this->config->get('APP_NAME');
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
-                        <h2 style='margin:0'>Quotation approval confirmed</h2>
+                        <h2 style='margin:0'>Your final quotation is ready</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
-                        <p>We recorded your approval for quotation <strong>{$safeQuotationNo}</strong>.</p>
+                        <p>Your approved quotation <strong>{$safeQuotationNo}</strong> is now finalized.</p>
                         <p>Final Total: <strong>{$safeGrandTotal}</strong></p>
+                        <p>Assigned Engineer: <strong>{$safeEngineerName}</strong></p>
+                        <p>Inspection Schedule: <strong>{$safeInspectionSchedule}</strong></p>
                         <p><a href='{$safeFinalQuotationLink}' style='display:inline-block;background:#166534;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>View Final Quotation</a></p>
                         <p>You may open the link and use Print / Save as PDF for your official copy.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Your approval for quotation {$quotationNo} was recorded. Final Total: PHP " . number_format($grandTotal, 2) . ". View your final quotation: {$finalQuotationLink}";
+            $this->mailer->AltBody = "Your final quotation {$quotationNo} is ready. Final Total: PHP " . number_format($grandTotal, 2) . ". Engineer: {$engineerName}. Inspection: {$inspectionSchedule}. View your final quotation: {$finalQuotationLink}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {
-            error_log('Inquiry quotation approval email failed: ' . $e->getMessage());
+            error_log('Inquiry final quotation email failed: ' . $e->getMessage());
             $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
             return false;
         }

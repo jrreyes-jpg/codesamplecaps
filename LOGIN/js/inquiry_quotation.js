@@ -2,6 +2,34 @@ document.addEventListener('DOMContentLoaded', function () {
     const responseForm = document.querySelector('[data-public-quotation-form]');
 
     if (responseForm) {
+        const decisionNote = responseForm.querySelector('[data-decision-note]');
+        const noteTextarea = decisionNote?.querySelector('textarea[name="note"]');
+
+        responseForm.querySelectorAll('[data-quotation-decision]').forEach(function (button) {
+            button.addEventListener('click', function (event) {
+                if (!noteTextarea || !decisionNote) {
+                    return;
+                }
+
+                if (button.value === 'client_accept') {
+                    noteTextarea.required = false;
+                    noteTextarea.disabled = true;
+                    decisionNote.classList.remove('is-visible');
+                    return;
+                }
+
+                noteTextarea.required = true;
+                if (noteTextarea.disabled) {
+                    event.preventDefault();
+                    noteTextarea.disabled = false;
+                    decisionNote.classList.add('is-visible');
+                    window.requestAnimationFrame(function () {
+                        noteTextarea.focus();
+                    });
+                }
+            });
+        });
+
         responseForm.addEventListener('submit', function (event) {
             event.preventDefault();
 
@@ -46,7 +74,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document.querySelector('[data-print-final-quotation]')?.addEventListener('click', function () {
-        window.print();
+    document.querySelectorAll('[data-print-final-quotation], [data-download-review-pdf]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            window.print();
+        });
     });
 });

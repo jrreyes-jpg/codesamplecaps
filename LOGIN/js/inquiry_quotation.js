@@ -38,6 +38,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const confirmationMessages = {
+                client_accept: 'Are you sure you want to APPROVE this quotation? This action is final and will freeze the breakdown pricing.',
+                client_revision: 'Are you sure you want to request a revision? This will send the quotation back to the admin for editing.',
+                client_reject: 'Are you sure you want to REJECT this quotation? This will permanently cancel the inquiry.',
+            };
+            const confirmationMessage = confirmationMessages[submitButton.value];
+            if (confirmationMessage && !window.confirm(confirmationMessage)) {
+                return;
+            }
+
             const formData = new FormData(responseForm);
             formData.set('action', submitButton.value);
             const originalText = submitButton.textContent;

@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const archiveOpenButtons = document.querySelectorAll('[data-archive-modal-open]');
     const toast = document.querySelector('[data-inquiry-toast]');
     const inquiryShell = document.querySelector('.inquiries-shell');
+    let latestKnownInquiryId = Number.parseInt(inquiryShell?.dataset.latestInquiryId || '0', 10);
     let lastOpenButton = null;
     let pendingConfirmForm = null;
 
@@ -101,6 +102,19 @@ document.addEventListener('DOMContentLoaded', function () {
         closeTimer = window.setTimeout(closeNotice, 6000);
     };
 
+    const showNewInquiryBellDot = function () {
+        const notificationToggle = document.querySelector('[data-notification-root] .topbar-notifications__toggle');
+        if (!notificationToggle || notificationToggle.querySelector('[data-live-inquiry-dot]')) {
+            return;
+        }
+
+        const dot = document.createElement('span');
+        dot.className = 'inquiry-live-notification-dot';
+        dot.setAttribute('data-live-inquiry-dot', '');
+        dot.setAttribute('aria-hidden', 'true');
+        notificationToggle.appendChild(dot);
+    };
+
     const confirmBox = document.createElement('div');
     confirmBox.className = 'inquiry-confirm';
     confirmBox.hidden = true;
@@ -180,6 +194,49 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const activateModalTab = function (modal, target) {
+        if (!modal || !target) {
+            return false;
+        }
+
+        const tabs = Array.from(modal.querySelectorAll('[data-inquiry-tab]'));
+        const panels = Array.from(modal.querySelectorAll('[data-inquiry-panel]'));
+        const targetTab = tabs.find(function (tab) {
+            return tab.getAttribute('data-inquiry-tab') === target;
+        });
+        if (!targetTab || targetTab.disabled || targetTab.classList.contains('chip-disabled')) {
+            return false;
+        }
+
+        tabs.forEach(function (tab) {
+            tab.classList.toggle('is-active', tab === targetTab);
+        });
+        panels.forEach(function (panel) {
+            panel.hidden = panel.getAttribute('data-inquiry-panel') !== target;
+            panel.classList.toggle('is-active', !panel.hidden);
+        });
+        return true;
+    };
+
+    const pushModalHistory = function (modal, target) {
+        const url = new URL(window.location.href);
+        const currentDepth = window.history.state?.inquiryModalId === modal.id
+            ? Number.parseInt(window.history.state.inquiryDepth || '0', 10)
+            : 0;
+        url.searchParams.set('open', modal.id);
+        url.searchParams.set('tab', target);
+        window.history.pushState({
+            inquiryModalId: modal.id,
+            inquiryTab: target,
+            inquiryDepth: currentDepth + 1,
+        }, '', url);
+    };
+
+    const requestCloseModal = function (modal) {
+        closeModal(modal);
+        window.history.replaceState({}, document.title, 'inquiries.php');
+    };
+
     openButtons.forEach(function (button) {
         button.addEventListener('click', function (event) {
             event.stopPropagation();
@@ -188,12 +245,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const modal = document.getElementById(modalId);
             openModal(modal);
 
-            const requestedTab = button.getAttribute('data-inquiry-open-tab');
-            if (modal && requestedTab) {
-                const targetTab = Array.from(modal.querySelectorAll('[data-inquiry-tab]')).find(function (tab) {
-                    return tab.getAttribute('data-inquiry-tab') === requestedTab;
-                });
-                targetTab?.click();
+            if (modal) {
+                const requestedTab = button.getAttribute('data-inquiry-open-tab') || 'client';
+                let activeTab = requestedTab;
+                if (!activateModalTab(modal, activeTab)) {
+                    activeTab = 'client';
+                    activateModalTab(modal, activeTab);
+                }
+                pushModalHistory(modal, activeTab);
             }
         });
     });
@@ -213,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
         modal.addEventListener('click', function (event) {
             if (event.target === modal || event.target.closest('[data-inquiry-modal-close]')) {
-                closeModal(modal);
+                requestCloseModal(modal);
             }
         });
     });
@@ -575,7 +634,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
         const tabs = Array.from(modal.querySelectorAll('[data-inquiry-tab]'));
-        const panels = Array.from(modal.querySelectorAll('[data-inquiry-panel]'));
 
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
@@ -584,13 +642,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 const target = tab.getAttribute('data-inquiry-tab');
-                tabs.forEach(function (item) {
-                    item.classList.toggle('is-active', item === tab);
-                });
-                panels.forEach(function (panel) {
-                    panel.hidden = panel.getAttribute('data-inquiry-panel') !== target;
-                    panel.classList.toggle('is-active', !panel.hidden);
-                });
+                if (tab.classList.contains('is-active')) {
+                    return;
+                }
+
+                activateModalTab(modal, target);
+                pushModalHistory(modal, target);
             });
         });
     });
@@ -599,15 +656,14 @@ document.addEventListener('DOMContentLoaded', function () {
     let quotationPollInProgress = false;
 
     const pollQuotationStatuses = function () {
-        if (quotationPollInProgress || document.hidden || quotationStatusModals.length === 0) {
+        if (quotationPollInProgress || document.hidden || !inquiryShell?.hasAttribute('data-latest-inquiry-id')) {
             return;
         }
 
         const inquiryIds = quotationStatusModals
             .map(function (modal) { return modal.dataset.inquiryId || ''; })
             .filter(Boolean);
-        const pollUrl = new URL(window.location.href);
-        pollUrl.search = '';
+        const pollUrl = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', window.location.origin);
         pollUrl.searchParams.set('action', 'poll_quotation_status');
         pollUrl.searchParams.set('inquiry_ids', inquiryIds.join(','));
         quotationPollInProgress = true;
@@ -628,6 +684,16 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (data) {
                 if (!data.success || !Array.isArray(data.quotations)) {
                     return;
+                }
+
+                const latestInquiryId = Number.parseInt(data.latest_inquiry_id || '0', 10);
+                if (latestInquiryId > latestKnownInquiryId) {
+                    latestKnownInquiryId = latestInquiryId;
+                    if (inquiryShell) {
+                        inquiryShell.dataset.latestInquiryId = String(latestInquiryId);
+                    }
+                    showNewInquiryBellDot();
+                    showLiveInquiryToast('Notification: A new client inquiry has just been received!');
                 }
 
                 data.quotations.forEach(function (quotation) {
@@ -675,6 +741,20 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.setInterval(pollQuotationStatuses, 8000);
+
+    document.querySelectorAll('[data-inquiry-history-back]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            if (!document.referrer) {
+                return;
+            }
+
+            const previousUrl = new URL(document.referrer);
+            if (previousUrl.origin === window.location.origin && previousUrl.pathname.endsWith('/ADMIN/sidebar/inquiries/php/inquiries.php')) {
+                event.preventDefault();
+                window.history.back();
+            }
+        });
+    });
 
     document.querySelectorAll('.inquiry-quote-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
@@ -830,10 +910,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const queryParams = new URLSearchParams(window.location.search);
     const urlOpenModalId = queryParams.get('open');
+    const urlOpenTab = queryParams.get('tab') || 'client';
     if (urlOpenModalId) {
         const modal = document.getElementById(urlOpenModalId);
         if (modal) {
             openModal(modal);
+            activateModalTab(modal, urlOpenTab);
         }
     } else {
         const lastOpenModalId = sessionStorage.getItem('edgeLastInquiryModal');
@@ -843,6 +925,25 @@ document.addEventListener('DOMContentLoaded', function () {
             lastCard.scrollIntoView({ behavior: 'instant', block: 'center' });
         }
     }
+
+    window.addEventListener('popstate', function (event) {
+        const modalId = event.state?.inquiryModalId || new URLSearchParams(window.location.search).get('open');
+        const targetTab = event.state?.inquiryTab || new URLSearchParams(window.location.search).get('tab') || 'client';
+        const targetModal = modalId ? document.getElementById(modalId) : null;
+
+        document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(function (modal) {
+            if (modal !== targetModal) {
+                closeModal(modal);
+            }
+        });
+
+        if (targetModal) {
+            openModal(targetModal);
+            activateModalTab(targetModal, targetTab);
+        } else {
+            document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(closeModal);
+        }
+    });
 
     confirmBox.querySelector('[data-inquiry-confirm-no]')?.addEventListener('click', closeConfirm);
     confirmBox.querySelector('[data-inquiry-confirm-yes]')?.addEventListener('click', function () {
@@ -874,6 +975,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         document.querySelectorAll('.inquiry-archive-modal:not([hidden])').forEach(closeArchiveModal);
-        document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(closeModal);
+        document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(requestCloseModal);
     });
 });

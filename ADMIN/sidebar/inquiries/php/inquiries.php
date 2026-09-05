@@ -138,6 +138,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     )));
     $inquiryIds = array_slice($inquiryIds, 0, 100);
     $statuses = [];
+    $latestInquiryId = 0;
+
+    if (inquiry_center_has_table($conn, 'service_inquiries')) {
+        $latestInquiryResult = $conn->query('SELECT COALESCE(MAX(id), 0) AS latest_id FROM service_inquiries');
+        $latestInquiryId = (int)(($latestInquiryResult ? $latestInquiryResult->fetch_assoc() : [])['latest_id'] ?? 0);
+    }
 
     if ($inquiryIds && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
         $placeholders = implode(', ', array_fill(0, count($inquiryIds), '?'));
@@ -170,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     echo json_encode([
         'success' => true,
         'quotations' => array_values($statuses),
+        'latest_inquiry_id' => $latestInquiryId,
     ]);
     exit();
 }
@@ -809,6 +816,11 @@ if ($costingReviewResult) {
 }
 
 $quotationDraftByInquiry = inquiry_quote_fetch_by_inquiry($conn);
+$latestInquiryId = 0;
+if (inquiry_center_has_table($conn, 'service_inquiries')) {
+    $latestInquiryResult = $conn->query('SELECT COALESCE(MAX(id), 0) AS latest_id FROM service_inquiries');
+    $latestInquiryId = (int)(($latestInquiryResult ? $latestInquiryResult->fetch_assoc() : [])['latest_id'] ?? 0);
+}
 
 $pendingCount = 0;
 $verifiedCount = 0;
@@ -866,7 +878,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
 <main class="main-content admin-dashboard-content">
-    <div class="inquiries-shell">
+    <div class="inquiries-shell" data-latest-inquiry-id="<?php echo $latestInquiryId; ?>">
         <?php if ($message || $error): ?>
             <div
                 class="inquiry-toast <?php echo $message ? 'inquiry-toast--success' : 'inquiry-toast--error'; ?>"
@@ -1075,7 +1087,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
                                     <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Request</button>
                                     <button type="button" class="inquiry-modal-tab" data-inquiry-tab="actions">Admin Review</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo $quotationDraft ? ' has-data' : ''; ?><?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" <?php echo !$showQuotation ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Quotation</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" <?php echo !$showQuotation ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Quotation</button>
                                     <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?><?php echo !$showInspection ? ' chip-disabled' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" <?php echo !$showInspection ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Inspection</button>
                                 </div>
                             <div class="inquiry-modal-panels">
@@ -1162,8 +1174,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endif; ?>
                                 </section>
 
+                                <?php if ($costingReview && !empty($latestCostItems)): ?>
                                 <section class="inquiry-tab-panel inquiry-tab-panel--supporting" data-inquiry-panel="quotation" hidden>
-                                    <?php if ($costingReview && !empty($latestCostItems)): ?>
                                         <div class="inquiry-section-title">Engineer Costing Review</div>
                                         <div class="inquiry-costing-review">
                                             <div class="inquiry-details-grid">
@@ -1207,13 +1219,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php endforeach; ?>
                                             </div>
                                         </div>
-                                    <?php else: ?>
-                                        <div class="inquiry-empty">No engineer costing yet.</div>
-                                    <?php endif; ?>
                                 </section>
+                                <?php endif; ?>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
-                                    <div class="inquiry-section-title">Quotation</div>
                                     <?php if ($quotationDraft): ?>
                                         <div class="inquiry-quote-draft">
                                             <div>

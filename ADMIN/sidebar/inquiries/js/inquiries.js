@@ -71,6 +71,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    const showLiveInquiryToast = function (message) {
+        document.querySelector('[data-live-inquiry-toast]')?.remove();
+
+        const notice = document.createElement('div');
+        const text = document.createElement('span');
+        const closeButton = document.createElement('button');
+        let closeTimer = null;
+
+        notice.className = 'inquiry-toast inquiry-toast--success';
+        notice.setAttribute('role', 'status');
+        notice.setAttribute('data-live-inquiry-toast', '');
+        text.textContent = message;
+        closeButton.type = 'button';
+        closeButton.setAttribute('aria-label', 'Close notification');
+        closeButton.textContent = '\u00d7';
+
+        const closeNotice = function () {
+            if (closeTimer) {
+                window.clearTimeout(closeTimer);
+            }
+            notice.remove();
+        };
+
+        closeButton.addEventListener('click', closeNotice);
+        notice.append(text, closeButton);
+        document.body.appendChild(notice);
+        playToastSound();
+        closeTimer = window.setTimeout(closeNotice, 6000);
+    };
+
     const confirmBox = document.createElement('div');
     confirmBox.className = 'inquiry-confirm';
     confirmBox.hidden = true;
@@ -549,6 +579,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
+                if (tab.disabled || tab.classList.contains('chip-disabled')) {
+                    return;
+                }
+
                 const target = tab.getAttribute('data-inquiry-tab');
                 tabs.forEach(function (item) {
                     item.classList.toggle('is-active', item === tab);
@@ -560,6 +594,87 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    const quotationStatusModals = Array.from(document.querySelectorAll('.inquiry-modal[data-inquiry-id]'));
+    let quotationPollInProgress = false;
+
+    const pollQuotationStatuses = function () {
+        if (quotationPollInProgress || document.hidden || quotationStatusModals.length === 0) {
+            return;
+        }
+
+        const inquiryIds = quotationStatusModals
+            .map(function (modal) { return modal.dataset.inquiryId || ''; })
+            .filter(Boolean);
+        const pollUrl = new URL(window.location.href);
+        pollUrl.search = '';
+        pollUrl.searchParams.set('action', 'poll_quotation_status');
+        pollUrl.searchParams.set('inquiry_ids', inquiryIds.join(','));
+        quotationPollInProgress = true;
+
+        fetch(pollUrl.toString(), {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            cache: 'no-store',
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Unable to check quotation status.');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                if (!data.success || !Array.isArray(data.quotations)) {
+                    return;
+                }
+
+                data.quotations.forEach(function (quotation) {
+                    const modal = document.querySelector('.inquiry-modal[data-inquiry-id="' + String(quotation.inquiry_id) + '"]');
+                    if (!modal) {
+                        return;
+                    }
+
+                    const previousStatus = modal.dataset.quotationStatus || '';
+                    const currentStatus = String(quotation.status || '');
+                    modal.dataset.quotationStatus = currentStatus;
+
+                    if (previousStatus !== 'sent' || currentStatus !== 'accepted') {
+                        return;
+                    }
+
+                    const inspectionTab = modal.querySelector('[data-inquiry-stage="inspection"]');
+                    if (inspectionTab) {
+                        inspectionTab.disabled = false;
+                        inspectionTab.setAttribute('aria-disabled', 'false');
+                        inspectionTab.classList.remove('chip-disabled');
+                    }
+
+                    modal.querySelector('[data-inquiry-inspection-form]')?.removeAttribute('hidden');
+                    const statusLabel = modal.querySelector('[data-quotation-status-label]');
+                    if (statusLabel) {
+                        statusLabel.textContent = quotation.label || 'Accepted';
+                    }
+
+                    const nextAction = modal.closest('.inquiry-card')?.querySelector('.inquiry-open-modal');
+                    if (nextAction) {
+                        nextAction.textContent = 'Schedule Inspection';
+                        nextAction.setAttribute('data-inquiry-open-tab', 'inspection');
+                    }
+
+                    showLiveInquiryToast('Notification: Quotation for this inquiry has been accepted by the client!');
+                });
+            })
+            .catch(function () {
+                // Susubok ulit sa next poll kapag may temporary connection problem.
+            })
+            .finally(function () {
+                quotationPollInProgress = false;
+            });
+    };
+
+    window.setInterval(pollQuotationStatuses, 8000);
 
     document.querySelectorAll('.inquiry-quote-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {

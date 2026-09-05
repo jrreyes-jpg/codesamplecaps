@@ -967,6 +967,15 @@
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
 }
 
+.inquiry-modal-tab.chip-disabled,
+.inquiry-modal-tab:disabled {
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
 .inquiry-modal-panels {
     min-height: 0;
     max-height: 70vh;
@@ -980,6 +989,10 @@
     gap: 12px;
     min-height: 100%;
     align-content: start;
+}
+
+.inquiry-tab-panel--supporting {
+    min-height: 0;
 }
 
 .inquiry-tab-panel[hidden] {

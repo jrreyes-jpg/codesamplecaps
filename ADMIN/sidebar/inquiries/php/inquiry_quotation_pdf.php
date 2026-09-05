@@ -17,7 +17,9 @@ if (!$quotation) {
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $isFinalized = $quoteStatus === 'accepted' && !empty($quotation['scheduled_at']);
 $showInspectionSchedule = $isFinalized && !empty($quotation['engineer_name']);
-$statusClass = $isFinalized ? 'accepted' : ($quoteStatus === 'sent' ? 'sent' : 'draft');
+$statusClass = in_array($quoteStatus, ['accepted', 'approved'], true)
+    ? $quoteStatus
+    : ($quoteStatus === 'sent' ? 'sent' : 'draft');
 $statusLabel = $isFinalized
     ? 'Approved / Finalized'
     : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));

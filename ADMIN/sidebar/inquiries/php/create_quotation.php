@@ -278,12 +278,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         <?php endif; ?>
 
-        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back" data-inquiry-history-back>&larr; Back to Inquiries</a>
-
         <section class="quotation-create-card">
+            <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary quotation-create-back" data-inquiry-history-back>&larr; Back to Inquiries</a>
+
             <div class="quotation-create-heading">
                 <div>
-                    <span class="reports-kicker"><?php echo $isEditMode ? 'Quotation Draft' : 'Verified Lead'; ?></span>
+                    <span class="reports-kicker<?php echo $isEditMode ? '' : ' quotation-create-status'; ?>"><?php echo $isEditMode ? 'Quotation Draft' : 'Verified Lead'; ?></span>
                     <h1><?php echo $isEditMode ? 'Edit Quotation' : 'Create Quotation'; ?></h1>
                     <?php if ($isEditMode): ?>
                         <p>Update the draft scope costs before approval and sending.</p>
@@ -358,8 +358,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary"><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary">Cancel</a>
+                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? '' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>
         </section>

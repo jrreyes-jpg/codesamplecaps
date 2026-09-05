@@ -738,7 +738,8 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     };
 
-    window.setInterval(pollQuotationStatuses, 8000);
+    pollQuotationStatuses();
+    window.setInterval(pollQuotationStatuses, 5000);
 
     document.querySelectorAll('[data-inquiry-history-back]').forEach(function (link) {
         link.addEventListener('click', function (event) {
@@ -900,6 +901,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
             removeButton.closest('[data-quotation-item]')?.remove();
             updateQuotationPreview();
+        });
+
+        form?.addEventListener('submit', function (event) {
+            if (event.submitter?.hasAttribute('data-confirm-quotation-save')
+                && !window.confirm('Are you sure you want to save this quotation draft?')) {
+                event.preventDefault();
+            }
+        });
+
+        quotationCreate.querySelector('[data-quotation-cancel]')?.addEventListener('click', function (event) {
+            const hasCostBreakdownData = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).some(function (item) {
+                const itemName = item.querySelector('input[name="item_name[]"]')?.value.trim() || '';
+                const unitCost = item.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
+                return itemName !== '' || unitCost !== '';
+            });
+
+            if (hasCostBreakdownData
+                && !window.confirm('You have unsaved changes in the cost breakdown. Are you sure you want to cancel and lose this data?')) {
+                event.preventDefault();
+            }
         });
 
         form?.addEventListener('input', updateQuotationPreview);

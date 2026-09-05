@@ -139,16 +139,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     $inquiryIds = array_slice($inquiryIds, 0, 100);
     $statuses = [];
     $pendingUnreadInquiryCount = 0;
+    $latestPendingInquiryId = 0;
     $latestRevisionId = 0;
+    $latestRevisionInquiryId = 0;
     $latestRevisionUpdatedAt = '';
 
     if (inquiry_center_has_table($conn, 'service_inquiries')) {
         $pendingUnreadResult = $conn->query(
-            "SELECT COUNT(*) AS total
+            "SELECT COUNT(*) AS total, MAX(id) AS latest_id
              FROM service_inquiries
              WHERE status = 'Pending Review' AND viewed_at IS NULL"
         );
-        $pendingUnreadInquiryCount = (int)(($pendingUnreadResult ? $pendingUnreadResult->fetch_assoc() : [])['total'] ?? 0);
+        $pendingUnreadRow = $pendingUnreadResult ? $pendingUnreadResult->fetch_assoc() : [];
+        $pendingUnreadInquiryCount = (int)($pendingUnreadRow['total'] ?? 0);
+        $latestPendingInquiryId = (int)($pendingUnreadRow['latest_id'] ?? 0);
     }
 
     if ($inquiryIds && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
@@ -182,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
 
     if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
         $latestRevisionResult = $conn->query(
-            "SELECT id, updated_at
+            "SELECT id, inquiry_id, updated_at
              FROM inquiry_quotation_drafts
              WHERE status IN ('revision_requested', 'for_revision')
              ORDER BY updated_at DESC, id DESC
@@ -190,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
         );
         $latestRevision = $latestRevisionResult ? $latestRevisionResult->fetch_assoc() : null;
         $latestRevisionId = (int)($latestRevision['id'] ?? 0);
+        $latestRevisionInquiryId = (int)($latestRevision['inquiry_id'] ?? 0);
         $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
     }
 
@@ -197,7 +202,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
         'success' => true,
         'quotations' => array_values($statuses),
         'pending_unread_inquiry_count' => $pendingUnreadInquiryCount,
+        'latest_pending_inquiry_id' => $latestPendingInquiryId,
         'latest_revision_id' => $latestRevisionId,
+        'latest_revision_inquiry_id' => $latestRevisionInquiryId,
         'latest_revision_updated_at' => $latestRevisionUpdatedAt,
     ]);
     exit();
@@ -411,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     echo json_encode([
                         'success' => true,
                         'message' => 'Quotation sent to client.',
-                        'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead&open=inquiryModal' . $inquiryId,
+                        'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead&open=inquiryModal' . $inquiryId . '&tab=quotation',
                     ]);
                     exit();
                 }

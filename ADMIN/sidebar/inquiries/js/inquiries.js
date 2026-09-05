@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    const showLiveInquiryToast = function (message) {
+    const showLiveInquiryToast = function (message, inquiryId, targetTab) {
         document.querySelector('[data-live-inquiry-toast]')?.remove();
 
         const notice = document.createElement('div');
@@ -97,7 +97,43 @@ document.addEventListener('DOMContentLoaded', function () {
             notice.remove();
         };
 
-        closeButton.addEventListener('click', closeNotice);
+        closeButton.addEventListener('click', function (event) {
+            event.stopPropagation();
+            closeNotice();
+        });
+
+        const openToastInquiry = function () {
+            const modal = document.getElementById('inquiryModal' + String(inquiryId || ''));
+            if (!modal) {
+                return;
+            }
+
+            document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(function (openInquiryModal) {
+                if (openInquiryModal !== modal) {
+                    closeModal(openInquiryModal);
+                }
+            });
+
+            openModal(modal);
+            const requestedTab = targetTab || 'client';
+            const activeTab = activateModalTab(modal, requestedTab) ? requestedTab : 'client';
+            pushModalHistory(modal, activeTab);
+            closeNotice();
+        };
+
+        if (Number.parseInt(inquiryId || '0', 10) > 0) {
+            notice.classList.add('inquiry-toast--clickable');
+            notice.setAttribute('role', 'button');
+            notice.setAttribute('tabindex', '0');
+            notice.addEventListener('click', openToastInquiry);
+            notice.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openToastInquiry();
+                }
+            });
+        }
+
         notice.append(text, closeButton);
         document.body.appendChild(notice);
         playToastSound();
@@ -691,7 +727,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const currentPendingUnreadCount = Number.parseInt(data.pending_unread_inquiry_count || '0', 10);
                 if (currentPendingUnreadCount > pendingUnreadInquiryCount) {
                     showNewInquiryBellDot();
-                    showLiveInquiryToast('Notification: A new client inquiry has just been received!');
+                    showLiveInquiryToast(
+                        'Notification: A new client inquiry has just been received!',
+                        Number.parseInt(data.latest_pending_inquiry_id || '0', 10),
+                        'client'
+                    );
                 }
                 pendingUnreadInquiryCount = currentPendingUnreadCount;
                 inquiryShell.dataset.pendingUnreadInquiryCount = String(currentPendingUnreadCount);
@@ -703,7 +743,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (currentRevisionId > 0 && hasNewRevision) {
                     showNewInquiryBellDot();
-                    showLiveInquiryToast('Notification: A client has requested a revision on their quotation!');
+                    showLiveInquiryToast(
+                        'Notification: A client has requested a revision on their quotation!',
+                        Number.parseInt(data.latest_revision_inquiry_id || '0', 10),
+                        'quotation'
+                    );
                     latestRevisionId = currentRevisionId;
                     latestRevisionUpdatedAt = currentRevisionUpdatedAt;
                     inquiryShell.dataset.latestRevisionId = String(currentRevisionId);
@@ -763,7 +807,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         nextAction.setAttribute('data-inquiry-open-tab', 'inspection');
                     }
 
-                    showLiveInquiryToast('Notification: Quotation for this inquiry has been accepted by the client!');
+                    showLiveInquiryToast(
+                        'Notification: Quotation for this inquiry has been accepted by the client!',
+                        quotation.inquiry_id,
+                        'quotation'
+                    );
                 });
             })
             .catch(function () {
@@ -824,9 +872,19 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.submitting = '1';
             const submitButton = form.querySelector('button[type="submit"]');
             const defaultText = submitButton?.textContent || 'Send Quotation to Client';
+            const sendingModal = form.closest('.inquiry-modal');
             if (submitButton) {
                 submitButton.disabled = true;
-                submitButton.textContent = 'Sending...';
+                const spinner = document.createElement('span');
+                const label = document.createElement('span');
+                spinner.className = 'inquiry-send-spinner';
+                spinner.setAttribute('aria-hidden', 'true');
+                label.textContent = 'Sending...';
+                submitButton.classList.add('inquiry-send-button--loading');
+                submitButton.replaceChildren(spinner, label);
+            }
+            if (sendingModal) {
+                sendingModal.inert = true;
             }
 
             fetch(form.getAttribute('action') || window.location.href, {
@@ -846,12 +904,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!result.response.ok || !result.data.success) {
                         throw new Error(result.data.message || 'Unable to send quotation.');
                     }
-                    window.location.assign(result.data.redirect || window.location.href);
+                    sendingModal?.classList.add('is-send-complete');
+                    window.setTimeout(function () {
+                        window.location.assign(result.data.redirect || window.location.href);
+                    }, 180);
                 })
                 .catch(function (error) {
                     form.dataset.submitting = '0';
+                    if (sendingModal) {
+                        sendingModal.inert = false;
+                        sendingModal.classList.remove('is-send-complete');
+                    }
                     if (submitButton) {
                         submitButton.disabled = false;
+                        submitButton.classList.remove('inquiry-send-button--loading');
                         submitButton.textContent = defaultText;
                     }
 
@@ -897,6 +963,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
         const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
+        const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
+        const isEditMode = form?.dataset.quotationEditMode === 'true';
+
+        const serializeQuotationForm = function () {
+            return form ? new URLSearchParams(new FormData(form)).toString() : '';
+        };
+
+        let initialQuotationState = '';
+
+        const updateEditSubmitState = function () {
+            if (!isEditMode || !updateSubmitButton) {
+                return;
+            }
+
+            updateSubmitButton.disabled = serializeQuotationForm() === initialQuotationState;
+        };
 
         const updateQuotationPreview = function () {
             let subtotal = 0;
@@ -927,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             items.appendChild(template.content.cloneNode(true));
             updateQuotationPreview();
+            updateEditSubmitState();
         });
 
         items?.addEventListener('click', function (event) {
@@ -937,6 +1020,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             removeButton.closest('[data-quotation-item]')?.remove();
             updateQuotationPreview();
+            updateEditSubmitState();
         });
 
         form?.addEventListener('submit', function (event) {
@@ -965,8 +1049,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        form?.addEventListener('input', updateQuotationPreview);
+        form?.addEventListener('input', function () {
+            updateQuotationPreview();
+            updateEditSubmitState();
+        });
+        form?.addEventListener('change', updateEditSubmitState);
         updateQuotationPreview();
+        initialQuotationState = serializeQuotationForm();
+        updateEditSubmitState();
     }
 
     const queryParams = new URLSearchParams(window.location.search);

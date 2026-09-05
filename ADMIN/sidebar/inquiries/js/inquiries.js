@@ -575,30 +575,77 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('.inquiry-quote-approve-form').forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            if (form.dataset.confirmed === '1') {
-                return;
-            }
-
-            event.preventDefault();
-            showConfirm(form, 'Approve this quotation draft?');
-        });
-    });
-
     document.querySelectorAll('.inquiry-quote-send-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
-            if (form.dataset.confirmed === '1') {
+            event.preventDefault();
+
+            if (form.dataset.confirmed !== '1') {
+                showConfirm(form, 'Send this quotation to the client by email?', [
+                    { label: 'Client', value: form.dataset.quoteRecipientName || '' },
+                    { label: 'Email', value: form.dataset.quoteRecipientEmail || '' },
+                    { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
+                    { label: 'Source', value: form.dataset.quoteRecipientSource || '' },
+                ]);
                 return;
             }
 
-            event.preventDefault();
-            showConfirm(form, 'Send quotation to this recipient?', [
-                { label: 'Client', value: form.dataset.quoteRecipientName || '' },
-                { label: 'Email', value: form.dataset.quoteRecipientEmail || '' },
-                { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
-                { label: 'Source', value: form.dataset.quoteRecipientSource || '' },
-            ]);
+            delete form.dataset.confirmed;
+            if (form.dataset.submitting === '1') {
+                return;
+            }
+
+            form.dataset.submitting = '1';
+            const submitButton = form.querySelector('button[type="submit"]');
+            const defaultText = submitButton?.textContent || 'Send Quotation to Client';
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Sending...';
+            }
+
+            fetch(form.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',   
+                },
+            })
+                .then(function (response) {
+                    return response.json().then(function (data) {
+                        return { response: response, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.response.ok || !result.data.success) {
+                        throw new Error(result.data.message || 'Unable to send quotation.');
+                    }
+                    window.location.assign(result.data.redirect || window.location.href);
+                })
+                .catch(function (error) {
+                    form.dataset.submitting = '0';
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = defaultText;
+                    }
+
+                    const notice = document.createElement('div');
+                    const message = document.createElement('span');
+                    const closeButton = document.createElement('button');
+                    notice.className = 'inquiry-toast inquiry-toast--error';
+                    notice.setAttribute('role', 'alert');
+                    message.textContent = error.message || 'Unable to send quotation.';
+                    closeButton.type = 'button';
+                    closeButton.setAttribute('aria-label', 'Close notification');
+                    closeButton.textContent = '\u00d7';
+                    closeButton.addEventListener('click', function () {
+                        notice.remove();
+                    });
+                    notice.append(message, closeButton);
+                    document.body.appendChild(notice);
+                    window.setTimeout(function () {
+                        notice.remove();
+                    }, 8000);
+                });
         });
     });
 

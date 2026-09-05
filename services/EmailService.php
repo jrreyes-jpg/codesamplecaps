@@ -243,7 +243,7 @@ class EmailService {
         }
     }
 
-    public function sendInquiryQuotationLink(string $recipientEmail, string $recipientName, string $quotationNo, string $quotationLink, int $expiryDays = 14): bool {
+    public function sendInquiryQuotationLink(string $recipientEmail, string $recipientName, string $quotationNo, float $grandTotal, string $quotationLink, int $expiryDays = 14): bool {
         try {
             if ($this->error !== '') {
                 return false;
@@ -251,6 +251,7 @@ class EmailService {
 
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
             $safeQuotationNo = htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8');
+            $safeGrandTotal = htmlspecialchars('PHP ' . number_format($grandTotal, 2), ENT_QUOTES, 'UTF-8');
             $safeQuotationLink = htmlspecialchars($quotationLink, ENT_QUOTES, 'UTF-8');
             $safeExpiryDays = (int)$expiryDays;
 
@@ -276,12 +277,13 @@ class EmailService {
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
                         <p>Your quotation <strong>{$safeQuotationNo}</strong> from Edge Automation is ready for review.</p>
+                        <p>Grand Total: <strong>{$safeGrandTotal}</strong></p>
                         <p><a href='{$safeQuotationLink}' style='display:inline-block;background:#0f766e;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>View Quotation</a></p>
                         <p>This secure link expires in {$safeExpiryDays} days.</p>
                         <p>If you did not request this quotation, please ignore this email.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Your quotation {$quotationNo} is ready. Open this secure link: {$quotationLink}. This link expires in {$expiryDays} days.";
+            $this->mailer->AltBody = "Your quotation {$quotationNo} is ready. Grand Total: PHP " . number_format($grandTotal, 2) . ". Open this secure link: {$quotationLink}. This link expires in {$expiryDays} days.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

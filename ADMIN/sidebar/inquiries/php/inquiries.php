@@ -126,6 +126,7 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
 }
 
 $csrfToken = inquiry_center_csrf_token();
+$isAjaxRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
 
 if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_inquiries')) {
     $viewedInquiryId = (int)$_GET['viewed_inquiry'];
@@ -314,6 +315,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Invalid quotation send request.';
         } else {
             try {
+                $quotationBeforeSend = inquiry_quote_fetch_full($conn, $draftId);
+                if (!$quotationBeforeSend || (int)($quotationBeforeSend['inquiry_id'] ?? 0) !== $inquiryId) {
+                    throw new RuntimeException('Quotation does not match this inquiry.');
+                }
+                $statusBeforeSend = inquiry_quote_normalize_status((string)($quotationBeforeSend['status'] ?? ''));
                 inquiry_quote_send_to_client($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
                 audit_log_event(
                     $conn,
@@ -321,9 +327,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'send_inquiry_quotation_to_client',
                     'quotation',
                     $draftId,
-                    ['status' => 'approved'],
+                    ['status' => $statusBeforeSend],
                     ['status' => 'sent']
                 );
+                if ($isAjaxRequest) {
+                    $_SESSION['inquiry_center_flash'] = 'Quotation sent to client.';
+                    header('Content-Type: application/json; charset=UTF-8');
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Quotation sent to client.',
+                        'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead&open=inquiryModal' . $inquiryId,
+                    ]);
+                    exit();
+                }
                 inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation sent to client.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
@@ -348,29 +364,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ['status' => 'draft']
                 );
                 inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation reopened for revision.');
-            } catch (Throwable $throwable) {
-                $error = $throwable->getMessage();
-            }
-        }
-    } elseif (($_POST['action'] ?? '') === 'approve_quotation_draft') {
-        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
-        $draftId = (int)($_POST['draft_id'] ?? 0);
-
-        if ($inquiryId <= 0 || $draftId <= 0) {
-            $error = 'Invalid quotation approval request.';
-        } else {
-            try {
-                inquiry_quote_approve($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
-                audit_log_event(
-                    $conn,
-                    (int)($_SESSION['user_id'] ?? 0),
-                    'approve_inquiry_quotation_draft',
-                    'quotation',
-                    $draftId,
-                    ['status' => 'draft'],
-                    ['status' => 'approved']
-                );
-                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation draft approved.');
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -598,6 +591,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+}
+
+if ($isAjaxRequest && $error !== '') {
+    http_response_code(422);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode([
+        'success' => false,
+        'message' => $error,
+    ]);
+    exit();
 }
 
 $message = (string)($_SESSION['inquiry_center_flash'] ?? $message);
@@ -1142,7 +1145,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </div>
                                         <?php $quotationStatus = inquiry_quote_normalize_status((string)$quotationDraft['status']); ?>
                                         <?php $quotationRecipient = null; ?>
-                                        <?php if (in_array($quotationStatus, ['approved', 'accepted'], true)): ?>
+                                        <?php if (in_array($quotationStatus, ['draft', 'approved', 'accepted'], true)): ?>
                                             <?php try { $quotationRecipient = inquiry_quote_resolve_recipient($conn, (int)$quotationDraft['id']); } catch (Throwable $throwable) { $quotationRecipient = null; } ?>
                                         <?php endif; ?>
                                         <?php if (!empty($quotationDraft['client_decision_note'])): ?>
@@ -1151,15 +1154,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <strong><?php echo nl2br(htmlspecialchars((string)$quotationDraft['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></strong>
                                             </div>
                                         <?php endif; ?>
-                                        <?php if ($quotationStatus === 'draft'): ?>
-                                            <form method="POST" class="inquiry-quote-approve-form">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="approve_quotation_draft">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-primary">Approve Quotation Draft</button>
-                                            </form>
-                                        <?php elseif ($quotationStatus === 'approved' && empty($quotationDraft['project_id'])): ?>
+                                        <?php if (in_array($quotationStatus, ['draft', 'approved'], true) && empty($quotationDraft['project_id'])): ?>
                                             <?php if (!$quotationRecipient || empty($quotationRecipient['email'])): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide">
                                                     <span>Send Quotation</span>
@@ -1178,7 +1173,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <input type="hidden" name="action" value="send_quotation_to_client">
                                                 <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                 <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-primary">Send To Client</button>
+                                                <button type="submit" class="btn-primary">Send Quotation to Client</button>
                                             </form>
                                             <?php endif; ?>
                                         <?php elseif ($quotationStatus === 'revision_requested' && empty($quotationDraft['project_id'])): ?>

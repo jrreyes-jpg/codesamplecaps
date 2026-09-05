@@ -471,30 +471,6 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
     }
 }
 
-function inquiry_quote_approve(mysqli $conn, int $draftId, int $adminId): void
-{
-    $quotation = inquiry_quote_fetch_full($conn, $draftId);
-    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
-
-    $stmt = $conn->prepare(
-        "UPDATE inquiry_quotation_drafts
-         SET status = 'approved', approved_by = ?, approved_at = NOW(), client_decision_note = NULL, client_decision_at = NULL
-         WHERE id = ? AND status IN ('Draft', 'draft')"
-    );
-    if (!$stmt) {
-        throw new RuntimeException('Unable to prepare quotation approval.');
-    }
-
-    $stmt->bind_param('ii', $adminId, $draftId);
-    $stmt->execute();
-
-    if ($stmt->affected_rows <= 0) {
-        throw new RuntimeException('Only draft quotations can be approved.');
-    }
-
-    inquiry_quote_add_history($conn, $draftId, $fromStatus, 'approved', 'Admin approved quotation draft.', $adminId, 'admin');
-}
-
 function inquiry_quote_send_to_client(mysqli $conn, int $draftId, int $adminId): void
 {
     $quotation = inquiry_quote_fetch_full($conn, $draftId);
@@ -503,8 +479,8 @@ function inquiry_quote_send_to_client(mysqli $conn, int $draftId, int $adminId):
     }
 
     $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
-    if ($fromStatus !== 'approved') {
-        throw new RuntimeException('Only approved quotations can be sent to client.');
+    if (!in_array($fromStatus, ['draft', 'approved'], true)) {
+        throw new RuntimeException('Only draft or approved quotations can be sent to client.');
     }
 
     $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
@@ -527,48 +503,77 @@ function inquiry_quote_send_to_client(mysqli $conn, int $draftId, int $adminId):
     $publicLink = inquiry_quote_public_link($publicToken);
     $emailService = new EmailService();
 
-    if (!$emailService->sendInquiryQuotationLink($recipientEmail, $recipientName, (string)$quotation['quotation_no'], $publicLink, 14)) {
-        error_log('Inquiry quotation email failed for draft #' . $draftId . ': ' . $emailService->getError());
-        throw new RuntimeException('Quotation email cannot be sent right now. Please check email settings and try again.');
-    }
+    $conn->begin_transaction();
+    try {
+        $lockStmt = $conn->prepare('SELECT status FROM inquiry_quotation_drafts WHERE id = ? FOR UPDATE');
+        if (!$lockStmt) {
+            throw new RuntimeException('Unable to lock quotation for sending.');
+        }
+        $lockStmt->bind_param('i', $draftId);
+        $lockStmt->execute();
+        $lockedRow = $lockStmt->get_result()->fetch_assoc();
+        $lockedStatus = inquiry_quote_normalize_status((string)($lockedRow['status'] ?? ''));
+        if (!in_array($lockedStatus, ['draft', 'approved'], true)) {
+            throw new RuntimeException('This quotation can no longer be sent.');
+        }
 
-    $stmt = $conn->prepare(
-        "UPDATE inquiry_quotation_drafts
-         SET status = 'sent',
-             sent_by = ?,
-             sent_to_client_id = ?,
-             sent_to_name = ?,
-             sent_to_email = ?,
-             sent_to_contact = ?,
-             recipient_source = ?,
-             public_access_token_hash = ?,
-             public_token_expires_at = DATE_ADD(NOW(), INTERVAL 14 DAY),
-             sent_at = NOW(),
-             client_decision_note = NULL,
-             client_decision_at = NULL
-         WHERE id = ? AND status IN ('Approved', 'approved')"
-    );
-    if (!$stmt) {
-        throw new RuntimeException('Unable to prepare quotation send.');
-    }
+        if (!$emailService->sendInquiryQuotationLink(
+            $recipientEmail,
+            $recipientName,
+            (string)$quotation['quotation_no'],
+            (float)($quotation['grand_total'] ?? 0),
+            $publicLink,
+            14
+        )) {
+            error_log('Inquiry quotation email failed for draft #' . $draftId . ': ' . $emailService->getError());
+            throw new RuntimeException('Quotation email cannot be sent right now. Please check email settings and try again.');
+        }
 
-    $stmt->bind_param(
-        'iisssssi',
-        $adminId,
-        $recipientClientId,
-        $recipientName,
-        $recipientEmail,
-        $recipientContact,
-        $recipientSource,
-        $publicTokenHash,
-        $draftId
-    );
-    $stmt->execute();
-    if ($stmt->affected_rows <= 0) {
-        throw new RuntimeException('Only approved quotations can be sent to client.');
-    }
+        $stmt = $conn->prepare(
+            "UPDATE inquiry_quotation_drafts
+             SET status = 'sent',
+                 approved_by = COALESCE(approved_by, ?),
+                 approved_at = COALESCE(approved_at, NOW()),
+                 sent_by = ?,
+                 sent_to_client_id = ?,
+                 sent_to_name = ?,
+                 sent_to_email = ?,
+                 sent_to_contact = ?,
+                 recipient_source = ?,
+                 public_access_token_hash = ?,
+                 public_token_expires_at = DATE_ADD(NOW(), INTERVAL 14 DAY),
+                 sent_at = NOW(),
+                 client_decision_note = NULL,
+                 client_decision_at = NULL
+             WHERE id = ? AND status IN ('Draft', 'draft', 'Approved', 'approved')"
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Unable to prepare quotation send.');
+        }
 
-    inquiry_quote_add_history($conn, $draftId, $fromStatus, 'sent', 'Admin sent quotation to ' . $recipientName . '.', $adminId, 'admin');
+        $stmt->bind_param(
+            'iiisssssi',
+            $adminId,
+            $adminId,
+            $recipientClientId,
+            $recipientName,
+            $recipientEmail,
+            $recipientContact,
+            $recipientSource,
+            $publicTokenHash,
+            $draftId
+        );
+        $stmt->execute();
+        if ($stmt->affected_rows <= 0) {
+            throw new RuntimeException('This quotation can no longer be sent.');
+        }
+
+        inquiry_quote_add_history($conn, $draftId, $lockedStatus, 'sent', 'Admin sent quotation to ' . $recipientName . '.', $adminId, 'admin');
+        $conn->commit();
+    } catch (Throwable $throwable) {
+        $conn->rollback();
+        throw $throwable;
+    }
 }
 
 function inquiry_quote_client_respond(mysqli $conn, int $draftId, int $clientId, string $decision, string $note): void

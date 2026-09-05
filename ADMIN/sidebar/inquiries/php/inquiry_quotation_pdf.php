@@ -17,11 +17,10 @@ if (!$quotation) {
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $isFinalized = $quoteStatus === 'accepted' && !empty($quotation['scheduled_at']);
 $showInspectionSchedule = $isFinalized && !empty($quotation['engineer_name']);
-$statusClass = $isFinalized ? 'is-approved' : ($quoteStatus === 'sent' ? 'is-pending' : 'is-draft');
+$statusClass = $isFinalized ? 'accepted' : ($quoteStatus === 'sent' ? 'sent' : 'draft');
 $statusLabel = $isFinalized
     ? 'Approved / Finalized'
     : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
-$preparedByName = trim((string)($quotation['approved_by_name'] ?? '')) ?: 'Erika Reyes';
 $quotationTimestamp = strtotime((string)($quotation['created_at'] ?? '')) ?: time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -32,6 +31,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> - Quotation</title>
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css">
     <link rel="stylesheet" href="/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiry-quotation-pdf.css">
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
 </head>
@@ -44,66 +44,67 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
         <button type="button" data-print-quotation>Print / Save as PDF</button>
     </div>
 
-    <main class="quote-page">
-        <header class="quote-header">
-            <div class="quote-brand">
+    <main class="public-quote-document public-quote-document--standalone">
+        <header class="public-quote-header">
+            <div class="public-quote-brand">
                 <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo">
                 <div>
                     <strong>EDGE AUTOMATION TECHNOLOGY SERVICES, CO.</strong>
                     <span>Project Management, Asset Tracking, Inventory, and Quotation System</span>
                 </div>
             </div>
-            <div class="quote-meta-box">
+            <div class="public-quote-meta-box">
                 <span>Quotation No.</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                <small class="<?php echo $statusClass; ?>">
+                <small class="public-quote-status public-quote-status--<?php echo $statusClass; ?>">
                     <?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?>
                 </small>
             </div>
         </header>
 
-        <section class="quote-title-row">
+        <section class="public-quote-title-row">
             <div>
                 <span>Prepared For</span>
                 <h1><?php echo htmlspecialchars((string)$quotation['client_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
                 <p><?php echo htmlspecialchars((string)($quotation['company_name'] ?: 'Individual Client'), ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
-            <div>
+            <div class="public-quote-prepared-by">
                 <span>Date</span>
                 <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <span>Prepared By</span>
-                <strong><?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                <strong>Engr. Erika Jeanne P. Jimenez</strong>
+                <small>CEO / General Manager</small>
             </div>
         </section>
 
-        <section class="quote-grid">
-            <div class="quote-info-card">
+        <section class="public-quote-grid">
+            <div>
                 <span>Email</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['email'], ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
-            <div class="quote-info-card">
+            <div>
                 <span>Contact</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
-            <div class="quote-info-card">
+            <div>
                 <span>Service</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
             <?php if ($showInspectionSchedule): ?>
-                <div class="quote-info-card">
+                <div>
                     <span>Assigned Engineer</span>
                     <strong><?php echo htmlspecialchars((string)$quotation['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
                 </div>
-                <div class="quote-info-card">
+                <div>
                     <span>Inspection Schedule</span>
                     <strong><?php echo htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
                 </div>
             <?php endif; ?>
-            <div class="quote-info-card">
+            <div>
                 <span>Valid Until</span>
                 <strong><?php echo htmlspecialchars($validUntil, ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
-            <div class="quote-info-card quote-info-card--wide">
+            <div class="public-quote-grid__wide">
                 <span>Site Address</span>
                 <strong>
                     <?php echo htmlspecialchars(trim((string)($quotation['site_address'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>
@@ -114,14 +115,15 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             </div>
         </section>
 
-        <section class="quote-section">
+        <section class="public-quote-section">
             <h2>Scope Summary</h2>
             <p><?php echo nl2br(htmlspecialchars((string)($quotation['engineer_findings'] ?: $quotation['description']), ENT_QUOTES, 'UTF-8')); ?></p>
         </section>
 
-        <section class="quote-section">
+        <section class="public-quote-section">
             <h2>Cost Breakdown</h2>
-            <table class="quote-table">
+            <div class="public-quote-table-wrap">
+            <table class="public-quote-table">
                 <thead>
                     <tr>
                         <th>Type</th>
@@ -148,16 +150,17 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         </section>
 
-        <section class="quote-totals">
+        <section class="public-quote-totals">
             <div><span>Subtotal</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['subtotal']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
             <div><span>Margin</span><strong><?php echo htmlspecialchars(number_format((float)$quotation['profit_margin_percent'], 2), ENT_QUOTES, 'UTF-8'); ?>%</strong></div>
             <div><span>Profit Amount</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['profit_amount']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-            <div class="quote-grand-total"><span>Grand Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <div class="public-quote-grand-total"><span>Grand Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
         </section>
 
-        <footer class="quote-footer">
+        <footer class="public-quote-footer">
             <div>
                 <strong>Notes</strong>
                 <p>This quotation uses the validated scope and itemized costs. New findings during site inspection may require a revised quotation. The payment schedule will be confirmed in the written agreement.</p>
@@ -166,7 +169,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 <strong>Approval</strong>
                 <p>
                     <?php if ($isFinalized): ?>
-                        Approved by the client. Inspection schedule finalized by <?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?>.
+                        Approved by the client. Inspection schedule finalized by Engr. Erika Jeanne P. Jimenez.
                     <?php elseif ($quoteStatus === 'sent'): ?>
                         Pending client review and approval.
                     <?php else: ?>

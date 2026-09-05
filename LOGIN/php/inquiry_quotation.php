@@ -7,9 +7,16 @@ require_once __DIR__ . '/../../config/site_inspections.php';
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $flash = quotation_module_consume_flash();
 $csrfToken = quotation_module_csrf_token();
+$isAjaxRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!quotation_module_is_valid_csrf($_POST['csrf_token'] ?? null)) {
+        if ($isAjaxRequest) {
+            http_response_code(419);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => false, 'message' => 'Security check failed. Please refresh and try again.']);
+            exit();
+        }
         quotation_module_set_flash('error', 'Security check failed. Please try again.');
         quotation_module_redirect('/codesamplecaps/LOGIN/php/inquiry_quotation.php?token=' . urlencode($token));
     }
@@ -30,7 +37,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             throw new RuntimeException('Invalid quotation action.');
         }
+
+        if ($isAjaxRequest) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'success' => true,
+                'message' => $action === 'client_accept'
+                    ? 'Quotation approved and finalized.'
+                    : 'Quotation response saved.',
+            ]);
+            exit();
+        }
     } catch (Throwable $throwable) {
+        if ($isAjaxRequest) {
+            http_response_code(422);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => false, 'message' => $throwable->getMessage()]);
+            exit();
+        }
         quotation_module_set_flash('error', $throwable->getMessage());
     }
 
@@ -41,6 +65,7 @@ $quotation = inquiry_quote_fetch_by_public_token($conn, $token);
 $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : [];
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
 $canRespond = $status === 'sent';
+$isFinalized = in_array($status, ['approved', 'accepted'], true);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,6 +75,7 @@ $canRespond = $status === 'sent';
     <title>Quotation Review - Edge Automation</title>
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
     <link rel="stylesheet" href="/codesamplecaps/LOGIN/css/inquiry_quotation.css">
+    <script src="/codesamplecaps/LOGIN/js/inquiry_quotation.js" defer></script>
 </head>
 <body>
     <main class="public-quote-shell">
@@ -80,7 +106,9 @@ $canRespond = $status === 'sent';
                         <p><?php echo htmlspecialchars((string)$quotation['client_name'], ENT_QUOTES, 'UTF-8'); ?></p>
                     </div>
                     <strong class="public-quote-status public-quote-status--<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>">
-                        <?php echo htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
+                        <?php echo $isFinalized
+                            ? 'Status: Approved / Finalized'
+                            : htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
                     </strong>
                 </header>
 
@@ -121,7 +149,7 @@ $canRespond = $status === 'sent';
                 <?php endif; ?>
 
                 <?php if ($canRespond): ?>
-                    <form method="POST" class="public-quote-form">
+                    <form method="POST" class="public-quote-form" data-public-quotation-form>
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                         <label>
@@ -129,11 +157,16 @@ $canRespond = $status === 'sent';
                             <textarea name="note" rows="4" placeholder="Required for revision or rejection."></textarea>
                         </label>
                         <div class="public-quote-actions">
-                            <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept">Accept</button>
+                            <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept">Approve Quotation</button>
                             <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision">Request Revision</button>
                             <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject">Reject</button>
                         </div>
                     </form>
+                <?php elseif ($isFinalized): ?>
+                    <div class="public-quote-finalized">
+                        <strong>Status: Approved / Finalized</strong>
+                        <button type="button" class="public-quote-button public-quote-button--print" data-print-final-quotation>Print / Save Final PDF</button>
+                    </div>
                 <?php else: ?>
                     <div class="public-quote-empty">
                         This quotation is already <?php echo htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>.

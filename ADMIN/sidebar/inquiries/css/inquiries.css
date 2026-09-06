@@ -657,6 +657,11 @@
     grid-area: actions;
 }
 
+.inquiry-review-form button[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .inquiry-schedule-form {
     display: grid;
     gap: 10px;

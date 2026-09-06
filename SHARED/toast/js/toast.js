@@ -31,13 +31,19 @@
     window.showToast = function (message, type, options) {
         var safeType = ['success', 'error', 'warning'].includes(type) ? type : 'success';
         var settings = options || {};
-        var delay = safeType === 'error' ? 8000 : 5000;
+        var requestedDuration = Number(settings.duration);
+        var delay = Number.isFinite(requestedDuration) && requestedDuration >= 1000
+            ? requestedDuration
+            : (safeType === 'error' ? 8000 : 5000);
         var toast = document.createElement('div');
         var text = document.createElement('span');
         var closeButton = document.createElement('button');
         var progress = document.createElement('span');
 
         toast.className = 'shared-toast shared-toast--' + safeType;
+        if (delay === 3000) {
+            toast.classList.add('shared-toast--duration-3s');
+        }
         toast.setAttribute('data-shared-toast', '');
         toast.setAttribute('data-dynamic-toast', '');
         toast.setAttribute('role', safeType === 'error' ? 'alert' : 'status');

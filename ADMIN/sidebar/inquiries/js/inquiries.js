@@ -614,6 +614,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.inquiry-review-form').forEach(function (form) {
         const statusSelect = form.querySelector('select[name="status"]');
+        const submitButton = form.querySelector('button[type="submit"]');
         if (!statusSelect) {
             return;
         }
@@ -629,8 +630,10 @@ document.addEventListener('DOMContentLoaded', function () {
         ];
 
         const syncStatusChip = function () {
+            const isPendingReview = statusSelect.value === 'Pending Review';
             statusSelect.dataset.status = statusSelect.value;
             statusSelect.classList.remove(...statusClasses);
+            submitButton?.setAttribute('aria-disabled', String(isPendingReview));
 
             if (statusSelect.value === 'Pending Review') {
                 statusSelect.classList.add('status-select--pending');
@@ -654,6 +657,16 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (event) {
             event.preventDefault();
 
+            if (statusSelect.value === 'Pending Review') {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Please update the status before saving.', 'warning', { duration: 3000 });
+                } else {
+                    window.alert('Please update the status before saving.');
+                }
+                statusSelect.focus();
+                return;
+            }
+
             if (form.dataset.submitting === '1') {
                 return;
             }
@@ -665,7 +678,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             delete form.dataset.confirmed;
             form.dataset.submitting = '1';
-            const submitButton = form.querySelector('button[type="submit"]');
             if (submitButton) submitButton.disabled = true;
 
             fetch(form.getAttribute('action') || window.location.href, {
@@ -691,7 +703,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(function (error) {
                     form.dataset.submitting = '0';
-                    if (submitButton) submitButton.disabled = false;
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.setAttribute('aria-disabled', String(statusSelect.value === 'Pending Review'));
+                    }
                     if (typeof window.showToast === 'function') {
                         window.showToast(error.message || 'Unable to save inquiry review.', 'error');
                     } else {

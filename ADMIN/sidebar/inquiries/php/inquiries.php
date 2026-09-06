@@ -628,6 +628,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($inquiryId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
             $error = 'Invalid inquiry update request.';
+        } elseif ($newStatus === 'Pending Review') {
+            $error = 'Please update the status before saving.';
         } else {
             $stmt = $conn->prepare('SELECT status, admin_notes FROM service_inquiries WHERE id = ? LIMIT 1');
             if (!$stmt) {
@@ -1196,7 +1198,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <textarea name="admin_notes" rows="5" placeholder="Call result, budget, seriousness, next step..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions inquiry-review-form__actions">
-                                                <button type="submit" class="btn-primary">Save Review</button>
+                                                <button type="submit" class="btn-primary" aria-disabled="<?php echo $currentStatus === 'Pending Review' ? 'true' : 'false'; ?>">Save Review</button>
                                             </div>
                                         </form>
                                     <?php endif; ?>

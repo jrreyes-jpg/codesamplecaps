@@ -23,17 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = trim((string)($_POST['action'] ?? ''));
     $note = quotation_module_normalize_text($_POST['note'] ?? '');
+    $successMessage = '';
 
     try {
         if ($action === 'client_accept') {
             inquiry_quote_public_respond($conn, $token, 'accepted', $note);
-            quotation_module_set_flash('success', 'Quotation accepted successfully.');
+            $successMessage = 'Quotation accepted successfully.';
         } elseif ($action === 'client_revision') {
             inquiry_quote_public_respond($conn, $token, 'revision_requested', $note);
-            quotation_module_set_flash('success', 'Revision request submitted.');
+            $successMessage = 'Revision request submitted.';
         } elseif ($action === 'client_reject') {
             inquiry_quote_public_respond($conn, $token, 'rejected', $note);
-            quotation_module_set_flash('success', 'Quotation rejected.');
+            $successMessage = 'Quotation rejected.';
         } else {
             throw new RuntimeException('Invalid quotation action.');
         }
@@ -42,12 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode([
                 'success' => true,
-                'message' => $action === 'client_accept'
-                    ? 'Quotation approved and finalized.'
-                    : 'Quotation response saved.',
+                'message' => $successMessage,
+                'action' => $action,
             ]);
             exit();
         }
+
+        quotation_module_set_flash('success', $successMessage);
     } catch (Throwable $throwable) {
         if ($isAjaxRequest) {
             http_response_code(422);
@@ -231,6 +233,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                     </footer>
                 </article>
 
+                <?php if (!$isApprovedAwaitingSchedule): ?>
                 <section class="public-quote-controls" aria-label="Quotation response">
                     <?php if ($canRespond): ?>
                         <form method="POST" class="public-quote-form" data-public-quotation-form>
@@ -246,10 +249,6 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                                 <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject" data-quotation-decision>Reject</button>
                             </div>
                         </form>
-                    <?php elseif ($isApprovedAwaitingSchedule): ?>
-                        <div class="public-quote-pending-schedule" role="status">
-                            Quotation Approved! Please wait for the Admin to assign your Inspection Schedule.
-                        </div>
                     <?php elseif ($isFinalized): ?>
                         <div class="public-quote-finalized">
                             <strong>Status: Approved / Finalized</strong>
@@ -261,6 +260,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         </div>
                     <?php endif; ?>
                 </section>
+                <?php endif; ?>
             <?php endif; ?>
         </section>
     </main>

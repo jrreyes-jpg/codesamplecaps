@@ -49,8 +49,7 @@
 
 .public-quote-controls,
 .public-quote-alert,
-.public-quote-empty,
-.public-quote-pending-schedule {
+.public-quote-empty {
     padding: 18px;
     border-radius: 14px;
     background: #fff;
@@ -58,8 +57,7 @@
 }
 
 .public-quote-alert,
-.public-quote-empty,
-.public-quote-pending-schedule {
+.public-quote-empty {
     font-weight: 800;
 }
 
@@ -75,12 +73,6 @@
 
 .public-quote-empty {
     color: #475569;
-    text-align: center;
-}
-
-.public-quote-pending-schedule {
-    background: #dcfce7;
-    color: #166534;
     text-align: center;
 }
 
@@ -167,6 +159,41 @@
     color: #166534;
 }
 
+.public-quote-feedback-modal[hidden] {
+    display: none;
+}
+
+.public-quote-feedback-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.public-quote-feedback-modal__panel {
+    width: min(460px, 100%);
+    padding: 24px;
+    border-radius: 16px;
+    background: #ffffff;
+    color: #0f172a;
+    text-align: center;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+}
+
+.public-quote-feedback-modal__panel h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.public-quote-feedback-modal__panel p {
+    margin: 12px 0 20px;
+    color: #475569;
+    line-height: 1.55;
+}
+
 @media (max-width: 720px) {
     .public-quote-shell {
         width: min(100% - 20px, 980px);
@@ -194,9 +221,9 @@
     }
 
     .public-quote-alert,
+    .public-quote-feedback-modal,
     .sticky-toolbar,
     .public-quote-controls,
-    .public-quote-pending-schedule,
     .public-quote-form,
     .public-quote-actions,
     .public-quote-finalized {

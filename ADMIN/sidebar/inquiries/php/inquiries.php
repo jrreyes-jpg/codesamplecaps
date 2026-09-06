@@ -668,14 +668,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'admin_notes' => $adminNotes,
                                 ]
                             );
-                            inquiry_center_redirect_to_open_modal(
-                                $inquiryId,
-                                $newStatus,
-                                $newStatus === 'Verified Lead'
-                                    ? 'Inquiry marked as verified.'
-                                    : 'Inquiry updated successfully.',
-                                'client'
-                            );
+                            $successMessage = $newStatus === 'Verified Lead'
+                                ? 'Inquiry marked as verified.'
+                                : 'Inquiry updated successfully.';
+                            $targetTab = $newStatus === 'Verified Lead' ? 'quotation' : 'client';
+
+                            if ($isAjaxRequest) {
+                                $_SESSION['inquiry_center_flash'] = $successMessage;
+                                header('Content-Type: application/json; charset=UTF-8');
+                                echo json_encode([
+                                    'success' => true,
+                                    'status' => $newStatus,
+                                    'target_tab' => $targetTab,
+                                    'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
+                                        'status' => $newStatus,
+                                        'open' => 'inquiryModal' . $inquiryId,
+                                        'tab' => $targetTab,
+                                    ]),
+                                ]);
+                                exit();
+                            }
+
+                            inquiry_center_redirect_to_open_modal($inquiryId, $newStatus, $successMessage, $targetTab);
                         } else {
                             $error = 'Failed to update inquiry.';
                         }
@@ -1129,9 +1143,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     </div>
                                 </div>
                                 <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
-                                    <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Request</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" <?php echo !$showQuotation ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Quotation</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?><?php echo !$showInspection ? ' chip-disabled' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" <?php echo !$showInspection ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Inspection</button>
+                                    <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Review</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" aria-disabled="<?php echo !$showQuotation ? 'true' : 'false'; ?>">Quotation</button>
+                                    <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?><?php echo !$showInspection ? ' chip-disabled' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-disabled="<?php echo !$showInspection ? 'true' : 'false'; ?>">Inspection</button>
                                 </div>
                             <div class="inquiry-modal-panels">
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">

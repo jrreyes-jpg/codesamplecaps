@@ -15,11 +15,12 @@ if (!$quotation) {
 }
 
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
+$statusIndicator = inquiry_quote_status_indicator($quoteStatus);
 $isFinalized = $quoteStatus === 'accepted' && !empty($quotation['scheduled_at']);
 $showInspectionSchedule = $isFinalized && !empty($quotation['engineer_name']);
-$statusClass = in_array($quoteStatus, ['accepted', 'approved'], true)
+$statusClass = in_array($quoteStatus, ['accepted', 'approved', 'sent', 'revision_requested', 'rejected'], true)
     ? $quoteStatus
-    : ($quoteStatus === 'sent' ? 'sent' : 'draft');
+    : 'draft';
 $statusLabel = $isFinalized
     ? 'Approved / Finalized'
     : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
@@ -47,6 +48,11 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     </div>
 
     <main class="public-quote-document public-quote-document--standalone">
+        <?php if ($statusIndicator): ?>
+            <div class="public-quote-watermark public-quote-watermark--<?php echo htmlspecialchars((string)$statusIndicator['class'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
+                <?php echo htmlspecialchars((string)$statusIndicator['text'], ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php endif; ?>
         <header class="public-quote-header">
             <div class="public-quote-brand">
                 <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo">

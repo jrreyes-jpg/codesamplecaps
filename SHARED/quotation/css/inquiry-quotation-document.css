@@ -48,6 +48,21 @@ body {
     user-select: none;
 }
 
+.public-quote-watermark--revision,
+.public-quote-watermark--rejected {
+    width: min(90%, 820px);
+    font-size: clamp(1.8rem, 5vw, 3.8rem);
+    line-height: 1.2;
+}
+
+.public-quote-watermark--revision {
+    color: #b45309;
+}
+
+.public-quote-watermark--rejected {
+    color: #b91c1c;
+}
+
 .public-quote-header,
 .public-quote-title-row,
 .public-quote-grid,

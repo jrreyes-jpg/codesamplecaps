@@ -79,6 +79,11 @@ function inquiry_center_can_change_status(string $currentStatus, string $newStat
     return in_array($newStatus, inquiry_center_allowed_next_statuses($currentStatus), true);
 }
 
+function inquiry_center_has_client_quotation_approval(?string $quotationStatus): bool
+{
+    return inquiry_quote_normalize_status($quotationStatus) === 'accepted';
+}
+
 function inquiry_center_redirect(string $view, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
@@ -539,7 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $quotationStmt->bind_param('i', $inquiryId);
                     $quotationStmt->execute();
                     $quotationRow = $quotationStmt->get_result()->fetch_assoc();
-                    if (inquiry_quote_normalize_status((string)($quotationRow['status'] ?? '')) !== 'accepted') {
+                    if (!inquiry_center_has_client_quotation_approval((string)($quotationRow['status'] ?? ''))) {
                         $error = 'Client must accept the quotation before assigning an engineer or scheduling inspection.';
                     } else {
                         $acceptedQuotationId = (int)$quotationRow['id'];
@@ -1016,11 +1021,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $quotationStage = $quotationDraft
                             ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
                             : '';
-                        $canScheduleInspection = in_array($quotationStage, ['accepted', 'approved'], true);
+                        $canScheduleInspection = inquiry_center_has_client_quotation_approval($quotationStage);
                         $showInspection = $latestInspection || $canScheduleInspection;
                         $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
 
-                        if (in_array($quotationStage, ['accepted', 'approved'], true)) {
+                        if ($quotationStage === 'accepted') {
                             $nextActionLabel = $latestInspection ? 'View Inspection' : 'Schedule Inspection';
                             $nextActionTab = 'inspection';
                         } elseif ($quotationStage === 'sent') {
@@ -1029,8 +1034,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         } elseif ($quotationStage === 'revision_requested') {
                             $nextActionLabel = 'Review Revision';
                             $nextActionTab = 'quotation';
-                        } elseif (in_array($quotationStage, ['draft', 'rejected'], true)) {
-                            $nextActionLabel = 'Review Quotation';
+                        } elseif (in_array($quotationStage, ['draft', 'approved', 'rejected'], true)) {
+                            $nextActionLabel = $quotationStage === 'approved' ? 'Send Quotation' : 'Review Quotation';
                             $nextActionTab = 'quotation';
                         } elseif ($showCosting) {
                             $nextActionLabel = 'Prepare Quotation';
@@ -1226,7 +1231,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-empty">No inspection schedule yet.</div>
                                     <?php endif; ?>
 
-                                    <?php if (in_array($quotationStage, ['sent', 'accepted', 'approved'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
+                                    <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form <?php echo !$canScheduleInspection ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -1325,6 +1330,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <?php endif; ?>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
+                                    <?php if (!$canScheduleInspection): ?>
+                                        <div
+                                            class="inquiry-prerequisite-banner"
+                                            data-prerequisite-check="client-quotation-approval"
+                                            data-prerequisite-message="Reminder: Create and wait for client approval before assigning an Engineer or setting the inspection date."
+                                        >
+                                            <strong>Reminder: Create and wait for client approval before assigning an Engineer or setting the inspection date.</strong>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php if ($quotationDraft): ?>
                                         <?php $quotationStatus = inquiry_quote_normalize_status((string)$quotationDraft['status']); ?>
                                         <?php $isRevisionRequested = in_array($quotationStatus, ['revision_requested', 'for_revision'], true); ?>
@@ -1362,7 +1376,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </a>
                                             </div>
                                         </div>
-                                        <div class="inquiry-quotation-approved-banner" data-quotation-approved-banner <?php echo !in_array($quotationStatus, ['accepted', 'approved'], true) ? 'hidden' : ''; ?>>
+                                        <div class="inquiry-quotation-approved-banner" data-quotation-approved-banner <?php echo $quotationStatus !== 'accepted' ? 'hidden' : ''; ?>>
                                             <p><strong>&#127881; Quotation Approved!</strong> The financial proposal has been accepted by the client. Please proceed to the 'Inspection' tab above to assign an Engineer and finalize the project schedule.</p>
                                             <button type="button" class="btn-primary inquiry-quotation-approved-banner__action" data-go-to-inspection>Go to Inspection Stage &#10132;</button>
                                         </div>
@@ -1387,7 +1401,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <strong><?php echo nl2br(htmlspecialchars((string)$quotationDraft['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></strong>
                                             </div>
                                         <?php endif; ?>
-                                        <?php if ($quotationStatus === 'draft' && empty($quotationDraft['project_id'])): ?>
+                                        <?php if (in_array($quotationStatus, ['draft', 'approved'], true) && empty($quotationDraft['project_id'])): ?>
                                             <?php if (!$quotationRecipient || empty($quotationRecipient['email'])): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide">
                                                     <span>Send Quotation</span>
@@ -1430,9 +1444,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <button type="submit" class="btn-primary">Generate Quotation Draft</button>
                                         </form>
                                     <?php elseif ($currentStatus === 'Verified Lead'): ?>
-                                        <div class="inquiry-empty">
-                                            Create the quotation before assigning an Engineer or setting the inspection date.
-                                        </div>
                                         <a class="btn-primary inquiry-modal__primary-action inquiry-quotation-primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
                                     <?php else: ?>
                                         <div class="inquiry-empty">Quotation is not available for this inquiry.</div>

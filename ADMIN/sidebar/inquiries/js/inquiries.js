@@ -117,6 +117,20 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(confirmBox);
 
+    const prerequisiteNotice = document.createElement('div');
+    prerequisiteNotice.className = 'inquiry-confirm inquiry-prerequisite-modal';
+    prerequisiteNotice.hidden = true;
+    prerequisiteNotice.innerHTML = [
+        '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryPrerequisiteTitle">',
+        '<h3 id="inquiryPrerequisiteTitle">Required First Step</h3>',
+        '<p data-prerequisite-notice-message></p>',
+        '<div class="inquiry-confirm__actions">',
+        '<button type="button" class="btn-primary" data-prerequisite-notice-ok>OK</button>',
+        '</div>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(prerequisiteNotice);
+
     const showConfirm = function (form, message, details) {
         pendingConfirmForm = form;
         const messageBox = confirmBox.querySelector('[data-inquiry-confirm-message]');
@@ -148,6 +162,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeConfirm = function () {
         pendingConfirmForm = null;
         confirmBox.hidden = true;
+    };
+
+    const closePrerequisiteNotice = function () {
+        prerequisiteNotice.hidden = true;
+    };
+
+    const showPrerequisiteNotice = function (message) {
+        const messageBox = prerequisiteNotice.querySelector('[data-prerequisite-notice-message]');
+        if (messageBox) {
+            messageBox.textContent = message;
+        }
+
+        prerequisiteNotice.hidden = false;
+        prerequisiteNotice.querySelector('[data-prerequisite-notice-ok]')?.focus();
     };
 
     const closeModal = function (modal) {
@@ -793,13 +821,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (tab.classList.contains('chip-disabled')) {
                     if (target === 'quotation') {
-                        window.alert("Notice: This stage is locked. Please review the inquiry and update the status selection to 'Verified Lead' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
+                        showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and update the status selection to 'Verified Lead' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
                     } else if (target === 'inspection') {
-                        const quotationStatus = modal.dataset.quotationStatus || '';
-                        const message = quotationStatus === 'sent'
-                            ? 'Notice: This stage is locked. Inspection layout scheduling tools will activate automatically once the client officially approves the quotation draft via email.'
-                            : 'Notice: This stage is locked. Please create the quotation first using the button below and send it to the client for financial review.';
-                        window.alert(message);
+                        showPrerequisiteNotice('Reminder: Create and wait for client approval before assigning an Engineer or setting the inspection date.');
                     }
                     return;
                 }
@@ -914,7 +938,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         modal.querySelector('[data-quotation-revision-action]')?.removeAttribute('hidden');
                     }
 
-                    if (previousStatus !== 'sent' || !['accepted', 'approved'].includes(currentStatus)) {
+                    if (previousStatus !== 'sent' || currentStatus !== 'accepted') {
                         return;
                     }
 
@@ -926,6 +950,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     modal.querySelector('[data-inquiry-inspection-form]')?.removeAttribute('hidden');
+                    const quotationPrerequisite = modal.querySelector('[data-prerequisite-check="client-quotation-approval"]');
+                    if (quotationPrerequisite) {
+                        quotationPrerequisite.hidden = true;
+                        quotationPrerequisite.removeAttribute('data-prerequisite-check');
+                    }
                     modal.querySelector('[data-quotation-approved-banner]')?.removeAttribute('hidden');
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
@@ -1224,6 +1253,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    prerequisiteNotice.querySelector('[data-prerequisite-notice-ok]')?.addEventListener('click', closePrerequisiteNotice);
+    prerequisiteNotice.addEventListener('click', function (event) {
+        if (event.target === prerequisiteNotice) {
+            closePrerequisiteNotice();
+        }
+    });
+
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') {
             return;
@@ -1231,6 +1267,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!confirmBox.hidden) {
             closeConfirm();
+            return;
+        }
+
+        if (!prerequisiteNotice.hidden) {
+            closePrerequisiteNotice();
             return;
         }
 

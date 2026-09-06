@@ -1014,11 +1014,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $quotationStage = $quotationDraft
                             ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
                             : '';
-                        $canScheduleInspection = $quotationStage === 'accepted';
+                        $canScheduleInspection = in_array($quotationStage, ['accepted', 'approved'], true);
                         $showInspection = $latestInspection || $canScheduleInspection;
                         $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
 
-                        if ($quotationStage === 'accepted') {
+                        if (in_array($quotationStage, ['accepted', 'approved'], true)) {
                             $nextActionLabel = $latestInspection ? 'View Inspection' : 'Schedule Inspection';
                             $nextActionTab = 'inspection';
                         } elseif ($quotationStage === 'sent') {
@@ -1027,8 +1027,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         } elseif ($quotationStage === 'revision_requested') {
                             $nextActionLabel = 'Review Revision';
                             $nextActionTab = 'quotation';
-                        } elseif (in_array($quotationStage, ['draft', 'approved', 'rejected'], true)) {
-                            $nextActionLabel = $quotationStage === 'approved' ? 'Send Quotation' : 'Review Quotation';
+                        } elseif (in_array($quotationStage, ['draft', 'rejected'], true)) {
+                            $nextActionLabel = 'Review Quotation';
                             $nextActionTab = 'quotation';
                         } elseif ($showCosting) {
                             $nextActionLabel = 'Prepare Quotation';
@@ -1224,7 +1224,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-empty">No inspection schedule yet.</div>
                                     <?php endif; ?>
 
-                                    <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
+                                    <?php if (in_array($quotationStage, ['sent', 'accepted', 'approved'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form <?php echo !$canScheduleInspection ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -1360,6 +1360,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </a>
                                             </div>
                                         </div>
+                                        <div class="inquiry-quotation-approved-banner" data-quotation-approved-banner <?php echo !in_array($quotationStatus, ['accepted', 'approved'], true) ? 'hidden' : ''; ?>>
+                                            <p><strong>&#127881; Quotation Approved!</strong> The financial proposal has been accepted by the client. Please proceed to the 'Inspection' tab above to assign an Engineer and finalize the project schedule.</p>
+                                            <button type="button" class="btn-primary inquiry-quotation-approved-banner__action" data-go-to-inspection>Go to Inspection Stage &#10132;</button>
+                                        </div>
                                         <?php $quotationRecipient = null; ?>
                                         <?php if (in_array($quotationStatus, ['draft', 'approved', 'accepted'], true)): ?>
                                             <?php try { $quotationRecipient = inquiry_quote_resolve_recipient($conn, (int)$quotationDraft['id']); } catch (Throwable $throwable) { $quotationRecipient = null; } ?>
@@ -1381,7 +1385,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <strong><?php echo nl2br(htmlspecialchars((string)$quotationDraft['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></strong>
                                             </div>
                                         <?php endif; ?>
-                                        <?php if (in_array($quotationStatus, ['draft', 'approved'], true) && empty($quotationDraft['project_id'])): ?>
+                                        <?php if ($quotationStatus === 'draft' && empty($quotationDraft['project_id'])): ?>
                                             <?php if (!$quotationRecipient || empty($quotationRecipient['email'])): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide">
                                                     <span>Send Quotation</span>
@@ -1403,20 +1407,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <button type="submit" class="btn-primary inquiry-quote-send-button">Send Quotation to Client</button>
                                             </form>
                                             <?php endif; ?>
-                                        <?php elseif ($quotationStatus === 'accepted' && empty($quotationDraft['project_id'])): ?>
-                                            <?php if (!$quotationRecipient || empty($quotationRecipient['client_id'])): ?>
-                                                <div class="inquiry-detail inquiry-detail--wide">
-                                                    <span>Project Creation</span>
-                                                    <strong>Select the matching Client account in Project Setup before saving.</strong>
-                                                </div>
-                                            <?php endif; ?>
-                                            <form method="POST" class="inquiry-project-create-form">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="prepare_project_from_quote">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-primary">Continue to Project Setup</button>
-                                            </form>
                                         <?php elseif (!empty($quotationDraft['project_id'])): ?>
                                             <div class="inquiry-created-project">
                                                 <span>Project Created</span>

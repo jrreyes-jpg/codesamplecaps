@@ -2,7 +2,7 @@
     position: fixed;
     top: 24px;
     right: 24px;
-    z-index: 5000;
+    z-index: 7200;
     max-width: min(380px, calc(100vw - 32px));
     padding: 13px 46px 13px 16px;
     border-radius: 14px;
@@ -15,6 +15,10 @@
     animation: sharedToastIn 0.22s ease both;
 }
 
+.shared-toast--clickable {
+    cursor: pointer;
+}
+
 .shared-toast--success {
     background: #15803d;
 }
@@ -25,6 +29,23 @@
 
 .shared-toast--warning {
     background: #d97706;
+}
+
+.shared-toast a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    margin-left: 10px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.shared-toast a:hover,
+.shared-toast a:focus-visible {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .shared-toast__close {

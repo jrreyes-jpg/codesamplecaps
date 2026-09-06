@@ -2,7 +2,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const openButtons = document.querySelectorAll('[data-inquiry-modal-open]');
     const archiveOpenButtons = document.querySelectorAll('[data-archive-modal-open]');
-    const toast = document.querySelector('[data-inquiry-toast]');
     const inquiryShell = document.querySelector('.inquiries-shell');
     let pendingUnreadInquiryCount = Number.parseInt(inquiryShell?.dataset.pendingUnreadInquiryCount || '0', 10);
     let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);
@@ -11,8 +10,33 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingConfirmForm = null;
 
     const showPageLoading = function () {
-        if (inquiryShell) {
-            inquiryShell.classList.add('is-loading');
+        if (!inquiryShell) {
+            return;
+        }
+
+        inquiryShell.classList.add('is-loading');
+
+        const inquiryList = inquiryShell.querySelector(':scope > .inquiry-list');
+        const currentEmptyState = inquiryShell.querySelector(':scope > .inquiry-empty');
+        const loadingState = document.createElement('div');
+        const loadingIndicator = document.createElement('div');
+        const spinner = document.createElement('span');
+        const loadingText = document.createElement('span');
+
+        loadingState.className = 'inquiry-empty';
+        loadingState.setAttribute('role', 'status');
+        loadingState.setAttribute('aria-live', 'polite');
+        loadingIndicator.className = 'btn-primary inquiry-send-button--loading';
+        spinner.className = 'inquiry-send-spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        loadingText.textContent = 'Loading inquiries...';
+        loadingIndicator.append(spinner, loadingText);
+        loadingState.appendChild(loadingIndicator);
+
+        if (inquiryList) {
+            inquiryList.replaceChildren(loadingState);
+        } else if (currentEmptyState) {
+            currentEmptyState.replaceWith(loadingState);
         }
     };
 
@@ -37,71 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    if (toast) {
-        playToastSound();
-        const isErrorToast = toast.classList.contains('inquiry-toast--error');
-        let toastClosed = false;
-
-        const closeToast = function () {
-            if (toastClosed) {
-                return;
-            }
-
-            toastClosed = true;
-            toast.remove();
-        };
-
-        toast.querySelector('[data-inquiry-toast-close]')?.addEventListener('click', function () {
-            closeToast();
-        });
-
-        setTimeout(function () {
-            closeToast();
-        }, isErrorToast ? 8000 : 4500);
-
-        if (!isErrorToast) {
-            document.addEventListener('click', function closeSuccessToastOnOutside(event) {
-                if (!toast || toastClosed) {
-                    document.removeEventListener('click', closeSuccessToastOnOutside);
-                    return;
-                }
-
-                if (!toast.contains(event.target)) {
-                    closeToast();
-                    document.removeEventListener('click', closeSuccessToastOnOutside);
-                }
-            });
-        }
-    }
-
     const showLiveInquiryToast = function (message, inquiryId, targetTab) {
-        document.querySelector('[data-live-inquiry-toast]')?.remove();
-
-        const notice = document.createElement('div');
-        const text = document.createElement('span');
-        const closeButton = document.createElement('button');
-        let closeTimer = null;
-
-        notice.className = 'inquiry-toast inquiry-toast--success';
-        notice.setAttribute('role', 'status');
-        notice.setAttribute('data-live-inquiry-toast', '');
-        text.textContent = message;
-        closeButton.type = 'button';
-        closeButton.setAttribute('aria-label', 'Close notification');
-        closeButton.textContent = '\u00d7';
-
-        const closeNotice = function () {
-            if (closeTimer) {
-                window.clearTimeout(closeTimer);
-            }
-            notice.remove();
-        };
-
-        closeButton.addEventListener('click', function (event) {
-            event.stopPropagation();
-            closeNotice();
-        });
-
         const openToastInquiry = function () {
             const modal = document.getElementById('inquiryModal' + String(inquiryId || ''));
             if (!modal) {
@@ -118,26 +78,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const requestedTab = targetTab || 'client';
             const activeTab = activateModalTab(modal, requestedTab) ? requestedTab : 'client';
             pushModalHistory(modal, activeTab);
-            closeNotice();
         };
 
-        if (Number.parseInt(inquiryId || '0', 10) > 0) {
-            notice.classList.add('inquiry-toast--clickable');
-            notice.setAttribute('role', 'button');
-            notice.setAttribute('tabindex', '0');
-            notice.addEventListener('click', openToastInquiry);
-            notice.addEventListener('keydown', function (event) {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openToastInquiry();
-                }
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, 'success', {
+                onClick: Number.parseInt(inquiryId || '0', 10) > 0 ? openToastInquiry : null,
             });
         }
-
-        notice.append(text, closeButton);
-        document.body.appendChild(notice);
         playToastSound();
-        closeTimer = window.setTimeout(closeNotice, 6000);
     };
 
     const showNewInquiryBellDot = function () {
@@ -296,16 +244,127 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.querySelectorAll('.inquiry-status-link, .inquiry-view-link').forEach(function (link) {
-        link.addEventListener('click', function () {
-            if (link.classList.contains('is-active')) {
-                return;
-            }
-
+        link.addEventListener('click', function (event) {
             showPageLoading();
+            event.preventDefault();
+
+            window.requestAnimationFrame(function () {
+                window.requestAnimationFrame(function () {
+                    window.location.assign(link.href);
+                });
+            });
         });
     });
 
-    document.querySelector('.inquiry-filter-bar')?.addEventListener('submit', showPageLoading);
+    const filterForm = document.querySelector('.inquiry-filter-bar');
+    const liveSearchInput = filterForm?.querySelector('input[name="search"]');
+    let liveSearchTimer = null;
+    let liveSearchRequest = null;
+
+    filterForm?.addEventListener('submit', showPageLoading);
+
+    const syncLiveSearchEmptyState = function (visibleCardCount) {
+        const currentCards = Array.from(document.querySelectorAll('[data-inquiry-card-id]'));
+        let emptyMessage = document.querySelector('[data-inquiry-live-search-empty]');
+
+        if (!emptyMessage && currentCards[0]?.parentElement) {
+            emptyMessage = document.createElement('div');
+            emptyMessage.className = 'inquiry-empty';
+            emptyMessage.setAttribute('data-inquiry-live-search-empty', '');
+            emptyMessage.textContent = 'No inquiries found.';
+            currentCards[0].parentElement.after(emptyMessage);
+        }
+
+        if (emptyMessage) {
+            emptyMessage.hidden = visibleCardCount !== 0;
+        }
+    };
+
+    const filterCurrentChipCards = function (searchValue) {
+        const keyword = searchValue.trim().toLocaleLowerCase();
+        let visibleCardCount = 0;
+
+        document.querySelectorAll('[data-inquiry-card-id]').forEach(function (card) {
+            const isMatch = keyword === '' || card.textContent.toLocaleLowerCase().includes(keyword);
+            card.hidden = !isMatch;
+            if (isMatch) visibleCardCount += 1;
+        });
+
+        syncLiveSearchEmptyState(visibleCardCount);
+    };
+
+    const runLiveSearch = function () {
+        const requestUrl = new URL(filterForm.getAttribute('action') || window.location.href, window.location.origin);
+        const activeViewLink = document.querySelector('.inquiry-view-link.is-active');
+        const activeStatusLink = document.querySelector('.inquiry-status-link.is-active');
+        const activeViewUrl = activeViewLink ? new URL(activeViewLink.href) : null;
+        const activeStatus = activeStatusLink?.dataset.status || '';
+        const searchValue = liveSearchInput.value.trim();
+
+        requestUrl.searchParams.delete('action');
+        requestUrl.searchParams.delete('open');
+        requestUrl.searchParams.delete('tab');
+        requestUrl.searchParams.delete('inquiry_id');
+
+        if (activeViewUrl?.searchParams.get('view') === 'archive') {
+            requestUrl.searchParams.set('view', 'archive');
+        } else {
+            requestUrl.searchParams.delete('view');
+        }
+
+        if (activeStatus) requestUrl.searchParams.set('status', activeStatus);
+        else requestUrl.searchParams.delete('status');
+        if (searchValue) requestUrl.searchParams.set('search', searchValue);
+        else requestUrl.searchParams.delete('search');
+
+        liveSearchRequest?.abort();
+        liveSearchRequest = new AbortController();
+
+        fetch(requestUrl.toString(), {
+            headers: { Accept: 'text/html' },
+            cache: 'no-store',
+            signal: liveSearchRequest.signal,
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Unable to search inquiries.');
+                return response.text();
+            })
+            .then(function (html) {
+                const resultDocument = new DOMParser().parseFromString(html, 'text/html');
+                const matchingIds = new Set(Array.from(resultDocument.querySelectorAll('[data-inquiry-card-id]')).map(function (card) {
+                    return card.getAttribute('data-inquiry-card-id');
+                }));
+                const currentCards = Array.from(document.querySelectorAll('[data-inquiry-card-id]'));
+                let visibleCardCount = 0;
+
+                currentCards.forEach(function (card) {
+                    const isMatch = matchingIds.has(card.getAttribute('data-inquiry-card-id'));
+                    card.hidden = !isMatch;
+                    if (isMatch) visibleCardCount += 1;
+                });
+
+                syncLiveSearchEmptyState(visibleCardCount);
+
+                window.history.replaceState(window.history.state, document.title, requestUrl.toString());
+            })
+            .catch(function (error) {
+                if (error.name !== 'AbortError' && typeof window.showToast === 'function') {
+                    window.showToast('Unable to search inquiries right now.', 'error');
+                }
+            });
+    };
+
+    liveSearchInput?.addEventListener('input', function () {
+        window.clearTimeout(liveSearchTimer);
+        filterCurrentChipCards(liveSearchInput.value);
+
+        if (liveSearchInput.value === '') {
+            runLiveSearch();
+            return;
+        }
+
+        liveSearchTimer = window.setTimeout(runLiveSearch, 250);
+    });
 
     document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
         modal.addEventListener('click', function (event) {
@@ -921,23 +980,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         submitButton.textContent = defaultText;
                     }
 
-                    const notice = document.createElement('div');
-                    const message = document.createElement('span');
-                    const closeButton = document.createElement('button');
-                    notice.className = 'inquiry-toast inquiry-toast--error';
-                    notice.setAttribute('role', 'alert');
-                    message.textContent = error.message || 'Unable to send quotation.';
-                    closeButton.type = 'button';
-                    closeButton.setAttribute('aria-label', 'Close notification');
-                    closeButton.textContent = '\u00d7';
-                    closeButton.addEventListener('click', function () {
-                        notice.remove();
-                    });
-                    notice.append(message, closeButton);
-                    document.body.appendChild(notice);
-                    window.setTimeout(function () {
-                        notice.remove();
-                    }, 8000);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(error.message || 'Unable to send quotation.', 'error');
+                    }
                 });
         });
     });

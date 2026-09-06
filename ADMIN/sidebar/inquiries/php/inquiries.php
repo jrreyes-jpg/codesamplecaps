@@ -107,13 +107,14 @@ function inquiry_center_redirect_with_project(int $projectId, string $message): 
     exit();
 }
 
-function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, string $message): void
+function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, string $message, string $tab = 'client'): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
 
     $query = [
         'status' => $status,
         'open' => 'inquiryModal' . $inquiryId,
+        'tab' => $tab,
     ];
 
     $search = trim((string)($_GET['search'] ?? ''));
@@ -672,7 +673,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $newStatus,
                                 $newStatus === 'Verified Lead'
                                     ? 'Inquiry marked as verified.'
-                                    : 'Inquiry updated successfully.'
+                                    : 'Inquiry updated successfully.',
+                                'client'
                             );
                         } else {
                             $error = 'Failed to update inquiry.';
@@ -875,7 +877,6 @@ $pendingCount = 0;
 $verifiedCount = 0;
 $inspectionCount = 0;
 $notQualifiedCount = 0;
-$convertedCount = 0;
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     // Global counts ito, hindi lang current search result.
     $countWhere = $hasQuotationProjectLink
@@ -901,25 +902,17 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
             }
         }
     }
-
-    if ($hasQuotationProjectLink) {
-        $convertedResult = $conn->query(
-            'SELECT COUNT(DISTINCT inquiry.id) AS total
-             FROM service_inquiries inquiry
-             INNER JOIN inquiry_quotation_drafts quote ON quote.inquiry_id = inquiry.id
-             WHERE inquiry.archived_at IS NULL AND quote.project_id IS NOT NULL'
-        );
-        $convertedCount = (int)(($convertedResult ? $convertedResult->fetch_assoc() : [])['total'] ?? 0);
-    }
 }
 
 $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -935,9 +928,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
     >
         <?php if ($message || $error): ?>
             <div
-                class="inquiry-toast <?php echo $message ? 'inquiry-toast--success' : 'inquiry-toast--error'; ?>"
-                role="status"
-                data-inquiry-toast
+                class="shared-toast <?php echo $message ? 'shared-toast--success' : 'shared-toast--error'; ?>"
+                role="<?php echo $message ? 'status' : 'alert'; ?>"
+                data-shared-toast
             >
                 <span><?php echo htmlspecialchars($message ?: $error, ENT_QUOTES, 'UTF-8'); ?></span>
                 <?php if ($message && $flashProjectId > 0): ?>
@@ -945,7 +938,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         Open Project
                     </a>
                 <?php endif; ?>
-                <button type="button" data-inquiry-toast-close aria-label="Close notification">&times;</button>
+                <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+                <span class="shared-toast__progress" aria-hidden="true"></span>
             </div>
         <?php endif; ?>
 
@@ -968,12 +962,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
         </form>
 
         <div class="inquiry-status-strip" aria-label="Inquiry status summary">
+            <a class="inquiry-view-link <?php echo $view === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Active</a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Pending Review' ? 'is-active' : ''; ?>" data-status="Pending Review" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Pending+Review<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Pending: <?php echo $pendingCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Verified Lead' ? 'is-active' : ''; ?>" data-status="Verified Lead" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Verified: <?php echo $verifiedCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'For Inspection' ? 'is-active' : ''; ?>" data-status="For Inspection" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">For Inspection: <?php echo $inspectionCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Not Qualified' ? 'is-active' : ''; ?>" data-status="Not Qualified" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Not+Qualified<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Not Qualified: <?php echo $notQualifiedCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Converted to Project' ? 'is-active' : ''; ?>" data-status="Converted to Project" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Converted+to+Project<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Converted: <?php echo $convertedCount; ?></a>
-            <a class="inquiry-view-link <?php echo $view === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Active</a>
             <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?view=archive">Archive</a>
         </div>
 
@@ -1003,7 +996,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
                     <?php
                         $nextActionLabel = 'Review Inquiry';
-                        $nextActionTab = 'actions';
+                        $nextActionTab = 'client';
                         $quotationStage = $quotationDraft
                             ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
                             : '';
@@ -1040,7 +1033,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             $nextActionLabel = 'View Review';
                         }
                     ?>
-                    <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>">
+                    <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
                         <div class="inquiry-card__head">
                             <div class="inquiry-card__identity">
                                 <span class="inquiry-card__eyebrow">Contact Person</span>
@@ -1110,9 +1103,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </div>
                                     <?php endif; ?>
                                     <div class="inquiry-modal__tools">
-                                        <?php if ($currentStatus === 'Verified Lead' && !$quotationDraft && empty($inquiry['archived_at'])): ?>
-                                            <a class="btn-primary inquiry-modal__primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
-                                        <?php endif; ?>
                                         <?php if (empty($inquiry['archived_at'])): ?>
                                             <button type="button" class="inquiry-icon-button inquiry-icon-button--archive" data-tooltip="Archive inquiry" data-archive-modal-open="archiveModal<?php echo (int)$inquiry['id']; ?>" aria-label="Archive inquiry">
                                                 <span aria-hidden="true">&#8631;</span>
@@ -1140,7 +1130,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 </div>
                                 <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
                                     <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Request</button>
-                                    <button type="button" class="inquiry-modal-tab" data-inquiry-tab="actions">Admin Review</button>
                                     <button type="button" class="inquiry-modal-tab<?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" <?php echo !$showQuotation ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Quotation</button>
                                     <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?><?php echo !$showInspection ? ' chip-disabled' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" <?php echo !$showInspection ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'; ?>>Inspection</button>
                                 </div>
@@ -1162,6 +1151,49 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <strong>Project Description</strong><br>
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
+
+                                    <hr class="inquiry-review-divider">
+                                    <div class="inquiry-section-title inquiry-review-section-title">Admin Review &amp; Actions</div>
+                                    <?php if ($isConvertedToProject): ?>
+                                        <div class="inquiry-readonly-notice">
+                                            This inquiry is already converted to a Project.
+                                            <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">Open Project</a>
+                                        </div>
+                                    <?php elseif (!empty($inquiry['archived_at'])): ?>
+                                        <div class="inquiry-readonly-notice">
+                                            This inquiry is archived. Restore it first before changing status, notes, or inspection schedule.
+                                        </div>
+                                    <?php else: ?>
+                                        <form method="POST" class="inquiry-review-form">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                            <label class="inquiry-review-form__status">
+                                                <span>Status</span>
+                                                <select name="status" required>
+                                                    <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
+                                                        <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentStatus === $status ? 'selected' : ''; ?>>
+                                                            <?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </label>
+                                            <label class="inquiry-review-form__notes">
+                                                <span>Admin Notes</span>
+                                                <textarea name="admin_notes" rows="5" placeholder="Call result, budget, seriousness, next step..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                            </label>
+                                            <div class="inquiry-review-actions inquiry-review-form__actions">
+                                                <button type="submit" class="btn-primary">Save Review</button>
+                                            </div>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($inquiry['archived_at'])): ?>
+                                        <div class="inquiry-archive-output">
+                                            <strong>Archived</strong>
+                                            <span><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['archived_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                 </section>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
@@ -1393,56 +1425,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </form>
                                     <?php elseif ($currentStatus === 'Verified Lead'): ?>
                                         <div class="inquiry-empty">
-                                            Create the quotation before assigning an Engineer or setting the inspection date. Use the Create Quotation button at the top-right.
+                                            Create the quotation before assigning an Engineer or setting the inspection date.
                                         </div>
+                                        <a class="btn-primary inquiry-modal__primary-action inquiry-quotation-primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
                                     <?php else: ?>
                                         <div class="inquiry-empty">Quotation is not available for this inquiry.</div>
                                     <?php endif; ?>
                                 </section>
 
-                                <section class="inquiry-tab-panel inquiry-expanded-actions" data-inquiry-panel="actions" hidden>
-                                    <div class="inquiry-section-title">Admin Review</div>
-                                    <?php if ($isConvertedToProject): ?>
-                                        <div class="inquiry-readonly-notice">
-                                            This inquiry is already converted to a Project.
-                                            <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">Open Project</a>
-                                        </div>
-                                    <?php elseif (!empty($inquiry['archived_at'])): ?>
-                                        <div class="inquiry-readonly-notice">
-                                            This inquiry is archived. Restore it first before changing status, notes, or inspection schedule.
-                                        </div>
-                                    <?php else: ?>
-                                    <form method="POST" class="inquiry-review-form">
-                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                        <label class="inquiry-review-form__status">
-                                            <span>Status</span>
-                                            <select name="status" required>
-                                                <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
-                                                    <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentStatus === $status ? 'selected' : ''; ?>>
-                                                        <?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </label>
-                                        <label class="inquiry-review-form__notes">
-                                            <span>Admin Notes</span>
-                                            <textarea name="admin_notes" rows="5" placeholder="Call result, budget, seriousness, next step..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                        </label>
-                                        <div class="inquiry-review-actions inquiry-review-form__actions">
-                                            <button type="submit" class="btn-primary">Save Review</button>
-                                        </div>
-                                    </form>
-
-                                    <?php endif; ?>
-                                    <?php if (!empty($inquiry['archived_at'])): ?>
-                                        <div class="inquiry-archive-output">
-                                            <strong>Archived</strong>
-                                            <span><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['archived_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                </section>
                             </div>
                             </div>
                         </div>

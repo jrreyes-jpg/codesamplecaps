@@ -258,10 +258,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js',
 ];
 
@@ -272,9 +274,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
 <main class="main-content admin-dashboard-content">
     <div class="inquiries-shell quotation-create-shell" data-quotation-create>
         <?php if ($error !== ''): ?>
-            <div class="inquiry-toast inquiry-toast--error" role="alert" data-inquiry-toast>
+            <div class="shared-toast shared-toast--error" role="alert" data-shared-toast>
                 <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
-                <button type="button" data-inquiry-toast-close aria-label="Close notification">&times;</button>
+                <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+                <span class="shared-toast__progress" aria-hidden="true"></span>
             </div>
         <?php endif; ?>
 

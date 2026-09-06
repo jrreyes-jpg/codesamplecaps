@@ -85,6 +85,10 @@
     animation-duration: 8s;
 }
 
+.shared-toast--duration-3s .shared-toast__progress {
+    animation-duration: 3s;
+}
+
 .shared-toast.is-hiding {
     animation: sharedToastOut 0.2s ease both;
 }

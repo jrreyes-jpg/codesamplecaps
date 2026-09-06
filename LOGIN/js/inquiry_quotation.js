@@ -1,5 +1,43 @@
 document.addEventListener('DOMContentLoaded', function () {
     const responseForm = document.querySelector('[data-public-quotation-form]');
+    const responseMessages = {
+        client_accept: 'You have approved the quotation. Please wait for the Admin to assign an Engineer and schedule the inspection.',
+        client_revision: 'You have requested changes to the quotation. The Admin will review your feedback and send an updated quotation.',
+        client_reject: 'You have rejected the quotation. The Admin will contact you to discuss next steps.',
+    };
+    const feedbackModal = document.createElement('div');
+    let feedbackDismissAction = null;
+
+    feedbackModal.className = 'public-quote-feedback-modal';
+    feedbackModal.hidden = true;
+    feedbackModal.innerHTML = [
+        '<div class="public-quote-feedback-modal__panel" role="dialog" aria-modal="true" aria-labelledby="publicQuoteFeedbackTitle">',
+        '<h2 id="publicQuoteFeedbackTitle">Quotation Response Saved</h2>',
+        '<p data-public-quote-feedback-message></p>',
+        '<button type="button" class="public-quote-button public-quote-button--accept" data-public-quote-feedback-ok>OK</button>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(feedbackModal);
+
+    const showFeedbackModal = function (message, onDismiss) {
+        const messageBox = feedbackModal.querySelector('[data-public-quote-feedback-message]');
+        if (messageBox) {
+            messageBox.textContent = message;
+        }
+
+        feedbackDismissAction = typeof onDismiss === 'function' ? onDismiss : null;
+        feedbackModal.hidden = false;
+        feedbackModal.querySelector('[data-public-quote-feedback-ok]')?.focus();
+    };
+
+    const closeFeedbackModal = function () {
+        const onDismiss = feedbackDismissAction;
+        feedbackDismissAction = null;
+        feedbackModal.hidden = true;
+        onDismiss?.();
+    };
+
+    feedbackModal.querySelector('[data-public-quote-feedback-ok]')?.addEventListener('click', closeFeedbackModal);
 
     if (responseForm) {
         const decisionNote = responseForm.querySelector('[data-decision-note]');
@@ -73,7 +111,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         throw new Error(result.data.message || 'Unable to save your response.');
                     }
 
-                    window.location.reload();
+                    const responseAction = result.data.action || submitButton.value;
+                    showFeedbackModal(
+                        responseMessages[responseAction] || result.data.message || 'Your response has been saved.',
+                        function () { window.location.reload(); }
+                    );
                 })
                 .catch(function (error) {
                     responseForm.dataset.submitting = '0';

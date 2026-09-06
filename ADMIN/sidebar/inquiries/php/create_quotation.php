@@ -244,6 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
                     . $inquiryId
                     . '&status=' . rawurlencode((string)$inquiry['status'])
+                    . '&tab=quotation'
                 );
                 exit();
             } catch (Throwable $throwable) {

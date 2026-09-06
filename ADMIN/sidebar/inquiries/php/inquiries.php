@@ -1400,7 +1400,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <input type="hidden" name="action" value="send_quotation_to_client">
                                                 <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                 <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-primary">Send Quotation to Client</button>
+                                                <button type="submit" class="btn-primary inquiry-quote-send-button">Send Quotation to Client</button>
                                             </form>
                                             <?php endif; ?>
                                         <?php elseif ($quotationStatus === 'accepted' && empty($quotationDraft['project_id'])): ?>

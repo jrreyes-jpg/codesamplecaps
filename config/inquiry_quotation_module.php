@@ -56,6 +56,31 @@ function inquiry_quote_status_class(?string $status): string
     return $map[inquiry_quote_normalize_status($status)] ?? 'is-draft';
 }
 
+function inquiry_quote_status_indicator(?string $status): ?array
+{
+    $normalized = inquiry_quote_normalize_status($status);
+    $indicators = [
+        'sent' => [
+            'text' => 'FOR REVIEW ONLY',
+            'class' => 'review',
+        ],
+        'revision_requested' => [
+            'text' => 'REVISION REQUESTED – Awaiting Admin Update',
+            'class' => 'revision',
+        ],
+        'for_revision' => [
+            'text' => 'REVISION REQUESTED – Awaiting Admin Update',
+            'class' => 'revision',
+        ],
+        'rejected' => [
+            'text' => 'REJECTED – No further action until Admin contacts you',
+            'class' => 'rejected',
+        ],
+    ];
+
+    return $indicators[$normalized] ?? null;
+}
+
 function inquiry_quote_public_token_hash(string $token): string
 {
     return hash('sha256', $token);

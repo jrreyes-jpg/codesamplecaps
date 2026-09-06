@@ -66,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $quotation = inquiry_quote_fetch_by_public_token($conn, $token);
 $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : [];
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
+$statusIndicator = $quotation ? inquiry_quote_status_indicator($status) : null;
 $canRespond = $status === 'sent';
 $hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !empty($quotation['engineer_name']);
 $isApprovedAwaitingSchedule = $status === 'accepted' && !$hasInspectionSchedule;
@@ -107,8 +108,10 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 </div>
             <?php else: ?>
                 <article class="public-quote-document">
-                    <?php if ($status === 'sent'): ?>
-                        <div class="public-quote-watermark" aria-hidden="true">FOR REVIEW ONLY</div>
+                    <?php if ($statusIndicator): ?>
+                        <div class="public-quote-watermark public-quote-watermark--<?php echo htmlspecialchars((string)$statusIndicator['class'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
+                            <?php echo htmlspecialchars((string)$statusIndicator['text'], ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
                     <?php endif; ?>
 
                     <header class="public-quote-header">

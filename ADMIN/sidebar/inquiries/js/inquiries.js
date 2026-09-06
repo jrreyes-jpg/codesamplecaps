@@ -823,7 +823,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (target === 'quotation') {
                         showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and update the status selection to 'Verified Lead' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
                     } else if (target === 'inspection') {
-                        showPrerequisiteNotice('Reminder: Create and wait for client approval before assigning an Engineer or setting the inspection date.');
+                        const prerequisite = modal.querySelector('[data-prerequisite-check="client-quotation-approval"]');
+                        showPrerequisiteNotice(
+                            prerequisite?.dataset.prerequisiteMessage
+                            || 'Complete the quotation and wait for client approval before assigning an Engineer.'
+                        );
                     }
                     return;
                 }

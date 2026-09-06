@@ -84,6 +84,24 @@ function inquiry_center_has_client_quotation_approval(?string $quotationStatus):
     return inquiry_quote_normalize_status($quotationStatus) === 'accepted';
 }
 
+function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): string
+{
+    if (!$quotationDraft) {
+        return 'Create quotation before assigning Engineer or setting inspection date.';
+    }
+
+    $status = inquiry_quote_normalize_status((string)($quotationDraft['status'] ?? ''));
+    if ($status === 'accepted') {
+        return '';
+    }
+
+    if ($status === 'sent') {
+        return 'Wait for client approval before assigning Engineer.';
+    }
+
+    return 'Send quotation to client and wait for approval before assigning Engineer.';
+}
+
 function inquiry_center_redirect(string $view, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
@@ -1022,6 +1040,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
                             : '';
                         $canScheduleInspection = inquiry_center_has_client_quotation_approval($quotationStage);
+                        $quotationPrerequisiteMessage = inquiry_center_quotation_prerequisite_message($quotationDraft);
                         $showInspection = $latestInspection || $canScheduleInspection;
                         $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
 
@@ -1330,13 +1349,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <?php endif; ?>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
-                                    <?php if (!$canScheduleInspection): ?>
+                                    <?php if ($quotationPrerequisiteMessage !== ''): ?>
                                         <div
                                             class="inquiry-prerequisite-banner"
                                             data-prerequisite-check="client-quotation-approval"
-                                            data-prerequisite-message="Reminder: Create and wait for client approval before assigning an Engineer or setting the inspection date."
+                                            data-prerequisite-message="<?php echo htmlspecialchars($quotationPrerequisiteMessage, ENT_QUOTES, 'UTF-8'); ?>"
                                         >
-                                            <strong>Reminder: Create and wait for client approval before assigning an Engineer or setting the inspection date.</strong>
+                                            <strong><?php echo htmlspecialchars($quotationPrerequisiteMessage, ENT_QUOTES, 'UTF-8'); ?></strong>
                                         </div>
                                     <?php endif; ?>
                                     <?php if ($quotationDraft): ?>

@@ -891,6 +891,33 @@
     text-decoration: none;
 }
 
+.inquiry-quotation-primary-action {
+    width: fit-content;
+    max-width: 240px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    margin-top: 15px;
+    float: right;
+    justify-self: end;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.inquiry-quote-send-form {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.inquiry-quote-send-button {
+    width: fit-content;
+    padding: 10px 20px;
+    border-radius: 6px;
+    margin-top: 20px;
+    float: right;
+    font-weight: bold;
+}
+
 .inquiry-modal__tools form {
     margin: 0;
 }

@@ -780,7 +780,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (target === 'quotation') {
                         window.alert("Notice: This stage is locked. Please review the inquiry and update the status selection to 'Verified Lead' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
                     } else if (target === 'inspection') {
-                        window.alert('Notice: This stage is locked. Inspection layout scheduling tools will activate automatically once the client officially approves the quotation draft via email.');
+                        const quotationStatus = modal.dataset.quotationStatus || '';
+                        const message = quotationStatus === 'sent'
+                            ? 'Notice: This stage is locked. Inspection layout scheduling tools will activate automatically once the client officially approves the quotation draft via email.'
+                            : 'Notice: This stage is locked. Please create the quotation first using the button below and send it to the client for financial review.';
+                        window.alert(message);
                     }
                     return;
                 }
@@ -792,6 +796,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 activateModalTab(modal, target);
                 pushModalHistory(modal, target);
             });
+        });
+    });
+
+    document.querySelectorAll('[data-go-to-inspection]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const modal = button.closest('.inquiry-modal');
+            const inspectionTab = modal?.querySelector('[data-inquiry-tab="inspection"]');
+            inspectionTab?.click();
         });
     });
 
@@ -887,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         modal.querySelector('[data-quotation-revision-action]')?.removeAttribute('hidden');
                     }
 
-                    if (previousStatus !== 'sent' || currentStatus !== 'accepted') {
+                    if (previousStatus !== 'sent' || !['accepted', 'approved'].includes(currentStatus)) {
                         return;
                     }
 
@@ -899,6 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     modal.querySelector('[data-inquiry-inspection-form]')?.removeAttribute('hidden');
+                    modal.querySelector('[data-quotation-approved-banner]')?.removeAttribute('hidden');
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
                         statusLabel.textContent = quotation.label || 'Accepted';
@@ -1030,17 +1043,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.showToast(error.message || 'Unable to send quotation.', 'error');
                     }
                 });
-        });
-    });
-
-    document.querySelectorAll('.inquiry-project-create-form').forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            if (form.dataset.confirmed === '1') {
-                return;
-            }
-
-            event.preventDefault();
-            showConfirm(form, 'Create project from this accepted quotation?');
         });
     });
 

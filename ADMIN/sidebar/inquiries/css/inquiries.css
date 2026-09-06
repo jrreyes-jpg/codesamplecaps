@@ -1360,8 +1360,7 @@ body.inquiry-modal-open {
 }
 
 .inquiry-quote-draft,
-.inquiry-quote-form,
-.inquiry-project-create-form {
+.inquiry-quote-form {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
@@ -1375,6 +1374,36 @@ body.inquiry-modal-open {
 
 .inquiry-quote-draft {
     grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.inquiry-quotation-approved-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid #a7f3d0;
+    border-radius: 10px;
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.inquiry-quotation-approved-banner[hidden] {
+    display: none;
+}
+
+.inquiry-quotation-approved-banner p {
+    flex: 1 1 420px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.inquiry-quotation-approved-banner__action {
+    width: fit-content;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .inquiry-quote-draft div,
@@ -1539,15 +1568,10 @@ body.inquiry-modal-open {
     min-height: 44px;
 }
 
-.inquiry-project-create-form,
 .inquiry-created-project {
     grid-template-columns: 1fr;
     background: #f0fdf4;
     border-color: rgba(22, 101, 52, 0.2);
-}
-
-.inquiry-project-create-form button {
-    width: fit-content;
 }
 
 .inquiry-created-project {

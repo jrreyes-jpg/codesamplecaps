@@ -618,7 +618,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const originalStatus = statusSelect.value;
+        let originalStatus = statusSelect.value;
         const modal = form.closest('.inquiry-modal');
         const statusChip = modal?.querySelector('[data-modal-status-chip]');
         const statusClasses = [
@@ -652,12 +652,52 @@ document.addEventListener('DOMContentLoaded', function () {
         syncStatusChip();
 
         form.addEventListener('submit', function (event) {
-            if (form.dataset.confirmed === '1' || statusSelect.value === originalStatus) {
+            event.preventDefault();
+
+            if (form.dataset.submitting === '1') {
                 return;
             }
 
-            event.preventDefault();
-            showConfirm(form, 'Change inquiry status from ' + originalStatus + ' to ' + statusSelect.value + '?');
+            if (form.dataset.confirmed !== '1' && statusSelect.value !== originalStatus) {
+                showConfirm(form, 'Change inquiry status from ' + originalStatus + ' to ' + statusSelect.value + '?');
+                return;
+            }
+
+            delete form.dataset.confirmed;
+            form.dataset.submitting = '1';
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) submitButton.disabled = true;
+
+            fetch(form.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+                .then(function (response) {
+                    return response.json().then(function (data) {
+                        return { response: response, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.response.ok || !result.data.success) {
+                        throw new Error(result.data.message || 'Unable to save inquiry review.');
+                    }
+
+                    originalStatus = result.data.status || statusSelect.value;
+                    window.location.assign(result.data.redirect || window.location.href);
+                })
+                .catch(function (error) {
+                    form.dataset.submitting = '0';
+                    if (submitButton) submitButton.disabled = false;
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(error.message || 'Unable to save inquiry review.', 'error');
+                    } else {
+                        window.alert(error.message || 'Unable to save inquiry review.');
+                    }
+                });
         });
     });
 
@@ -734,11 +774,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
-                if (tab.disabled || tab.classList.contains('chip-disabled')) {
+                const target = tab.getAttribute('data-inquiry-tab');
+
+                if (tab.classList.contains('chip-disabled')) {
+                    if (target === 'quotation') {
+                        window.alert("Notice: This stage is locked. Please review the inquiry and update the status selection to 'Verified Lead' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
+                    } else if (target === 'inspection') {
+                        window.alert('Notice: This stage is locked. Inspection layout scheduling tools will activate automatically once the client officially approves the quotation draft via email.');
+                    }
                     return;
                 }
 
-                const target = tab.getAttribute('data-inquiry-tab');
                 if (tab.classList.contains('is-active')) {
                     return;
                 }

@@ -692,6 +692,23 @@
     color: #475569;
 }
 
+.inquiry-prerequisite-banner {
+    padding: 14px 16px;
+    border: 1px solid #fbbf24;
+    border-radius: 10px;
+    background: #fef3c7;
+    color: #78350f;
+    line-height: 1.45;
+}
+
+.inquiry-prerequisite-banner[hidden] {
+    display: none;
+}
+
+.inquiry-prerequisite-banner strong {
+    font-weight: 800;
+}
+
 .inquiry-status-strip {
     display: flex;
     gap: 8px;

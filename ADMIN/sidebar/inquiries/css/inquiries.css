@@ -543,6 +543,11 @@
     color: #991b1b !important;
 }
 
+.inquiry-status[data-status="Rejected"] {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
 .inquiry-status[data-status="Archived"] {
     background: #e2e8f0 !important;
     color: #334155 !important;
@@ -1488,6 +1493,12 @@ body.inquiry-modal-open {
     color: #065f46;
 }
 
+.status-rejected,
+.status-badge.status-rejected {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
 .inquiry-quote-revision-alert {
     display: flex;
     align-items: center;
@@ -1505,6 +1516,26 @@ body.inquiry-modal-open {
     margin: 0;
     line-height: 1.35;
     white-space: pre-line;
+}
+
+.inquiry-quote-rejection-alert {
+    display: grid;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.inquiry-quote-rejection-alert[hidden] {
+    display: none;
+}
+
+.inquiry-quote-rejection-alert p {
+    margin: 0;
+    line-height: 1.4;
 }
 
 .inquiry-send-spinner {

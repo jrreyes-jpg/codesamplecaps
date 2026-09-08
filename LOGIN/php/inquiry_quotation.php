@@ -66,9 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $quotation = inquiry_quote_fetch_by_public_token($conn, $token);
 $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : [];
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
-$statusIndicator = $quotation ? inquiry_quote_status_indicator($status) : null;
 $canRespond = $status === 'sent';
 $hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !empty($quotation['engineer_name']);
+$statusIndicator = $quotation ? inquiry_quote_status_indicator($status, !empty($quotation['engineer_name'])) : null;
 $isApprovedAwaitingSchedule = $status === 'accepted' && !$hasInspectionSchedule;
 $isFinalized = $status === 'accepted' && $hasInspectionSchedule;
 $quotationTimestamp = $quotation ? (strtotime((string)($quotation['created_at'] ?? '')) ?: time()) : time();

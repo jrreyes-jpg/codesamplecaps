@@ -61,8 +61,12 @@ function service_barangays_import_from_reference(mysqli $conn): int
     foreach (service_area_read_csv($basePath . '/refprovince.csv') as $province) {
         $regCode = (string)($province['regCode'] ?? '');
         $provCode = (string)($province['provCode'] ?? '');
-        if (in_array($regCode, $luzonRegionCodes, true) && $provCode !== '') {
-            $provinceByCode[$provCode] = service_area_title_case((string)($province['provDesc'] ?? ''));
+        $provinceName = service_area_title_case((string)($province['provDesc'] ?? ''));
+        if (in_array($regCode, $luzonRegionCodes, true)
+            && $regCode !== '13'
+            && $provCode !== ''
+            && isset(service_area_allowed_provinces()[$provinceName])) {
+            $provinceByCode[$provCode] = $provinceName;
         }
     }
 
@@ -70,7 +74,12 @@ function service_barangays_import_from_reference(mysqli $conn): int
         $regCode = (string)($city['regDesc'] ?? '');
         $provCode = (string)($city['provCode'] ?? '');
         $cityCode = (string)($city['citymunCode'] ?? '');
-        if (in_array($regCode, $luzonRegionCodes, true) && isset($provinceByCode[$provCode]) && $cityCode !== '') {
+        if ($regCode === '13' && isset(service_area_ncr_cities()[$cityCode])) {
+            $cityByCode[$cityCode] = [
+                'province' => 'Metro Manila (NCR)',
+                'city' => service_area_ncr_cities()[$cityCode],
+            ];
+        } elseif (in_array($regCode, $luzonRegionCodes, true) && isset($provinceByCode[$provCode]) && $cityCode !== '') {
             $cityByCode[$cityCode] = [
                 'province' => $provinceByCode[$provCode],
                 'city' => service_area_title_case((string)($city['citymunDesc'] ?? '')),
@@ -129,8 +138,13 @@ function service_barangays_grouped(mysqli $conn): array
     }
 
     while ($row = $result->fetch_assoc()) {
-        $province = (string)$row['province'];
-        $city = (string)$row['city_municipality'];
+        [$province, $city] = service_barangay_normalize_location(
+            (string)$row['province'],
+            (string)$row['city_municipality']
+        );
+        if (!isset(service_area_allowed_provinces()[$province]) || $city === '') {
+            continue;
+        }
         $rows[$province][$city][] = service_barangay_display_name((string)$row['barangay']);
     }
 
@@ -147,40 +161,56 @@ function service_barangays_grouped(mysqli $conn): array
 
 function service_barangay_is_allowed(mysqli $conn, string $province, string $city, string $barangay): bool
 {
-    service_barangays_ensure_table($conn);
-    $storageBarangay = service_barangay_storage_name($barangay);
-
-    $stmt = $conn->prepare(
-        'SELECT 1 FROM service_barangays
-         WHERE province = ? AND city_municipality = ?
-         AND (barangay = ? OR barangay = ?)
-         LIMIT 1'
-    );
-
-    if (!$stmt) {
-        return false;
-    }
-
-    $stmt->bind_param('ssss', $province, $city, $barangay, $storageBarangay);
-    $stmt->execute();
-    return (bool)$stmt->get_result()->fetch_assoc();
+    $locations = service_barangays_grouped($conn);
+    return isset($locations[$province][$city])
+        && in_array($barangay, $locations[$province][$city], true);
 }
 
 function service_barangay_city_has_data(mysqli $conn, string $province, string $city): bool
 {
-    service_barangays_ensure_table($conn);
+    $locations = service_barangays_grouped($conn);
+    return isset($locations[$province][$city]) && $locations[$province][$city] !== [];
+}
 
-    $stmt = $conn->prepare(
-        'SELECT 1 FROM service_barangays
-         WHERE province = ? AND city_municipality = ?
-         LIMIT 1'
-    );
+function service_barangay_normalize_location(string $province, string $city): array
+{
+    $ncrCityAliases = [
+        'Tondo I / Ii' => 'City of Manila',
+        'Binondo' => 'City of Manila',
+        'Quiapo' => 'City of Manila',
+        'San Nicolas' => 'City of Manila',
+        'Santa Cruz' => 'City of Manila',
+        'Sampaloc' => 'City of Manila',
+        'San Miguel' => 'City of Manila',
+        'Ermita' => 'City of Manila',
+        'Intramuros' => 'City of Manila',
+        'Malate' => 'City of Manila',
+        'Paco' => 'City of Manila',
+        'Pandacan' => 'City of Manila',
+        'Port Area' => 'City of Manila',
+        'Santa Ana' => 'City of Manila',
+        'City Of Mandaluyong' => 'Mandaluyong',
+        'City Of Marikina' => 'Marikina',
+        'City Of Pasig' => 'Pasig',
+        'City Of San Juan' => 'San Juan',
+        'Caloocan City' => 'Caloocan',
+        'City Of Malabon' => 'Malabon',
+        'City Of Navotas' => 'Navotas',
+        'City Of Valenzuela' => 'Valenzuela',
+        'City Of Las Piñas' => 'Las Piñas',
+        'City Of Makati' => 'Makati',
+        'City Of Muntinlupa' => 'Muntinlupa',
+        'City Of Parañaque' => 'Parañaque',
+        'Pasay City' => 'Pasay',
+        'Taguig City' => 'Taguig',
+    ];
 
-    if (!$stmt) {
-        return false;
+    if ($province === 'Metro Manila (NCR)'
+        || str_starts_with($province, 'NCR,')
+        || $province === 'City Of Manila'
+        || $province === 'City of Manila') {
+        return ['Metro Manila (NCR)', $ncrCityAliases[$city] ?? $city];
     }
 
-    $stmt->bind_param('ss', $province, $city);
-    $stmt->execute();
-    return (bool)$stmt->get_result()->fetch_assoc();
+    return [$province, $city];
 }

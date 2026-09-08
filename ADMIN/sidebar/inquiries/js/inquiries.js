@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingUnreadInquiryCount = Number.parseInt(inquiryShell?.dataset.pendingUnreadInquiryCount || '0', 10);
     let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);
     let latestRevisionUpdatedAt = inquiryShell?.dataset.latestRevisionUpdatedAt || '';
+    let latestRejectedId = Number.parseInt(inquiryShell?.dataset.latestRejectedId || '0', 10);
+    let latestRejectedAt = inquiryShell?.dataset.latestRejectedAt || '';
     let lastOpenButton = null;
     let pendingConfirmForm = null;
 
@@ -61,10 +63,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const showLiveInquiryToast = function (message, inquiryId, targetTab) {
+    const showLiveInquiryToast = function (message, inquiryId, targetTab, type, fallbackStatus) {
         const openToastInquiry = function () {
             const modal = document.getElementById('inquiryModal' + String(inquiryId || ''));
             if (!modal) {
+                if (!fallbackStatus) {
+                    return;
+                }
+                const targetUrl = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', window.location.origin);
+                targetUrl.searchParams.set('status', fallbackStatus);
+                targetUrl.searchParams.set('open', 'inquiryModal' + String(inquiryId || ''));
+                targetUrl.searchParams.set('tab', targetTab || 'quotation');
+                window.location.assign(targetUrl.toString());
                 return;
             }
 
@@ -81,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         if (typeof window.showToast === 'function') {
-            window.showToast(message, 'success', {
+            window.showToast(message, type || 'success', {
                 onClick: Number.parseInt(inquiryId || '0', 10) > 0 ? openToastInquiry : null,
             });
         }
@@ -914,6 +924,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     inquiryShell.dataset.latestRevisionUpdatedAt = currentRevisionUpdatedAt;
                 }
 
+                const currentRejectedId = Number.parseInt(data.latest_rejected_id || '0', 10);
+                const currentRejectedAt = String(data.latest_rejected_at || '');
+                const hasNewRejection = currentRejectedAt > latestRejectedAt
+                    || (currentRejectedAt === latestRejectedAt && currentRejectedId > latestRejectedId);
+
+                if (currentRejectedId > 0 && hasNewRejection) {
+                    const rejectionNote = String(data.latest_rejected_note || 'No note provided.');
+                    showNewInquiryBellDot();
+                    showLiveInquiryToast(
+                        'Notification: Client rejected the quotation. Note: ' + rejectionNote,
+                        Number.parseInt(data.latest_rejected_inquiry_id || '0', 10),
+                        'quotation',
+                        'warning',
+                        'Rejected'
+                    );
+                    latestRejectedId = currentRejectedId;
+                    latestRejectedAt = currentRejectedAt;
+                    inquiryShell.dataset.latestRejectedId = String(currentRejectedId);
+                    inquiryShell.dataset.latestRejectedAt = currentRejectedAt;
+                }
+
                 data.quotations.forEach(function (quotation) {
                     const modal = document.querySelector('.inquiry-modal[data-inquiry-id="' + String(quotation.inquiry_id) + '"]');
                     if (!modal) {
@@ -940,6 +971,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         modal.querySelector('[data-quotation-revision-alert]')?.removeAttribute('hidden');
                         modal.querySelector('[data-quotation-revision-action]')?.removeAttribute('hidden');
+                    }
+
+                    if (previousStatus !== 'rejected' && currentStatus === 'rejected') {
+                        const statusLabel = modal.querySelector('[data-quotation-status-label]');
+                        if (statusLabel) {
+                            statusLabel.textContent = quotation.label || 'Rejected';
+                            statusLabel.classList.remove('status-draft', 'status-sent', 'status-revision', 'status-accepted');
+                            statusLabel.classList.add('status-rejected');
+                        }
+
+                        const rejectionNote = modal.querySelector('[data-quotation-rejection-note]');
+                        if (rejectionNote) {
+                            rejectionNote.textContent = quotation.client_decision_note || 'No note provided.';
+                        }
+                        modal.querySelector('[data-quotation-rejection-alert]')?.removeAttribute('hidden');
                     }
 
                     if (previousStatus !== 'sent' || currentStatus !== 'accepted') {

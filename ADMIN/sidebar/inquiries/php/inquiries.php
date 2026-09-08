@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 $message = '';
 $error = '';
 $allowedStatuses = ['Pending Review', 'Verified Lead', 'Not Qualified', 'For Inspection'];
-$inquiryFilterStatuses = array_merge($allowedStatuses, ['Converted to Project']);
+$inquiryFilterStatuses = array_merge($allowedStatuses, ['Rejected', 'Converted to Project']);
 
 function inquiry_center_csrf_token(): string
 {
@@ -99,6 +99,10 @@ function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): 
         return 'Wait for client approval before assigning Engineer.';
     }
 
+    if ($status === 'rejected') {
+        return 'Client rejected the quotation. Review the client note before taking the next action.';
+    }
+
     return 'Send quotation to client and wait for approval before assigning Engineer.';
 }
 
@@ -167,6 +171,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     $latestRevisionId = 0;
     $latestRevisionInquiryId = 0;
     $latestRevisionUpdatedAt = '';
+    $latestRejectedId = 0;
+    $latestRejectedInquiryId = 0;
+    $latestRejectedNote = '';
+    $latestRejectedAt = '';
 
     if (inquiry_center_has_table($conn, 'service_inquiries')) {
         $pendingUnreadResult = $conn->query(
@@ -220,6 +228,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
         $latestRevisionId = (int)($latestRevision['id'] ?? 0);
         $latestRevisionInquiryId = (int)($latestRevision['inquiry_id'] ?? 0);
         $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
+
+        $latestRejectedResult = $conn->query(
+            "SELECT id, inquiry_id, client_decision_note, COALESCE(client_decision_at, updated_at) AS rejected_at
+             FROM inquiry_quotation_drafts
+             WHERE status = 'rejected'
+             ORDER BY COALESCE(client_decision_at, updated_at) DESC, id DESC
+             LIMIT 1"
+        );
+        $latestRejected = $latestRejectedResult ? $latestRejectedResult->fetch_assoc() : null;
+        $latestRejectedId = (int)($latestRejected['id'] ?? 0);
+        $latestRejectedInquiryId = (int)($latestRejected['inquiry_id'] ?? 0);
+        $latestRejectedNote = (string)($latestRejected['client_decision_note'] ?? '');
+        $latestRejectedAt = (string)($latestRejected['rejected_at'] ?? '');
     }
 
     echo json_encode([
@@ -230,6 +251,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
         'latest_revision_id' => $latestRevisionId,
         'latest_revision_inquiry_id' => $latestRevisionInquiryId,
         'latest_revision_updated_at' => $latestRevisionUpdatedAt,
+        'latest_rejected_id' => $latestRejectedId,
+        'latest_rejected_inquiry_id' => $latestRejectedInquiryId,
+        'latest_rejected_note' => $latestRejectedNote,
+        'latest_rejected_at' => $latestRejectedAt,
     ]);
     exit();
 }
@@ -756,7 +781,8 @@ if (!in_array($statusFilter, $inquiryFilterStatuses, true)) {
     $statusFilter = '';
 }
 
-$hasQuotationProjectLink = inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')
+$hasInquiryQuotationTable = inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts');
+$hasQuotationProjectLink = $hasInquiryQuotationTable
     && inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id');
 $inquiryRows = [];
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
@@ -766,7 +792,21 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
     $where[] = $view === 'archive' ? 'archived_at IS NOT NULL' : 'archived_at IS NULL';
 
-    if ($statusFilter === 'Converted to Project' && $hasQuotationProjectLink) {
+    if ($statusFilter === 'Rejected' && $hasInquiryQuotationTable) {
+        $where[] = "EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts rejected_quote
+            WHERE rejected_quote.inquiry_id = service_inquiries.id
+            AND rejected_quote.status = 'rejected'
+            AND NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts newer_quote
+                WHERE newer_quote.inquiry_id = rejected_quote.inquiry_id
+                AND (
+                    newer_quote.updated_at > rejected_quote.updated_at
+                    OR (newer_quote.updated_at = rejected_quote.updated_at AND newer_quote.id > rejected_quote.id)
+                )
+            )
+        )";
+    } elseif ($statusFilter === 'Converted to Project' && $hasQuotationProjectLink) {
         $where[] = 'EXISTS (
             SELECT 1 FROM inquiry_quotation_drafts quote_filter
             WHERE quote_filter.inquiry_id = service_inquiries.id
@@ -784,6 +824,22 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
                 AND quote_filter.project_id IS NOT NULL
             )';
         }
+    }
+
+    if ($view === 'active' && $statusFilter !== 'Rejected' && $hasInquiryQuotationTable) {
+        $where[] = "NOT EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts rejected_quote
+            WHERE rejected_quote.inquiry_id = service_inquiries.id
+            AND rejected_quote.status = 'rejected'
+            AND NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts newer_quote
+                WHERE newer_quote.inquiry_id = rejected_quote.inquiry_id
+                AND (
+                    newer_quote.updated_at > rejected_quote.updated_at
+                    OR (newer_quote.updated_at = rejected_quote.updated_at AND newer_quote.id > rejected_quote.id)
+                )
+            )
+        )";
     }
 
     if ($search !== '') {
@@ -890,6 +946,8 @@ if ($costingReviewResult) {
 $quotationDraftByInquiry = inquiry_quote_fetch_by_inquiry($conn);
 $latestRevisionId = 0;
 $latestRevisionUpdatedAt = '';
+$latestRejectedId = 0;
+$latestRejectedAt = '';
 if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
     $latestRevisionResult = $conn->query(
         "SELECT id, updated_at
@@ -901,6 +959,17 @@ if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
     $latestRevision = $latestRevisionResult ? $latestRevisionResult->fetch_assoc() : null;
     $latestRevisionId = (int)($latestRevision['id'] ?? 0);
     $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
+
+    $latestRejectedResult = $conn->query(
+        "SELECT id, COALESCE(client_decision_at, updated_at) AS rejected_at
+         FROM inquiry_quotation_drafts
+         WHERE status = 'rejected'
+         ORDER BY COALESCE(client_decision_at, updated_at) DESC, id DESC
+         LIMIT 1"
+    );
+    $latestRejected = $latestRejectedResult ? $latestRejectedResult->fetch_assoc() : null;
+    $latestRejectedId = (int)($latestRejected['id'] ?? 0);
+    $latestRejectedAt = (string)($latestRejected['rejected_at'] ?? '');
 }
 $pendingUnreadInquiryCount = 0;
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
@@ -916,6 +985,7 @@ $pendingCount = 0;
 $verifiedCount = 0;
 $inspectionCount = 0;
 $notQualifiedCount = 0;
+$rejectedCount = 0;
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     // Global counts ito, hindi lang current search result.
     $countWhere = $hasQuotationProjectLink
@@ -925,6 +995,21 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
             AND quote_count.project_id IS NOT NULL
         )'
         : '';
+    if ($hasInquiryQuotationTable) {
+        $countWhere .= " AND NOT EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts rejected_quote
+            WHERE rejected_quote.inquiry_id = service_inquiries.id
+            AND rejected_quote.status = 'rejected'
+            AND NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts newer_quote
+                WHERE newer_quote.inquiry_id = rejected_quote.inquiry_id
+                AND (
+                    newer_quote.updated_at > rejected_quote.updated_at
+                    OR (newer_quote.updated_at = rejected_quote.updated_at AND newer_quote.id > rejected_quote.id)
+                )
+            )
+        )";
+    }
     $countResult = $conn->query('SELECT status, COUNT(*) AS total FROM service_inquiries WHERE archived_at IS NULL' . $countWhere . ' GROUP BY status');
     if ($countResult) {
         while ($countRow = $countResult->fetch_assoc()) {
@@ -940,6 +1025,28 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
                 $notQualifiedCount = $total;
             }
         }
+    }
+
+    if ($hasInquiryQuotationTable) {
+        $rejectedResult = $conn->query(
+            "SELECT COUNT(*) AS total
+             FROM service_inquiries
+             WHERE archived_at IS NULL
+             AND EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts rejected_quote
+                WHERE rejected_quote.inquiry_id = service_inquiries.id
+                AND rejected_quote.status = 'rejected'
+                AND NOT EXISTS (
+                    SELECT 1 FROM inquiry_quotation_drafts newer_quote
+                    WHERE newer_quote.inquiry_id = rejected_quote.inquiry_id
+                    AND (
+                        newer_quote.updated_at > rejected_quote.updated_at
+                        OR (newer_quote.updated_at = rejected_quote.updated_at AND newer_quote.id > rejected_quote.id)
+                    )
+                )
+             )"
+        );
+        $rejectedCount = (int)(($rejectedResult ? $rejectedResult->fetch_assoc() : [])['total'] ?? 0);
     }
 }
 
@@ -964,6 +1071,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
         data-pending-unread-inquiry-count="<?php echo $pendingUnreadInquiryCount; ?>"
         data-latest-revision-id="<?php echo $latestRevisionId; ?>"
         data-latest-revision-updated-at="<?php echo htmlspecialchars($latestRevisionUpdatedAt, ENT_QUOTES, 'UTF-8'); ?>"
+        data-latest-rejected-id="<?php echo $latestRejectedId; ?>"
+        data-latest-rejected-at="<?php echo htmlspecialchars($latestRejectedAt, ENT_QUOTES, 'UTF-8'); ?>"
     >
         <?php if ($message || $error): ?>
             <div
@@ -1005,6 +1114,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Pending Review' ? 'is-active' : ''; ?>" data-status="Pending Review" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Pending+Review<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Pending: <?php echo $pendingCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Verified Lead' ? 'is-active' : ''; ?>" data-status="Verified Lead" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Verified: <?php echo $verifiedCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'For Inspection' ? 'is-active' : ''; ?>" data-status="For Inspection" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">For Inspection: <?php echo $inspectionCount; ?></a>
+            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Rejected' ? 'is-active' : ''; ?>" data-status="Rejected" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Rejected<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Rejected: <?php echo $rejectedCount; ?></a>
             <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Not Qualified' ? 'is-active' : ''; ?>" data-status="Not Qualified" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Not+Qualified<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Not Qualified: <?php echo $notQualifiedCount; ?></a>
             <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?view=archive">Archive</a>
         </div>
@@ -1021,8 +1131,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
+                    <?php $quotationListStatus = $quotationDraft ? inquiry_quote_normalize_status((string)$quotationDraft['status']) : ''; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
-                    <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : $currentStatus; ?>
+                    <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus); ?>
                     <?php
                         $addressParts = array_filter([
                             trim((string)($inquiry['site_address'] ?? '')),
@@ -1036,9 +1147,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php
                         $nextActionLabel = 'Review Inquiry';
                         $nextActionTab = 'client';
-                        $quotationStage = $quotationDraft
-                            ? inquiry_quote_normalize_status((string)$quotationDraft['status'])
-                            : '';
+                        $quotationStage = $quotationListStatus;
                         $canScheduleInspection = inquiry_center_has_client_quotation_approval($quotationStage);
                         $quotationPrerequisiteMessage = inquiry_center_quotation_prerequisite_message($quotationDraft);
                         $showInspection = $latestInspection || $canScheduleInspection;
@@ -1361,6 +1470,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php if ($quotationDraft): ?>
                                         <?php $quotationStatus = inquiry_quote_normalize_status((string)$quotationDraft['status']); ?>
                                         <?php $isRevisionRequested = in_array($quotationStatus, ['revision_requested', 'for_revision'], true); ?>
+                                        <?php $isRejectedQuotation = $quotationStatus === 'rejected'; ?>
                                         <?php
                                             $quotationStatusClass = 'status-draft';
                                             if ($quotationStatus === 'sent') {
@@ -1369,6 +1479,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 $quotationStatusClass = 'status-revision';
                                             } elseif (in_array($quotationStatus, ['accepted', 'approved'], true)) {
                                                 $quotationStatusClass = 'status-accepted';
+                                            } elseif ($quotationStatus === 'rejected') {
+                                                $quotationStatusClass = 'status-rejected';
                                             }
                                         ?>
                                         <div class="inquiry-quote-draft">
@@ -1414,7 +1526,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
                                             <button type="submit" class="btn-secondary">Edit Quotation</button>
                                         </form>
-                                        <?php if (!$isRevisionRequested && !empty($quotationDraft['client_decision_note'])): ?>
+                                        <div class="inquiry-quote-rejection-alert" data-quotation-rejection-alert <?php echo !$isRejectedQuotation ? 'hidden' : ''; ?>>
+                                            <strong>Quotation Rejected by Client</strong>
+                                            <p>Client Note: <span data-quotation-rejection-note><?php echo htmlspecialchars((string)($quotationDraft['client_decision_note'] ?: 'No note provided.'), ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                        </div>
+                                        <?php if (!$isRevisionRequested && !$isRejectedQuotation && !empty($quotationDraft['client_decision_note'])): ?>
                                             <div class="inquiry-detail inquiry-detail--wide">
                                                 <span>Client Note</span>
                                                 <strong><?php echo nl2br(htmlspecialchars((string)$quotationDraft['client_decision_note'], ENT_QUOTES, 'UTF-8')); ?></strong>

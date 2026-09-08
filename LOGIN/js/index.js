@@ -516,7 +516,7 @@ const initInquiryForm = () => {
             });
         };
 
-        const renderComboboxOptions = (input, options, showAll = false) => {
+        const renderComboboxOptions = (input, options, showAll = false, optionGroups = null) => {
             const box = input?.closest('[data-combobox]');
             const list = box?.querySelector('[data-combobox-list]');
             if (!input || !list) {
@@ -529,31 +529,58 @@ const initInquiryForm = () => {
             list.innerHTML = '';
             list.scrollTop = 0;
 
-            if (matches.length === 0) {
+            const addOptionButton = (option) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = option;
+                button.addEventListener('click', () => {
+                    input.dataset.comboboxSelectedValue = option;
+                    input.value = option;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    closeCombobox(input);
+                });
+                list.appendChild(button);
+            };
+
+            if (optionGroups) {
+                let groupedMatchCount = 0;
+                Object.entries(optionGroups).forEach(([groupLabel, groupOptions]) => {
+                    const regionMatches = groupLabel.toLowerCase().includes(search);
+                    const visibleOptions = groupOptions.filter((option) => options.includes(option)
+                        && (showAll || regionMatches || option.toLowerCase().includes(search)));
+
+                    if (visibleOptions.length === 0) {
+                        return;
+                    }
+
+                    const heading = document.createElement('span');
+                    heading.className = 'inquiry-combobox-group';
+                    heading.textContent = groupLabel;
+                    list.appendChild(heading);
+                    visibleOptions.forEach(addOptionButton);
+                    groupedMatchCount += visibleOptions.length;
+                });
+
+                if (groupedMatchCount === 0) {
+                    const empty = document.createElement('span');
+                    empty.className = 'inquiry-combobox-empty';
+                    empty.textContent = 'No match. Please select from the list.';
+                    list.appendChild(empty);
+                }
+            } else if (matches.length === 0) {
                 const empty = document.createElement('span');
                 empty.className = 'inquiry-combobox-empty';
                 empty.textContent = 'No match. Please select from the list.';
                 list.appendChild(empty);
             } else {
-                matches.forEach((option) => {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.textContent = option;
-                    button.addEventListener('click', () => {
-                        input.dataset.comboboxSelectedValue = option;
-                        input.value = option;
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                        closeCombobox(input);
-                    });
-                    list.appendChild(button);
-                });
+                matches.forEach(addOptionButton);
             }
 
             box?.classList.add('is-open');
             list.scrollTop = 0;
         };
 
-        const bindCombobox = (input, getOptions) => {
+        const bindCombobox = (input, getOptions, optionGroups = null) => {
             if (!input) {
                 return;
             }
@@ -579,7 +606,7 @@ const initInquiryForm = () => {
                         delete input.dataset.comboboxSelectedValue;
                     }
                     showSelectFromListHint();
-                    renderComboboxOptions(input, getOptions());
+                    renderComboboxOptions(input, getOptions(), false, optionGroups);
                 }
             };
 
@@ -595,7 +622,7 @@ const initInquiryForm = () => {
                 }
 
                 input.focus();
-                renderComboboxOptions(input, getOptions(), true);
+                renderComboboxOptions(input, getOptions(), true, optionGroups);
             });
         };
 
@@ -664,7 +691,18 @@ const initInquiryForm = () => {
             syncBarangayState();
         };
 
-        bindCombobox(provinceSelect, () => Object.keys(window.edgeServiceAreas || {}));
+        const provinceRegionGroups = {
+            'Metro Manila (NCR)': ['Metro Manila (NCR)'],
+            'Cordillera Administrative Region (CAR)': ['Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province'],
+            'Ilocos Region (Region I)': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
+            'Cagayan Valley (Region II)': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
+            'Central Luzon (Region III)': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales'],
+            'CALABARZON (Region IV-A)': ['Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal'],
+            'MIMAROPA (Region IV-B)': ['Marinduque', 'Occidental Mindoro', 'Oriental Mindoro', 'Palawan', 'Romblon'],
+            'Bicol Region (Region V)': ['Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon']
+        };
+
+        bindCombobox(provinceSelect, () => Object.keys(window.edgeServiceAreas || {}), provinceRegionGroups);
         provinceSelect?.addEventListener('input', () => {
             if (provinceSelect.value !== (provinceSelect.dataset.comboboxSelectedValue || '')) {
                 delete provinceSelect.dataset.comboboxSelectedValue;
@@ -1001,7 +1039,7 @@ const restoreInquiryDraft = () => {
             if (provinceSelect && citySelect) {
                 const allowedCities = window.edgeServiceAreas?.[provinceSelect.value.trim()] || [];
                 if (!isValidProvince()) {
-                    setFieldError(provinceSelect, 'Please select a valid Luzon province from the list.');
+                    setFieldError(provinceSelect, 'Please select a valid province or region from the list.');
                     firstInvalidField = firstInvalidField || provinceSelect;
                 }
 

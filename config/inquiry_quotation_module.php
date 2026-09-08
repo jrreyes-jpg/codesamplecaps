@@ -56,7 +56,7 @@ function inquiry_quote_status_class(?string $status): string
     return $map[inquiry_quote_normalize_status($status)] ?? 'is-draft';
 }
 
-function inquiry_quote_status_indicator(?string $status): ?array
+function inquiry_quote_status_indicator(?string $status, bool $engineerAssigned = false): ?array
 {
     $normalized = inquiry_quote_normalize_status($status);
     $indicators = [
@@ -75,6 +75,10 @@ function inquiry_quote_status_indicator(?string $status): ?array
         'rejected' => [
             'text' => 'REJECTED – No further action until Admin contacts you',
             'class' => 'rejected',
+        ],
+        'accepted' => $engineerAssigned ? null : [
+            'text' => 'APPROVED – Waiting for Admin to assign Engineer',
+            'class' => 'approved-waiting',
         ],
     ];
 

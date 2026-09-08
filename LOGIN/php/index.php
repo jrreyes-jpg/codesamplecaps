@@ -553,9 +553,12 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <div class="inquiry-grid">
                 <label>
-                    <span>Province / Region <b class="required-mark">*</b></span>
+                    <span class="inquiry-location-label">
+                        <span>Province / Region <b class="required-mark">*</b></span>
+                        <small>Luzon locations only</small>
+                    </span>
                     <span class="inquiry-combobox" data-combobox>
-                        <input class="js-inquiry-province" name="province" data-label="Province / Region" required placeholder="Search or select province / region" autocomplete="off" data-combobox-input>
+                        <input class="js-inquiry-province" name="province" data-label="Province / Region" required placeholder="Select a Luzon province / region" autocomplete="off" data-combobox-input>
                         <button class="inquiry-combobox-button" type="button" aria-label="Show province or region options" data-combobox-toggle></button>
                         <span class="inquiry-combobox-list" data-combobox-list></span>
                     </span>

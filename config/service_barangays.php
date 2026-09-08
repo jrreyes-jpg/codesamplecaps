@@ -121,6 +121,47 @@ function service_barangays_import_from_reference(mysqli $conn): int
 
 function service_barangays_grouped(mysqli $conn): array
 {
+    static $referenceRows = null;
+    if ($referenceRows !== null) {
+        return $referenceRows;
+    }
+
+    $hierarchyPath = dirname(__DIR__) . '/Location/luzon_hierarchy_barangays.csv';
+    if (is_file($hierarchyPath) && is_readable($hierarchyPath)) {
+        $referenceRows = [];
+        foreach (service_area_read_csv($hierarchyPath) as $row) {
+            $region = trim((string)($row['region'] ?? ''));
+            $province = trim((string)($row['province'] ?? ''));
+            $city = service_area_title_case((string)($row['city_municipality'] ?? ''));
+            $barangay = service_barangay_display_name((string)($row['barangay'] ?? ''));
+
+            if ($province === '') {
+                $province = $region === 'National Capital Region (NCR)'
+                    ? 'Metro Manila (NCR)'
+                    : (service_area_huc_provinces()[$city] ?? '');
+            } else {
+                $province = service_area_title_case($province);
+            }
+
+            [$province, $city] = service_barangay_normalize_location($province, $city);
+            if (!isset(service_area_allowed_provinces()[$province]) || $city === '' || $barangay === '') {
+                continue;
+            }
+
+            $referenceRows[$province][$city][] = $barangay;
+        }
+
+        foreach ($referenceRows as $province => $cities) {
+            foreach ($cities as $city => $barangays) {
+                $barangays = array_values(array_unique($barangays));
+                sort($barangays, SORT_NATURAL | SORT_FLAG_CASE);
+                $referenceRows[$province][$city] = $barangays;
+            }
+        }
+
+        return $referenceRows;
+    }
+
     service_barangays_ensure_table($conn);
     if (service_barangays_count($conn) === 0) {
         service_barangays_import_from_reference($conn);
@@ -191,20 +232,34 @@ function service_barangay_normalize_location(string $province, string $city): ar
         'Santa Ana' => 'Manila',
         'City Of Manila' => 'Manila',
         'City of Manila' => 'Manila',
+        'City of Caloocan' => 'Caloocan',
+        'City of Las Piñas' => 'Las Piñas',
+        'City of Makati' => 'Makati',
+        'City of Malabon' => 'Malabon',
         'City Of Mandaluyong' => 'Mandaluyong',
+        'City of Mandaluyong' => 'Mandaluyong',
         'City Of Marikina' => 'Marikina',
+        'City of Marikina' => 'Marikina',
         'City Of Pasig' => 'Pasig',
+        'City of Pasig' => 'Pasig',
         'City Of San Juan' => 'San Juan',
+        'City of San Juan' => 'San Juan',
         'Caloocan City' => 'Caloocan',
         'City Of Malabon' => 'Malabon',
         'City Of Navotas' => 'Navotas',
+        'City of Navotas' => 'Navotas',
         'City Of Valenzuela' => 'Valenzuela',
+        'City of Valenzuela' => 'Valenzuela',
         'City Of Las Piñas' => 'Las Piñas',
         'City Of Makati' => 'Makati',
         'City Of Muntinlupa' => 'Muntinlupa',
+        'City of Muntinlupa' => 'Muntinlupa',
         'City Of Parañaque' => 'Parañaque',
+        'City of Parañaque' => 'Parañaque',
         'Pasay City' => 'Pasay',
+        'City of Pasay' => 'Pasay',
         'Taguig City' => 'Taguig',
+        'City of Taguig' => 'Taguig',
     ];
 
     if ($province === 'Metro Manila (NCR)'

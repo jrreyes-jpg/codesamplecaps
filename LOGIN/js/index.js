@@ -525,7 +525,7 @@ const initInquiryForm = () => {
 
             closeOtherComboboxes(input);
             const search = showAll ? '' : input.value.trim().toLowerCase();
-            const matches = options.filter((option) => option.toLowerCase().includes(search)).slice(0, 80);
+            const matches = options.filter((option) => option.toLowerCase().includes(search));
             list.innerHTML = '';
             list.scrollTop = 0;
 

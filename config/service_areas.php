@@ -23,6 +23,7 @@ function service_area_region_provinces(): array
 function service_area_ncr_cities(): array
 {
     return [
+        '133900' => 'Manila',
         '133901' => 'Manila',
         '133902' => 'Manila',
         '133903' => 'Manila',
@@ -66,6 +67,17 @@ function service_area_allowed_provinces(): array
     return array_fill_keys($provinces, true);
 }
 
+function service_area_huc_provinces(): array
+{
+    return [
+        'City of Baguio' => 'Benguet',
+        'City of Angeles' => 'Pampanga',
+        'City of Olongapo' => 'Zambales',
+        'City of Lucena' => 'Quezon',
+        'City of Puerto Princesa' => 'Palawan',
+    ];
+}
+
 function service_area_title_case(string $value): string
 {
     $value = trim($value);
@@ -73,11 +85,13 @@ function service_area_title_case(string $value): string
         ? mb_convert_case(mb_strtolower($value, 'UTF-8'), MB_CASE_TITLE, 'UTF-8')
         : ucwords(strtolower($value));
 
-    return str_replace(
+    $value = str_replace(
         ['Ncr', 'Car', 'Iv-A', 'Iv-B'],
         ['NCR', 'CAR', 'IV-A', 'IV-B'],
         $value
     );
+
+    return str_replace(' Of ', ' of ', $value);
 }
 
 function service_area_read_csv(string $path): array
@@ -101,6 +115,7 @@ function service_area_read_csv(string $path): array
     while (($data = fgetcsv($handle)) !== false) {
         $row = [];
         foreach ($headers as $index => $header) {
+            $header = preg_replace('/^\xEF\xBB\xBF/', '', (string)$header) ?? (string)$header;
             $row[$header] = $data[$index] ?? '';
         }
         $rows[] = $row;
@@ -148,6 +163,7 @@ function service_area_allowed_locations(): array
     foreach (service_area_read_csv($basePath . '/refcitymun.csv') as $city) {
         $regCode = (string)($city['regDesc'] ?? '');
         $provCode = (string)($city['provCode'] ?? '');
+        $cityName = service_area_title_case((string)($city['citymunDesc'] ?? ''));
         if (!in_array($regCode, $luzonRegionCodes, true)) {
             continue;
         }
@@ -157,7 +173,8 @@ function service_area_allowed_locations(): array
             $cityName = service_area_ncr_cities()[(string)($city['citymunCode'] ?? '')] ?? '';
         } elseif (isset($provinceByCode[$provCode])) {
             $provinceName = $provinceByCode[$provCode];
-            $cityName = service_area_title_case((string)($city['citymunDesc'] ?? ''));
+        } elseif (isset(service_area_huc_provinces()[$cityName])) {
+            $provinceName = service_area_huc_provinces()[$cityName];
         } else {
             continue;
         }
@@ -179,6 +196,13 @@ function service_area_allowed_locations(): array
 
 function service_area_reference_csv_path(): string
 {
+    $luzonPath = dirname(__DIR__) . '/Location/luzon_psgc_csv';
+    if (is_file($luzonPath . '/refprovince.csv')
+        && is_file($luzonPath . '/refcitymun.csv')
+        && is_file($luzonPath . '/refbrgy.csv')) {
+        return $luzonPath;
+    }
+
     $rootPath = dirname(__DIR__) . '/brgy';
     $nestedPath = $rootPath . '/philippines-region-province-citymun-brgy-master/csv';
 

@@ -105,9 +105,74 @@
     color: #1d4ed8;
 }
 
-.inspection-status[data-status="Costing Draft"] {
+.inspection-status[data-status="Assigned"] {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.inspection-status[data-status="Acknowledged"] {
     background: #fff7ed;
     color: #9a3412;
+}
+
+.inspection-status[data-status="Ongoing"] {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.inspection-status[data-status="Completed"] {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.inspection-status[data-status="Submitted"] {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inspection-workflow {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.inspection-workflow__step {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.inspection-workflow__step span,
+.inspection-workflow__step small {
+    display: block;
+}
+
+.inspection-workflow__step span {
+    font-weight: 900;
+}
+
+.inspection-workflow__step small {
+    margin-top: 4px;
+    font-size: 0.72rem;
+}
+
+.inspection-workflow__step.is-done {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.inspection-workflow__step.is-current {
+    border-color: #60a5fa;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.inspection-status-action {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .inspection-grid {
@@ -355,6 +420,12 @@ body.inspection-modal-open {
     font-weight: 800;
 }
 
+.inspection-submit-note--waiting {
+    background: #fff7ed;
+    border-color: rgba(234, 88, 12, 0.2);
+    color: #9a3412;
+}
+
 .btn-primary,
 .btn-secondary,
 .btn-clear-form,
@@ -428,5 +499,9 @@ body.inspection-modal-open {
 
     .inspection-detail--wide {
         grid-column: auto;
+    }
+
+    .inspection-workflow {
+        grid-template-columns: 1fr;
     }
 }

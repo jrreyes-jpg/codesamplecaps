@@ -598,6 +598,7 @@ CREATE TABLE `projects` (
   `project_code` varchar(80) DEFAULT NULL,
   `project_source` varchar(40) NOT NULL DEFAULT 'walk_in',
   `po_number` varchar(80) DEFAULT NULL,
+  `po_date` date DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `project_start_date` date DEFAULT NULL,
   `estimated_completion_date` date DEFAULT NULL,

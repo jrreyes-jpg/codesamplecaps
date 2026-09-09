@@ -530,12 +530,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $clientWasInvited = in_array((string)($clientAccount['state'] ?? ''), ['pending_created', 'pending_resend'], true);
                 $activationEmailSent = $clientAccount['activation_email_sent'] ?? null;
                 $engineerId = (int)($quotation['engineer_id'] ?? 0);
+                $locationArea = implode(' / ', array_filter([
+                    trim((string)($quotation['province'] ?? '')),
+                    trim((string)($quotation['city_municipality'] ?? '')),
+                    trim((string)($quotation['barangay'] ?? '')),
+                ], static fn(string $value): bool => $value !== ''));
                 $_SESSION['projects_old_input'] = [
                     'project_name' => inquiry_quote_unique_project_title($conn, $quotation),
                     'description' => trim((string)($quotation['engineer_findings'] ?: $quotation['description'] ?? '')),
                     'contact_person' => trim((string)($quotation['client_name'] ?? '')),
                     'contact_number' => trim((string)($quotation['contact_no'] ?? '')),
-                    'project_site' => trim((string)($quotation['city_municipality'] ?? '')),
+                    'project_site' => $locationArea,
                     'project_address' => trim((string)($quotation['site_address'] ?? '')),
                     'project_email' => trim((string)($quotation['email'] ?? '')),
                     'project_source' => 'inquiry_quotation',
@@ -544,12 +549,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'client_id' => !empty($recipient['client_id']) ? (string)$recipient['client_id'] : '',
                     'engineer_ids' => $engineerId > 0 ? [(string)$engineerId] : [],
                     'status' => 'pending',
-                    'start_date' => date('Y-m-d'),
+                    'po_date' => '',
                     'project_start_date' => date('Y-m-d'),
                     'estimated_completion_date' => date('Y-m-d', strtotime('+7 days')),
                     'estimated_duration_days' => '7',
                     'budget_amount' => number_format((float)($quotation['grand_total'] ?? 0), 2, '.', ''),
-                    'budget_notes' => 'Accepted quotation ' . (string)($quotation['quotation_no'] ?? ''),
+                    'budget_notes' => '',
                     'focus_field' => 'engineer_ids',
                 ];
                 $_SESSION['projects_flash'] = [

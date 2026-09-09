@@ -99,6 +99,7 @@ $messageType = $messageType ?? 'success';
                 ?>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php<?php echo $statusBase ? '?' . http_build_query($statusBase) : ''; ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === '' ? ' active-chip' : ''; ?>">All</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'active'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'active' ? ' active-chip' : ''; ?>">Active</a>
+                <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'pending_activation'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'pending_activation' ? ' active-chip' : ''; ?>">Pending Activation</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'inactive'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'inactive' ? ' active-chip' : ''; ?>">Inactive</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query($trashQuery); ?>" class="action-chip action-chip-trash<?php echo $userTrashView ? ' active-chip' : ''; ?>">Trash</a>
                 <form method="GET" class="user-role-filter" data-role-filter-form>
@@ -144,7 +145,7 @@ $messageType = $messageType ?? 'success';
                                     <td data-label="Role">
                                         <span class="role-badge role-badge-<?php echo htmlspecialchars($normalizedRole); ?>"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $normalizedRole))); ?></span>
                                     </td>
-                                    <td data-label="Status"><span class="status-badge <?php echo $status === 'active' ? 'status-active' : 'status-inactive'; ?>"><?php echo htmlspecialchars(ucfirst($status)); ?></span></td>
+                                    <td data-label="Status"><span class="status-badge <?php echo $status === 'active' ? 'status-active' : ($status === 'pending_activation' ? 'status-pending-activation' : 'status-inactive'); ?>"><?php echo htmlspecialchars($status === 'pending_activation' ? 'Pending Activation' : ucfirst($status)); ?></span></td>
                                     <td data-label="Created"><span class="user-date-chip"><?php echo htmlspecialchars(superadmin_user_format_date($user['created_at'] ?? null)); ?></span></td>
                                     <td data-label="Actions">
                                         <div class="user-actions-menu" data-user-actions-menu>
@@ -185,6 +186,14 @@ $messageType = $messageType ?? 'success';
                                                             class="user-actions-menu__item is-danger is-blocked"
                                                             data-user-blocked-toast="<?php echo htmlspecialchars('Cannot deactivate ' . (string)($user['full_name'] ?? 'this user') . ' yet. Reassign ' . implode(' and ', $deactivationBlockers) . ' first.', ENT_QUOTES, 'UTF-8'); ?>"
                                                         >Cannot Deactivate</button>
+                                                    <?php elseif ($status === 'pending_activation'): ?>
+                                                        <form method="POST" class="inline-action-form" data-confirm-message="Deactivate this pending Client account?">
+                                                            <input type="hidden" name="action" value="update_status">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                                                            <input type="hidden" name="user_id" value="<?php echo $rowId; ?>">
+                                                            <input type="hidden" name="status" value="inactive">
+                                                            <button type="submit" class="user-actions-menu__item is-danger">Deactivate</button>
+                                                        </form>
                                                     <?php else: ?>
                                                         <form method="POST" class="inline-action-form" data-confirm-message="<?php echo $status === 'active' ? 'Deactivate this user? They will lose access to login.' : 'Reactivate this user?'; ?>">
                                                             <input type="hidden" name="action" value="update_status">

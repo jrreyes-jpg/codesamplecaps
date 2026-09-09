@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../config/audit_log.php';
 
 // User Management logic lang ito para hindi na nakaasa sa dashboard file.
 $allowedRoles = ['admin', 'engineer', 'foreman', 'inventory_clerk', 'client'];
-$allowedStatuses = ['active', 'inactive'];
+$allowedStatuses = ['active', 'inactive', 'pending_activation'];
 
 function normalizeRole(string $role): string {
     $role = strtolower(trim($role));
@@ -212,7 +212,7 @@ function getDeactivationBlockers(mysqli $conn, int $userId, string $role): array
 }
 
 function compareUsersForTable(array $left, array $right): int {
-    $statusOrder = ['active' => 0, 'inactive' => 1];
+    $statusOrder = ['active' => 0, 'pending_activation' => 1, 'inactive' => 2];
     $roleOrder = ['admin' => 0, 'engineer' => 1, 'foreman' => 2, 'inventory_clerk' => 3, 'client' => 4];
 
     $statusCompare = ($statusOrder[$left['status'] ?? 'inactive'] ?? 99) <=> ($statusOrder[$right['status'] ?? 'inactive'] ?? 99);

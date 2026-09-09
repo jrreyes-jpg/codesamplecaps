@@ -94,6 +94,7 @@ private function env($key, $default = null)
 
         // ============ SECURITY ============
         $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 15;
+        $this->settings['ACCOUNT_ACTIVATION_EXPIRY_MINUTES'] = 60;
         $this->settings['LOGIN_MAX_ATTEMPTS'] = 5;
         $this->settings['LOGIN_LOCKOUT_MINUTES'] = 15;
         $this->settings['LOGIN_MAX_IP_ATTEMPTS'] = 15;

@@ -364,6 +364,7 @@ CREATE TABLE `password_reset_attempts` (
 CREATE TABLE `password_reset_tokens` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
+  `purpose` varchar(30) NOT NULL DEFAULT 'password_reset',
   `token` varchar(255) NOT NULL,
   `expires_at` datetime NOT NULL,
   `used` tinyint(1) DEFAULT 0,
@@ -373,6 +374,7 @@ CREATE TABLE `password_reset_tokens` (
   UNIQUE KEY `token` (`token`),
   KEY `idx_user` (`user_id`),
   KEY `idx_token` (`token`),
+  KEY `idx_password_reset_tokens_user_purpose` (`user_id`,`purpose`,`used`,`expires_at`),
   CONSTRAINT `fk_prt_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -869,6 +871,7 @@ CREATE TABLE `service_barangays` (
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `service_inquiries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `client_id` int(11) DEFAULT NULL,
   `client_name` varchar(150) NOT NULL,
   `company_name` varchar(150) DEFAULT NULL,
   `email` varchar(150) NOT NULL,
@@ -888,7 +891,9 @@ CREATE TABLE `service_inquiries` (
   `archived_by` int(11) DEFAULT NULL,
   `archive_reason` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_service_inquiries_client_id` (`client_id`),
+  CONSTRAINT `fk_service_inquiries_client` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

@@ -22,11 +22,12 @@ class UserRepository {
      * Find user by email
      */
     public function findByEmail($email) {
+        $email = strtolower(trim((string)$email));
 
         $stmt = $this->conn->prepare(
             "SELECT id, full_name, email, password, role, status, 
                     failed_attempts, last_failed_login, reset_requested_at 
-             FROM users WHERE email = ? LIMIT 1"
+             FROM users WHERE LOWER(email) = ? LIMIT 1"
         );
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -57,6 +58,7 @@ class UserRepository {
          FROM password_reset_tokens prt
          INNER JOIN users u ON u.id = prt.user_id
          WHERE prt.token = ?
+         AND prt.purpose = 'password_reset'
          AND prt.used = 0
          AND prt.expires_at > NOW()
          LIMIT 1"
@@ -113,6 +115,7 @@ public function resetPasswordByToken($token, $passwordHash) {
             "SELECT prt.id AS token_id, prt.user_id
              FROM password_reset_tokens prt
              WHERE prt.token = ?
+             AND prt.purpose = 'password_reset'
              AND prt.used = 0
              AND prt.expires_at > NOW()
              LIMIT 1
@@ -180,6 +183,7 @@ public function setResetToken($userId, $token, $expiryMinutes = 60) {
             "UPDATE password_reset_tokens
              SET used = 1, used_at = NOW()
              WHERE user_id = ?
+             AND purpose = 'password_reset'
              AND used = 0"
         );
         $invalidateStmt->bind_param("i", $userId);
@@ -191,8 +195,8 @@ public function setResetToken($userId, $token, $expiryMinutes = 60) {
         // Save only the SHA-256 hash, never the raw token from the email link.
         $insertStmt = $this->conn->prepare(
             "INSERT INTO password_reset_tokens
-                (user_id, token, expires_at, used, used_at)
-             VALUES (?, ?, ?, 0, NULL)"
+                (user_id, purpose, token, expires_at, used, used_at)
+             VALUES (?, 'password_reset', ?, ?, 0, NULL)"
         );
         $insertStmt->bind_param("iss", $userId, $tokenHash, $expiry);
 
@@ -219,6 +223,137 @@ public function setResetToken($userId, $token, $expiryMinutes = 60) {
         return false;
     }
 }
+
+    /**
+     * Create a Client that must set a password before login.
+     */
+    public function createPendingClient(string $fullName, string $email, string $phone, int $createdBy): int|false {
+        $email = strtolower(trim($email));
+        $temporaryHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
+        $role = 'client';
+        $status = 'pending_activation';
+
+        $stmt = $this->conn->prepare(
+            'INSERT INTO users (full_name, email, password, role, phone, status, status_changed_at, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)'
+        );
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bind_param('ssssssi', $fullName, $email, $temporaryHash, $role, $phone, $status, $createdBy);
+        return $stmt->execute() ? (int)$this->conn->insert_id : false;
+    }
+
+    /**
+     * Save a one-time activation token. Raw token stays in email only.
+     */
+    public function setActivationToken(int $userId, string $token, int $expiryMinutes = 60): bool {
+        $tokenHash = hash('sha256', $token);
+        $expiry = date('Y-m-d H:i:s', strtotime('+' . $expiryMinutes . ' minutes'));
+
+        $this->conn->begin_transaction();
+        try {
+            $invalidateStmt = $this->conn->prepare(
+                "UPDATE password_reset_tokens
+                 SET used = 1, used_at = NOW()
+                 WHERE user_id = ? AND purpose = 'account_activation' AND used = 0"
+            );
+            $invalidateStmt->bind_param('i', $userId);
+            if (!$invalidateStmt->execute()) {
+                throw new RuntimeException('Unable to replace activation link.');
+            }
+
+            $insertStmt = $this->conn->prepare(
+                "INSERT INTO password_reset_tokens (user_id, purpose, token, expires_at, used, used_at)
+                 VALUES (?, 'account_activation', ?, ?, 0, NULL)"
+            );
+            $insertStmt->bind_param('iss', $userId, $tokenHash, $expiry);
+            if (!$insertStmt->execute()) {
+                throw new RuntimeException('Unable to save activation link.');
+            }
+
+            $this->conn->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            return false;
+        }
+    }
+
+    public function findByActivationToken(string $token): ?array {
+        $tokenHash = hash('sha256', $token);
+        $stmt = $this->conn->prepare(
+            "SELECT u.id, u.full_name, u.email
+             FROM password_reset_tokens prt
+             INNER JOIN users u ON u.id = prt.user_id
+             WHERE prt.token = ?
+               AND prt.purpose = 'account_activation'
+               AND prt.used = 0
+               AND prt.expires_at > NOW()
+               AND u.role = 'client'
+               AND u.status = 'pending_activation'
+             LIMIT 1"
+        );
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param('s', $tokenHash);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    public function activateClientByToken(string $token, string $passwordHash): bool {
+        $tokenHash = hash('sha256', $token);
+        $this->conn->begin_transaction();
+        try {
+            $tokenStmt = $this->conn->prepare(
+                "SELECT prt.id AS token_id, prt.user_id
+                 FROM password_reset_tokens prt
+                 INNER JOIN users u ON u.id = prt.user_id
+                 WHERE prt.token = ?
+                   AND prt.purpose = 'account_activation'
+                   AND prt.used = 0
+                   AND prt.expires_at > NOW()
+                   AND u.role = 'client'
+                   AND u.status = 'pending_activation'
+                 LIMIT 1 FOR UPDATE"
+            );
+            $tokenStmt->bind_param('s', $tokenHash);
+            $tokenStmt->execute();
+            $activation = $tokenStmt->get_result()->fetch_assoc();
+            if (!$activation) {
+                $this->conn->rollback();
+                return false;
+            }
+
+            $userId = (int)$activation['user_id'];
+            $tokenId = (int)$activation['token_id'];
+            $userStmt = $this->conn->prepare(
+                "UPDATE users
+                 SET password = ?, status = 'active', status_changed_at = NOW(), failed_attempts = 0, last_failed_login = NULL
+                 WHERE id = ? AND role = 'client' AND status = 'pending_activation'"
+            );
+            $userStmt->bind_param('si', $passwordHash, $userId);
+            if (!$userStmt->execute() || $userStmt->affected_rows !== 1) {
+                throw new RuntimeException('Unable to activate Client account.');
+            }
+
+            $usedStmt = $this->conn->prepare(
+                'UPDATE password_reset_tokens SET used = 1, used_at = NOW() WHERE id = ? AND used = 0'
+            );
+            $usedStmt->bind_param('i', $tokenId);
+            if (!$usedStmt->execute() || $usedStmt->affected_rows !== 1) {
+                throw new RuntimeException('Unable to consume activation link.');
+            }
+
+            $this->conn->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            return false;
+        }
+    }
 
     /**
      * Record failed login attempt

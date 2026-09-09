@@ -159,6 +159,34 @@ class EmailService {
         }
     }
 
+    /**
+     * Send the first password setup link for a pending Client account.
+     */
+    public function sendAccountActivation($recipientEmail, $recipientName, $activationToken, $expiryMinutes = 60) {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($recipientEmail);
+            $appUrl = rtrim((string)$this->config->get('APP_URL'), '/');
+            $activationLink = $appUrl . '/LOGIN/php/reset_password.php?flow=activate&token=' . urlencode($activationToken);
+
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Activate Your Client Account - ' . $this->config->get('APP_NAME');
+            $htmlBody = $this->getAccountActivationEmailTemplate($recipientName, $activationLink, $expiryMinutes);
+            $this->mailer->Body = $htmlBody;
+            $this->mailer->AltBody = strip_tags($htmlBody);
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Client activation email failed: ' . $e->getMessage());
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
+            return false;
+        }
+    }
+
     public function sendInquiryOtp(string $recipientEmail, string $recipientName, string $otp, int $expiryMinutes = 10): bool {
         try {
             if ($this->error !== '') {
@@ -381,6 +409,28 @@ class EmailService {
         </body>
         </html>
         ";
+    }
+
+    private function getAccountActivationEmailTemplate($name, $activationLink, $expiryMinutes) {
+        $appName = htmlspecialchars((string)$this->config->get('APP_NAME'), ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars((string)$name, ENT_QUOTES, 'UTF-8');
+        $safeLink = htmlspecialchars((string)$activationLink, ENT_QUOTES, 'UTF-8');
+
+        return "
+        <!DOCTYPE html>
+        <html lang='en'>
+        <body style='font-family:Segoe UI,Arial,sans-serif;background:#f5f5f5;padding:20px'>
+            <div style='max-width:600px;margin:auto;background:#fff;padding:30px'>
+                <h1 style='color:#166534'>$appName</h1>
+                <h2>Activate your Client account</h2>
+                <p>Hello $safeName,</p>
+                <p>Your Client account is ready. Set your password to activate it.</p>
+                <p><a href='$safeLink' style='display:inline-block;background:#16a34a;color:#fff;padding:12px 20px;border-radius:5px;text-decoration:none'>Activate Account</a></p>
+                <p>This link expires in $expiryMinutes minutes and can be used once.</p>
+                <p>If you did not expect this email, please contact Edge Automation.</p>
+            </div>
+        </body>
+        </html>";
     }
 
     /**

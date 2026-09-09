@@ -521,7 +521,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     inquiry_center_redirect_with_project((int)$quotation['project_id'], 'Project was already created from this quotation.');
                 }
 
+                $clientAccount = inquiry_quote_prepare_client_account(
+                    $conn,
+                    $draftId,
+                    (int)($_SESSION['user_id'] ?? 0)
+                );
                 $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
+                $clientWasInvited = in_array((string)($clientAccount['state'] ?? ''), ['pending_created', 'pending_resend'], true);
+                $activationEmailSent = $clientAccount['activation_email_sent'] ?? null;
                 $engineerId = (int)($quotation['engineer_id'] ?? 0);
                 $_SESSION['projects_old_input'] = [
                     'project_name' => inquiry_quote_unique_project_title($conn, $quotation),
@@ -543,11 +550,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'estimated_duration_days' => '7',
                     'budget_amount' => number_format((float)($quotation['grand_total'] ?? 0), 2, '.', ''),
                     'budget_notes' => 'Accepted quotation ' . (string)($quotation['quotation_no'] ?? ''),
-                    'focus_field' => empty($recipient['client_id']) ? 'client_id' : 'engineer_ids',
+                    'focus_field' => 'engineer_ids',
                 ];
                 $_SESSION['projects_flash'] = [
-                    'type' => 'success',
-                    'message' => 'Review the accepted quotation details, then select the Client and project team.',
+                    'type' => $clientWasInvited && $activationEmailSent === false ? 'warning' : 'success',
+                    'message' => $clientWasInvited
+                        ? ($activationEmailSent === false
+                            ? 'Client account was linked, but the activation email was not sent. Open Project Setup again to resend it.'
+                            : 'Client account was linked and the activation email was sent. Review the project team.')
+                        : 'Client account was linked. Review the accepted quotation details and project team.',
                 ];
                 header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php#create-project');
                 exit;

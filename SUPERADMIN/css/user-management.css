@@ -1145,6 +1145,11 @@ body:has([data-user-management-shell]) .user-management-panel {
     color: #991b1b;
 }
 
+.status-pending-activation {
+    background: #fef3c7;
+    color: #92400e;
+}
+
 /* Final alignment guard: para hindi bumaba o mag-overlap ang User Management page. */
 .main-content.superadmin-user-management-page {
     display: block !important;

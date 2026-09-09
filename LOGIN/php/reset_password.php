@@ -10,6 +10,7 @@ $error = "";
 $success = "";
 
 $token = trim($_GET['token'] ?? '');
+$activationFlow = ($_GET['flow'] ?? '') === 'activate';
 
 $authService = new AuthService();
 
@@ -26,10 +27,9 @@ if (empty($token)) {
 } else {
 
     // Access the UserRepository
-    $userRepo = new UserRepository();
-
-    // Check if the token exists and is still valid
-    $user = $userRepo->findByResetToken($token);
+    $user = $activationFlow
+        ? $authService->validateClientActivationToken($token)
+        : (new UserRepository())->findByResetToken($token);
 
     if (!$user) {
 
@@ -69,7 +69,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
     } elseif (strlen($newPassword) < 8) {
         $error = "Password must be at least 8 characters long.";
     } else {
-        $result = $authService->resetPassword($token, $newPassword);
+        $result = $activationFlow
+            ? $authService->activateClientAccount($token, $newPassword)
+            : $authService->resetPassword($token, $newPassword);
 
         if ($result['success']) {
 
@@ -105,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password - Edge Automation Portal</title>
+    <title><?php echo $activationFlow ? 'Activate Account' : 'Reset Password'; ?> - Edge Automation Portal</title>
     <link rel="stylesheet" href="../css/auth-shared.css">
     <link rel="stylesheet" href="../css/reset_password.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -125,8 +127,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
 
         <div class="right-panel">
             <div class="form active">
-                <form method="POST" action="?token=<?php echo urlencode($token); ?>">
-                    <h2>Create New Password</h2>
+                <form method="POST" action="?token=<?php echo urlencode($token); ?><?php echo $activationFlow ? '&amp;flow=activate' : ''; ?>">
+                    <h2><?php echo $activationFlow ? 'Activate Your Account' : 'Create New Password'; ?></h2>
 
                     <?php if($error): ?>
                         <div class="error-box">
@@ -147,7 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
 
                     <?php if(!empty($token) && empty($success)): ?>
                         <p class="auth-helper-text">
-                            Enter your new password below.
+                            <?php echo $activationFlow ? 'Set your password to activate your Client account.' : 'Enter your new password below.'; ?>
                         </p>
 
                         <div class="password-wrapper has-label">
@@ -178,7 +180,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
                             <button type="button" class="togglePassword" data-target="confirm_password">Show</button>
                         </div>
 
-                        <button type="submit" data-loading-text="Resetting password...">Reset Password</button>
+                        <button type="submit" data-loading-text="<?php echo $activationFlow ? 'Activating account...' : 'Resetting password...'; ?>"><?php echo $activationFlow ? 'Activate Account' : 'Reset Password'; ?></button>
                     <?php endif; ?>
 
                     <div class="links auth-links-spaced">

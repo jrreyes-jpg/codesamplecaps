@@ -439,7 +439,9 @@ const initInquiryForm = () => {
         const dateInfoButton = inquiryForm.querySelector('.js-date-info-button');
         const dateTooltip = inquiryForm.querySelector('.js-date-tooltip');
         const serviceSelect = inquiryForm.querySelector('select[name="service_category"]');
-        const provinceSelect = inquiryForm.querySelector('.js-inquiry-province');
+        const regionSelect = inquiryForm.querySelector('.js-inquiry-region');
+        const areaSelect = inquiryForm.querySelector('.js-inquiry-area');
+        const provinceInput = inquiryForm.querySelector('.js-inquiry-province');
         const citySelect = inquiryForm.querySelector('.js-inquiry-city');
         const barangayInput = inquiryForm.querySelector('.js-inquiry-barangay');
         const otherServiceField = inquiryForm.querySelector('.other-service-field');
@@ -601,7 +603,7 @@ const initInquiryForm = () => {
 
             const button = input.closest('[data-combobox]')?.querySelector('[data-combobox-toggle]');
             const showOptions = () => {
-                if (!input.disabled) {
+                if (!input.disabled && !input.readOnly) {
                     if (input.value !== (input.dataset.comboboxSelectedValue || '')) {
                         delete input.dataset.comboboxSelectedValue;
                     }
@@ -616,6 +618,9 @@ const initInquiryForm = () => {
                 showOptions();
             });
             button?.addEventListener('click', () => {
+                if (input.disabled || input.readOnly) {
+                    return;
+                }
                 if (input.closest('[data-combobox]')?.classList.contains('is-open')) {
                     closeCombobox(input);
                     return;
@@ -631,10 +636,18 @@ const initInquiryForm = () => {
             return value !== '' && value === (input?.dataset.comboboxSelectedValue || '');
         };
 
-        const isValidProvince = () => Boolean(window.edgeServiceAreas?.[provinceSelect?.value?.trim()]) && isSystemSelected(provinceSelect);
+        const getRegionAreas = () => window.edgeServiceHierarchy?.[regionSelect?.value?.trim()] || {};
+        const getAreaOptions = () => Object.keys(getRegionAreas());
+        const isValidRegion = () => Boolean(window.edgeServiceHierarchy?.[regionSelect?.value?.trim()])
+            && isSystemSelected(regionSelect);
+        const isValidArea = () => isValidRegion()
+            && getAreaOptions().includes(areaSelect?.value?.trim() || '')
+            && isSystemSelected(areaSelect);
+        const getCityOptions = () => isValidArea()
+            ? (getRegionAreas()[areaSelect.value.trim()] || [])
+            : [];
         const isValidCity = () => {
-            const cities = window.edgeServiceAreas?.[provinceSelect?.value?.trim()] || [];
-            return cities.includes(citySelect?.value?.trim() || '') && isSystemSelected(citySelect);
+            return getCityOptions().includes(citySelect?.value?.trim() || '') && isSystemSelected(citySelect);
         };
         let lastValidCity = '';
 
@@ -643,7 +656,7 @@ const initInquiryForm = () => {
                 return [];
             }
 
-            return window.edgeServiceBarangays?.[provinceSelect.value.trim()]?.[citySelect.value.trim()] || [];
+            return window.edgeServiceBarangays?.[regionSelect.value.trim()]?.[areaSelect.value.trim()]?.[citySelect.value.trim()] || [];
         };
 
         const isValidBarangay = () => {
@@ -676,47 +689,86 @@ const initInquiryForm = () => {
             lastValidCity = currentCity;
         };
 
+        const clearLocationInput = (input) => {
+            if (!input) {
+                return;
+            }
+            input.value = '';
+            delete input.dataset.comboboxSelectedValue;
+            closeCombobox(input);
+        };
+
         const syncCityOptions = () => {
-            if (!provinceSelect || !citySelect) {
+            if (!areaSelect || !citySelect) {
                 return;
             }
 
-            const cities = window.edgeServiceAreas?.[provinceSelect.value.trim()] || [];
-            const provinceReady = isValidProvince();
-            citySelect.disabled = !provinceReady || cities.length === 0;
-            citySelect.placeholder = !provinceReady || cities.length === 0 ? 'Select province first' : 'Search or select city / municipality';
-            citySelect.value = '';
-            delete citySelect.dataset.comboboxSelectedValue;
-            closeCombobox(citySelect);
+            const cities = getCityOptions();
+            const areaReady = isValidArea();
+            citySelect.disabled = !areaReady || cities.length === 0;
+            citySelect.placeholder = areaReady ? 'Search or select city / municipality' : 'Select province / area first';
+            clearLocationInput(citySelect);
             syncBarangayState();
-        };
 
-        const provinceRegionGroups = {
-            'Metro Manila (NCR)': ['Metro Manila (NCR)'],
-            'Cordillera Administrative Region (CAR)': ['Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province'],
-            'Ilocos Region (Region I)': ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'],
-            'Cagayan Valley (Region II)': ['Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino'],
-            'Central Luzon (Region III)': ['Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales'],
-            'CALABARZON (Region IV-A)': ['Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal'],
-            'MIMAROPA (Region IV-B)': ['Marinduque', 'Occidental Mindoro', 'Oriental Mindoro', 'Palawan', 'Romblon'],
-            'Bicol Region (Region V)': ['Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon']
-        };
-
-        bindCombobox(provinceSelect, () => Object.keys(window.edgeServiceAreas || {}), provinceRegionGroups);
-        provinceSelect?.addEventListener('input', () => {
-            if (provinceSelect.value !== (provinceSelect.dataset.comboboxSelectedValue || '')) {
-                delete provinceSelect.dataset.comboboxSelectedValue;
+            if (provinceInput) {
+                const area = areaSelect.value.trim();
+                provinceInput.value = area === 'Independent City' || regionSelect.value.trim() === 'National Capital Region (NCR)'
+                    ? ''
+                    : area;
             }
+        };
+
+        const syncAreaOptions = () => {
+            if (!regionSelect || !areaSelect) {
+                return;
+            }
+
+            const regionReady = isValidRegion();
+            const isNcr = regionSelect.value.trim() === 'National Capital Region (NCR)';
+            clearLocationInput(areaSelect);
+            areaSelect.disabled = !regionReady;
+            areaSelect.readOnly = false;
+            areaSelect.placeholder = regionReady ? 'Search or select province / area' : 'Select region first';
+
+            if (regionReady && isNcr) {
+                areaSelect.disabled = false;
+                areaSelect.readOnly = true;
+                areaSelect.value = 'Metro Manila (NCR)';
+                areaSelect.dataset.comboboxSelectedValue = 'Metro Manila (NCR)';
+            }
+
             syncCityOptions();
+        };
+
+        bindCombobox(regionSelect, () => Object.keys(window.edgeServiceHierarchy || {}));
+        regionSelect?.addEventListener('input', () => {
+            if (regionSelect.value !== (regionSelect.dataset.comboboxSelectedValue || '')) {
+                delete regionSelect.dataset.comboboxSelectedValue;
+            }
+            syncAreaOptions();
         });
-        provinceSelect?.addEventListener('change', () => {
-            syncCityOptions();
-            clearFieldError(provinceSelect);
+        regionSelect?.addEventListener('change', () => {
+            syncAreaOptions();
+            clearFieldError(regionSelect);
+            if (areaSelect) clearFieldError(areaSelect);
             if (citySelect) clearFieldError(citySelect);
             clearFormMessageIfReady();
         });
-        syncCityOptions();
-        bindCombobox(citySelect, () => window.edgeServiceAreas?.[provinceSelect?.value?.trim()] || []);
+        bindCombobox(areaSelect, getAreaOptions);
+        areaSelect?.addEventListener('input', () => {
+            if (areaSelect.value !== (areaSelect.dataset.comboboxSelectedValue || '')) {
+                delete areaSelect.dataset.comboboxSelectedValue;
+            }
+            syncCityOptions();
+        });
+        areaSelect?.addEventListener('change', () => {
+            syncCityOptions();
+            clearFieldError(areaSelect);
+            if (citySelect) clearFieldError(citySelect);
+            clearFormMessageIfReady();
+        });
+        syncAreaOptions();
+        bindCombobox(citySelect, getCityOptions);
         bindCombobox(barangayInput, getBarangaySuggestions);
         citySelect?.addEventListener('input', syncBarangayState);
         citySelect?.addEventListener('change', () => {
@@ -877,31 +929,40 @@ const restoreInquiryDraft = () => {
         return;
     }
 
-    const provinceDraft = typeof draft.province === 'string' && window.edgeServiceAreas?.[draft.province]
-        ? draft.province
+    const regionDraft = typeof draft.region === 'string' && window.edgeServiceHierarchy?.[draft.region]
+        ? draft.region
         : '';
-    const cityDraft = provinceDraft && typeof draft.city_municipality === 'string'
-        && (window.edgeServiceAreas?.[provinceDraft] || []).includes(draft.city_municipality)
+    const areaDraft = regionDraft && typeof draft.location_area === 'string'
+        && window.edgeServiceHierarchy?.[regionDraft]?.[draft.location_area]
+        ? draft.location_area
+        : '';
+    const cityDraft = areaDraft && typeof draft.city_municipality === 'string'
+        && (window.edgeServiceHierarchy?.[regionDraft]?.[areaDraft] || []).includes(draft.city_municipality)
         ? draft.city_municipality
         : '';
-    const barangayDraft = provinceDraft && cityDraft && typeof draft.barangay === 'string'
-        && (window.edgeServiceBarangays?.[provinceDraft]?.[cityDraft] || []).includes(draft.barangay)
+    const barangayDraft = cityDraft && typeof draft.barangay === 'string'
+        && (window.edgeServiceBarangays?.[regionDraft]?.[areaDraft]?.[cityDraft] || []).includes(draft.barangay)
         ? draft.barangay
         : '';
 
     inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
         if (
             field.name !== 'inquiry_form_token'
-            && !['province', 'city_municipality', 'barangay'].includes(field.name)
+            && !['region', 'location_area', 'province', 'city_municipality', 'barangay'].includes(field.name)
             && Object.prototype.hasOwnProperty.call(draft, field.name)
         ) {
             field.value = draft[field.name];
         }
     });
 
-            if (provinceSelect && provinceDraft) {
-                provinceSelect.value = provinceDraft;
-                provinceSelect.dataset.comboboxSelectedValue = provinceDraft;
+            if (regionSelect && regionDraft) {
+                regionSelect.value = regionDraft;
+                regionSelect.dataset.comboboxSelectedValue = regionDraft;
+            }
+            syncAreaOptions();
+            if (areaSelect && areaDraft) {
+                areaSelect.value = areaDraft;
+                areaSelect.dataset.comboboxSelectedValue = areaDraft;
             }
             syncCityOptions();
             if (citySelect && cityDraft) {
@@ -968,8 +1029,7 @@ const restoreInquiryDraft = () => {
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
             contactInput.value = '09';
-            syncCityOptions();
-            syncBarangayState();
+            syncAreaOptions();
             syncOtherServiceField();
             inquiryForm.querySelectorAll('.is-invalid').forEach((field) => clearFieldError(field));
             message.textContent = '';
@@ -1036,15 +1096,19 @@ const restoreInquiryDraft = () => {
                 firstInvalidField = firstInvalidField || contactInput;
             }
 
-            if (provinceSelect && citySelect) {
-                const allowedCities = window.edgeServiceAreas?.[provinceSelect.value.trim()] || [];
-                if (!isValidProvince()) {
-                    setFieldError(provinceSelect, 'Please select a valid province or region from the list.');
-                    firstInvalidField = firstInvalidField || provinceSelect;
+            if (regionSelect && areaSelect && citySelect) {
+                if (!isValidRegion()) {
+                    setFieldError(regionSelect, 'Please select a valid Luzon region from the list.');
+                    firstInvalidField = firstInvalidField || regionSelect;
                 }
 
-                if (!allowedCities.includes(citySelect.value.trim())) {
-                    setFieldError(citySelect, 'Please select a valid city under the selected province.');
+                if (!isValidArea()) {
+                    setFieldError(areaSelect, 'Please select a valid province or independent city area.');
+                    firstInvalidField = firstInvalidField || areaSelect;
+                }
+
+                if (!isValidCity()) {
+                    setFieldError(citySelect, 'Please select a valid city or municipality for this area.');
                     firstInvalidField = firstInvalidField || citySelect;
                 }
             }

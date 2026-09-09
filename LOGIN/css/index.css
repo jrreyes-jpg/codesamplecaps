@@ -604,7 +604,8 @@ h4 {
     transform: rotate(45deg);
 }
 
-.inquiry-combobox input:disabled + .inquiry-combobox-button {
+.inquiry-combobox input:disabled + .inquiry-combobox-button,
+.inquiry-combobox input:read-only + .inquiry-combobox-button {
     opacity: 0.48;
     cursor: not-allowed;
 }

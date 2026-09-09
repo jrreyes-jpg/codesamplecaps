@@ -4,8 +4,8 @@ require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 
-$serviceAreas = service_area_allowed_locations();
-$serviceBarangays = service_barangays_grouped($conn);
+$serviceHierarchy = service_area_hierarchy();
+$serviceBarangays = service_barangays_hierarchy($conn);
 
 if (empty($_SESSION['inquiry_form_token'])) {
     $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
@@ -554,37 +554,50 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <div class="inquiry-grid">
                 <label>
                     <span class="inquiry-location-label">
-                        <span>Province / Region <b class="required-mark">*</b></span>
+                        <span>Region <b class="required-mark">*</b></span>
                         <small>Luzon locations only</small>
                     </span>
                     <span class="inquiry-combobox" data-combobox>
-                        <input class="js-inquiry-province" name="province" data-label="Province / Region" required placeholder="Select a Luzon province / region" autocomplete="off" data-combobox-input>
-                        <button class="inquiry-combobox-button" type="button" aria-label="Show province or region options" data-combobox-toggle></button>
+                        <input class="js-inquiry-region" name="region" data-label="Region" required placeholder="Select a Luzon region" autocomplete="off" data-combobox-input>
+                        <button class="inquiry-combobox-button" type="button" aria-label="Show region options" data-combobox-toggle></button>
                         <span class="inquiry-combobox-list" data-combobox-list></span>
                     </span>
                     <small class="field-error"></small>
                 </label>
 
                 <label>
+                    <span>Province / Area <b class="required-mark">*</b></span>
+                    <span class="inquiry-combobox" data-combobox>
+                        <input class="js-inquiry-area" name="location_area" data-label="Province / Area" required placeholder="Select region first" autocomplete="off" disabled data-combobox-input>
+                        <button class="inquiry-combobox-button" type="button" aria-label="Show province or area options" data-combobox-toggle></button>
+                        <span class="inquiry-combobox-list" data-combobox-list></span>
+                    </span>
+                    <input class="js-inquiry-province" type="hidden" name="province">
+                    <small class="field-error"></small>
+                </label>
+            </div>
+
+            <div class="inquiry-grid">
+                <label>
                     <span>City / Municipality <b class="required-mark">*</b></span>
                     <span class="inquiry-combobox" data-combobox>
-                        <input class="js-inquiry-city" name="city_municipality" data-label="City / Municipality" required placeholder="Select province first" autocomplete="off" disabled data-combobox-input>
+                        <input class="js-inquiry-city" name="city_municipality" data-label="City / Municipality" required placeholder="Select province / area first" autocomplete="off" disabled data-combobox-input>
                         <button class="inquiry-combobox-button" type="button" aria-label="Show city options" data-combobox-toggle></button>
                         <span class="inquiry-combobox-list" data-combobox-list></span>
                     </span>
                     <small class="field-error"></small>
                 </label>
-            </div>
 
-            <label>
-                <span>Barangay / Landmark Area <b class="required-mark">*</b></span>
-                <span class="inquiry-combobox" data-combobox>
-                    <input class="js-inquiry-barangay" type="text" name="barangay" data-label="Barangay / Landmark Area" required placeholder="Select city first" autocomplete="off" disabled data-combobox-input>
-                    <button class="inquiry-combobox-button" type="button" aria-label="Show barangay suggestions" data-combobox-toggle></button>
-                    <span class="inquiry-combobox-list" data-combobox-list></span>
-                </span>
-                <small class="field-error"></small>
-            </label>
+                <label>
+                    <span>Barangay / Landmark Area <b class="required-mark">*</b></span>
+                    <span class="inquiry-combobox" data-combobox>
+                        <input class="js-inquiry-barangay" type="text" name="barangay" data-label="Barangay / Landmark Area" required placeholder="Select city first" autocomplete="off" disabled data-combobox-input>
+                        <button class="inquiry-combobox-button" type="button" aria-label="Show barangay suggestions" data-combobox-toggle></button>
+                        <span class="inquiry-combobox-list" data-combobox-list></span>
+                    </span>
+                    <small class="field-error"></small>
+                </label>
+            </div>
 
             <label>
                 <span class="field-label-with-info">
@@ -658,7 +671,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     </div>
 </div>
     <script>
-        window.edgeServiceAreas = <?php echo json_encode($serviceAreas, JSON_UNESCAPED_SLASHES); ?>;
+        window.edgeServiceHierarchy = <?php echo json_encode($serviceHierarchy, JSON_UNESCAPED_SLASHES); ?>;
         window.edgeServiceBarangays = <?php echo json_encode($serviceBarangays, JSON_UNESCAPED_SLASHES); ?>;
         window.edgeInquiryStatus = <?php echo json_encode((string)($_GET['inquiry'] ?? ''), JSON_UNESCAPED_SLASHES); ?>;
     </script>

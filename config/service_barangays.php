@@ -121,6 +121,24 @@ function service_barangays_import_from_reference(mysqli $conn): int
 
 function service_barangays_grouped(mysqli $conn): array
 {
+    $hierarchy = service_barangays_hierarchy($conn);
+    $rows = [];
+    foreach ($hierarchy as $region => $areas) {
+        foreach ($areas as $area => $cities) {
+            $key = $region === 'National Capital Region (NCR)'
+                ? 'Metro Manila (NCR)'
+                : ($area === 'Independent City' ? $area . ' — ' . $region : $area);
+            foreach ($cities as $city => $barangays) {
+                $rows[$key][$city] = $barangays;
+            }
+        }
+    }
+
+    return $rows;
+}
+
+function service_barangays_hierarchy(mysqli $conn): array
+{
     static $referenceRows = null;
     if ($referenceRows !== null) {
         return $referenceRows;
@@ -132,30 +150,31 @@ function service_barangays_grouped(mysqli $conn): array
         foreach (service_area_read_csv($hierarchyPath) as $row) {
             $region = trim((string)($row['region'] ?? ''));
             $province = trim((string)($row['province'] ?? ''));
-            $city = service_area_title_case((string)($row['city_municipality'] ?? ''));
-            $barangay = service_barangay_display_name((string)($row['barangay'] ?? ''));
+            $city = trim((string)($row['city_municipality'] ?? ''));
+            $barangay = trim((string)($row['barangay'] ?? ''));
 
-            if ($province === '') {
-                $province = $region === 'National Capital Region (NCR)'
-                    ? 'Metro Manila (NCR)'
-                    : (service_area_huc_provinces()[$city] ?? '');
+            if ($region === 'National Capital Region (NCR)') {
+                $area = 'Metro Manila (NCR)';
+            } elseif ($province === '' || isset(service_area_independent_cities()[$city])) {
+                $area = 'Independent City';
             } else {
-                $province = service_area_title_case($province);
+                $area = $province;
             }
 
-            [$province, $city] = service_barangay_normalize_location($province, $city);
-            if (!isset(service_area_allowed_provinces()[$province]) || $city === '' || $barangay === '') {
+            if (!service_area_selection_is_allowed($region, $area, $city) || $barangay === '') {
                 continue;
             }
 
-            $referenceRows[$province][$city][] = $barangay;
+            $referenceRows[$region][$area][$city][] = $barangay;
         }
 
-        foreach ($referenceRows as $province => $cities) {
-            foreach ($cities as $city => $barangays) {
-                $barangays = array_values(array_unique($barangays));
-                sort($barangays, SORT_NATURAL | SORT_FLAG_CASE);
-                $referenceRows[$province][$city] = $barangays;
+        foreach ($referenceRows as $region => $areas) {
+            foreach ($areas as $area => $cities) {
+                foreach ($cities as $city => $barangays) {
+                    $barangays = array_values(array_unique($barangays));
+                    sort($barangays, SORT_NATURAL | SORT_FLAG_CASE);
+                    $referenceRows[$region][$area][$city] = $barangays;
+                }
             }
         }
 
@@ -211,6 +230,18 @@ function service_barangay_city_has_data(mysqli $conn, string $province, string $
 {
     $locations = service_barangays_grouped($conn);
     return isset($locations[$province][$city]) && $locations[$province][$city] !== [];
+}
+
+function service_barangay_selection_is_allowed(
+    mysqli $conn,
+    string $region,
+    string $area,
+    string $city,
+    string $barangay
+): bool {
+    $locations = service_barangays_hierarchy($conn);
+    return isset($locations[$region][$area][$city])
+        && in_array($barangay, $locations[$region][$area][$city], true);
 }
 
 function service_barangay_normalize_location(string $province, string $city): array

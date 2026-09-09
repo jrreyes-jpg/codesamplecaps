@@ -1291,6 +1291,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect_projects_page();
             }
 
+            $decisionStmt = $conn->prepare(
+                "SELECT d.id
+                 FROM inspection_quotation_decisions d
+                 INNER JOIN site_inspections si ON si.id = d.inspection_id
+                 WHERE d.inquiry_id = ?
+                 AND d.final_quotation_draft_id = ?
+                 AND si.admin_review_status = 'Approved'
+                 LIMIT 1"
+            );
+            if (!$decisionStmt) {
+                set_projects_old_input($createProjectInput);
+                set_projects_flash('error', 'Unable to verify the post-inspection quotation decision.');
+                redirect_projects_page();
+            }
+            $decisionStmt->bind_param('ii', $sourceInquiryId, $quotationDraftId);
+            $decisionStmt->execute();
+            if (!$decisionStmt->get_result()->fetch_assoc()) {
+                set_projects_old_input($createProjectInput);
+                set_projects_flash('error', 'Choose the post-inspection quotation decision before creating this project.');
+                redirect_projects_page();
+            }
+
             $clientStmt = $conn->prepare("SELECT email FROM users WHERE id = ? AND role = 'client' AND status = 'active' LIMIT 1");
             if (!$clientStmt) {
                 set_projects_old_input($createProjectInput, 'client_id');

@@ -213,6 +213,8 @@ CREATE TABLE `foreman_manual_reports` (
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `inquiry_quotation_drafts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `parent_draft_id` int(11) DEFAULT NULL,
+  `revision_no` int(10) unsigned NOT NULL DEFAULT 0,
   `inquiry_id` int(11) NOT NULL,
   `inspection_id` int(11) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
@@ -239,9 +241,10 @@ CREATE TABLE `inquiry_quotation_drafts` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_inquiry_quote_inspection` (`inspection_id`),
+  KEY `idx_inquiry_quote_inspection` (`inspection_id`),
   KEY `idx_inquiry_quote_inquiry` (`inquiry_id`),
-  KEY `idx_inquiry_quote_status` (`status`)
+  KEY `idx_inquiry_quote_status` (`status`),
+  KEY `idx_inquiry_quote_parent_revision` (`parent_draft_id`,`revision_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -274,6 +277,29 @@ CREATE TABLE `inquiry_quotation_status_history` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_inquiry_quote_history_draft` (`draft_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+CREATE TABLE `inspection_quotation_decisions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inquiry_id` int(11) NOT NULL,
+  `inspection_id` int(11) NOT NULL,
+  `initial_quotation_draft_id` int(11) NOT NULL,
+  `revised_quotation_draft_id` int(11) DEFAULT NULL,
+  `final_quotation_draft_id` int(11) DEFAULT NULL,
+  `inspection_costing_total` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `variance_amount` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `decision` varchar(40) NOT NULL,
+  `admin_remarks` text DEFAULT NULL,
+  `decided_by` int(11) NOT NULL,
+  `decided_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_inspection_quotation_decision` (`inspection_id`),
+  KEY `idx_inspection_quotation_decision_inquiry` (`inquiry_id`),
+  KEY `idx_inspection_quotation_decision_initial` (`initial_quotation_draft_id`),
+  KEY `idx_inspection_quotation_decision_revised` (`revised_quotation_draft_id`),
+  KEY `idx_inspection_quotation_decision_final` (`final_quotation_draft_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

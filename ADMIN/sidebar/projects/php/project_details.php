@@ -419,6 +419,7 @@ $hasProjectAddressColumn = pm_table_has_column($conn, 'projects', 'project_addre
 $hasProjectEmailColumn = pm_table_has_column($conn, 'projects', 'project_email');
 $hasProjectCodeColumn = pm_table_has_column($conn, 'projects', 'project_code');
 $hasPoNumberColumn = pm_table_has_column($conn, 'projects', 'po_number');
+$hasPoDateColumn = pm_table_has_column($conn, 'projects', 'po_date');
 $hasContactPersonColumn = pm_table_has_column($conn, 'projects', 'contact_person');
 $hasContactNumberColumn = pm_table_has_column($conn, 'projects', 'contact_number');
 $hasProjectStartDateColumn = pm_table_has_column($conn, 'projects', 'project_start_date');
@@ -479,6 +480,7 @@ if ($projectId > 0) {
     $contactNumberSelect = $hasContactNumberColumn ? 'p.contact_number,' : 'NULL AS contact_number,';
     $projectCodeSelect = $hasProjectCodeColumn ? 'p.project_code,' : 'NULL AS project_code,';
     $poNumberSelect = $hasPoNumberColumn ? 'p.po_number,' : 'NULL AS po_number,';
+    $poDateSelect = $hasPoDateColumn ? 'p.po_date,' : 'NULL AS po_date,';
     $projectStartDateSelect = $hasProjectStartDateColumn ? 'p.project_start_date,' : 'NULL AS project_start_date,';
     $estimatedCompletionDateSelect = $hasEstimatedCompletionDateColumn ? 'p.estimated_completion_date,' : 'NULL AS estimated_completion_date,';
 
@@ -494,6 +496,7 @@ if ($projectId > 0) {
             {$contactNumberSelect}
             {$projectCodeSelect}
             {$poNumberSelect}
+            {$poDateSelect}
             {$projectStartDateSelect}
             {$estimatedCompletionDateSelect}
             p.client_id,
@@ -503,12 +506,32 @@ if ($projectId > 0) {
             p.created_at,
             client.full_name AS client_name,
             client.email AS client_email,
+            quotation.quotation_no AS quotation_no,
+            quotation.grand_total AS quotation_grand_total,
+            inquiry.service_category AS inquiry_service_category,
+            inquiry.province AS inquiry_province,
+            inquiry.city_municipality AS inquiry_city_municipality,
+            inquiry.barangay AS inquiry_barangay,
+            inquiry.site_address AS inquiry_site_address,
+            inspection.engineer_findings AS inspection_findings,
+            inspection_engineer.full_name AS inspection_engineer_name,
             assignment_summary.engineer_ids_csv,
             assignment_summary.engineer_names,
             COALESCE(task_totals.total_tasks, 0) AS total_tasks,
             COALESCE(task_totals.completed_tasks, 0) AS completed_tasks
         FROM projects p
         LEFT JOIN users client ON client.id = p.client_id
+        LEFT JOIN inquiry_quotation_drafts quotation ON quotation.id = (
+            SELECT latest_quote.id
+            FROM inquiry_quotation_drafts latest_quote
+            WHERE latest_quote.project_id = p.id
+              AND LOWER(latest_quote.status) = 'accepted'
+            ORDER BY latest_quote.revision_no DESC, latest_quote.id DESC
+            LIMIT 1
+        )
+        LEFT JOIN service_inquiries inquiry ON inquiry.id = quotation.inquiry_id
+        LEFT JOIN site_inspections inspection ON inspection.id = quotation.inspection_id
+        LEFT JOIN users inspection_engineer ON inspection_engineer.id = inspection.engineer_id
         LEFT JOIN (
             SELECT
                 pa.project_id,
@@ -759,11 +782,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 }
                 $projectCode = trim((string)($project['project_code'] ?? ''));
                 $projectPoNumber = trim((string)($project['po_number'] ?? ''));
+                $hasInquiryReference = trim((string)($project['quotation_no'] ?? '')) !== '';
+                $locationArea = implode(' / ', array_filter([
+                    trim((string)($project['inquiry_province'] ?? '')),
+                    trim((string)($project['inquiry_city_municipality'] ?? '')),
+                    trim((string)($project['inquiry_barangay'] ?? '')),
+                ], static fn(string $value): bool => $value !== ''));
                 $projectContactPerson = trim((string)($project['contact_person'] ?? ''));
                 $projectContactNumber = trim((string)($project['contact_number'] ?? ''));
                 $projectEmail = trim((string)($project['project_email'] ?? ''));
                 $planningStageClass = $projectCreatedAt !== '' ? 'done' : 'pending';
-                $quotationStageClass = ($projectPoNumber !== '' || trim((string)($project['start_date'] ?? '')) !== '') ? 'done' : 'pending';
+                $quotationStageClass = ($projectPoNumber !== '' || trim((string)($project['po_date'] ?? '')) !== '') ? 'done' : 'pending';
                 // Ensure $completedTasks is defined before use
                 $completedTasks = isset($project['completed_tasks']) ? (int)$project['completed_tasks'] : 0;
                 if (($project['status'] ?? '') === 'completed') {
@@ -944,7 +973,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <div><strong>Client Contact Person:</strong> <?php echo htmlspecialchars($projectContactPerson !== '' ? $projectContactPerson : 'Not set'); ?></div>
                         <div><strong>Client Contact Number:</strong> <?php echo htmlspecialchars($projectContactNumber !== '' ? $projectContactNumber : 'Not set'); ?></div>
                         <div><strong>P.O Number:</strong> <?php echo htmlspecialchars($projectPoNumber !== '' ? $projectPoNumber : 'Not set'); ?></div>
-                        <div><strong>P.O Date:</strong> <?php echo htmlspecialchars(pm_format_date($project['start_date'] ?? null)); ?></div>
+                        <div><strong>P.O Date:</strong> <?php echo htmlspecialchars(pm_format_date($project['po_date'] ?? null)); ?></div>
                         <div><strong>Completed:</strong> <?php echo htmlspecialchars(pm_format_date($project['end_date'] ?? null)); ?></div>
                         <div><strong>Created:</strong> <?php echo htmlspecialchars($project['created_at'] ?? 'N/A'); ?></div>
                         <?php if ($projectEmail !== ''): ?>
@@ -952,9 +981,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php endif; ?>
                         <?php if ($hasProjectAddressColumn): ?>
                             <?php if ($hasProjectSiteColumn): ?>
-                                <div><strong>Project Site:</strong> <?php echo htmlspecialchars($project['project_site'] ?? 'Not set'); ?></div>
+                                <div><strong>Location Area:</strong> <?php echo htmlspecialchars($locationArea !== '' ? $locationArea : ($project['project_site'] ?? 'Not set')); ?></div>
                             <?php endif; ?>
-                            <div><strong>Address:</strong> <?php echo htmlspecialchars($project['project_address'] ?? 'Not set'); ?></div>
+                            <div><strong>Exact Site Address:</strong> <?php echo htmlspecialchars($hasInquiryReference ? ($project['inquiry_site_address'] ?? 'Not set') : ($project['project_address'] ?? 'Not set')); ?></div>
                         <?php endif; ?>
                     </div>
                 </section>
@@ -993,47 +1022,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <div class="project-details-form-sections">
                             <section class="project-form-section">
                                 <div class="project-form-section__header">
-                                    <span class="project-form-section__eyebrow">Editable Info</span>
-                                    <h3>Update contact and notes only</h3>
+                                    <span class="project-form-section__eyebrow">Project Source / Reference</span>
+                                    <h3>Accepted inquiry details</h3>
                                 </div>
                                 <div class="form-grid">
-                                    <?php if ($hasContactPersonColumn): ?>
-                                        <div class="input-group">
-                                            <div class="field-label-row">
-                                                <label for="contact_person">Client Contact Person <span class="required-indicator" aria-hidden="true">*</span></label>
-                                                <button type="button" class="field-tip" aria-label="Client contact person help">
-                                                    <span class="field-tip__icon" aria-hidden="true">i</span>
-                                                    <span class="field-tip__bubble">Enter the main client representative for this project. Required unless the project stays in Draft.</span>
-                                                </button>
-                                            </div>
-                                            <input type="text" id="contact_person" name="contact_person" value="<?php echo htmlspecialchars($project['contact_person'] ?? ''); ?>" readonly data-project-editable>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if ($hasContactNumberColumn): ?>
-                                        <div class="input-group">
-                                            <div class="field-label-row">
-                                                <label for="contact_number">Client Contact Number <span class="required-indicator" aria-hidden="true">*</span></label>
-                                                <button type="button" class="field-tip" aria-label="Client contact number help">
-                                                    <span class="field-tip__icon" aria-hidden="true">i</span>
-                                                    <span class="field-tip__bubble">Enter the direct mobile or landline number for the client contact. Required unless the project stays in Draft.</span>
-                                                </button>
-                                            </div>
-                                            <input type="text" id="contact_number" name="contact_number" value="<?php echo htmlspecialchars($project['contact_number'] ?? ''); ?>" readonly data-project-editable>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if ($hasProjectEmailColumn): ?>
-                                        <div class="input-group">
-                                            <label for="project_email">Email Address <span class="optional-indicator">(Optional)</span></label>
-                                            <input type="email" id="project_email" name="project_email" value="<?php echo htmlspecialchars($project['project_email'] ?? ''); ?>" readonly data-project-editable>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <div class="input-group input-group-wide input-group-spaced">
-                                        <label for="description">Comment <span class="optional-indicator">(Optional)</span></label>
-                                        <textarea id="description" name="description" readonly data-project-editable><?php echo htmlspecialchars($project['description'] ?? ''); ?></textarea>
-                                    </div>
+                                    <div class="input-group"><label>Client</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($project['client_name'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group"><label>Service Category</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($project['inquiry_service_category'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group"><label>Final Quotation Reference</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($project['quotation_no'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group"><label>Final Accepted Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars($hasInquiryReference ? pm_format_money($project['quotation_grand_total'] ?? 0) : 'Not set'); ?></div></div>
+                                    <div class="input-group"><label>Inspection Engineer</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($project['inspection_engineer_name'] ?? 'Not assigned')); ?></div></div>
+                                    <div class="input-group input-group-wide"><label>Approved Inspection Findings / Final Project Scope</label><div class="project-form-static-field"><?php echo nl2br(htmlspecialchars((string)($project['inspection_findings'] ?: $project['description'] ?? 'Not set'))); ?></div></div>
                                 </div>
                             </section>
 
@@ -1043,6 +1041,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <h3>Key project dates</h3>
                                 </div>
                                 <div class="form-grid">
+                                    <div class="input-group">
+                                        <label for="po_number">P.O Number</label>
+                                        <input type="text" id="po_number" name="po_number" value="<?php echo htmlspecialchars($project['po_number'] ?? ''); ?>" readonly data-project-editable>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="po_date">P.O Date</label>
+                                        <input type="date" id="po_date" name="po_date" value="<?php echo htmlspecialchars($project['po_date'] ?? ''); ?>" max="<?php echo htmlspecialchars($todayDate); ?>" readonly data-project-editable>
+                                    </div>
                                     <?php if ($isCompleted): ?>
                                         <div class="input-group">
                                             <label>Completion Date</label>
@@ -1057,12 +1063,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span class="field-tip__bubble">Set the planned date when project work should begin.</span>
                                                 </button>
                                             </div>
-                                            <div class="project-form-static-field"><?php echo htmlspecialchars(pm_format_date($project['project_start_date'] ?? null)); ?></div>
                                             <input
-                                                type="hidden"
+                                                type="date"
                                                 id="project_start_date"
                                                 name="project_start_date"
                                                 value="<?php echo htmlspecialchars($project['project_start_date'] ?? ''); ?>"
+                                                readonly
+                                                data-project-editable
                                             >
                                         </div>
                                         <div class="input-group">

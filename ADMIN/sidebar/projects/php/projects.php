@@ -425,6 +425,7 @@ $hasProjectEmailColumn = table_has_column($conn, 'projects', 'project_email');
 $hasProjectAdditionalInfoColumn = table_has_column($conn, 'projects', 'additional_info_json');
 $hasProjectCodeColumn = table_has_column($conn, 'projects', 'project_code');
 $hasPoNumberColumn = table_has_column($conn, 'projects', 'po_number');
+$hasPoDateColumn = table_has_column($conn, 'projects', 'po_date');
 $hasContactPersonColumn = table_has_column($conn, 'projects', 'contact_person');
 $hasContactNumberColumn = table_has_column($conn, 'projects', 'contact_number');
 $hasProjectStartDateColumn = table_has_column($conn, 'projects', 'project_start_date');
@@ -493,10 +494,10 @@ function set_projects_old_input(array $input, ?string $focusField = null): void 
         'quotation_draft_id' => (string)($input['quotation_draft_id'] ?? ''),
         'source_inquiry_id' => (string)($input['source_inquiry_id'] ?? ''),
         'po_number' => trim((string)($input['po_number'] ?? '')),
+        'po_date' => trim((string)($input['po_date'] ?? '')),
         'client_id' => (string)($input['client_id'] ?? ''),
         'engineer_ids' => array_values(array_map('strval', is_array($input['engineer_ids'] ?? null) ? $input['engineer_ids'] : [])),
         'status' => trim((string)($input['status'] ?? '')),
-        'start_date' => trim((string)($input['start_date'] ?? '')),
         'project_start_date' => trim((string)($input['project_start_date'] ?? '')),
         'estimated_completion_date' => trim((string)($input['estimated_completion_date'] ?? '')),
         'estimated_duration_days' => trim((string)($input['estimated_duration_days'] ?? '')),
@@ -802,7 +803,9 @@ function getProjectSnapshot(mysqli $conn, int $projectId): ?array {
             p.project_email,
             p.additional_info_json,
             p.project_code,
+            p.project_source,
             p.po_number,
+            p.po_date,
             p.start_date,
             p.end_date,
             p.status,
@@ -1194,7 +1197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'create_project') {
         $projectName = normalize_text($_POST['project_name'] ?? '');
-        $description = normalize_text($_POST['description'] ?? '');
+        $description = array_key_exists('description', $_POST) ? normalize_text($_POST['description'] ?? '') : '';
         $contactPerson = $hasContactPersonColumn ? normalize_text_or_null($_POST['contact_person'] ?? null) : null;
         $contactNumber = $hasContactNumberColumn ? normalize_text_or_null($_POST['contact_number'] ?? null) : null;
         $projectSite = $hasProjectSiteColumn ? normalize_text_or_null($_POST['project_site'] ?? null) : null;
@@ -1219,7 +1222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientId = (int)($_POST['client_id'] ?? 0);
         $engineerIds = normalize_engineer_ids($_POST['engineer_ids'] ?? []);
         $status = normalize_text($_POST['status'] ?? 'pending');
-        $startDate = normalize_date_or_null($_POST['start_date'] ?? null);
+        $poDate = $hasPoDateColumn ? normalize_date_or_null($_POST['po_date'] ?? null) : null;
         $projectStartDate = $hasProjectStartDateColumn ? normalize_date_or_null($_POST['project_start_date'] ?? null) : null;
         $estimatedCompletionDate = $hasEstimatedCompletionDateColumn ? normalize_date_or_null($_POST['estimated_completion_date'] ?? null) : null;
         $estimatedDurationDays = normalize_positive_int_or_null($_POST['estimated_duration_days'] ?? null);
@@ -1241,10 +1244,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'quotation_draft_id' => $quotationDraftId,
             'source_inquiry_id' => $sourceInquiryId,
             'po_number' => $_POST['po_number'] ?? '',
+            'po_date' => $_POST['po_date'] ?? '',
             'client_id' => $_POST['client_id'] ?? '',
             'engineer_ids' => $_POST['engineer_ids'] ?? [],
             'status' => $_POST['status'] ?? 'pending',
-            'start_date' => $_POST['start_date'] ?? '',
             'project_start_date' => $_POST['project_start_date'] ?? '',
             'estimated_completion_date' => $_POST['estimated_completion_date'] ?? '',
             'estimated_duration_days' => $_POST['estimated_duration_days'] ?? '',
@@ -1350,9 +1353,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Accepted quotation total ang official starting budget ng Project.
             $budgetAmount = (float)($sourceQuotation['grand_total'] ?? 0);
-            $budgetNotes = 'Accepted quotation ' . (string)($sourceQuotation['quotation_no'] ?? '');
+            $budgetNotes = null;
+            $contactPerson = normalize_text_or_null($sourceQuotation['client_name'] ?? null);
+            $contactNumber = normalize_text_or_null($sourceQuotation['contact_no'] ?? null);
+            $projectEmail = normalize_text_or_null($sourceQuotation['email'] ?? null);
+            $projectSite = normalize_text_or_null(implode(' / ', array_filter([
+                trim((string)($sourceQuotation['province'] ?? '')),
+                trim((string)($sourceQuotation['city_municipality'] ?? '')),
+                trim((string)($sourceQuotation['barangay'] ?? '')),
+            ], static fn(string $value): bool => $value !== '')));
+            $projectAddress = normalize_text_or_null($sourceQuotation['site_address'] ?? null);
+            $description = normalize_text((string)($sourceQuotation['engineer_findings'] ?: $sourceQuotation['description'] ?? ''));
             $createProjectInput['budget_amount'] = number_format($budgetAmount, 2, '.', '');
-            $createProjectInput['budget_notes'] = $budgetNotes;
+            $createProjectInput['budget_notes'] = '';
         }
 
         if (projectNameExists($conn, $projectName)) {
@@ -1459,14 +1472,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if (project_requires_po_date($status) && $startDate === null) {
-            set_projects_old_input($createProjectInput, 'start_date');
+        if (project_requires_po_date($status) && $poDate === null) {
+            set_projects_old_input($createProjectInput, 'po_date');
             set_projects_flash('error', 'P.O Date is required when the project starts as Pending or Ongoing.');
             redirect_projects_page();
         }
 
-        if ($startDate !== null && $startDate > $todayDate) {
-            set_projects_old_input($createProjectInput, 'start_date');
+        if ($poDate !== null && $poDate > $todayDate) {
+            set_projects_old_input($createProjectInput, 'po_date');
             set_projects_flash('error', 'P.O Date cannot be in the future.');
             redirect_projects_page();
         }
@@ -1477,7 +1490,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if ($startDate !== null && $projectStartDate !== null && $projectStartDate < $startDate) {
+        if ($poDate !== null && $projectStartDate !== null && $projectStartDate < $poDate) {
             set_projects_old_input($createProjectInput, 'project_start_date');
             set_projects_flash('error', 'Project Start Date must be the same as or later than P.O Date.');
             redirect_projects_page();
@@ -1523,6 +1536,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'has_project_email_column' => $hasProjectEmailColumn,
                 'has_project_code_column' => $hasProjectCodeColumn,
                 'has_po_number_column' => $hasPoNumberColumn,
+                'has_po_date_column' => $hasPoDateColumn,
                 'has_project_additional_info_column' => $hasProjectAdditionalInfoColumn,
                 'project_name' => $projectName,
                 'description' => $description,
@@ -1534,7 +1548,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'project_email' => $projectEmail,
                 'project_code' => $projectCode,
                 'po_number' => $poNumber,
-                'start_date' => $startDate,
+                'po_date' => $poDate,
+                'start_date' => null,
                 'project_start_date' => $projectStartDate,
                 'estimated_completion_date' => $estimatedCompletionDate,
                 'end_date' => $endDate,
@@ -1572,6 +1587,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'project_code' => $projectCode,
                     'project_source' => $projectSource,
                     'po_number' => $poNumber,
+                    'po_date' => $poDate,
                     'budget_amount' => $budgetAmount,
                 ]
             );
@@ -1665,7 +1681,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $projectForCost = getProjectSnapshot($conn, $projectId);
-        if (!$projectForCost || empty($projectForCost['start_date'])) {
+        if (!$projectForCost || empty($projectForCost['po_date'])) {
             set_projects_flash('error', 'Set the P.O Date first before logging project costs.');
             redirect_projects_page();
         }
@@ -1797,7 +1813,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if (project_requires_po_date($status) && empty($project['start_date'])) {
+        if (project_requires_po_date($status) && empty($project['po_date'])) {
             set_projects_flash('error', 'Set the P.O Date in Project Details first before moving this project to Pending or Ongoing.');
             redirect_projects_page();
         }
@@ -1873,7 +1889,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $projectCode = $hasProjectCodeColumn ? normalize_text_or_null($_POST['project_code'] ?? null) : null;
         $poNumber = $hasPoNumberColumn ? normalize_text_or_null($_POST['po_number'] ?? null) : null;
         $engineerIds = normalize_engineer_ids($_POST['engineer_ids'] ?? []);
-        $startDate = normalize_date_or_null($_POST['start_date'] ?? null);
+        $poDate = $hasPoDateColumn ? normalize_date_or_null($_POST['po_date'] ?? null) : null;
         $projectStartDate = $hasProjectStartDateColumn ? normalize_date_or_null($_POST['project_start_date'] ?? null) : null;
         $estimatedCompletionDate = $hasEstimatedCompletionDateColumn ? normalize_date_or_null($_POST['estimated_completion_date'] ?? null) : null;
         $endDate = null;
@@ -1899,8 +1915,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $projectName = normalize_text((string)($project['project_name'] ?? ''));
         }
 
+        if (!array_key_exists('description', $_POST)) {
+            $description = normalize_text((string)($project['description'] ?? ''));
+        }
+
         if ($clientId <= 0) {
             $clientId = (int)($project['client_id'] ?? 0);
+        }
+
+        if ($contactPerson === null) {
+            $contactPerson = $hasContactPersonColumn ? normalize_text_or_null($project['contact_person'] ?? null) : null;
+        }
+
+        if ($contactNumber === null) {
+            $contactNumber = $hasContactNumberColumn ? normalize_text_or_null($project['contact_number'] ?? null) : null;
+        }
+
+        if ($projectEmail === null) {
+            $projectEmail = $hasProjectEmailColumn ? normalize_text_or_null($project['project_email'] ?? null) : null;
         }
 
         if ($engineerIds === []) {
@@ -1923,8 +1955,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $poNumber = $hasPoNumberColumn ? normalize_text_or_null($project['po_number'] ?? null) : null;
         }
 
-        if ($startDate === null) {
-            $startDate = normalize_date_or_null($project['start_date'] ?? null);
+        if ($poDate === null) {
+            $poDate = $hasPoDateColumn ? normalize_date_or_null($project['po_date'] ?? null) : null;
+        }
+
+        if (($project['project_source'] ?? '') === 'inquiry_quotation') {
+            // Locked ang accepted inquiry reference para hindi mag-iba ang source details.
+            $clientId = (int)($project['client_id'] ?? 0);
+            $contactPerson = $hasContactPersonColumn ? normalize_text_or_null($project['contact_person'] ?? null) : null;
+            $contactNumber = $hasContactNumberColumn ? normalize_text_or_null($project['contact_number'] ?? null) : null;
+            $projectSite = $hasProjectSiteColumn ? normalize_text_or_null($project['project_site'] ?? null) : null;
+            $projectAddress = $hasProjectAddressColumn ? normalize_text_or_null($project['project_address'] ?? null) : null;
+            $projectEmail = $hasProjectEmailColumn ? normalize_text_or_null($project['project_email'] ?? null) : null;
+            $description = normalize_text((string)($project['description'] ?? ''));
         }
 
         if ($projectName === '' || $clientId <= 0 || $engineerIds === []) {
@@ -1985,12 +2028,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if (project_requires_po_date((string)($project['status'] ?? '')) && $startDate === null) {
+        if (project_requires_po_date((string)($project['status'] ?? '')) && $poDate === null) {
             set_projects_flash('error', 'P.O Date is required while the project is Pending or Ongoing.');
             redirect_projects_page();
         }
 
-        if ($startDate !== null && $startDate > $todayDate) {
+        if ($poDate !== null && $poDate > $todayDate) {
             set_projects_flash('error', 'P.O Date cannot be in the future.');
             redirect_projects_page();
         }
@@ -2000,7 +2043,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if ($startDate !== null && $projectStartDate !== null && $projectStartDate < $startDate) {
+        if ($poDate !== null && $projectStartDate !== null && $projectStartDate < $poDate) {
             set_projects_flash('error', 'Project Start Date must be the same as or later than P.O Date.');
             redirect_projects_page();
         }
@@ -2026,6 +2069,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'has_project_email_column' => $hasProjectEmailColumn,
                 'has_project_code_column' => $hasProjectCodeColumn,
                 'has_po_number_column' => $hasPoNumberColumn,
+                'has_po_date_column' => $hasPoDateColumn,
                 'has_project_additional_info_column' => $hasProjectAdditionalInfoColumn,
                 'project_id' => $projectId,
                 'project_name' => $projectName,
@@ -2038,7 +2082,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'project_email' => $projectEmail,
                 'project_code' => $projectCode,
                 'po_number' => $poNumber,
-                'start_date' => $startDate,
+                'po_date' => $poDate,
+                'start_date' => normalize_date_or_null($project['start_date'] ?? null),
                 'project_start_date' => $projectStartDate,
                 'estimated_completion_date' => $estimatedCompletionDate,
                 'end_date' => $endDate,
@@ -2067,7 +2112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'additional_info' => $additionalInfoRows,
                     'project_code' => $projectCode,
                     'po_number' => $poNumber,
-                    'start_date' => $startDate,
+                    'po_date' => $poDate,
                     'project_start_date' => $projectStartDate,
                     'estimated_completion_date' => $estimatedCompletionDate,
                     'end_date' => $endDate,
@@ -2110,7 +2155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if (empty($project['start_date'])) {
+        if (empty($project['po_date'])) {
             set_projects_flash('error', 'Set the P.O Date first before adding tasks.');
             redirect_projects_page();
         }
@@ -2549,7 +2594,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if (empty($project['start_date'])) {
+        if (empty($project['po_date'])) {
             set_projects_flash('error', 'Set the P.O Date first before deploying inventory.');
             redirect_projects_page();
         }
@@ -2802,10 +2847,10 @@ $createProjectValues = [
     'quotation_draft_id' => (string)($createProjectOldInput['quotation_draft_id'] ?? ''),
     'source_inquiry_id' => (string)($createProjectOldInput['source_inquiry_id'] ?? ''),
     'po_number' => (string)($createProjectOldInput['po_number'] ?? ''),
+    'po_date' => (string)($createProjectOldInput['po_date'] ?? ''),
     'client_id' => (string)($createProjectOldInput['client_id'] ?? ''),
     'engineer_ids' => array_values(array_map('strval', is_array($createProjectOldInput['engineer_ids'] ?? null) ? $createProjectOldInput['engineer_ids'] : [])),
     'status' => (string)($createProjectOldInput['status'] ?? 'pending'),
-    'start_date' => array_key_exists('start_date', $createProjectOldInput) ? (string)$createProjectOldInput['start_date'] : $todayDate,
     'project_start_date' => (string)($createProjectOldInput['project_start_date'] ?? ''),
     'estimated_completion_date' => (string)($createProjectOldInput['estimated_completion_date'] ?? ''),
     'estimated_duration_days' => (string)($createProjectOldInput['estimated_duration_days'] ?? ''),
@@ -2821,6 +2866,12 @@ if ($hasProjectCodeColumn && $createProjectValues['project_code'] === '') {
 if ($createProjectValues['status'] === '' || !in_array($createProjectValues['status'], $initialStatusOptions, true)) {
     $createProjectValues['status'] = 'pending';
 }
+
+$projectSourceReference = null;
+if ($createProjectValues['project_source'] === 'inquiry_quotation' && (int)$createProjectValues['quotation_draft_id'] > 0) {
+    $projectSourceReference = inquiry_quote_fetch_full($conn, (int)$createProjectValues['quotation_draft_id']);
+}
+$isInquiryProjectSetup = $projectSourceReference !== null;
 
 $clients = [];
 $engineers = [];
@@ -3151,6 +3202,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <input type="hidden" name="project_source" value="<?php echo htmlspecialchars((string)($createProjectValues['project_source'] ?? 'walk_in'), ENT_QUOTES); ?>" data-project-source-input>
                     <input type="hidden" name="quotation_draft_id" value="<?php echo (int)$createProjectValues['quotation_draft_id']; ?>">
                     <input type="hidden" name="source_inquiry_id" value="<?php echo (int)$createProjectValues['source_inquiry_id']; ?>">
+                    <?php if ($isInquiryProjectSetup): ?>
+                        <input type="hidden" name="client_id" value="<?php echo (int)$createProjectValues['client_id']; ?>">
+                        <input type="hidden" name="status" value="<?php echo htmlspecialchars($createProjectValues['status']); ?>">
+                    <?php endif; ?>
 
                     <div class="project-create-card-grid">
                         <div class="project-create-card project-create-card--client">
@@ -3159,7 +3214,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </div>
                         <div class="input-group">
                             <label for="client_id">Client <span class="required-indicator" aria-hidden="true">*</span></label>
-                            <select id="client_id" name="client_id" required>
+                            <select id="client_id"<?php echo $isInquiryProjectSetup ? ' disabled aria-readonly="true"' : ' name="client_id"'; ?> required>
                                 <option value="">Select client</option>
                                 <?php foreach ($clients as $client): ?>
                                     <option
@@ -3182,7 +3237,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <span class="field-tip__bubble">Enter the main client representative for this project. Required unless the project stays in Draft.</span>
                                     </button>
                                 </div>
-                                <input type="text" id="contact_person" name="contact_person" value="<?php echo htmlspecialchars($createProjectValues['contact_person']); ?>" placeholder="Primary client contact name">
+                                <input type="text" id="contact_person" name="contact_person" value="<?php echo htmlspecialchars($createProjectValues['contact_person']); ?>" placeholder="Primary client contact name"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>>
                             </div>
                         <?php endif; ?>
 
@@ -3195,7 +3250,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <span class="field-tip__bubble">Enter the direct mobile or landline number for the client contact. Required unless the project stays in Draft.</span>
                                     </button>
                                 </div>
-                                <input type="text" id="contact_number" name="contact_number" value="<?php echo htmlspecialchars($createProjectValues['contact_number']); ?>" placeholder="09xxxxxxxxx or landline">
+                                <input type="text" id="contact_number" name="contact_number" value="<?php echo htmlspecialchars($createProjectValues['contact_number']); ?>" placeholder="09xxxxxxxxx or landline"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>>
                             </div>
                         <?php endif; ?>
                         </div>
@@ -3204,9 +3259,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <div class="project-create-section-heading">
                                 <span>Project Details</span>
                             </div>
+                        <?php if ($projectSourceReference): ?>
+                            <div class="project-create-section-heading">
+                                <span>Project Source / Reference</span>
+                            </div>
+                            <div class="form-grid">
+                                <div class="input-group"><label>Client</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['client_name'] ?? 'Not set')); ?></div></div>
+                                <div class="input-group"><label>Service Category</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['service_category'] ?? 'Not set')); ?></div></div>
+                                <div class="input-group"><label>Final Quotation Reference</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['quotation_no'] ?? 'Not set')); ?></div></div>
+                                <div class="input-group"><label>Final Accepted Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars('PHP ' . number_format((float)($projectSourceReference['grand_total'] ?? 0), 2)); ?></div></div>
+                                <div class="input-group input-group-wide"><label>Approved Inspection Findings / Final Project Scope</label><div class="project-form-static-field"><?php echo nl2br(htmlspecialchars(trim((string)($projectSourceReference['engineer_findings'] ?? $projectSourceReference['description'] ?? 'Not set')))); ?></div></div>
+                                <div class="input-group"><label>Inspection Engineer</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['engineer_name'] ?? 'Not assigned')); ?></div></div>
+                            </div>
+                        <?php endif; ?>
                         <div class="input-group">
                             <label for="project_name">Project Title <span class="required-indicator" aria-hidden="true">*</span></label>
-                            <input type="text" id="project_name" name="project_name" value="<?php echo htmlspecialchars($createProjectValues['project_name']); ?>" required>
+                            <input type="text" id="project_name" name="project_name" value="<?php echo htmlspecialchars($createProjectValues['project_name']); ?>" required<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>>
                         </div>
 
                         <?php if ($hasProjectCodeColumn): ?>
@@ -3225,13 +3293,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php if ($hasProjectSiteColumn): ?>
                             <div class="input-group">
                                 <div class="field-label-row">
-                                    <label for="project_site">Project Site <span class="required-indicator" aria-hidden="true">*</span></label>
+                                    <label for="project_site">Location Area <span class="required-indicator" aria-hidden="true">*</span></label>
                                     <button type="button" class="field-tip" aria-label="Project site help">
                                         <span class="field-tip__icon" aria-hidden="true">i</span>
-                                        <span class="field-tip__bubble">Enter the site, branch, building, or location code. Required unless the project stays in Draft.</span>
+                                        <span class="field-tip__bubble">Province or area, city or municipality, and barangay. Required unless the project stays in Draft.</span>
                                     </button>
                                 </div>
-                                <input type="text" id="project_site" name="project_site" value="<?php echo htmlspecialchars($createProjectValues['project_site']); ?>" placeholder="Site name, branch, building, or location code">
+                                <input type="text" id="project_site" name="project_site" value="<?php echo htmlspecialchars($createProjectValues['project_site']); ?>" placeholder="Province / City or Municipality / Barangay"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>>
                             </div>
                         <?php endif; ?>
 
@@ -3250,13 +3318,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                         <div class="input-group">
                             <div class="field-label-row">
-                                <label for="start_date">P.O Date</label>
+                                <label for="po_date">P.O Date</label>
                                 <button type="button" class="field-tip" aria-label="P.O date reminder">
                                     <span class="field-tip__icon" aria-hidden="true">i</span>
                                     <span class="field-tip__bubble">Use the purchase order date here. This stays editable while the project is not yet completed.</span>
                                 </button>
                             </div>
-                            <input type="date" id="start_date" name="start_date" value="<?php echo htmlspecialchars($createProjectValues['start_date']); ?>" max="<?php echo htmlspecialchars($todayDate); ?>">
+                            <input type="date" id="po_date" name="po_date" value="<?php echo htmlspecialchars($createProjectValues['po_date']); ?>" max="<?php echo htmlspecialchars($todayDate); ?>">
                         </div>
 
                     
@@ -3276,7 +3344,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     placeholder="0.00"
                                     value="<?php echo htmlspecialchars($createProjectValues['budget_amount']); ?>"
                                     data-currency-input="php"
-                                    class="currency-input-field"
+                                    class="currency-input-field"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>
                                 >
                             </div>
                         </div>
@@ -3337,7 +3405,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     </span>
                                 </button>
                             </div>
-                            <select id="status" name="status" required>
+                            <select id="status"<?php echo $isInquiryProjectSetup ? ' disabled aria-readonly="true"' : ' name="status"'; ?> required>
                                 <?php foreach ($initialStatusOptions as $statusOption): ?>
                                     <option value="<?php echo htmlspecialchars($statusOption); ?>" <?php echo $createProjectValues['status'] === $statusOption ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars(ucfirst($statusOption)); ?>
@@ -3398,13 +3466,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php if ($hasProjectAddressColumn): ?>
                             <div class="input-group input-group-wide">
                                 <div class="field-label-row">
-                                    <label for="project_address">Address <span class="required-indicator" aria-hidden="true">*</span></label>
+                                    <label for="project_address">Exact Site Address <span class="required-indicator" aria-hidden="true">*</span></label>
                                     <button type="button" class="field-tip" aria-label="Project address help">
                                         <span class="field-tip__icon" aria-hidden="true">i</span>
                                         <span class="field-tip__bubble">Enter the full project address for delivery or site reference. Required unless the project stays in Draft.</span>
                                     </button>
                                 </div>
-                                <textarea id="project_address" name="project_address" rows="3" placeholder="Full street address, barangay, city, landmark, or delivery address"><?php echo htmlspecialchars($createProjectValues['project_address']); ?></textarea>
+                                <textarea id="project_address" name="project_address" rows="3" placeholder="House, building, street, landmark, or nearby place"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>><?php echo htmlspecialchars($createProjectValues['project_address']); ?></textarea>
                             </div>
                         <?php endif; ?>
 
@@ -3415,8 +3483,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </div>
 
                         <div class="input-group input-group-spaced">
-                            <label for="description">Comment <span class="optional-indicator">(Optional)</span></label>
-                            <textarea id="description" name="description" placeholder="Project comment"><?php echo htmlspecialchars($createProjectValues['description']); ?></textarea>
+                            <label for="description">Final Project Scope <span class="optional-indicator">(Optional)</span></label>
+                            <textarea id="description" name="description" placeholder="Approved scope or project notes"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>><?php echo htmlspecialchars($createProjectValues['description']); ?></textarea>
                         </div>
 
                         <div class="input-group input-group-spaced input-group-wide additional-info-section" data-additional-info-section>

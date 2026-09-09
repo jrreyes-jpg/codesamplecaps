@@ -117,6 +117,7 @@ if (!function_exists('project_service_create_project')) {
             $hasProjectEmailColumn = (bool)($data['has_project_email_column'] ?? false);
             $hasProjectCodeColumn = (bool)($data['has_project_code_column'] ?? false);
             $hasPoNumberColumn = (bool)($data['has_po_number_column'] ?? false);
+            $hasPoDateColumn = (bool)($data['has_po_date_column'] ?? false);
             $hasProjectAdditionalInfoColumn = (bool)($data['has_project_additional_info_column'] ?? false);
 
             $projectName = $data['project_name'];
@@ -129,6 +130,7 @@ if (!function_exists('project_service_create_project')) {
             $projectEmail = $data['project_email'];
             $projectCode = $data['project_code'];
             $poNumber = $data['po_number'];
+            $poDate = $data['po_date'];
             $startDate = $data['start_date'];
             $projectStartDate = $data['project_start_date'];
             $estimatedCompletionDate = $data['estimated_completion_date'];
@@ -143,10 +145,10 @@ if (!function_exists('project_service_create_project')) {
 
             if ($hasProjectAddressColumn) {
                 if ($hasProjectEmailColumn) {
-                    if ($hasProjectCodeColumn && $hasPoNumberColumn) {
+                    if ($hasProjectCodeColumn && $hasPoNumberColumn && $hasPoDateColumn) {
                         $createProject = $conn->prepare(
-                            'INSERT INTO projects (project_name, description, client_id, contact_person, contact_number, project_site, project_address, project_email, project_code, po_number, start_date, project_start_date, estimated_completion_date, end_date, status, created_by)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                            'INSERT INTO projects (project_name, description, client_id, contact_person, contact_number, project_site, project_address, project_email, project_code, po_number, po_date, start_date, project_start_date, estimated_completion_date, end_date, status, created_by)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                         );
                     } else {
                         $createProject = $conn->prepare(
@@ -173,8 +175,8 @@ if (!function_exists('project_service_create_project')) {
 
             if ($hasProjectAddressColumn) {
                 if ($hasProjectEmailColumn) {
-                    if ($hasProjectCodeColumn && $hasPoNumberColumn) {
-                        $createProject->bind_param('ssissssssssssssi', $projectName, $description, $clientId, $contactPerson, $contactNumber, $projectSite, $projectAddress, $projectEmail, $projectCode, $poNumber, $startDate, $projectStartDate, $estimatedCompletionDate, $endDate, $status, $createdBy);
+                    if ($hasProjectCodeColumn && $hasPoNumberColumn && $hasPoDateColumn) {
+                        $createProject->bind_param('ssisssssssssssssi', $projectName, $description, $clientId, $contactPerson, $contactNumber, $projectSite, $projectAddress, $projectEmail, $projectCode, $poNumber, $poDate, $startDate, $projectStartDate, $estimatedCompletionDate, $endDate, $status, $createdBy);
                     } else {
                         $createProject->bind_param('ssissssssssssi', $projectName, $description, $clientId, $contactPerson, $contactNumber, $projectSite, $projectAddress, $projectEmail, $startDate, $projectStartDate, $estimatedCompletionDate, $endDate, $status, $createdBy);
                     }
@@ -267,6 +269,7 @@ if (!function_exists('project_service_update_project_details')) {
             $hasProjectEmailColumn = (bool)($data['has_project_email_column'] ?? false);
             $hasProjectCodeColumn = (bool)($data['has_project_code_column'] ?? false);
             $hasPoNumberColumn = (bool)($data['has_po_number_column'] ?? false);
+            $hasPoDateColumn = (bool)($data['has_po_date_column'] ?? false);
             $hasProjectAdditionalInfoColumn = (bool)($data['has_project_additional_info_column'] ?? false);
 
             $projectId = (int)$data['project_id'];
@@ -280,6 +283,7 @@ if (!function_exists('project_service_update_project_details')) {
             $projectEmail = $data['project_email'];
             $projectCode = $data['project_code'];
             $poNumber = $data['po_number'];
+            $poDate = $data['po_date'];
             $startDate = $data['start_date'];
             $projectStartDate = $data['project_start_date'];
             $estimatedCompletionDate = $data['estimated_completion_date'];
@@ -290,10 +294,10 @@ if (!function_exists('project_service_update_project_details')) {
 
             if ($hasProjectAddressColumn) {
                 if ($hasProjectEmailColumn) {
-                    if ($hasProjectCodeColumn && $hasPoNumberColumn) {
+                    if ($hasProjectCodeColumn && $hasPoNumberColumn && $hasPoDateColumn) {
                         $updateProject = $conn->prepare(
                             'UPDATE projects
-                             SET project_name = ?, description = ?, client_id = ?, contact_person = ?, contact_number = ?, project_site = ?, project_address = ?, project_email = ?, project_code = ?, po_number = ?, start_date = ?, project_start_date = ?, estimated_completion_date = ?, end_date = ?
+                             SET project_name = ?, description = ?, client_id = ?, contact_person = ?, contact_number = ?, project_site = ?, project_address = ?, project_email = ?, project_code = ?, po_number = ?, po_date = ?, start_date = ?, project_start_date = ?, estimated_completion_date = ?, end_date = ?
                              WHERE id = ?'
                         );
                     } else {
@@ -324,8 +328,8 @@ if (!function_exists('project_service_update_project_details')) {
 
             if ($hasProjectAddressColumn) {
                 if ($hasProjectEmailColumn) {
-                    if ($hasProjectCodeColumn && $hasPoNumberColumn) {
-                        $saved = $updateProject->bind_param('ssisssssssssssi', $projectName, $description, $clientId, $contactPerson, $contactNumber, $projectSite, $projectAddress, $projectEmail, $projectCode, $poNumber, $startDate, $projectStartDate, $estimatedCompletionDate, $endDate, $projectId)
+                    if ($hasProjectCodeColumn && $hasPoNumberColumn && $hasPoDateColumn) {
+                        $saved = $updateProject->bind_param('ssissssssssssssi', $projectName, $description, $clientId, $contactPerson, $contactNumber, $projectSite, $projectAddress, $projectEmail, $projectCode, $poNumber, $poDate, $startDate, $projectStartDate, $estimatedCompletionDate, $endDate, $projectId)
                             && $updateProject->execute();
                     } else {
                         $saved = $updateProject->bind_param('ssisssssssssi', $projectName, $description, $clientId, $contactPerson, $contactNumber, $projectSite, $projectAddress, $projectEmail, $startDate, $projectStartDate, $estimatedCompletionDate, $endDate, $projectId)

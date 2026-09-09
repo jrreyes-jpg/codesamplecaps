@@ -525,8 +525,27 @@
     color: #166534 !important;
 }
 
-.inquiry-status[data-status="Costing Draft"],
-.inquiry-status[data-status="Submitted to Admin"] {
+.inquiry-status[data-status="Assigned"] {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+.inquiry-status[data-status="Acknowledged"] {
+    background: #fff7ed !important;
+    color: #9a3412 !important;
+}
+
+.inquiry-status[data-status="Ongoing"] {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.inquiry-status[data-status="Completed"] {
+    background: #ede9fe !important;
+    color: #6d28d9 !important;
+}
+
+.inquiry-status[data-status="Submitted"] {
     background: #dcfce7 !important;
     color: #166534 !important;
 }

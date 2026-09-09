@@ -599,28 +599,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($error === '') {
             $scheduleValue = date('Y-m-d H:i:s', $scheduleTimestamp);
             $existingInspectionId = 0;
-            $existingStmt = $conn->prepare("SELECT id FROM site_inspections WHERE inquiry_id = ? AND status = 'Scheduled' ORDER BY id DESC LIMIT 1");
+            $existingInspectionStatus = '';
+            $existingStmt = $conn->prepare('SELECT id, status FROM site_inspections WHERE inquiry_id = ? ORDER BY id DESC LIMIT 1');
             if ($existingStmt) {
                 $existingStmt->bind_param('i', $inquiryId);
                 $existingStmt->execute();
                 $existingRow = $existingStmt->get_result()->fetch_assoc();
                 $existingInspectionId = (int)($existingRow['id'] ?? 0);
+                $existingInspectionStatus = (string)($existingRow['status'] ?? '');
             }
 
-            $stmt = $existingInspectionId > 0
-                ? $conn->prepare(
-                    "UPDATE site_inspections
-                     SET engineer_id = ?, scheduled_at = ?, site_notes = ?, status = 'Scheduled'
-                     WHERE id = ?"
-                )
-                : $conn->prepare(
-                    "INSERT INTO site_inspections (inquiry_id, engineer_id, scheduled_at, site_notes, status, created_by)
-                     VALUES (?, ?, ?, ?, 'Scheduled', ?)"
-                );
+            if ($existingInspectionId > 0 && $existingInspectionStatus !== 'Assigned') {
+                $error = 'The Engineer already started this inspection workflow. Its assignment and schedule are now locked.';
+            }
 
-            if (!$stmt) {
+            $stmt = null;
+            if ($error === '') {
+                $stmt = $existingInspectionId > 0
+                    ? $conn->prepare(
+                        'UPDATE site_inspections
+                         SET engineer_id = ?, scheduled_at = ?, site_notes = ?
+                         WHERE id = ? AND status = \'Assigned\''
+                    )
+                    : $conn->prepare(
+                        "INSERT INTO site_inspections (inquiry_id, engineer_id, scheduled_at, site_notes, status, created_by)
+                         VALUES (?, ?, ?, ?, 'Assigned', ?)"
+                    );
+            }
+
+            if ($error === '' && !$stmt) {
                 $error = 'Failed to prepare inspection schedule.';
-            } else {
+            } elseif ($error === '' && $stmt) {
                 $createdBy = (int)($_SESSION['user_id'] ?? 0);
                 if ($existingInspectionId > 0) {
                     $stmt->bind_param('issi', $engineerId, $scheduleValue, $siteNotes, $existingInspectionId);
@@ -880,6 +889,11 @@ $inspectionResult = $conn->query(
         si.engineer_id,
         si.scheduled_at,
         si.status,
+        si.created_at,
+        si.acknowledged_at,
+        si.started_at,
+        si.completed_at,
+        si.submitted_at,
         si.site_notes,
         si.engineer_findings,
         si.risk_notes,
@@ -932,7 +946,7 @@ $costingReviewResult = $conn->query(
      INNER JOIN users u ON u.id = si.engineer_id
      INNER JOIN site_inspection_cost_items ci ON ci.inspection_id = si.id
      GROUP BY si.id, si.inquiry_id, si.scheduled_at, si.status, si.engineer_findings, si.risk_notes, si.client_requests, si.updated_at, u.full_name
-     ORDER BY (si.status = 'Submitted to Admin') DESC, si.updated_at DESC, si.id DESC"
+     ORDER BY (si.status = 'Submitted') DESC, si.updated_at DESC, si.id DESC"
 );
 if ($costingReviewResult) {
     while ($review = $costingReviewResult->fetch_assoc()) {
@@ -1169,10 +1183,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             $nextActionLabel = 'Prepare Quotation';
                             $nextActionTab = 'quotation';
                         } elseif ($latestInspection) {
-                            $nextActionLabel = (string)($latestInspection['status'] ?? '') === 'Submitted to Admin'
+                            $nextActionLabel = (string)($latestInspection['status'] ?? '') === 'Submitted'
                                 ? 'Review Costing'
                                 : 'View Inspection';
-                            $nextActionTab = (string)($latestInspection['status'] ?? '') === 'Submitted to Admin' && $showCosting
+                            $nextActionTab = (string)($latestInspection['status'] ?? '') === 'Submitted' && $showCosting
                                 ? 'quotation'
                                 : 'inspection';
                         } elseif ($currentStatus === 'Verified Lead') {
@@ -1348,11 +1362,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
                                     <div class="inquiry-section-title">Inspection</div>
                                     <?php if ($latestInspection): ?>
+                                        <?php
+                                        $latestInspectionStatus = (string)($latestInspection['status'] ?? 'Assigned');
+                                        $latestInspectionStatusAt = match ($latestInspectionStatus) {
+                                            'Assigned' => $latestInspection['created_at'] ?? null,
+                                            'Acknowledged' => $latestInspection['acknowledged_at'] ?? null,
+                                            'Ongoing' => $latestInspection['started_at'] ?? null,
+                                            'Completed' => $latestInspection['completed_at'] ?? null,
+                                            'Submitted' => $latestInspection['submitted_at'] ?? null,
+                                            default => $latestInspection['updated_at'] ?? null,
+                                        };
+                                        ?>
                                         <div class="inquiry-details-grid">
                                             <div class="inquiry-detail"><span>Engineer</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                             <div class="inquiry-detail"><span>Date / Time</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div class="inquiry-detail"><span>Status</span><strong><?php echo htmlspecialchars((string)$latestInspection['status'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div class="inquiry-detail"><span>Updated</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['updated_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Status</span><strong class="inquiry-status" data-status="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Status Date / Time</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspectionStatusAt), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                             <div class="inquiry-detail inquiry-detail--wide"><span>Site Notes</span><strong><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?: 'No notes'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         </div>
                                     <?php else: ?>
@@ -1361,7 +1386,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                     <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form <?php echo !$canScheduleInspection ? 'hidden' : ''; ?>>
+                                        <?php $inspectionScheduleLocked = $latestInspection && (string)($latestInspection['status'] ?? '') !== 'Assigned'; ?>
+                                        <?php if ($inspectionScheduleLocked): ?>
+                                            <div class="inquiry-empty">The Engineer has acknowledged or started this inspection. Assignment and schedule changes are locked.</div>
+                                        <?php endif; ?>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form <?php echo !$canScheduleInspection || $inspectionScheduleLocked ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">

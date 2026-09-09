@@ -449,6 +449,15 @@ document.addEventListener('DOMContentLoaded', function () {
         syncTotal(form);
     });
 
+    document.querySelectorAll('[data-confirm-inspection-transition]').forEach(function (button) {
+        button.closest('form')?.addEventListener('submit', function (event) {
+            const actionLabel = button.getAttribute('data-confirm-inspection-transition') || 'update this inspection';
+            if (!window.confirm(`${actionLabel}?`)) {
+                event.preventDefault();
+            }
+        });
+    });
+
     const closeInspectionModal = function (modal) {
         if (!modal) {
             return;

@@ -3,6 +3,7 @@ define('AUTH_REQUIRED_ROLE', 'engineer');
 require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/site_inspections.php';
+require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../includes/engineer_helpers.php';
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -36,17 +37,21 @@ function engineer_owns_inspection(mysqli $conn, int $inspectionId, int $engineer
     return (bool)$stmt->get_result()->fetch_assoc();
 }
 
-function engineer_get_inspection_status(mysqli $conn, int $inspectionId, int $engineerId): string
+function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $engineerId): array
 {
-    $stmt = $conn->prepare('SELECT status FROM site_inspections WHERE id = ? AND engineer_id = ? LIMIT 1');
+    $stmt = $conn->prepare(
+        'SELECT status, admin_review_status, admin_remarks, submitted_at
+         FROM site_inspections
+         WHERE id = ? AND engineer_id = ?
+         LIMIT 1'
+    );
     if (!$stmt) {
-        return '';
+        return [];
     }
 
     $stmt->bind_param('ii', $inspectionId, $engineerId);
     $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    return (string)($row['status'] ?? '');
+    return $stmt->get_result()->fetch_assoc() ?: [];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -58,9 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'start' => 'Ongoing',
         'complete' => 'Completed',
     ];
-    $currentStatus = $inspectionId > 0
-        ? engineer_get_inspection_status($conn, $inspectionId, $userId)
-        : '';
+    $inspectionState = $inspectionId > 0
+        ? engineer_get_inspection_state($conn, $inspectionId, $userId)
+        : [];
+    $currentStatus = (string)($inspectionState['status'] ?? '');
+    $currentReviewStatus = (string)($inspectionState['admin_review_status'] ?? 'Pending');
 
     if (!engineer_inspection_valid_csrf($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request. Please try again.';
@@ -246,6 +253,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Failed to submit the inspection status.');
                 }
 
+                if ($costingAction === 'submit_to_admin') {
+                    $resetReview = $conn->prepare(
+                        "UPDATE site_inspections
+                         SET admin_review_status = 'Pending'
+                         WHERE id = ? AND engineer_id = ? AND status = 'Submitted'"
+                    );
+                    if (!$resetReview) {
+                        throw new RuntimeException('Failed to reset the Admin review status.');
+                    }
+                    $resetReview->bind_param('ii', $inspectionId, $userId);
+                    $resetReview->execute();
+
+                    audit_log_event(
+                        $conn,
+                        $userId,
+                        $currentReviewStatus === 'Returned'
+                            ? 'resubmit_site_inspection_report'
+                            : 'submit_site_inspection_report',
+                        'site_inspection',
+                        $inspectionId,
+                        [
+                            'status' => $currentStatus,
+                            'admin_review_status' => $currentReviewStatus,
+                            'submitted_at' => $inspectionState['submitted_at'] ?? null,
+                        ],
+                        [
+                            'status' => 'Submitted',
+                            'admin_review_status' => 'Pending',
+                        ]
+                    );
+                }
+
                 $conn->commit();
                 $message = $costingAction === 'submit_to_admin'
                     ? 'Costing submitted to Admin.'
@@ -280,6 +319,9 @@ $stmt = $conn->prepare(
         si.started_at,
         si.completed_at,
         si.submitted_at,
+        si.admin_review_status,
+        si.admin_remarks,
+        si.admin_reviewed_at,
         si.engineer_findings,
         si.risk_notes,
         si.client_requests,
@@ -338,6 +380,10 @@ require __DIR__ . '/../layout/header.php';
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
                     $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
+                    $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
+                    $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
+                        ? 'Returned for Revision'
+                        : $inspectionStatus;
                     $inspectionStatuses = site_inspection_statuses();
                     $currentStatusIndex = array_search($inspectionStatus, $inspectionStatuses, true);
                     $currentStatusIndex = $currentStatusIndex === false ? -1 : $currentStatusIndex;
@@ -380,7 +426,7 @@ require __DIR__ . '/../layout/header.php';
                             <div>
                                 <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <p class="inspection-meta"><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <span class="inspection-status" data-status="<?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="inspection-status" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <div class="inspection-card__schedule">
                                 <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>
@@ -411,6 +457,14 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
 
                                 <p class="inspection-description"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
+
+                                <?php if (!empty($inspection['admin_remarks'])): ?>
+                                    <div class="inspection-admin-remarks" data-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <strong>Admin Remarks / Reason for Return</strong>
+                                        <p><?php echo nl2br(htmlspecialchars((string)$inspection['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
+                                        <small>Reviewed: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
+                                    </div>
+                                <?php endif; ?>
 
                                 <div class="inspection-workflow" aria-label="Inspection progress">
                                     <?php foreach ($inspectionStatuses as $statusIndex => $statusLabel): ?>

@@ -272,13 +272,13 @@ function fetchUsersByRoles(mysqli $conn, array $roles, string $statusFilter = ''
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function superadmin_user_duplicate_exists(mysqli $conn, string $fullName, string $email, string $phone, int $exceptUserId = 0): bool {
+function superadmin_user_duplicate_exists(mysqli $conn, string $fullName, string $email, int $exceptUserId = 0): bool {
     if ($exceptUserId > 0) {
-        $stmt = $conn->prepare('SELECT id FROM users WHERE (full_name = ? OR email = ? OR phone = ?) AND id != ? LIMIT 1');
-        $stmt->bind_param('sssi', $fullName, $email, $phone, $exceptUserId);
+        $stmt = $conn->prepare('SELECT id FROM users WHERE (full_name = ? OR email = ?) AND id != ? LIMIT 1');
+        $stmt->bind_param('ssi', $fullName, $email, $exceptUserId);
     } else {
-        $stmt = $conn->prepare('SELECT id FROM users WHERE full_name = ? OR email = ? OR phone = ? LIMIT 1');
-        $stmt->bind_param('sss', $fullName, $email, $phone);
+        $stmt = $conn->prepare('SELECT id FROM users WHERE full_name = ? OR email = ? LIMIT 1');
+        $stmt->bind_param('ss', $fullName, $email);
     }
 
     $stmt->execute();
@@ -318,8 +318,8 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
             superadmin_user_redirect('create');
         }
 
-        if (superadmin_user_duplicate_exists($conn, $old['full_name'], $old['email'], $old['phone'])) {
-            superadmin_user_flash('error', 'Duplicate detected. Full name, email, and phone must all be unique.', $old);
+        if (superadmin_user_duplicate_exists($conn, $old['full_name'], $old['email'])) {
+            superadmin_user_flash('error', 'Duplicate detected. Full name and email must be unique.', $old);
             superadmin_user_redirect('create');
         }
 
@@ -385,8 +385,8 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
             superadmin_user_redirect('users');
         }
 
-        if (superadmin_user_duplicate_exists($conn, $fullName, $email, $phone, $userId)) {
-            superadmin_user_flash('error', 'Duplicate detected. Full name, email, and phone must all be unique.');
+        if (superadmin_user_duplicate_exists($conn, $fullName, $email, $userId)) {
+            superadmin_user_flash('error', 'Duplicate detected. Full name and email must be unique.');
             superadmin_user_redirect('users');
         }
 

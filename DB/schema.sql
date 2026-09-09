@@ -1019,7 +1019,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_full_name` (`full_name`),
   UNIQUE KEY `reset_token` (`reset_token`),
-  UNIQUE KEY `uq_users_phone` (`phone`),
+  KEY `idx_users_phone` (`phone`),
   KEY `idx_email` (`email`),
   KEY `idx_role` (`role`),
   KEY `idx_status` (`status`),

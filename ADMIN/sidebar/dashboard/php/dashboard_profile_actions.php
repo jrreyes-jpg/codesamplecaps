@@ -45,18 +45,18 @@ function admin_dashboard_handle_update_my_profile(
         return $result;
     }
 
-    $dupStmt = $conn->prepare('SELECT id FROM users WHERE (full_name = ? OR email = ? OR phone = ?) AND id != ? LIMIT 1');
+    $dupStmt = $conn->prepare('SELECT id FROM users WHERE (full_name = ? OR email = ?) AND id != ? LIMIT 1');
     if (!$dupStmt) {
         $result['error'] = 'Failed to update your profile.';
         return $result;
     }
 
-    $dupStmt->bind_param('sssi', $fullName, $email, $phone, $userId);
+    $dupStmt->bind_param('ssi', $fullName, $email, $userId);
     $dupStmt->execute();
     $dup = $dupStmt->get_result();
 
     if ($dup && $dup->num_rows > 0) {
-        $result['error'] = 'Full name, email, and phone must stay unique.';
+        $result['error'] = 'Full name and email must stay unique.';
         return $result;
     }
 

@@ -589,9 +589,9 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 </label>
 
                 <label>
-                    <span>Barangay / Landmark Area <b class="required-mark">*</b></span>
+                    <span>Barangay <b class="required-mark">*</b></span>
                     <span class="inquiry-combobox" data-combobox>
-                        <input class="js-inquiry-barangay" type="text" name="barangay" data-label="Barangay / Landmark Area" required placeholder="Select city first" autocomplete="off" disabled data-combobox-input>
+                        <input class="js-inquiry-barangay" type="text" name="barangay" data-label="Barangay " required placeholder="Select city first" autocomplete="off" disabled data-combobox-input>
                         <button class="inquiry-combobox-button" type="button" aria-label="Show barangay suggestions" data-combobox-toggle></button>
                         <span class="inquiry-combobox-list" data-combobox-list></span>
                     </span>

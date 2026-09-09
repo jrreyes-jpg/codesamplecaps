@@ -1458,7 +1458,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </label>
                                             <label class="inquiry-review-form__notes">
                                                 <span>Admin Notes</span>
-                                                <textarea name="admin_notes" rows="5" placeholder="Call result, budget, seriousness, next step..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                                <textarea name="admin_notes" rows="5" placeholder="Call result, scope clarification, or validation notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions inquiry-review-form__actions">
                                                 <button type="submit" class="btn-primary" aria-disabled="<?php echo $currentStatus === 'Pending Review' ? 'true' : 'false'; ?>">Save Review</button>

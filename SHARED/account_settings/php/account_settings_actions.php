@@ -67,17 +67,17 @@ function shared_account_update_profile(
     }
 
     $duplicateStmt = $conn->prepare(
-        'SELECT id FROM users WHERE (full_name = ? OR email = ? OR phone = ?) AND id != ? LIMIT 1'
+        'SELECT id FROM users WHERE (full_name = ? OR email = ?) AND id != ? LIMIT 1'
     );
     if (!$duplicateStmt) {
         return ['error' => 'Failed to update your profile.', 'message' => ''];
     }
 
-    $duplicateStmt->bind_param('sssi', $fullName, $email, $phone, $userId);
+    $duplicateStmt->bind_param('ssi', $fullName, $email, $userId);
     $duplicateStmt->execute();
     $duplicateResult = $duplicateStmt->get_result();
     if ($duplicateResult && $duplicateResult->num_rows > 0) {
-        return ['error' => 'Full name, email, and phone must stay unique.', 'message' => ''];
+        return ['error' => 'Full name and email must stay unique.', 'message' => ''];
     }
 
     $uploadedPhoto = ($supportsProfilePhoto && $profilePhotoUpload)

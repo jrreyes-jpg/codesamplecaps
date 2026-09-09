@@ -5,6 +5,7 @@ require_once __DIR__ . '/project_history.php';
 require_once __DIR__ . '/Config.php';
 require_once __DIR__ . '/site_inspections.php';
 require_once __DIR__ . '/../services/EmailService.php';
+require_once __DIR__ . '/../services/AuthService.php';
 
 function inquiry_quote_table_exists(mysqli $conn, string $tableName): bool
 {
@@ -241,10 +242,10 @@ function inquiry_quote_resolve_recipient(mysqli $conn, int $draftId): array
     $client = null;
     if (inquiry_quote_column_exists($conn, 'service_inquiries', 'client_id')) {
         $stmt = $conn->prepare(
-            'SELECT u.id, u.full_name, u.email, u.phone
+            'SELECT u.id, u.full_name, u.email, u.phone, u.status
              FROM service_inquiries si
              INNER JOIN users u ON u.id = si.client_id
-             WHERE si.id = ? AND u.role = "client" AND u.status = "active"
+             WHERE si.id = ? AND u.role = "client" AND u.status IN ("active", "pending_activation")
              LIMIT 1'
         );
         if ($stmt) {
@@ -257,9 +258,9 @@ function inquiry_quote_resolve_recipient(mysqli $conn, int $draftId): array
 
     if (!$client && filter_var($inquiryEmail, FILTER_VALIDATE_EMAIL)) {
         $stmt = $conn->prepare(
-            'SELECT id, full_name, email, phone
+            'SELECT id, full_name, email, phone, status
              FROM users
-             WHERE LOWER(email) = ? AND role = "client" AND status = "active"
+             WHERE LOWER(email) = ? AND role = "client" AND status IN ("active", "pending_activation")
              LIMIT 1'
         );
         if ($stmt) {
@@ -276,7 +277,10 @@ function inquiry_quote_resolve_recipient(mysqli $conn, int $draftId): array
             'email' => strtolower(trim((string)($client['email'] ?? ''))),
             'contact' => trim((string)($client['phone'] ?? '')) ?: $inquiryContact,
             'source' => 'existing_client',
-            'source_label' => 'Existing Client Account',
+            'source_label' => strtolower((string)($client['status'] ?? '')) === 'pending_activation'
+                ? 'Pending Client Activation'
+                : 'Existing Client Account',
+            'client_status' => strtolower((string)($client['status'] ?? 'active')),
         ];
     }
 
@@ -287,6 +291,7 @@ function inquiry_quote_resolve_recipient(mysqli $conn, int $draftId): array
         'contact' => $inquiryContact,
         'source' => 'inquiry',
         'source_label' => 'Inquiry',
+        'client_status' => null,
     ];
 }
 
@@ -1042,39 +1047,73 @@ function inquiry_quote_unique_project_title(mysqli $conn, array $quotation): str
     return $baseTitle . ' - ' . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 }
 
-function inquiry_quote_get_or_create_client(mysqli $conn, array $quotation, int $adminId): int
+function inquiry_quote_link_client_account(mysqli $conn, int $draftId, int $clientId): void
 {
-    $email = strtolower(trim((string)($quotation['email'] ?? '')));
-    if ($email !== '') {
-        $stmt = $conn->prepare("SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param('s', $email);
-            $stmt->execute();
-            $row = $stmt->get_result()->fetch_assoc();
-            if ($row) {
-                return (int)$row['id'];
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation || $clientId <= 0) {
+        throw new RuntimeException('Unable to link the Client account.');
+    }
+
+    $clientStmt = $conn->prepare(
+        "SELECT id FROM users WHERE id = ? AND role = 'client' AND status IN ('active', 'pending_activation') LIMIT 1"
+    );
+    if (!$clientStmt) {
+        throw new RuntimeException('Unable to verify the Client account.');
+    }
+    $clientStmt->bind_param('i', $clientId);
+    $clientStmt->execute();
+    if (!$clientStmt->get_result()->fetch_assoc()) {
+        throw new RuntimeException('The selected Client account cannot be linked.');
+    }
+
+    $conn->begin_transaction();
+    try {
+        if (inquiry_quote_column_exists($conn, 'service_inquiries', 'client_id')) {
+            $inquiryId = (int)$quotation['inquiry_id'];
+            $inquiryStmt = $conn->prepare('UPDATE service_inquiries SET client_id = ? WHERE id = ?');
+            $inquiryStmt->bind_param('ii', $clientId, $inquiryId);
+            if (!$inquiryStmt->execute()) {
+                throw new RuntimeException('Unable to save the Inquiry Client link.');
             }
         }
+
+        $draftStmt = $conn->prepare('UPDATE inquiry_quotation_drafts SET sent_to_client_id = ? WHERE id = ?');
+        $draftStmt->bind_param('ii', $clientId, $draftId);
+        if (!$draftStmt->execute()) {
+            throw new RuntimeException('Unable to save the quotation Client link.');
+        }
+        $conn->commit();
+    } catch (Throwable $error) {
+        $conn->rollback();
+        throw $error;
+    }
+}
+
+function inquiry_quote_prepare_client_account(mysqli $conn, int $draftId, int $adminId): array
+{
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation) {
+        throw new RuntimeException('Accepted quotation not found.');
     }
 
-    $name = trim((string)($quotation['client_name'] ?? 'Client'));
-    $phone = trim((string)($quotation['contact_no'] ?? ''));
-    $password = password_hash(bin2hex(random_bytes(12)), PASSWORD_DEFAULT);
-    $role = 'client';
-    $status = 'active';
-
-    $stmt = $conn->prepare(
-        'INSERT INTO users (full_name, email, password, role, phone, status, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
+    $authService = new AuthService();
+    $result = $authService->linkOrInviteClient(
+        trim((string)($quotation['client_name'] ?? '')),
+        trim((string)($quotation['email'] ?? '')),
+        trim((string)($quotation['contact_no'] ?? '')),
+        $adminId
     );
-    if (!$stmt) {
-        throw new RuntimeException('Unable to create client account for project.');
+    if (empty($result['success'])) {
+        throw new RuntimeException((string)($result['error'] ?? 'Unable to prepare the Client account.'));
     }
 
-    $stmt->bind_param('ssssssi', $name, $email, $password, $role, $phone, $status, $adminId);
-    $stmt->execute();
+    $clientId = (int)($result['client_id'] ?? 0);
+    if ($clientId <= 0) {
+        throw new RuntimeException('Unable to prepare the Client account.');
+    }
 
-    return (int)$conn->insert_id;
+    inquiry_quote_link_client_account($conn, $draftId, $clientId);
+    return $result;
 }
 
 function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId): int

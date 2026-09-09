@@ -380,6 +380,84 @@ class AuthService {
         'message' => 'Password reset successfully. You can now login.'
     ];
 }
+
+    /**
+     * Link an existing Client or create one pending password activation.
+     */
+    public function linkOrInviteClient(string $fullName, string $email, string $phone, int $createdBy): array {
+        $fullName = trim($fullName);
+        $email = strtolower(trim($email));
+        $phone = trim($phone);
+
+        if ($fullName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'error' => 'Inquiry client name or email is invalid.'];
+        }
+
+        $existing = $this->userRepo->findByEmail($email);
+        if ($existing) {
+            $role = strtolower(trim((string)$existing['role']));
+            $status = strtolower(trim((string)$existing['status']));
+            if ($role !== 'client') {
+                return ['success' => false, 'error' => 'This inquiry email belongs to a ' . ucfirst($role) . ' account. Review it in User Management before project setup.'];
+            }
+
+            if ($status === 'active') {
+                return ['success' => true, 'client_id' => (int)$existing['id'], 'state' => 'active', 'activation_email_sent' => null];
+            }
+
+            if ($status !== 'pending_activation') {
+                return ['success' => false, 'error' => 'This Client account is inactive. Review it in User Management before project setup.'];
+            }
+
+            $clientId = (int)$existing['id'];
+            $state = 'pending_resend';
+        } else {
+            $clientId = $this->userRepo->createPendingClient($fullName, $email, $phone, $createdBy);
+            if (!$clientId) {
+                return ['success' => false, 'error' => 'Unable to create the pending Client account.'];
+            }
+            $state = 'pending_created';
+        }
+
+        $token = bin2hex(random_bytes(50));
+        $expiryMinutes = (int)$this->config->get('ACCOUNT_ACTIVATION_EXPIRY_MINUTES', 60);
+        if (!$this->userRepo->setActivationToken($clientId, $token, $expiryMinutes)) {
+            return ['success' => false, 'error' => 'Unable to prepare the Client activation link.'];
+        }
+
+        $emailSent = $this->emailService->sendAccountActivation($email, $fullName, $token, $expiryMinutes);
+        if (!$emailSent) {
+            error_log('Client activation email failed: ' . $this->emailService->getError());
+        }
+
+        return [
+            'success' => true,
+            'client_id' => $clientId,
+            'state' => $state,
+            'activation_email_sent' => $emailSent,
+        ];
+    }
+
+    public function validateClientActivationToken(string $token): ?array {
+        if (!preg_match('/^[a-f0-9]{100}$/i', $token)) {
+            return null;
+        }
+        return $this->userRepo->findByActivationToken($token);
+    }
+
+    public function activateClientAccount(string $token, string $newPassword): array {
+        $token = trim($token);
+        if (!preg_match('/^[a-f0-9]{100}$/i', $token) || strlen($newPassword) < 8) {
+            return ['success' => false, 'error' => 'Invalid activation link or password.'];
+        }
+
+        $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+        if (!$this->userRepo->activateClientByToken($token, $passwordHash)) {
+            return ['success' => false, 'error' => 'Invalid or expired activation link.'];
+        }
+
+        return ['success' => true, 'message' => 'Account activated. You can now login.'];
+    }
     public function changePassword($userId, $currentPassword, $newPassword) {
         // Validation
         if (empty($currentPassword) || empty($newPassword)) {

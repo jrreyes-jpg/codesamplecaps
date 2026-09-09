@@ -1313,7 +1313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect_projects_page();
             }
 
-            $clientStmt = $conn->prepare("SELECT email FROM users WHERE id = ? AND role = 'client' AND status = 'active' LIMIT 1");
+            $clientStmt = $conn->prepare("SELECT email FROM users WHERE id = ? AND role = 'client' AND status IN ('active', 'pending_activation') LIMIT 1");
             if (!$clientStmt) {
                 set_projects_old_input($createProjectInput, 'client_id');
                 set_projects_flash('error', 'Unable to verify the selected Client account.');
@@ -2825,7 +2825,7 @@ if ($createProjectValues['status'] === '' || !in_array($createProjectValues['sta
 $clients = [];
 $engineers = [];
 
-$clientResult = $conn->query("SELECT id, full_name, email, phone FROM users WHERE role = 'client' AND status = 'active' ORDER BY full_name ASC");
+$clientResult = $conn->query("SELECT id, full_name, email, phone, status FROM users WHERE role = 'client' AND status IN ('active', 'pending_activation') ORDER BY full_name ASC");
 if ($clientResult) {
     $clients = $clientResult->fetch_all(MYSQLI_ASSOC);
 }
@@ -3168,7 +3168,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         data-client-email="<?php echo htmlspecialchars((string)($client['email'] ?? ''), ENT_QUOTES); ?>"
                                         data-client-phone="<?php echo htmlspecialchars((string)($client['phone'] ?? ''), ENT_QUOTES); ?>"
                                         <?php echo $createProjectValues['client_id'] === (string)$client['id'] ? 'selected' : ''; ?>
-                                    ><?php echo htmlspecialchars($client['full_name']); ?></option>
+                                    ><?php echo htmlspecialchars((string)$client['full_name'] . (($client['status'] ?? 'active') === 'pending_activation' ? ' - Pending Activation' : '')); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

@@ -1062,6 +1062,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    document.querySelectorAll('.submitted-inspection-review-form').forEach(function (form) {
+        const remarks = form.querySelector('textarea[name="admin_remarks"]');
+
+        form.addEventListener('submit', function (event) {
+            const decision = event.submitter?.value || '';
+            if (decision === 'return' && remarks && remarks.value.trim() === '') {
+                event.preventDefault();
+                remarks.setCustomValidity('Admin Remarks / Reason for Return is required.');
+                remarks.reportValidity();
+                remarks.focus();
+                return;
+            }
+
+            remarks?.setCustomValidity('');
+            const message = decision === 'approve'
+                ? 'Approve and lock this inspection report?'
+                : 'Return this report to the Engineer for revision?';
+            if (!window.confirm(message)) {
+                event.preventDefault();
+            }
+        });
+
+        remarks?.addEventListener('input', function () {
+            remarks.setCustomValidity('');
+        });
+    });
+
     document.querySelectorAll('.inquiry-quote-send-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
             event.preventDefault();

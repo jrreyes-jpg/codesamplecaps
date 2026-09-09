@@ -130,6 +130,28 @@
     color: #166534;
 }
 
+.inspection-status[data-status="Returned for Revision"] {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.inspection-admin-remarks {
+    padding: 12px 14px;
+    border: 1px solid #f59e0b;
+    border-radius: 14px;
+    background: #fffbeb;
+    color: #78350f;
+}
+
+.inspection-admin-remarks p {
+    margin: 6px 0;
+}
+
+.inspection-admin-remarks small {
+    color: #92400e;
+    font-weight: 700;
+}
+
 .inspection-workflow {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));

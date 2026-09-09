@@ -539,6 +539,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = $throwable->getMessage();
             }
         }
+    } elseif (($_POST['action'] ?? '') === 'review_inspection_report') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $inspectionId = (int)($_POST['inspection_id'] ?? 0);
+        $reviewDecision = trim((string)($_POST['review_decision'] ?? ''));
+        $adminRemarks = trim((string)($_POST['admin_remarks'] ?? ''));
+        $targetReviewStatus = $reviewDecision === 'approve'
+            ? 'Approved'
+            : ($reviewDecision === 'return' ? 'Returned' : '');
+
+        if ($inquiryId <= 0 || $inspectionId <= 0 || $targetReviewStatus === '') {
+            $error = 'Invalid inspection review request.';
+        } elseif ($targetReviewStatus === 'Returned' && $adminRemarks === '') {
+            $error = 'Admin Remarks / Reason for Return is required.';
+        } elseif (mb_strlen($adminRemarks, 'UTF-8') > 2000) {
+            $error = 'Admin remarks must not exceed 2,000 characters.';
+        } else {
+            $conn->begin_transaction();
+
+            try {
+                $reviewStmt = $conn->prepare(
+                    'SELECT status, admin_review_status, admin_remarks, submitted_at
+                     FROM site_inspections
+                     WHERE id = ? AND inquiry_id = ?
+                     LIMIT 1
+                     FOR UPDATE'
+                );
+                if (!$reviewStmt) {
+                    throw new RuntimeException('Unable to prepare inspection review.');
+                }
+
+                $reviewStmt->bind_param('ii', $inspectionId, $inquiryId);
+                $reviewStmt->execute();
+                $inspectionBeforeReview = $reviewStmt->get_result()->fetch_assoc();
+                if (!$inspectionBeforeReview) {
+                    throw new RuntimeException('Inspection report was not found.');
+                }
+
+                $currentInspectionStatus = (string)($inspectionBeforeReview['status'] ?? '');
+                $currentReviewStatus = (string)($inspectionBeforeReview['admin_review_status'] ?? 'Pending');
+                if (!site_inspection_can_admin_review(
+                    $currentInspectionStatus,
+                    $currentReviewStatus,
+                    $targetReviewStatus
+                )) {
+                    throw new RuntimeException('This inspection report was already reviewed or is not ready for review.');
+                }
+
+                $adminId = (int)($_SESSION['user_id'] ?? 0);
+                $nextInspectionStatus = $targetReviewStatus === 'Returned' ? 'Completed' : 'Submitted';
+                $remarksToStore = $targetReviewStatus === 'Returned'
+                    ? $adminRemarks
+                    : (string)($inspectionBeforeReview['admin_remarks'] ?? '');
+                $updateReview = $conn->prepare(
+                    'UPDATE site_inspections
+                     SET status = ?, admin_review_status = ?, admin_remarks = ?,
+                         admin_reviewed_by = ?, admin_reviewed_at = NOW()
+                     WHERE id = ? AND inquiry_id = ?
+                       AND status = \'Submitted\' AND admin_review_status = \'Pending\''
+                );
+                if (!$updateReview) {
+                    throw new RuntimeException('Unable to save inspection review.');
+                }
+
+                $updateReview->bind_param(
+                    'sssiii',
+                    $nextInspectionStatus,
+                    $targetReviewStatus,
+                    $remarksToStore,
+                    $adminId,
+                    $inspectionId,
+                    $inquiryId
+                );
+                $updateReview->execute();
+                if ($updateReview->affected_rows !== 1) {
+                    throw new RuntimeException('Inspection review was not saved. Please refresh the page.');
+                }
+
+                audit_log_event(
+                    $conn,
+                    $adminId,
+                    $targetReviewStatus === 'Returned' ? 'return_site_inspection_report' : 'approve_site_inspection_report',
+                    'site_inspection',
+                    $inspectionId,
+                    [
+                        'status' => $currentInspectionStatus,
+                        'admin_review_status' => $currentReviewStatus,
+                        'admin_remarks' => $inspectionBeforeReview['admin_remarks'] ?? null,
+                        'submitted_at' => $inspectionBeforeReview['submitted_at'] ?? null,
+                    ],
+                    [
+                        'status' => $nextInspectionStatus,
+                        'admin_review_status' => $targetReviewStatus,
+                        'admin_remarks' => $remarksToStore,
+                    ]
+                );
+
+                $conn->commit();
+                $message = $targetReviewStatus === 'Returned'
+                    ? 'Inspection report returned to the Engineer for revision.'
+                    : 'Inspection report approved.';
+            } catch (Throwable $exception) {
+                $conn->rollback();
+                $safeReviewErrors = [
+                    'Inspection report was not found.',
+                    'This inspection report was already reviewed or is not ready for review.',
+                    'Inspection review was not saved. Please refresh the page.',
+                ];
+                $error = in_array($exception->getMessage(), $safeReviewErrors, true)
+                    ? $exception->getMessage()
+                    : 'Failed to save the inspection review.';
+            }
+        }
     } elseif (($_POST['action'] ?? '') === 'schedule_inspection') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $engineerId = (int)($_POST['engineer_id'] ?? 0);
@@ -894,6 +1006,10 @@ $inspectionResult = $conn->query(
         si.started_at,
         si.completed_at,
         si.submitted_at,
+        si.admin_review_status,
+        si.admin_remarks,
+        si.admin_reviewed_by,
+        si.admin_reviewed_at,
         si.site_notes,
         si.engineer_findings,
         si.risk_notes,
@@ -1380,6 +1496,107 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <div class="inquiry-detail"><span>Status Date / Time</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspectionStatusAt), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                             <div class="inquiry-detail inquiry-detail--wide"><span>Site Notes</span><strong><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?: 'No notes'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         </div>
+
+                                        <?php if (!empty($latestInspection['submitted_at'])): ?>
+                                            <?php
+                                            $inspectionReviewStatus = (string)($latestInspection['admin_review_status'] ?? 'Pending');
+                                            $inspectionDisplayStatus = $latestInspectionStatus === 'Completed' && $inspectionReviewStatus === 'Returned'
+                                                ? 'Returned for Revision'
+                                                : $latestInspectionStatus;
+                                            $inspectionTimeline = [
+                                                'Assigned' => $latestInspection['created_at'] ?? null,
+                                                'Acknowledged' => $latestInspection['acknowledged_at'] ?? null,
+                                                'Ongoing' => $latestInspection['started_at'] ?? null,
+                                                'Completed' => $latestInspection['completed_at'] ?? null,
+                                                'Submitted' => $latestInspection['submitted_at'] ?? null,
+                                            ];
+                                            ?>
+                                            <section class="submitted-inspection-report">
+                                                <div class="submitted-inspection-report__head">
+                                                    <div>
+                                                        <span>Submitted Inspection Report</span>
+                                                        <h3><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                                    </div>
+                                                    <span class="inquiry-status" data-status="<?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                </div>
+
+                                                <div class="inquiry-details-grid submitted-inspection-report__details">
+                                                    <div class="inquiry-detail"><span>Scheduled</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inquiry-detail"><span>Actual Started</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['started_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inquiry-detail"><span>Actual Completed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['completed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['submitted_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inquiry-detail inquiry-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inquiry-detail inquiry-detail--wide"><span>Engineer Findings</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['engineer_findings'] ?: 'No findings provided.'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                    <div class="inquiry-detail"><span>Risk / Safety Notes</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['risk_notes'] ?: 'None'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                    <div class="inquiry-detail"><span>Client Requests</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['client_requests'] ?: 'None'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                </div>
+
+                                                <div class="submitted-inspection-timeline" aria-label="Inspection status timeline">
+                                                    <?php foreach ($inspectionTimeline as $timelineStatus => $timelineTime): ?>
+                                                        <div class="submitted-inspection-timeline__step <?php echo $timelineTime ? 'is-done' : ''; ?>">
+                                                            <strong><?php echo htmlspecialchars($timelineStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                            <span><?php echo htmlspecialchars(site_inspection_format_datetime($timelineTime), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+
+                                                <div class="inquiry-costing-table submitted-inspection-costing">
+                                                    <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--head">
+                                                        <span>Type</span>
+                                                        <span>Item / Labor</span>
+                                                        <span>Qty</span>
+                                                        <span>Unit</span>
+                                                        <span>Unit Cost</span>
+                                                        <span>Notes</span>
+                                                        <span>Line Total</span>
+                                                    </div>
+                                                    <?php foreach ($latestCostItems as $costItem): ?>
+                                                        <div class="inquiry-costing-table__row submitted-inspection-costing__row">
+                                                            <span><?php echo htmlspecialchars(ucfirst((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars((string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars((string)($costItem['notes'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                                <div class="submitted-inspection-report__total">
+                                                    <span>Grand Total</span>
+                                                    <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                </div>
+
+                                                <?php if ($inspectionReviewStatus === 'Returned' && !empty($latestInspection['admin_remarks'])): ?>
+                                                    <div class="submitted-inspection-review-state is-returned">
+                                                        <strong>Returned to Engineer</strong>
+                                                        <p><?php echo nl2br(htmlspecialchars((string)$latestInspection['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
+                                                    </div>
+                                                <?php elseif ($inspectionReviewStatus === 'Approved'): ?>
+                                                    <div class="submitted-inspection-review-state is-approved">
+                                                        <strong>Inspection Report Approved</strong>
+                                                        <span><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <?php if ($latestInspectionStatus === 'Submitted' && $inspectionReviewStatus === 'Pending'): ?>
+                                                    <form method="POST" class="submitted-inspection-review-form">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <input type="hidden" name="action" value="review_inspection_report">
+                                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                        <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                        <label>
+                                                            <span>Admin Remarks / Reason for Return</span>
+                                                            <textarea name="admin_remarks" rows="3" maxlength="2000" placeholder="Required only when returning the report to the Engineer"></textarea>
+                                                        </label>
+                                                        <div class="inquiry-review-actions">
+                                                            <button type="submit" name="review_decision" value="return" class="btn-secondary">Return to Engineer</button>
+                                                            <button type="submit" name="review_decision" value="approve" class="btn-primary">Approve Inspection Report</button>
+                                                        </div>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </section>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <div class="inquiry-empty">No inspection schedule yet.</div>
                                     <?php endif; ?>
@@ -1437,54 +1654,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </form>
                                     <?php endif; ?>
                                 </section>
-
-                                <?php if ($costingReview && !empty($latestCostItems)): ?>
-                                <section class="inquiry-tab-panel inquiry-tab-panel--supporting" data-inquiry-panel="quotation" hidden>
-                                        <div class="inquiry-section-title">Engineer Costing Review</div>
-                                        <div class="inquiry-costing-review">
-                                            <div class="inquiry-details-grid">
-                                                <div class="inquiry-detail">
-                                                    <span>Submitted By</span>
-                                                    <strong><?php echo htmlspecialchars((string)$costingReview['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                </div>
-                                                <div class="inquiry-detail">
-                                                    <span>Status</span>
-                                                    <strong><?php echo htmlspecialchars((string)$costingReview['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                </div>
-                                                <div class="inquiry-detail">
-                                                    <span>Total Cost</span>
-                                                    <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                </div>
-                                            </div>
-
-                                            <?php if (!empty($costingReview['engineer_findings'])): ?>
-                                                <div class="inquiry-detail inquiry-detail--wide">
-                                                    <span>Engineer Findings</span>
-                                                    <strong><?php echo nl2br(htmlspecialchars((string)$costingReview['engineer_findings'], ENT_QUOTES, 'UTF-8')); ?></strong>
-                                                </div>
-                                            <?php endif; ?>
-
-                                            <div class="inquiry-costing-table">
-                                                <div class="inquiry-costing-table__row inquiry-costing-table__row--head">
-                                                    <span>Type</span>
-                                                    <span>Item</span>
-                                                    <span>Qty</span>
-                                                    <span>Unit Cost</span>
-                                                    <span>Total</span>
-                                                </div>
-                                                <?php foreach ($latestCostItems as $costItem): ?>
-                                                    <div class="inquiry-costing-table__row">
-                                                        <span><?php echo htmlspecialchars(ucfirst((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.') . ' ' . (string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                </section>
-                                <?php endif; ?>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
                                     <?php if ($quotationPrerequisiteMessage !== ''): ?>

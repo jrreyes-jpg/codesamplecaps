@@ -41,6 +41,25 @@ if (!function_exists('site_inspection_can_transition')) {
     }
 }
 
+if (!function_exists('site_inspection_admin_review_statuses')) {
+    function site_inspection_admin_review_statuses(): array
+    {
+        return ['Pending', 'Returned', 'Approved'];
+    }
+}
+
+if (!function_exists('site_inspection_can_admin_review')) {
+    function site_inspection_can_admin_review(
+        string $inspectionStatus,
+        string $currentReviewStatus,
+        string $targetReviewStatus
+    ): bool {
+        return $inspectionStatus === 'Submitted'
+            && $currentReviewStatus === 'Pending'
+            && in_array($targetReviewStatus, ['Returned', 'Approved'], true);
+    }
+}
+
 if (!function_exists('site_inspection_transition')) {
     function site_inspection_transition(
         mysqli $conn,

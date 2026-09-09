@@ -67,15 +67,18 @@ function service_area_allowed_provinces(): array
     return array_fill_keys($provinces, true);
 }
 
-function service_area_huc_provinces(): array
+function service_area_independent_cities(): array
 {
-    return [
-        'City of Baguio' => 'Benguet',
-        'City of Angeles' => 'Pampanga',
-        'City of Olongapo' => 'Zambales',
-        'City of Lucena' => 'Quezon',
-        'City of Puerto Princesa' => 'Palawan',
-    ];
+    return array_fill_keys([
+        'City of Baguio',
+        'City of Dagupan',
+        'City of Santiago',
+        'City of Angeles',
+        'City of Olongapo',
+        'City of Lucena',
+        'City of Puerto Princesa',
+        'City of Naga',
+    ], true);
 }
 
 function service_area_title_case(string $value): string
@@ -171,10 +174,10 @@ function service_area_allowed_locations(): array
         if ($regCode === '13') {
             $provinceName = 'Metro Manila (NCR)';
             $cityName = service_area_ncr_cities()[(string)($city['citymunCode'] ?? '')] ?? '';
+        } elseif (isset(service_area_independent_cities()[$cityName])) {
+            continue;
         } elseif (isset($provinceByCode[$provCode])) {
             $provinceName = $provinceByCode[$provCode];
-        } elseif (isset(service_area_huc_provinces()[$cityName])) {
-            $provinceName = service_area_huc_provinces()[$cityName];
         } else {
             continue;
         }
@@ -192,6 +195,70 @@ function service_area_allowed_locations(): array
 
     ksort($locations, SORT_NATURAL | SORT_FLAG_CASE);
     return $locations;
+}
+
+function service_area_hierarchy(): array
+{
+    static $hierarchy = null;
+    if ($hierarchy !== null) {
+        return $hierarchy;
+    }
+
+    $hierarchy = [];
+    $path = dirname(__DIR__) . '/Location/luzon_hierarchy_barangays.csv';
+    foreach (service_area_read_csv($path) as $row) {
+        $region = trim((string)($row['region'] ?? ''));
+        $province = trim((string)($row['province'] ?? ''));
+        $city = trim((string)($row['city_municipality'] ?? ''));
+        if ($region === '' || $city === '') {
+            continue;
+        }
+
+        if ($region === 'National Capital Region (NCR)') {
+            $area = 'Metro Manila (NCR)';
+        } elseif ($province === '' || isset(service_area_independent_cities()[$city])) {
+            $area = 'Independent City';
+        } else {
+            $area = $province;
+        }
+
+        $hierarchy[$region][$area][] = $city;
+    }
+
+    foreach ($hierarchy as $region => $areas) {
+        foreach ($areas as $area => $cities) {
+            $cities = array_values(array_unique($cities));
+            sort($cities, SORT_NATURAL | SORT_FLAG_CASE);
+            $hierarchy[$region][$area] = $cities;
+        }
+        uksort($hierarchy[$region], static function (string $left, string $right): int {
+            if ($left === 'Independent City') {
+                return 1;
+            }
+            if ($right === 'Independent City') {
+                return -1;
+            }
+            return strnatcasecmp($left, $right);
+        });
+    }
+
+    return $hierarchy;
+}
+
+function service_area_selection_is_allowed(string $region, string $area, string $city): bool
+{
+    $hierarchy = service_area_hierarchy();
+    return isset($hierarchy[$region][$area])
+        && in_array($city, $hierarchy[$region][$area], true);
+}
+
+function service_area_storage_province(string $region, string $area): string
+{
+    if ($region === 'National Capital Region (NCR)' || $area === 'Independent City') {
+        return '';
+    }
+
+    return $area;
 }
 
 function service_area_reference_csv_path(): string

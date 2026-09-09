@@ -67,7 +67,9 @@ $clientName = normalize_text($_POST['client_name'] ?? '');
 $companyName = normalize_text($_POST['company_name'] ?? '');
 $email = normalize_text($_POST['email'] ?? '');
 $contactNo = normalize_text($_POST['contact_no'] ?? '');
-$province = normalize_text($_POST['province'] ?? '');
+$region = normalize_text($_POST['region'] ?? '');
+$locationArea = normalize_text($_POST['location_area'] ?? '');
+$province = service_area_storage_province($region, $locationArea);
 $cityMunicipality = normalize_text($_POST['city_municipality'] ?? '');
 $barangay = normalize_text($_POST['barangay'] ?? '');
 $siteAddress = normalize_text($_POST['site_address'] ?? '');
@@ -102,13 +104,17 @@ if ($contactNo === '' || !preg_match('/^09\d{9}$/', $contactNo)) {
     $errors[] = 'contact_no';
 }
 
-if (!service_area_is_allowed($province, $cityMunicipality)) {
+if (!service_area_selection_is_allowed($region, $locationArea, $cityMunicipality)) {
     $errors[] = 'city_municipality';
 }
 
-if (!service_barangay_city_has_data($conn, $province, $cityMunicipality)) {
-    $errors[] = 'barangay';
-} elseif (!service_barangay_is_allowed($conn, $province, $cityMunicipality, $barangay)) {
+if (!service_barangay_selection_is_allowed(
+    $conn,
+    $region,
+    $locationArea,
+    $cityMunicipality,
+    $barangay
+)) {
     $errors[] = 'barangay';
 }
 
@@ -160,6 +166,8 @@ $payload = [
     'company_name' => $companyName,
     'email' => $email,
     'contact_no' => $contactNo,
+    'region' => $region,
+    'location_area' => $locationArea,
     'province' => $province,
     'city_municipality' => $cityMunicipality,
     'barangay' => $barangay,

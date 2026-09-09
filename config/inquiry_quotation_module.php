@@ -424,6 +424,189 @@ function inquiry_quote_fetch_items(mysqli $conn, int $draftId): array
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
+function inquiry_quote_fetch_post_inspection_decision(mysqli $conn, int $inspectionId): ?array
+{
+    if ($inspectionId <= 0 || !inquiry_quote_table_exists($conn, 'inspection_quotation_decisions')) {
+        return null;
+    }
+
+    $stmt = $conn->prepare(
+        'SELECT * FROM inspection_quotation_decisions WHERE inspection_id = ? LIMIT 1'
+    );
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('i', $inspectionId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+function inquiry_quote_create_post_inspection_revision(
+    mysqli $conn,
+    int $inquiryId,
+    int $inspectionId,
+    int $initialDraftId,
+    int $adminId
+): int {
+    $conn->begin_transaction();
+
+    try {
+        $quoteStmt = $conn->prepare(
+            'SELECT id, inquiry_id, parent_draft_id, revision_no, status, grand_total, profit_margin_percent
+             FROM inquiry_quotation_drafts
+             WHERE id = ? FOR UPDATE'
+        );
+        if (!$quoteStmt) {
+            throw new RuntimeException('Unable to check the original quotation.');
+        }
+        $quoteStmt->bind_param('i', $initialDraftId);
+        $quoteStmt->execute();
+        $initialQuote = $quoteStmt->get_result()->fetch_assoc();
+        if (
+            !$initialQuote
+            || (int)$initialQuote['inquiry_id'] !== $inquiryId
+            || !empty($initialQuote['parent_draft_id'])
+            || (int)$initialQuote['revision_no'] !== 0
+            || inquiry_quote_normalize_status((string)$initialQuote['status']) !== 'accepted'
+        ) {
+            throw new RuntimeException('The original accepted quotation was not found.');
+        }
+
+        $inspectionStmt = $conn->prepare(
+            "SELECT id FROM site_inspections
+             WHERE id = ? AND inquiry_id = ? AND admin_review_status = 'Approved'
+             FOR UPDATE"
+        );
+        if (!$inspectionStmt) {
+            throw new RuntimeException('Unable to check the inspection report.');
+        }
+        $inspectionStmt->bind_param('ii', $inspectionId, $inquiryId);
+        $inspectionStmt->execute();
+        if (!$inspectionStmt->get_result()->fetch_assoc()) {
+            throw new RuntimeException('Approve the inspection report before creating a revised quotation.');
+        }
+
+        if (inquiry_quote_fetch_post_inspection_decision($conn, $inspectionId)) {
+            throw new RuntimeException('A post-inspection quotation decision already exists.');
+        }
+
+        $costStmt = $conn->prepare(
+            'SELECT item_type, item_name, quantity, unit, unit_cost, line_total, notes
+             FROM site_inspection_cost_items
+             WHERE inspection_id = ? ORDER BY id ASC'
+        );
+        if (!$costStmt) {
+            throw new RuntimeException('Unable to load approved inspection costing.');
+        }
+        $costStmt->bind_param('i', $inspectionId);
+        $costStmt->execute();
+        $costItems = $costStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        if ($costItems === []) {
+            throw new RuntimeException('Approved inspection costing is required for a revised quotation.');
+        }
+
+        $costingTotal = 0.0;
+        foreach ($costItems as $item) {
+            $costingTotal += (float)$item['line_total'];
+        }
+        $marginPercent = (float)$initialQuote['profit_margin_percent'];
+        $profitAmount = round($costingTotal * ($marginPercent / 100), 2);
+        $grandTotal = round($costingTotal + $profitAmount, 2);
+        $variance = round($costingTotal - (float)$initialQuote['grand_total'], 2);
+
+        $revisionStmt = $conn->prepare(
+            'SELECT COALESCE(MAX(revision_no), 0) AS latest_revision
+             FROM inquiry_quotation_drafts WHERE parent_draft_id = ? FOR UPDATE'
+        );
+        if (!$revisionStmt) {
+            throw new RuntimeException('Unable to prepare quotation revision.');
+        }
+        $revisionStmt->bind_param('i', $initialDraftId);
+        $revisionStmt->execute();
+        $revisionNo = (int)($revisionStmt->get_result()->fetch_assoc()['latest_revision'] ?? 0) + 1;
+        $quotationNo = inquiry_quote_generate_number() . '-R' . $revisionNo;
+        $draftStatus = 'Draft';
+
+        $insertDraft = $conn->prepare(
+            'INSERT INTO inquiry_quotation_drafts
+             (parent_draft_id, revision_no, inquiry_id, inspection_id, quotation_no, subtotal, profit_margin_percent, profit_amount, grand_total, status, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if (!$insertDraft) {
+            throw new RuntimeException('Unable to create the revised quotation.');
+        }
+        $insertDraft->bind_param(
+            'iiiisddddsi',
+            $initialDraftId,
+            $revisionNo,
+            $inquiryId,
+            $inspectionId,
+            $quotationNo,
+            $costingTotal,
+            $marginPercent,
+            $profitAmount,
+            $grandTotal,
+            $draftStatus,
+            $adminId
+        );
+        $insertDraft->execute();
+        $revisedDraftId = (int)$conn->insert_id;
+
+        $itemStmt = $conn->prepare(
+            'INSERT INTO inquiry_quotation_items
+             (draft_id, item_type, item_name, quantity, unit, unit_cost, line_total, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if (!$itemStmt) {
+            throw new RuntimeException('Unable to copy inspection costing.');
+        }
+        foreach ($costItems as $item) {
+            $type = (string)$item['item_type'];
+            $name = (string)$item['item_name'];
+            $quantity = (float)$item['quantity'];
+            $unit = (string)$item['unit'];
+            $unitCost = (float)$item['unit_cost'];
+            $lineTotal = (float)$item['line_total'];
+            $notes = (string)($item['notes'] ?? '');
+            $itemStmt->bind_param('issdsdds', $revisedDraftId, $type, $name, $quantity, $unit, $unitCost, $lineTotal, $notes);
+            $itemStmt->execute();
+        }
+
+        $decision = 'create_revised_quotation';
+        $decisionStmt = $conn->prepare(
+            'INSERT INTO inspection_quotation_decisions
+             (inquiry_id, inspection_id, initial_quotation_draft_id, revised_quotation_draft_id, inspection_costing_total, variance_amount, decision, decided_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if (!$decisionStmt) {
+            throw new RuntimeException('Unable to save the quotation decision.');
+        }
+        $decisionStmt->bind_param('iiiiddsi', $inquiryId, $inspectionId, $initialDraftId, $revisedDraftId, $costingTotal, $variance, $decision, $adminId);
+        $decisionStmt->execute();
+
+        inquiry_quote_add_history($conn, $revisedDraftId, null, 'draft', 'Created from approved inspection costing.', $adminId, 'admin');
+        $conn->commit();
+        return $revisedDraftId;
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        throw $exception;
+    }
+}
+
+function inquiry_quote_mark_revision_as_final(mysqli $conn, int $draftId): void
+{
+    $stmt = $conn->prepare(
+        'UPDATE inspection_quotation_decisions
+         SET final_quotation_draft_id = ?
+         WHERE revised_quotation_draft_id = ? AND decision = "create_revised_quotation"'
+    );
+    if ($stmt) {
+        $stmt->bind_param('ii', $draftId, $draftId);
+        $stmt->execute();
+    }
+}
+
 function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int $inspectionId, int $adminId, float $marginPercent = 15.0): int
 {
     $itemStmt = $conn->prepare(
@@ -644,6 +827,9 @@ function inquiry_quote_client_respond(mysqli $conn, int $draftId, int $clientId,
     }
 
     inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, $clientId, 'client');
+    if ($decision === 'accepted') {
+        inquiry_quote_mark_revision_as_final($conn, $draftId);
+    }
 }
 
 function inquiry_quote_public_respond(mysqli $conn, string $token, string $decision, string $note): void
@@ -686,6 +872,9 @@ function inquiry_quote_public_respond(mysqli $conn, string $token, string $decis
     }
 
     inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, 0, 'prospect');
+    if ($decision === 'accepted') {
+        inquiry_quote_mark_revision_as_final($conn, $draftId);
+    }
 }
 
 function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void

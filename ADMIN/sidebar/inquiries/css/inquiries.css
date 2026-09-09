@@ -1808,6 +1808,103 @@ body.inquiry-modal-open {
     text-decoration: none;
 }
 
+.post-inspection-quotation-decision {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 14px;
+    background: #eff6ff;
+}
+
+.post-inspection-quotation-decision > div:first-child {
+    display: grid;
+    gap: 3px;
+}
+
+.post-inspection-quotation-decision > div:first-child span {
+    color: #1d4ed8;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.post-inspection-quotation-decision > div:first-child strong {
+    color: #0f172a;
+}
+
+.post-inspection-quotation-decision__totals {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+.post-inspection-quotation-decision__totals > div {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.post-inspection-quotation-decision__totals dt {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.post-inspection-quotation-decision__totals dd {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 900;
+}
+
+.post-inspection-quotation-decision__variance dd {
+    color: #1d4ed8;
+}
+
+.post-inspection-quotation-decision__proceed-form,
+.post-inspection-quotation-decision__revision-form,
+.post-inspection-quotation-decision__project-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+}
+
+.post-inspection-quotation-decision__proceed-form label {
+    display: grid;
+    flex: 1 1 260px;
+    gap: 6px;
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.post-inspection-quotation-decision__proceed-form textarea {
+    min-height: 64px;
+    resize: vertical;
+}
+
+.post-inspection-quotation-decision--saved {
+    background: #ecfdf5;
+    border-color: rgba(22, 101, 52, 0.2);
+    color: #166534;
+}
+
+.post-inspection-quotation-decision--saved span {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+@media (max-width: 700px) {
+    .post-inspection-quotation-decision__totals {
+        grid-template-columns: 1fr;
+    }
+}
+
 .inquiry-review-form label,
 .inquiry-schedule-form label,
 .inquiry-archive-form label {

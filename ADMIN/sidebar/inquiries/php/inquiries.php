@@ -383,6 +383,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+    } elseif (($_POST['action'] ?? '') === 'proceed_without_quotation_revision') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $inspectionId = (int)($_POST['inspection_id'] ?? 0);
+        $draftId = (int)($_POST['draft_id'] ?? 0);
+        $remarks = trim((string)($_POST['admin_remarks'] ?? ''));
+        $adminId = (int)($_SESSION['user_id'] ?? 0);
+
+        try {
+            $quotation = inquiry_quote_fetch_full($conn, $draftId);
+            $inspection = inquiry_quote_fetch_post_inspection_decision($conn, $inspectionId);
+            if ($inspection) {
+                throw new RuntimeException('A post-inspection quotation decision already exists.');
+            }
+            if (
+                !$quotation
+                || (int)($quotation['inquiry_id'] ?? 0) !== $inquiryId
+                || (int)($quotation['inspection_id'] ?? 0) !== $inspectionId
+                || !empty($quotation['parent_draft_id'])
+                || (int)($quotation['revision_no'] ?? 0) !== 0
+                || inquiry_quote_normalize_status((string)($quotation['status'] ?? '')) !== 'accepted'
+            ) {
+                throw new RuntimeException('The accepted quotation does not match this approved inspection.');
+            }
+
+            $inspectionStmt = $conn->prepare(
+                "SELECT id FROM site_inspections
+                 WHERE id = ? AND inquiry_id = ? AND admin_review_status = 'Approved' LIMIT 1"
+            );
+            if (!$inspectionStmt) {
+                throw new RuntimeException('Unable to check the inspection report.');
+            }
+            $inspectionStmt->bind_param('ii', $inspectionId, $inquiryId);
+            $inspectionStmt->execute();
+            if (!$inspectionStmt->get_result()->fetch_assoc()) {
+                throw new RuntimeException('Approve the inspection report before choosing the quotation decision.');
+            }
+
+            $costStmt = $conn->prepare(
+                'SELECT COALESCE(SUM(line_total), 0) AS total
+                 FROM site_inspection_cost_items WHERE inspection_id = ?'
+            );
+            if (!$costStmt) {
+                throw new RuntimeException('Unable to calculate inspection costing.');
+            }
+            $costStmt->bind_param('i', $inspectionId);
+            $costStmt->execute();
+            $costingTotal = (float)($costStmt->get_result()->fetch_assoc()['total'] ?? 0);
+            $variance = round($costingTotal - (float)$quotation['grand_total'], 2);
+            if (abs($variance) > 0.004 && $remarks === '') {
+                throw new RuntimeException('Add Admin remarks because the inspection costing differs from the accepted quotation.');
+            }
+
+            $decision = 'proceed_without_revision';
+            $decisionStmt = $conn->prepare(
+                'INSERT INTO inspection_quotation_decisions
+                 (inquiry_id, inspection_id, initial_quotation_draft_id, final_quotation_draft_id, inspection_costing_total, variance_amount, decision, admin_remarks, decided_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            if (!$decisionStmt) {
+                throw new RuntimeException('Unable to save the quotation decision.');
+            }
+            $decisionStmt->bind_param('iiiiddssi', $inquiryId, $inspectionId, $draftId, $draftId, $costingTotal, $variance, $decision, $remarks, $adminId);
+            $decisionStmt->execute();
+            audit_log_event($conn, $adminId, 'proceed_without_quotation_revision', 'inspection_quotation_decision', (int)$conn->insert_id, null, [
+                'inquiry_id' => $inquiryId,
+                'inspection_id' => $inspectionId,
+                'quotation_draft_id' => $draftId,
+                'inspection_costing_total' => $costingTotal,
+                'variance_amount' => $variance,
+                'admin_remarks' => $remarks,
+            ]);
+            inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation kept as the final commercial basis. You can now create the project.', 'quotation');
+        } catch (Throwable $exception) {
+            $error = $exception->getMessage();
+        }
+    } elseif (($_POST['action'] ?? '') === 'create_post_inspection_quotation_revision') {
+        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
+        $inspectionId = (int)($_POST['inspection_id'] ?? 0);
+        $draftId = (int)($_POST['draft_id'] ?? 0);
+
+        try {
+            $revisedDraftId = inquiry_quote_create_post_inspection_revision(
+                $conn,
+                $inquiryId,
+                $inspectionId,
+                $draftId,
+                (int)($_SESSION['user_id'] ?? 0)
+            );
+            audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'create_post_inspection_quotation_revision', 'quotation', $revisedDraftId, null, [
+                'inquiry_id' => $inquiryId,
+                'inspection_id' => $inspectionId,
+                'parent_draft_id' => $draftId,
+            ]);
+            $_SESSION['inquiry_center_flash'] = 'Revised quotation draft created from approved inspection costing. Review it, then send it to the client.';
+            header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $revisedDraftId);
+            exit();
+        } catch (Throwable $exception) {
+            $error = $exception->getMessage();
+        }
     } elseif (($_POST['action'] ?? '') === 'prepare_project_from_quote') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $draftId = (int)($_POST['draft_id'] ?? 0);
@@ -398,6 +497,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (inquiry_quote_normalize_status($quotation['status'] ?? '') !== 'accepted') {
                     throw new RuntimeException('Client must accept the quotation before project setup.');
+                }
+
+                $decisionStmt = $conn->prepare(
+                    "SELECT d.decision
+                     FROM inspection_quotation_decisions d
+                     INNER JOIN site_inspections si ON si.id = d.inspection_id
+                     WHERE d.inquiry_id = ?
+                     AND d.final_quotation_draft_id = ?
+                     AND si.admin_review_status = 'Approved'
+                     LIMIT 1"
+                );
+                if (!$decisionStmt) {
+                    throw new RuntimeException('Unable to check the post-inspection quotation decision.');
+                }
+                $decisionStmt->bind_param('ii', $inquiryId, $draftId);
+                $decisionStmt->execute();
+                if (!$decisionStmt->get_result()->fetch_assoc()) {
+                    throw new RuntimeException('Choose the post-inspection quotation decision before project setup.');
                 }
 
                 if (!empty($quotation['project_id'])) {
@@ -1074,6 +1191,33 @@ if ($costingReviewResult) {
 }
 
 $quotationDraftByInquiry = inquiry_quote_fetch_by_inquiry($conn);
+$originalQuotationByInquiry = [];
+$originalQuotationResult = $conn->query(
+    'SELECT * FROM inquiry_quotation_drafts
+     WHERE revision_no = 0
+     ORDER BY updated_at DESC, id DESC'
+);
+if ($originalQuotationResult) {
+    while ($originalQuotation = $originalQuotationResult->fetch_assoc()) {
+        $inquiryId = (int)($originalQuotation['inquiry_id'] ?? 0);
+        if ($inquiryId > 0 && !isset($originalQuotationByInquiry[$inquiryId])) {
+            $originalQuotationByInquiry[$inquiryId] = $originalQuotation;
+        }
+    }
+}
+
+$postInspectionDecisionByInspection = [];
+if (inquiry_center_has_table($conn, 'inspection_quotation_decisions')) {
+    $decisionResult = $conn->query('SELECT * FROM inspection_quotation_decisions ORDER BY id DESC');
+    if ($decisionResult) {
+        while ($decision = $decisionResult->fetch_assoc()) {
+            $inspectionId = (int)($decision['inspection_id'] ?? 0);
+            if ($inspectionId > 0 && !isset($postInspectionDecisionByInspection[$inspectionId])) {
+                $postInspectionDecisionByInspection[$inspectionId] = $decision;
+            }
+        }
+    }
+}
 $latestRevisionId = 0;
 $latestRevisionUpdatedAt = '';
 $latestRejectedId = 0;
@@ -1261,6 +1405,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
+                    <?php $originalQuotation = $originalQuotationByInquiry[(int)$inquiry['id']] ?? $quotationDraft; ?>
+                    <?php $postInspectionDecision = $latestInspection ? ($postInspectionDecisionByInspection[(int)$latestInspection['id']] ?? null) : null; ?>
                     <?php $quotationListStatus = $quotationDraft ? inquiry_quote_normalize_status((string)$quotationDraft['status']) : ''; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
                     <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus); ?>
@@ -1709,6 +1855,64 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <p><strong>&#127881; Quotation Approved!</strong> The financial proposal has been accepted by the client. Please proceed to the 'Inspection' tab above to assign an Engineer and finalize the project schedule.</p>
                                             <button type="button" class="btn-primary inquiry-quotation-approved-banner__action" data-go-to-inspection>Go to Inspection Stage &#10132;</button>
                                         </div>
+                                        <?php
+                                            $isInspectionReportApproved = $latestInspection
+                                                && (string)($latestInspection['admin_review_status'] ?? '') === 'Approved';
+                                            $initialQuoteStatus = inquiry_quote_normalize_status((string)($originalQuotation['status'] ?? ''));
+                                            $canChoosePostInspectionDecision = $isInspectionReportApproved
+                                                && $originalQuotation
+                                                && $initialQuoteStatus === 'accepted';
+                                            $initialQuotationTotal = (float)($originalQuotation['grand_total'] ?? 0);
+                                            $inspectionVariance = round($latestCostTotal - $initialQuotationTotal, 2);
+                                            $finalQuotationId = (int)($postInspectionDecision['final_quotation_draft_id'] ?? 0);
+                                        ?>
+                                        <?php if ($canChoosePostInspectionDecision && !$postInspectionDecision): ?>
+                                            <section class="post-inspection-quotation-decision">
+                                                <div>
+                                                    <span>Post-Inspection Quotation Decision</span>
+                                                    <strong>Choose the final commercial basis</strong>
+                                                </div>
+                                                <dl class="post-inspection-quotation-decision__totals">
+                                                    <div><dt>Initial Quotation Total</dt><dd><?php echo htmlspecialchars(inquiry_quote_format_money($initialQuotationTotal), ENT_QUOTES, 'UTF-8'); ?></dd></div>
+                                                    <div><dt>Approved Inspection Costing Total</dt><dd><?php echo htmlspecialchars(inquiry_quote_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></dd></div>
+                                                    <div class="post-inspection-quotation-decision__variance"><dt>Variance / Difference</dt><dd><?php echo htmlspecialchars(inquiry_quote_format_money($inspectionVariance), ENT_QUOTES, 'UTF-8'); ?></dd></div>
+                                                </dl>
+                                                <form method="POST" class="post-inspection-quotation-decision__proceed-form">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="action" value="proceed_without_quotation_revision">
+                                                    <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                    <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                    <input type="hidden" name="draft_id" value="<?php echo (int)$originalQuotation['id']; ?>">
+                                                    <label>
+                                                        <span>Admin Remarks <?php echo abs($inspectionVariance) > 0.004 ? '(required because totals differ)' : '(optional)'; ?></span>
+                                                        <textarea name="admin_remarks" rows="2" <?php echo abs($inspectionVariance) > 0.004 ? 'required' : ''; ?> placeholder="Reason for keeping the original quotation"></textarea>
+                                                    </label>
+                                                    <button type="submit" class="btn-secondary">Proceed Without Revision</button>
+                                                </form>
+                                                <form method="POST" class="post-inspection-quotation-decision__revision-form">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="action" value="create_post_inspection_quotation_revision">
+                                                    <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                    <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                    <input type="hidden" name="draft_id" value="<?php echo (int)$originalQuotation['id']; ?>">
+                                                    <button type="submit" class="btn-primary">Create Revised Quotation</button>
+                                                </form>
+                                            </section>
+                                        <?php elseif ($postInspectionDecision): ?>
+                                            <div class="post-inspection-quotation-decision post-inspection-quotation-decision--saved">
+                                                <strong><?php echo $postInspectionDecision['decision'] === 'proceed_without_revision' ? 'Original accepted quotation kept as final.' : 'Revised quotation is required before project creation.'; ?></strong>
+                                                <span>Inspection costing: <?php echo htmlspecialchars(inquiry_quote_format_money((float)$postInspectionDecision['inspection_costing_total']), ENT_QUOTES, 'UTF-8'); ?> | Variance: <?php echo htmlspecialchars(inquiry_quote_format_money((float)$postInspectionDecision['variance_amount']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                <?php if ($finalQuotationId === (int)$quotationDraft['id'] && $quotationStatus === 'accepted' && empty($quotationDraft['project_id'])): ?>
+                                                    <form method="POST" class="post-inspection-quotation-decision__project-form">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <input type="hidden" name="action" value="prepare_project_from_quote">
+                                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                        <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
+                                                        <button type="submit" class="btn-primary">Continue to Project Setup</button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php $quotationRecipient = null; ?>
                                         <?php if (in_array($quotationStatus, ['draft', 'approved', 'accepted'], true)): ?>
                                             <?php try { $quotationRecipient = inquiry_quote_resolve_recipient($conn, (int)$quotationDraft['id']); } catch (Throwable $throwable) { $quotationRecipient = null; } ?>

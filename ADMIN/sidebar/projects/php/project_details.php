@@ -746,7 +746,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $pendingTaskCount++;
                     }
                 }
-                $pulseSignal = max(12, min(100, (int)$completionRate));
+                $pulseSignal = max(0, min(100, (int)$completionRate));
                 $projectCreatedAt = trim((string)($project['created_at'] ?? ''));
                 $latestTrackedEventAt = $projectCreatedAt;
                 $paymentLatestAt = trim((string)($projectPaymentEntries[0]['payment_date'] ?? ''));

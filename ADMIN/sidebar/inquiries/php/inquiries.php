@@ -1512,6 +1512,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
                         <div class="inquiry-card__head">
                             <div class="inquiry-card__identity">
+                                <?php if (!$isViewed): ?>
+                                    <span class="inquiry-card__new-indicator" data-inquiry-unread-indicator>
+                                        <span aria-hidden="true"></span>New
+                                    </span>
+                                <?php endif; ?>
                                 <span class="inquiry-card__eyebrow">Contact Person</span>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             </div>

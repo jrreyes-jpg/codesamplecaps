@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../config/audit_log.php';
 require_once __DIR__ . '/../../../config/profile_photo_storage.php';
+require_once __DIR__ . '/../../../config/phone_normalization.php';
 
 function shared_account_find_user(mysqli $conn, int $userId, bool $supportsProfilePhoto): ?array
 {
@@ -24,7 +25,7 @@ function shared_account_find_user(mysqli $conn, int $userId, bool $supportsProfi
 
 function shared_account_is_valid_phone(string $phone): bool
 {
-    return $phone === '' || (bool)preg_match('/^09\d{9}$/', $phone);
+    return $phone === '' || is_valid_ph_mobile($phone);
 }
 
 function shared_account_is_strong_password(string $password): bool
@@ -46,6 +47,7 @@ function shared_account_update_profile(
     ?array $profilePhotoUpload,
     bool $supportsProfilePhoto
 ): array {
+    $phone = normalize_ph_mobile($phone);
     $currentUser = $userId > 0
         ? shared_account_find_user($conn, $userId, $supportsProfilePhoto)
         : null;
@@ -59,11 +61,11 @@ function shared_account_update_profile(
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['error' => 'Please use a valid email address.', 'message' => ''];
     }
-    if (!ctype_digit($phone) && $phone !== '') {
-        return ['error' => 'Phone number must contain numbers only.', 'message' => ''];
-    }
     if (!shared_account_is_valid_phone($phone)) {
         return ['error' => 'Phone number must be a valid PH mobile number (09xxxxxxxxx).', 'message' => ''];
+    }
+    if (user_phone_normalized_exists($conn, $phone, $userId)) {
+        return ['error' => 'This phone number is already used by another account.', 'message' => ''];
     }
 
     $duplicateStmt = $conn->prepare(
@@ -90,17 +92,17 @@ function shared_account_update_profile(
     $newPhotoPath = $uploadedPhoto['path'] ?? ($currentUser['profile_photo_path'] ?? null);
     $uploadedNewPhoto = $uploadedPhoto['path'] !== null;
     $updateStmt = $supportsProfilePhoto
-        ? $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ?, profile_photo_path = ? WHERE id = ?')
-        : $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?');
+        ? $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ?, phone_normalized = ?, profile_photo_path = ? WHERE id = ?')
+        : $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ?, phone_normalized = ? WHERE id = ?');
 
     if (!$updateStmt) {
         return ['error' => 'Failed to update your profile.', 'message' => ''];
     }
 
     if ($supportsProfilePhoto) {
-        $updateStmt->bind_param('ssssi', $fullName, $email, $phone, $newPhotoPath, $userId);
+        $updateStmt->bind_param('sssssi', $fullName, $email, $phone, $phone, $newPhotoPath, $userId);
     } else {
-        $updateStmt->bind_param('sssi', $fullName, $email, $phone, $userId);
+        $updateStmt->bind_param('ssssi', $fullName, $email, $phone, $phone, $userId);
     }
 
     if (!$updateStmt->execute()) {

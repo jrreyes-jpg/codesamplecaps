@@ -125,23 +125,27 @@ $messageType = $messageType ?? 'success';
                 <table class="responsive-table">
                     <colgroup>
                         <col class="user-management-table__col-name">
+                        <col class="user-management-table__col-email">
+                        <col class="user-management-table__col-phone">
                         <col class="user-management-table__col-role">
                         <col class="user-management-table__col-status">
                         <col class="user-management-table__col-created">
                         <col class="user-management-table__col-actions">
                     </colgroup>
                     <thead>
-                        <tr><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+                        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr>
                     </thead>
                     <tbody data-user-table-body>
                         <?php if (empty($managedUsers)): ?>
-                            <tr><td colspan="5" class="user-table-empty"><?php echo $userTrashView ? 'No users in trash.' : 'No users match the current filter.'; ?></td></tr>
+                            <tr><td colspan="7" class="user-table-empty"><?php echo $userTrashView ? 'No users in trash.' : 'No users match the current filter.'; ?></td></tr>
                         <?php else: ?>
                             <?php foreach ($managedUsers as $user): $status = $user['status'] ?? 'active'; $rowId = (int)$user['id']; $normalizedRole = normalizeRole((string)($user['role'] ?? '')); $deactivationBlockers = ($status === 'active' && !$userTrashView) ? getDeactivationBlockers($conn, $rowId, $normalizedRole) : []; ?>
                                 <tr class="user-row" data-row-id="<?php echo $rowId; ?>" data-user-search="<?php echo htmlspecialchars(strtolower(trim(($user['full_name'] ?? '') . ' ' . ($user['email'] ?? '') . ' ' . ($user['phone'] ?? '') . ' ' . $normalizedRole . ' ' . $status))); ?>">
                                     <td data-label="Name">
                                         <input class="table-input" type="text" data-field="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" readonly required>
                                     </td>
+                                    <td data-label="Email"><span class="user-contact-value"><?php echo htmlspecialchars((string)($user['email'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                    <td data-label="Phone"><span class="user-contact-value"><?php echo htmlspecialchars((string)($user['phone'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
                                     <td data-label="Role">
                                         <span class="role-badge role-badge-<?php echo htmlspecialchars($normalizedRole); ?>"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $normalizedRole))); ?></span>
                                     </td>
@@ -177,6 +181,7 @@ $messageType = $messageType ?? 'success';
                                                         data-user-name="<?php echo htmlspecialchars((string)($user['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-user-email="<?php echo htmlspecialchars((string)($user['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-user-phone="<?php echo htmlspecialchars((string)($user['phone'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-user-status="<?php echo htmlspecialchars((string)$status, ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-user-status-date="<?php echo htmlspecialchars(superadmin_user_format_date($user['status_changed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
                                                     >Edit Details</button>
                                                     <button type="button" class="user-actions-menu__item" data-open-reset-modal data-user-id="<?php echo $rowId; ?>" data-user-name="<?php echo htmlspecialchars((string)$user['full_name'], ENT_QUOTES, 'UTF-8'); ?>">Reset Password</button>
@@ -217,7 +222,7 @@ $messageType = $messageType ?? 'success';
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                            <tr class="user-search-empty-row" hidden><td colspan="5" class="user-table-empty">No users match your search.</td></tr>
+                            <tr class="user-search-empty-row" hidden><td colspan="7" class="user-table-empty">No users match your search.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

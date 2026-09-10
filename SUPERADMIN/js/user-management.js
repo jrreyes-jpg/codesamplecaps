@@ -330,6 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (editEmail) editEmail.value = button.getAttribute('data-user-email') || '';
                 if (editPhone) editPhone.value = normalizePhMobile(button.getAttribute('data-user-phone') || '');
                 if (editStatusDate) editStatusDate.textContent = button.getAttribute('data-user-status-date') || 'Not set';
+                editForm.dataset.userStatus = button.getAttribute('data-user-status') || '';
                 clearEditValidation();
                 closeUserActionMenus(null);
                 editModal.hidden = false;
@@ -367,6 +368,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (firstInvalid) {
                 event.preventDefault();
                 firstInvalid.focus();
+                return;
+            }
+
+            if (editForm.dataset.userStatus === 'active' && !window.confirm('Save changes to this active user account?')) {
+                event.preventDefault();
             }
         });
     }

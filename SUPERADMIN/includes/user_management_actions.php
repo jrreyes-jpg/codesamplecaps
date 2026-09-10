@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/audit_log.php';
+require_once __DIR__ . '/../../config/phone_normalization.php';
 
 // User Management logic lang ito para hindi na nakaasa sa dashboard file.
 $allowedRoles = ['admin', 'engineer', 'foreman', 'inventory_clerk', 'client'];
@@ -11,25 +12,7 @@ function normalizeRole(string $role): string {
 }
 
 function normalizePhMobile(?string $phone): string {
-    $digits = preg_replace('/\D+/', '', (string)$phone);
-
-    if ($digits === '') {
-        return '';
-    }
-
-    if (strpos($digits, '639') === 0) {
-        return substr('09' . substr($digits, 3), 0, 11);
-    }
-
-    if (strpos($digits, '9') === 0) {
-        return substr('0' . $digits, 0, 11);
-    }
-
-    if (strpos($digits, '09') !== 0) {
-        return substr('09' . ltrim($digits, '0'), 0, 11);
-    }
-
-    return substr($digits, 0, 11);
+    return normalize_ph_mobile($phone);
 }
 
 function isValidPhMobile(?string $phone): bool {
@@ -37,7 +20,7 @@ function isValidPhMobile(?string $phone): bool {
         return false;
     }
 
-    return (bool)preg_match('/^09\d{9}$/', normalizePhMobile($phone));
+    return is_valid_ph_mobile($phone);
 }
 
 function isValidPersonName(string $name): bool {
@@ -322,11 +305,15 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
             superadmin_user_flash('error', 'Duplicate detected. Full name and email must be unique.', $old);
             superadmin_user_redirect('create');
         }
+        if (user_phone_normalized_exists($conn, $old['phone'])) {
+            superadmin_user_flash('error', 'This phone number is already used by another account.', $old);
+            superadmin_user_redirect('create');
+        }
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         $createdBy = (int)($_SESSION['user_id'] ?? 0);
-        $stmt = $conn->prepare('INSERT INTO users (full_name, email, password, role, phone, status, status_changed_at, created_by) VALUES (?, ?, ?, ?, ?, "active", NOW(), ?)');
-        $stmt->bind_param('sssssi', $old['full_name'], $old['email'], $passwordHash, $old['role'], $old['phone'], $createdBy);
+        $stmt = $conn->prepare('INSERT INTO users (full_name, email, password, role, phone, phone_normalized, status, status_changed_at, created_by) VALUES (?, ?, ?, ?, ?, ?, "active", NOW(), ?)');
+        $stmt->bind_param('ssssssi', $old['full_name'], $old['email'], $passwordHash, $old['role'], $old['phone'], $old['phone'], $createdBy);
 
         if ($stmt->execute()) {
             audit_log_event($conn, $createdBy, 'create_user', 'user', (int)$stmt->insert_id, null, [
@@ -389,9 +376,13 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
             superadmin_user_flash('error', 'Duplicate detected. Full name and email must be unique.');
             superadmin_user_redirect('users');
         }
+        if (user_phone_normalized_exists($conn, $phone, $userId)) {
+            superadmin_user_flash('error', 'This phone number is already used by another account.');
+            superadmin_user_redirect('users');
+        }
 
-        $stmt = $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?');
-        $stmt->bind_param('sssi', $fullName, $email, $phone, $userId);
+        $stmt = $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ?, phone_normalized = ? WHERE id = ?');
+        $stmt->bind_param('ssssi', $fullName, $email, $phone, $phone, $userId);
         if ($stmt->execute()) {
             audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'update_user_profile', 'user', $userId, [
                 'full_name' => $user['full_name'] ?? null,

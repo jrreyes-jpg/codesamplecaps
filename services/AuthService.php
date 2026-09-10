@@ -412,6 +412,12 @@ class AuthService {
             $clientId = (int)$existing['id'];
             $state = 'pending_resend';
         } else {
+            if (!is_valid_ph_mobile($phone)) {
+                return ['success' => false, 'error' => 'The inquiry contact number is invalid. Use a PH mobile number.'];
+            }
+            if ($this->userRepo->phoneExists($phone)) {
+                return ['success' => false, 'error' => 'This contact number is already used by another account. Review it in User Management before project setup.'];
+            }
             $clientId = $this->userRepo->createPendingClient($fullName, $email, $phone, $createdBy);
             if (!$clientId) {
                 return ['success' => false, 'error' => 'Unable to create the pending Client account.'];

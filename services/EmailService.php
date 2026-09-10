@@ -338,23 +338,23 @@ class EmailService {
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Final Quotation and Inspection Schedule - ' . $this->config->get('APP_NAME');
+            $this->mailer->Subject = 'Inspection Schedule Confirmed - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
-                        <h2 style='margin:0'>Your final quotation is ready</h2>
+                        <h2 style='margin:0'>Your site inspection has been scheduled</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
-                        <p>Your approved quotation <strong>{$safeQuotationNo}</strong> is now finalized.</p>
-                        <p>Final Total: <strong>{$safeGrandTotal}</strong></p>
+                        <p>Your Accepted Quotation <strong>{$safeQuotationNo}</strong> now has a confirmed inspection schedule.</p>
+                        <p>Accepted Quotation Total: <strong>{$safeGrandTotal}</strong></p>
                         <p>Assigned Engineer: <strong>{$safeEngineerName}</strong></p>
                         <p>Inspection Schedule: <strong>{$safeInspectionSchedule}</strong></p>
-                        <p><a href='{$safeFinalQuotationLink}' style='display:inline-block;background:#166534;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>View Final Quotation</a></p>
+                        <p><a href='{$safeFinalQuotationLink}' style='display:inline-block;background:#166534;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>View Accepted Quotation</a></p>
                         <p>You may open the link and use Print / Save as PDF for your official copy.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Your final quotation {$quotationNo} is ready. Final Total: PHP " . number_format($grandTotal, 2) . ". Engineer: {$engineerName}. Inspection: {$inspectionSchedule}. View your final quotation: {$finalQuotationLink}";
+            $this->mailer->AltBody = "Your site inspection has been scheduled. Accepted Quotation {$quotationNo}. Accepted Quotation Total: PHP " . number_format($grandTotal, 2) . ". Engineer: {$engineerName}. Inspection: {$inspectionSchedule}. View your Accepted Quotation: {$finalQuotationLink}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

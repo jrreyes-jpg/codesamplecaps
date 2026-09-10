@@ -912,9 +912,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                     try {
                         inquiry_quote_send_final_confirmation($conn, $acceptedQuotationId);
-                        $message = $existingInspectionId > 0
-                            ? 'Inspection schedule updated and final quotation emailed.'
-                            : 'Inspection finalized and final quotation emailed.';
+                        $message = 'Inspection schedule confirmed and client notified.';
                     } catch (Throwable $mailThrowable) {
                         $error = $mailThrowable->getMessage();
                     }

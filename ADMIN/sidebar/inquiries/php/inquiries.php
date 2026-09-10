@@ -87,7 +87,7 @@ function inquiry_center_has_client_quotation_approval(?string $quotationStatus):
 function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): string
 {
     if (!$quotationDraft) {
-        return 'Create quotation before assigning Engineer or setting inspection date.';
+        return 'Create the quotation first, then send it to the client for review.';
     }
 
     $status = inquiry_quote_normalize_status((string)($quotationDraft['status'] ?? ''));

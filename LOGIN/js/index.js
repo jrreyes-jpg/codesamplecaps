@@ -1026,6 +1026,10 @@ const restoreInquiryDraft = () => {
         });
 
         clearDraftButton?.addEventListener('click', () => {
+            if (isSubmittingInquiry || !window.confirm('Clear all inquiry details?')) {
+                return;
+            }
+
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
             contactInput.value = '09';
@@ -1139,8 +1143,20 @@ const restoreInquiryDraft = () => {
             isSubmittingInquiry = true;
             if (submitButton) {
                 submitButton.disabled = true;
-                submitButton.textContent = 'Sending code...';
+                submitButton.setAttribute('aria-busy', 'true');
+                submitButton.innerHTML = '<span class="inquiry-submit__spinner" aria-hidden="true"></span><span>Submitting Inquiry...</span>';
             }
+        });
+
+        window.addEventListener('pageshow', () => {
+            if (!isSubmittingInquiry || !submitButton) {
+                return;
+            }
+
+            isSubmittingInquiry = false;
+            submitButton.disabled = false;
+            submitButton.removeAttribute('aria-busy');
+            submitButton.textContent = 'Submit Inquiry';
         });
     });
 };

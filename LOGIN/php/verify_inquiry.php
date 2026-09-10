@@ -3,6 +3,7 @@ session_start();
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
+require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $message = '';
@@ -69,7 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientName = (string)($payload['client_name'] ?? '');
         $companyName = $payload['company_name'] ?? null;
         $email = (string)($payload['email'] ?? '');
-        $contactNo = (string)($payload['contact_no'] ?? '');
+        $contactNo = normalize_ph_mobile((string)($payload['contact_no'] ?? ''));
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !is_valid_ph_mobile($contactNo)) {
+            verify_inquiry_redirect_home('invalid');
+        }
+
+        $contactValidation = inquiry_contact_validation_result($conn, $clientName, $email, $contactNo);
+        if (!$contactValidation['valid']) {
+            verify_inquiry_redirect_home((string)$contactValidation['status']);
+        }
+
         $province = (string)($payload['province'] ?? '');
         $cityMunicipality = (string)($payload['city_municipality'] ?? '');
         $barangay = (string)($payload['barangay'] ?? '');

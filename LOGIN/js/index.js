@@ -97,6 +97,8 @@ const initInquiryStatusToast = () => {
     const messages = {
         success: ['Inquiry sent. Please wait for our call or email.', 'success'],
         invalid: ['Please check the form and try again.', 'error'],
+        contact_not_allowed: ['These contact details cannot be used for this inquiry. Please use your own contact information.', 'error'],
+        contact_mismatch: ['The provided contact details do not match our records.', 'error'],
         email_error: ['We could not send the verification code. Please try again later.', 'error'],
         expired: ['The verification code expired. Please submit the inquiry again.', 'error'],
     };

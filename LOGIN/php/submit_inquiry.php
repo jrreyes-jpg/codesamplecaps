@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
+require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
@@ -66,7 +67,7 @@ function inquiry_column_exists(mysqli $conn, string $columnName): bool
 $clientName = normalize_text($_POST['client_name'] ?? '');
 $companyName = normalize_text($_POST['company_name'] ?? '');
 $email = normalize_text($_POST['email'] ?? '');
-$contactNo = normalize_text($_POST['contact_no'] ?? '');
+$contactNo = normalize_ph_mobile(normalize_text($_POST['contact_no'] ?? ''));
 $region = normalize_text($_POST['region'] ?? '');
 $locationArea = normalize_text($_POST['location_area'] ?? '');
 $province = service_area_storage_province($region, $locationArea);
@@ -100,7 +101,7 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = 'email';
 }
 
-if ($contactNo === '' || !preg_match('/^09\d{9}$/', $contactNo)) {
+if ($contactNo === '' || !is_valid_ph_mobile($contactNo)) {
     $errors[] = 'contact_no';
 }
 
@@ -152,6 +153,11 @@ if ($preferredInspectionDate !== '') {
 
 if ($errors !== []) {
     redirect_to_form('invalid');
+}
+
+$contactValidation = inquiry_contact_validation_result($conn, $clientName, $email, $contactNo);
+if (!$contactValidation['valid']) {
+    redirect_to_form((string)$contactValidation['status']);
 }
 
 $companyName = $companyName !== '' ? $companyName : null;

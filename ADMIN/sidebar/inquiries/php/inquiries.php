@@ -1810,7 +1810,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions">
-                                                <button type="submit" class="btn-primary" <?php echo empty($engineers) ? 'disabled' : ''; ?>>Finalize &amp; Send Final PDF</button>
+                                                <button type="submit" class="btn-primary" <?php echo empty($engineers) ? 'disabled' : ''; ?>>Confirm Inspection Schedule & Send to Client</button>
                                                 <button type="button" class="btn-secondary inquiry-clear-inputs" data-inquiry-clear-inputs>Clear inputs</button>
                                             </div>
                                         </form>

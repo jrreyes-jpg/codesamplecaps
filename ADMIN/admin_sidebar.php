@@ -155,19 +155,6 @@ if (!function_exists('super_admin_notification_action_label')) {
 if (!function_exists('super_admin_fetch_notification_data')) {
     function super_admin_fetch_notification_data(mysqli $conn): array
     {
-        $cacheKey = 'super_admin_sidebar_notification_data';
-        $cacheTtlSeconds = 30;
-        $cached = $_SESSION[$cacheKey] ?? null;
-
-        if (
-            is_array($cached)
-            && isset($cached['expires_at'], $cached['data'])
-            && (int)$cached['expires_at'] >= time()
-            && is_array($cached['data'])
-        ) {
-            return $cached['data'];
-        }
-
         $projectRiskCount = 0;
         $stockAlertCount = 0;
         $inactiveAssignmentCount = 0;
@@ -247,7 +234,8 @@ if (!function_exists('super_admin_fetch_notification_data')) {
                 "SELECT COUNT(*) AS total
                  FROM service_inquiries
                  WHERE status = 'Pending Review'
-                 AND viewed_at IS NULL"
+                 AND viewed_at IS NULL
+                 AND archived_at IS NULL"
             );
             if ($inquiryCountResult) {
                 $inquiryCount = (int)(($inquiryCountResult->fetch_assoc()['total'] ?? 0));
@@ -258,8 +246,9 @@ if (!function_exists('super_admin_fetch_notification_data')) {
                  FROM service_inquiries
                  WHERE status = 'Pending Review'
                  AND viewed_at IS NULL
+                 AND archived_at IS NULL
                  ORDER BY created_at DESC
-                 LIMIT 4"
+                 LIMIT 8"
             );
             if ($inquiryAlertResult) {
                 $inquiryAlerts = $inquiryAlertResult->fetch_all(MYSQLI_ASSOC);
@@ -335,11 +324,6 @@ if (!function_exists('super_admin_fetch_notification_data')) {
             'inactive_assignment_alerts' => $inactiveAssignmentAlerts,
             'inquiry_alerts' => $inquiryAlerts,
             'recent_activity' => $recentActivity,
-        ];
-
-        $_SESSION[$cacheKey] = [
-            'expires_at' => time() + $cacheTtlSeconds,
-            'data' => $data,
         ];
 
         return $data;
@@ -432,7 +416,13 @@ $headerProfileLinks = [
 ];
 include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
 
-<div class="topbar-notifications" data-notification-root>
+<?php $adminInquiryNotificationCsrf = auth_csrf_token('admin_inquiry_notifications'); ?>
+<div
+    class="topbar-notifications"
+    data-notification-root
+    data-inquiry-notification-endpoint="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_notifications.php"
+    data-inquiry-notification-csrf="<?php echo htmlspecialchars($adminInquiryNotificationCsrf, ENT_QUOTES, 'UTF-8'); ?>"
+>
     <button
         title="Notifications"
         id="topbarNotificationToggle"
@@ -446,71 +436,33 @@ include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
                 <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor" />
             </svg>
         </span>
-        <?php if (($superAdminNotificationData['urgent_count'] ?? 0) > 0): ?>
-            <span class="topbar-notifications__badge">
-                <?php echo $superAdminNotificationData['urgent_count'] > 99 ? '99+' : (int)$superAdminNotificationData['urgent_count']; ?>
-            </span>
-        <?php endif; ?>
+        <span class="topbar-notifications__badge" data-inquiry-notification-badge<?php echo ($superAdminNotificationData['inquiry_count'] ?? 0) > 0 ? '' : ' hidden'; ?>>
+            <?php echo ($superAdminNotificationData['inquiry_count'] ?? 0) > 99 ? '99+' : (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?>
+        </span>
     </button>
 
     <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
         <div class="topbar-notifications__panel-head">
             <div>
                 <strong>Notifications</strong>
-                <span>
-                    <?php echo (int)($superAdminNotificationData['urgent_count'] ?? 0); ?> need attention
-                </span>
+                <span data-inquiry-notification-count><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?> unread</span>
             </div>
         </div>
 
-        <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
-            <div class="topbar-notifications__summary">
-                <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php?status=ongoing" class="notification-summary-chip notification-summary-chip--danger">
-                    <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
-                    <span>Project risks</span>
-                </a>
-            </div>
-        <?php endif; ?>
-        <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) > 0): ?>
-            <div class="topbar-notifications__summary">
-                <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="notification-summary-chip notification-summary-chip--info">
-                    <strong><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?></strong>
-                    <span>New inquiries</span>
-                </a>
-            </div>
-        <?php endif; ?>
-
-        <div class="topbar-notifications__section">
-            <div class="topbar-notifications__section-title">Needs attention</div>
-            <?php if (($superAdminNotificationData['urgent_count'] ?? 0) === 0): ?>
-                <div class="topbar-notifications__empty">
-                    No urgent alerts right now.
+        <div class="topbar-notifications__section" data-inquiry-notification-list>
+            <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) === 0): ?>
+                <div class="topbar-notifications__empty" data-inquiry-notification-empty>
+                    No unread inquiries.
                 </div>
             <?php else: ?>
-                <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)($projectAlert['id'] ?? 0); ?>" class="notification-item notification-item--danger">
-                        <span class="notification-item__dot"></span>
-                        <div class="notification-item__copy">
-                            <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>
-                            <span>
-                                <?php
-                                $parts = [];
-                                if ((int)($projectAlert['delayed_tasks'] ?? 0) > 0) {
-                                    $parts[] = (int)($projectAlert['delayed_tasks'] . ' delayed task(s)');
-                                }
-                                echo htmlspecialchars(implode(' | ', $parts) ?: 'Needs checking');
-                                ?>
-                            </span>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
                 <?php foreach ($superAdminNotificationData['inquiry_alerts'] as $inquiryAlert): ?>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed">
+                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed" data-inquiry-notification-id="<?php echo (int)($inquiryAlert['id'] ?? 0); ?>">
                         <span class="notification-item__dot"></span>
                         <div class="notification-item__copy">
                             <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>
                             <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> &bull; New inquiry</span>
                         </div>
+                        <span class="notification-item__time"><?php echo htmlspecialchars(super_admin_notification_relative_time((string)($inquiryAlert['created_at'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></span>
                     </a>
                 <?php endforeach; ?>
             <?php endif; ?>

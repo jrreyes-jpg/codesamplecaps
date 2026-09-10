@@ -5,13 +5,13 @@ $adminJsFiles = $adminJsFiles ?? [
     '/codesamplecaps/assets/js/realtime-updates.js',
 ];
 
-if (!in_array('/codesamplecaps/SHARED/header/core/operations-header.js', $adminJsFiles, true)) {
-    array_unshift($adminJsFiles, '/codesamplecaps/SHARED/header/core/operations-header.js');
-}
+$sharedAdminJsFiles = [
+    '/codesamplecaps/assets/js/app-window-guard.js',
+    '/codesamplecaps/SHARED/header/core/operations-header.js',
+    '/codesamplecaps/SHARED/toast/js/toast.js',
+];
 
-if (!in_array('/codesamplecaps/assets/js/app-window-guard.js', $adminJsFiles, true)) {
-    array_unshift($adminJsFiles, '/codesamplecaps/assets/js/app-window-guard.js');
-}
+$adminJsFiles = array_values(array_unique(array_merge($sharedAdminJsFiles, $adminJsFiles)));
 ?>
 </div>
 <?php foreach ($adminJsFiles as $jsFile): ?>

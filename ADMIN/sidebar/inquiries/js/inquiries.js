@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const openButtons = document.querySelectorAll('[data-inquiry-modal-open]');
     const archiveOpenButtons = document.querySelectorAll('[data-archive-modal-open]');
     const inquiryShell = document.querySelector('.inquiries-shell');
-    let pendingUnreadInquiryCount = Number.parseInt(inquiryShell?.dataset.pendingUnreadInquiryCount || '0', 10);
     let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);
     let latestRevisionUpdatedAt = inquiryShell?.dataset.latestRevisionUpdatedAt || '';
     let latestRejectedId = Number.parseInt(inquiryShell?.dataset.latestRejectedId || '0', 10);
@@ -96,19 +95,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         playToastSound();
-    };
-
-    const showNewInquiryBellDot = function () {
-        const notificationToggle = document.querySelector('[data-notification-root] .topbar-notifications__toggle');
-        if (!notificationToggle || notificationToggle.querySelector('[data-live-inquiry-dot]')) {
-            return;
-        }
-
-        const dot = document.createElement('span');
-        dot.className = 'inquiry-live-notification-dot';
-        dot.setAttribute('data-live-inquiry-dot', '');
-        dot.setAttribute('aria-hidden', 'true');
-        notificationToggle.appendChild(dot);
     };
 
     const confirmBox = document.createElement('div');
@@ -221,6 +207,13 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.hidden = false;
         document.body.classList.add('inquiry-modal-open');
         sessionStorage.setItem('edgeLastInquiryModal', modal.id);
+
+        const inquiryId = Number.parseInt(modal.dataset.inquiryId || '0', 10);
+        if (inquiryId > 0) {
+            document.dispatchEvent(new CustomEvent('edge:inquiry-opened', {
+                detail: { inquiryId: inquiryId },
+            }));
+        }
 
         const closeButton = modal.querySelector('[data-inquiry-modal-close]');
         if (closeButton) {
@@ -921,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let quotationPollInProgress = false;
 
     const pollQuotationStatuses = function () {
-        if (quotationPollInProgress || document.hidden || !inquiryShell?.hasAttribute('data-pending-unread-inquiry-count')) {
+        if (quotationPollInProgress || document.hidden || quotationStatusModals.length === 0) {
             return;
         }
 
@@ -951,25 +944,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const currentPendingUnreadCount = Number.parseInt(data.pending_unread_inquiry_count || '0', 10);
-                if (currentPendingUnreadCount > pendingUnreadInquiryCount) {
-                    showNewInquiryBellDot();
-                    showLiveInquiryToast(
-                        'Notification: A new client inquiry has just been received!',
-                        Number.parseInt(data.latest_pending_inquiry_id || '0', 10),
-                        'client'
-                    );
-                }
-                pendingUnreadInquiryCount = currentPendingUnreadCount;
-                inquiryShell.dataset.pendingUnreadInquiryCount = String(currentPendingUnreadCount);
-
                 const currentRevisionId = Number.parseInt(data.latest_revision_id || '0', 10);
                 const currentRevisionUpdatedAt = String(data.latest_revision_updated_at || '');
                 const hasNewRevision = currentRevisionUpdatedAt > latestRevisionUpdatedAt
                     || (currentRevisionUpdatedAt === latestRevisionUpdatedAt && currentRevisionId > latestRevisionId);
 
                 if (currentRevisionId > 0 && hasNewRevision) {
-                    showNewInquiryBellDot();
                     showLiveInquiryToast(
                         'Notification: A client has requested a revision on their quotation!',
                         Number.parseInt(data.latest_revision_inquiry_id || '0', 10),
@@ -988,7 +968,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (currentRejectedId > 0 && hasNewRejection) {
                     const rejectionNote = String(data.latest_rejected_note || 'No note provided.');
-                    showNewInquiryBellDot();
                     showLiveInquiryToast(
                         'Notification: Client rejected the quotation. Note: ' + rejectionNote,
                         Number.parseInt(data.latest_rejected_inquiry_id || '0', 10),

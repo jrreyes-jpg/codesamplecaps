@@ -113,4 +113,167 @@ document.addEventListener('DOMContentLoaded', function () {
         updateCount();
     });
 
+    const notificationRoot = document.querySelector('[data-notification-root]');
+    if (notificationRoot && !window.edgeAdminInquiryNotificationsStarted) {
+        window.edgeAdminInquiryNotificationsStarted = true;
+
+        const endpoint = notificationRoot.dataset.inquiryNotificationEndpoint || '';
+        const csrfToken = notificationRoot.dataset.inquiryNotificationCsrf || '';
+        const badge = notificationRoot.querySelector('[data-inquiry-notification-badge]');
+        const countLabel = notificationRoot.querySelector('[data-inquiry-notification-count]');
+        const list = notificationRoot.querySelector('[data-inquiry-notification-list]');
+        const pendingReads = new Set();
+        let pollInProgress = false;
+
+        const formatRelativeTime = function (dateTime) {
+            const timestamp = Date.parse(String(dateTime || '').replace(' ', 'T'));
+            if (!Number.isFinite(timestamp)) return '';
+
+            const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + ' min ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hr ago';
+            if (seconds < 604800) return Math.floor(seconds / 86400) + ' day(s) ago';
+            return new Date(timestamp).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+
+        const inquiryUrl = function (inquiryId) {
+            return '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=' + encodeURIComponent(String(inquiryId));
+        };
+
+        const renderNotificationList = function (items) {
+            if (!list) return;
+            list.replaceChildren();
+
+            if (!Array.isArray(items) || items.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'topbar-notifications__empty';
+                empty.setAttribute('data-inquiry-notification-empty', '');
+                empty.textContent = 'No unread inquiries.';
+                list.appendChild(empty);
+                return;
+            }
+
+            items.forEach(function (item) {
+                const link = document.createElement('a');
+                const dot = document.createElement('span');
+                const copy = document.createElement('div');
+                const name = document.createElement('strong');
+                const details = document.createElement('span');
+                const time = document.createElement('span');
+
+                link.href = inquiryUrl(item.id);
+                link.className = 'notification-item notification-item--inquiry-unviewed';
+                link.dataset.inquiryNotificationId = String(item.id || '');
+                dot.className = 'notification-item__dot';
+                copy.className = 'notification-item__copy';
+                name.textContent = String(item.client_name || 'Client inquiry');
+                details.textContent = String(item.service_category || 'Service request') + ' • New inquiry';
+                time.className = 'notification-item__time';
+                time.textContent = formatRelativeTime(item.created_at);
+                copy.append(name, details);
+                link.append(dot, copy, time);
+                list.appendChild(link);
+            });
+        };
+
+        const applyNotificationState = function (data) {
+            const unreadCount = Math.max(0, Number.parseInt(data.unread_count || '0', 10));
+            if (badge) {
+                badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+                badge.hidden = unreadCount === 0;
+            }
+            if (countLabel) {
+                countLabel.textContent = unreadCount + ' unread';
+            }
+            renderNotificationList(data.items);
+        };
+
+        const openInquiry = function (inquiryId) {
+            window.location.assign(inquiryUrl(inquiryId));
+        };
+
+        const showPollingToast = function (data) {
+            if (typeof window.showToast !== 'function') return;
+
+            const newItems = Array.isArray(data.new_items) ? data.new_items : [];
+            if (data.show_unread_summary) {
+                window.showToast('You have ' + Number.parseInt(data.unread_count || '0', 10) + ' unread inquiries.', 'success');
+                return;
+            }
+
+            if (newItems.length === 1) {
+                const item = newItems[0];
+                window.showToast('New inquiry received from ' + String(item.client_name || 'a client') + '.', 'success', {
+                    onClick: function () { openInquiry(item.id); },
+                });
+            } else if (newItems.length > 1) {
+                window.showToast(newItems.length + ' new inquiries received.', 'success');
+            }
+        };
+
+        const pollNotifications = function () {
+            if (!endpoint || pollInProgress || document.hidden) return;
+            pollInProgress = true;
+
+            fetch(endpoint, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store',
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Notification check failed.');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data.success) return;
+                    applyNotificationState(data);
+                    showPollingToast(data);
+                })
+                .catch(function () {
+                    // Susubok ulit sa next poll kapag may temporary error.
+                })
+                .finally(function () {
+                    pollInProgress = false;
+                });
+        };
+
+        const markInquiryRead = function (inquiryId) {
+            const normalizedId = Number.parseInt(inquiryId || '0', 10);
+            if (!endpoint || !csrfToken || normalizedId <= 0 || pendingReads.has(normalizedId)) return;
+            pendingReads.add(normalizedId);
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ inquiry_id: normalizedId, csrf_token: csrfToken }),
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Unable to mark inquiry as read.');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.success) applyNotificationState(data);
+                })
+                .catch(function () {
+                    // Mananatiling unread kapag hindi naisave sa server.
+                })
+                .finally(function () {
+                    pendingReads.delete(normalizedId);
+                });
+        };
+
+        document.addEventListener('edge:inquiry-opened', function (event) {
+            markInquiryRead(event.detail?.inquiryId);
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) pollNotifications();
+        });
+
+        pollNotifications();
+        window.setInterval(pollNotifications, 12000);
+    }
+
 });

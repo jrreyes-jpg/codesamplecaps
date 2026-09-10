@@ -116,6 +116,7 @@ function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): 
 function inquiry_center_redirect(string $view, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
+    unset($_SESSION['super_admin_sidebar_notification_data']);
     $query = $view === 'archive' ? '?view=archive' : '';
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . $query);
     exit();
@@ -129,6 +130,7 @@ function inquiry_center_redirect_back(string $message, string $fallback = '/code
     }
 
     $_SESSION['inquiry_center_flash'] = $message;
+    unset($_SESSION['super_admin_sidebar_notification_data']);
     header('Location: ' . $returnUrl);
     exit();
 }
@@ -137,6 +139,7 @@ function inquiry_center_redirect_with_project(int $projectId, string $message): 
 {
     $_SESSION['inquiry_center_flash'] = $message;
     $_SESSION['inquiry_center_flash_project_id'] = $projectId;
+    unset($_SESSION['super_admin_sidebar_notification_data']);
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection');
     exit();
 }
@@ -144,6 +147,7 @@ function inquiry_center_redirect_with_project(int $projectId, string $message): 
 function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, string $message, string $tab = 'client'): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
+    unset($_SESSION['super_admin_sidebar_notification_data']);
 
     $query = [
         'status' => $status,
@@ -173,8 +177,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     )));
     $inquiryIds = array_slice($inquiryIds, 0, 100);
     $statuses = [];
-    $pendingUnreadInquiryCount = 0;
-    $latestPendingInquiryId = 0;
     $latestRevisionId = 0;
     $latestRevisionInquiryId = 0;
     $latestRevisionUpdatedAt = '';
@@ -183,24 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     $latestRejectedNote = '';
     $latestRejectedAt = '';
 
-    if (inquiry_center_has_table($conn, 'service_inquiries')) {
-        $pendingUnreadResult = $conn->query(
-            "SELECT COUNT(*) AS total, MAX(id) AS latest_id
-             FROM service_inquiries
-             WHERE status = 'Pending Review' AND viewed_at IS NULL"
-        );
-        $pendingUnreadRow = $pendingUnreadResult ? $pendingUnreadResult->fetch_assoc() : [];
-        $pendingUnreadInquiryCount = (int)($pendingUnreadRow['total'] ?? 0);
-        $latestPendingInquiryId = (int)($pendingUnreadRow['latest_id'] ?? 0);
-    }
-
     if ($inquiryIds && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
         $placeholders = implode(', ', array_fill(0, count($inquiryIds), '?'));
         $stmt = $conn->prepare(
-            "SELECT inquiry_id, status, client_decision_note, updated_at
-             FROM inquiry_quotation_drafts
-             WHERE inquiry_id IN ($placeholders)
-             ORDER BY updated_at DESC, id DESC"
+            "SELECT q.inquiry_id, q.status, q.client_decision_note, q.updated_at
+             FROM inquiry_quotation_drafts q
+             INNER JOIN service_inquiries si ON si.id = q.inquiry_id AND si.archived_at IS NULL
+             WHERE q.inquiry_id IN ($placeholders)
+             ORDER BY q.updated_at DESC, q.id DESC"
         );
 
         if ($stmt) {
@@ -225,10 +217,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
 
     if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
         $latestRevisionResult = $conn->query(
-            "SELECT id, inquiry_id, updated_at
-             FROM inquiry_quotation_drafts
-             WHERE status IN ('revision_requested', 'for_revision')
-             ORDER BY updated_at DESC, id DESC
+            "SELECT q.id, q.inquiry_id, q.updated_at
+             FROM inquiry_quotation_drafts q
+             INNER JOIN service_inquiries si ON si.id = q.inquiry_id AND si.archived_at IS NULL
+             WHERE q.status IN ('revision_requested', 'for_revision')
+             ORDER BY q.updated_at DESC, q.id DESC
              LIMIT 1"
         );
         $latestRevision = $latestRevisionResult ? $latestRevisionResult->fetch_assoc() : null;
@@ -237,10 +230,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
         $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
 
         $latestRejectedResult = $conn->query(
-            "SELECT id, inquiry_id, client_decision_note, COALESCE(client_decision_at, updated_at) AS rejected_at
-             FROM inquiry_quotation_drafts
-             WHERE status = 'rejected'
-             ORDER BY COALESCE(client_decision_at, updated_at) DESC, id DESC
+            "SELECT q.id, q.inquiry_id, q.client_decision_note, COALESCE(q.client_decision_at, q.updated_at) AS rejected_at
+             FROM inquiry_quotation_drafts q
+             INNER JOIN service_inquiries si ON si.id = q.inquiry_id AND si.archived_at IS NULL
+             WHERE q.status = 'rejected'
+             ORDER BY COALESCE(q.client_decision_at, q.updated_at) DESC, q.id DESC
              LIMIT 1"
         );
         $latestRejected = $latestRejectedResult ? $latestRejectedResult->fetch_assoc() : null;
@@ -253,8 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     echo json_encode([
         'success' => true,
         'quotations' => array_values($statuses),
-        'pending_unread_inquiry_count' => $pendingUnreadInquiryCount,
-        'latest_pending_inquiry_id' => $latestPendingInquiryId,
         'latest_revision_id' => $latestRevisionId,
         'latest_revision_inquiry_id' => $latestRevisionInquiryId,
         'latest_revision_updated_at' => $latestRevisionUpdatedAt,
@@ -269,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
 if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_inquiries')) {
     $viewedInquiryId = (int)$_GET['viewed_inquiry'];
     if ($viewedInquiryId > 0) {
-        $viewStmt = $conn->prepare('UPDATE service_inquiries SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = ?');
+        $viewStmt = $conn->prepare('UPDATE service_inquiries SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = ? AND archived_at IS NULL');
         if ($viewStmt) {
             $viewStmt->bind_param('i', $viewedInquiryId);
             $viewStmt->execute();
@@ -277,7 +269,7 @@ if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_i
     }
 
     unset($_SESSION['super_admin_sidebar_notification_data']);
-    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . $viewedInquiryId . '&tab=client');
     exit();
 }
 
@@ -1292,10 +1284,11 @@ $latestRejectedId = 0;
 $latestRejectedAt = '';
 if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
     $latestRevisionResult = $conn->query(
-        "SELECT id, updated_at
-         FROM inquiry_quotation_drafts
-         WHERE status IN ('revision_requested', 'for_revision')
-         ORDER BY updated_at DESC, id DESC
+        "SELECT q.id, q.updated_at
+         FROM inquiry_quotation_drafts q
+         INNER JOIN service_inquiries si ON si.id = q.inquiry_id AND si.archived_at IS NULL
+         WHERE q.status IN ('revision_requested', 'for_revision')
+         ORDER BY q.updated_at DESC, q.id DESC
          LIMIT 1"
     );
     $latestRevision = $latestRevisionResult ? $latestRevisionResult->fetch_assoc() : null;
@@ -1303,26 +1296,17 @@ if (inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')) {
     $latestRevisionUpdatedAt = (string)($latestRevision['updated_at'] ?? '');
 
     $latestRejectedResult = $conn->query(
-        "SELECT id, COALESCE(client_decision_at, updated_at) AS rejected_at
-         FROM inquiry_quotation_drafts
-         WHERE status = 'rejected'
-         ORDER BY COALESCE(client_decision_at, updated_at) DESC, id DESC
+        "SELECT q.id, COALESCE(q.client_decision_at, q.updated_at) AS rejected_at
+         FROM inquiry_quotation_drafts q
+         INNER JOIN service_inquiries si ON si.id = q.inquiry_id AND si.archived_at IS NULL
+         WHERE q.status = 'rejected'
+         ORDER BY COALESCE(q.client_decision_at, q.updated_at) DESC, q.id DESC
          LIMIT 1"
     );
     $latestRejected = $latestRejectedResult ? $latestRejectedResult->fetch_assoc() : null;
     $latestRejectedId = (int)($latestRejected['id'] ?? 0);
     $latestRejectedAt = (string)($latestRejected['rejected_at'] ?? '');
 }
-$pendingUnreadInquiryCount = 0;
-if (inquiry_center_has_table($conn, 'service_inquiries')) {
-    $pendingUnreadResult = $conn->query(
-        "SELECT COUNT(*) AS total
-         FROM service_inquiries
-         WHERE status = 'Pending Review' AND viewed_at IS NULL"
-    );
-    $pendingUnreadInquiryCount = (int)(($pendingUnreadResult ? $pendingUnreadResult->fetch_assoc() : [])['total'] ?? 0);
-}
-
 $pendingCount = 0;
 $verifiedCount = 0;
 $inspectionCount = 0;
@@ -1410,7 +1394,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 <main class="main-content admin-dashboard-content">
     <div
         class="inquiries-shell"
-        data-pending-unread-inquiry-count="<?php echo $pendingUnreadInquiryCount; ?>"
         data-latest-revision-id="<?php echo $latestRevisionId; ?>"
         data-latest-revision-updated-at="<?php echo htmlspecialchars($latestRevisionUpdatedAt, ENT_QUOTES, 'UTF-8'); ?>"
         data-latest-rejected-id="<?php echo $latestRejectedId; ?>"

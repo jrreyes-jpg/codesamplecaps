@@ -11,6 +11,7 @@ if (!is_array($adminCssFiles)) {
 $sharedCssFiles = [
     '/codesamplecaps/SHARED/header/core/header.css',
     '/codesamplecaps/SHARED/sidebar/css/sidebar.css',
+    '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 
 $allAdminCssFiles = array_values(

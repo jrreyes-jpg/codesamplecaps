@@ -193,6 +193,19 @@ document.addEventListener('DOMContentLoaded', function () {
             window.location.assign(inquiryUrl(inquiryId));
         };
 
+        const markInquiryCardAsRead = function (inquiryId) {
+            const normalizedId = String(inquiryId || '');
+            const card = Array.from(document.querySelectorAll('[data-inquiry-card-id]')).find(function (item) {
+                return item.dataset.inquiryCardId === normalizedId;
+            });
+
+            if (!card) return;
+
+            card.classList.remove('is-unviewed');
+            card.classList.add('is-viewed');
+            card.querySelector('[data-inquiry-unread-indicator]')?.remove();
+        };
+
         const showPollingToast = function (data) {
             if (typeof window.showToast !== 'function') return;
 
@@ -255,7 +268,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     return response.json();
                 })
                 .then(function (data) {
-                    if (data.success) applyNotificationState(data);
+                    if (data.success) {
+                        markInquiryCardAsRead(normalizedId);
+                        applyNotificationState(data);
+                    }
                 })
                 .catch(function () {
                     // Mananatiling unread kapag hindi naisave sa server.

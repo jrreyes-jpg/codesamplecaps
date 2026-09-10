@@ -63,6 +63,11 @@
     animation: notificationPulse 1.8s ease-in-out infinite;
 }
 
+/* Itago ang badge kapag wala nang unread inquiry. */
+.topbar-notifications__badge[hidden] {
+    display: none !important;
+}
+
 @keyframes notificationPulse {
     0%,
     100% {

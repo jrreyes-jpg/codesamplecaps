@@ -9,6 +9,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/phone_normalization.php';
 
 class UserRepository {
     private $conn;
@@ -76,11 +77,12 @@ class UserRepository {
      * @return int User ID if successful, false otherwise
      */
     public function create($fullName, $email, $passwordHash, $role, $phone = null, $createdBy = null) {
+        $phone = normalize_ph_mobile($phone);
         $stmt = $this->conn->prepare(
-            "INSERT INTO users (full_name, email, password, role, phone, created_by, status) 
-             VALUES (?, ?, ?, ?, ?, ?, 'active')"
+            "INSERT INTO users (full_name, email, password, role, phone, phone_normalized, created_by, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'active')"
         );
-        $stmt->bind_param("sssssi", $fullName, $email, $passwordHash, $role, $phone, $createdBy);
+        $stmt->bind_param("ssssssi", $fullName, $email, $passwordHash, $role, $phone, $phone, $createdBy);
         
         if ($stmt->execute()) {
             return $this->conn->insert_id;
@@ -229,20 +231,25 @@ public function setResetToken($userId, $token, $expiryMinutes = 60) {
      */
     public function createPendingClient(string $fullName, string $email, string $phone, int $createdBy): int|false {
         $email = strtolower(trim($email));
+        $phone = normalize_ph_mobile($phone);
         $temporaryHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
         $role = 'client';
         $status = 'pending_activation';
 
         $stmt = $this->conn->prepare(
-            'INSERT INTO users (full_name, email, password, role, phone, status, status_changed_at, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)'
+            'INSERT INTO users (full_name, email, password, role, phone, phone_normalized, status, status_changed_at, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)'
         );
         if (!$stmt) {
             return false;
         }
 
-        $stmt->bind_param('ssssssi', $fullName, $email, $temporaryHash, $role, $phone, $status, $createdBy);
+        $stmt->bind_param('sssssssi', $fullName, $email, $temporaryHash, $role, $phone, $phone, $status, $createdBy);
         return $stmt->execute() ? (int)$this->conn->insert_id : false;
+    }
+
+    public function phoneExists(string $phone, ?int $excludeUserId = null): bool {
+        return user_phone_normalized_exists($this->conn, $phone, $excludeUserId ?? 0);
     }
 
     /**
@@ -452,10 +459,11 @@ public function setResetToken($userId, $token, $expiryMinutes = 60) {
      * Update user profile
      */
     public function updateProfile($userId, $fullName, $phone = null) {
+        $phone = normalize_ph_mobile($phone);
         $stmt = $this->conn->prepare(
-            "UPDATE users SET full_name = ?, phone = ? WHERE id = ?"
+            "UPDATE users SET full_name = ?, phone = ?, phone_normalized = ? WHERE id = ?"
         );
-        $stmt->bind_param("ssi", $fullName, $phone, $userId);
+        $stmt->bind_param("sssi", $fullName, $phone, $phone, $userId);
         return $stmt->execute();
     }
 

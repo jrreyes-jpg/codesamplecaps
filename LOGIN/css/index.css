@@ -834,6 +834,28 @@ h4 {
     min-width: 180px;
 }
 
+.inquiry-submit[aria-busy="true"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.inquiry-submit__spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: inquiry-submit-spin 700ms linear infinite;
+}
+
+@keyframes inquiry-submit-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @media (max-width: 900px) {
     .inquiry-shell {
         grid-template-columns: 1fr;
@@ -850,6 +872,22 @@ h4 {
     }
 
     .inquiry-submit {
+        width: 100%;
+    }
+
+    .inquiry-modal-actions,
+    .inquiry-modal-primary-actions {
+        width: 100%;
+    }
+
+    .inquiry-modal-actions,
+    .inquiry-modal-primary-actions {
+        flex-direction: column;
+    }
+
+    .inquiry-modal-actions .consult-close,
+    .inquiry-modal-primary-actions .consult-close,
+    .inquiry-modal-primary-actions .inquiry-submit {
         width: 100%;
     }
 }

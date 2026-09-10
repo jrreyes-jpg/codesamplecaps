@@ -141,12 +141,22 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(prerequisiteNotice);
 
-    const showConfirm = function (form, message, details) {
+    const showConfirm = function (form, message, details, labels = {}) {
         pendingConfirmForm = form;
         const messageBox = confirmBox.querySelector('[data-inquiry-confirm-message]');
         const detailsBox = confirmBox.querySelector('[data-inquiry-confirm-details]');
+        const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
+        const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
         if (messageBox) {
             messageBox.textContent = message;
+        }
+
+        if (cancelButton) {
+            cancelButton.textContent = labels.cancel || 'No';
+        }
+
+        if (confirmButton) {
+            confirmButton.textContent = labels.confirm || 'Yes';
         }
 
         if (detailsBox) {
@@ -646,7 +656,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            showConfirm(form, 'Finalize this inspection schedule and email the final quotation to the client?');
+            showConfirm(
+                form,
+                'Are you sure you want to confirm this inspection schedule and notify the client?',
+                null,
+                { cancel: 'Cancel', confirm: 'Confirm' }
+            );
         });
     });
 

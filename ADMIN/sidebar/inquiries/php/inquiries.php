@@ -84,6 +84,13 @@ function inquiry_center_has_client_quotation_approval(?string $quotationStatus):
     return inquiry_quote_normalize_status($quotationStatus) === 'accepted';
 }
 
+function inquiry_center_schedule_notification_hash(int $engineerId, string $scheduledAt, string $siteNotes): string
+{
+    $normalizedNotes = preg_replace('/\r\n?|\n/', "\n", trim($siteNotes)) ?? '';
+
+    return hash('sha256', implode("\n", [$engineerId, $scheduledAt, $normalizedNotes]));
+}
+
 function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): string
 {
     if (!$quotationDraft) {
@@ -845,11 +852,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $scheduleValue = date('Y-m-d H:i:s', $scheduleTimestamp);
             $existingInspectionId = 0;
             $existingInspectionStatus = '';
-            $existingStmt = $conn->prepare('SELECT id, status FROM site_inspections WHERE inquiry_id = ? ORDER BY id DESC LIMIT 1');
+            $existingStmt = $conn->prepare(
+                'SELECT id, status, engineer_id, scheduled_at, site_notes, schedule_notified_at, schedule_notification_hash
+                 FROM site_inspections
+                 WHERE inquiry_id = ?
+                 ORDER BY id DESC
+                 LIMIT 1'
+            );
+            $existingInspection = null;
             if ($existingStmt) {
                 $existingStmt->bind_param('i', $inquiryId);
                 $existingStmt->execute();
                 $existingRow = $existingStmt->get_result()->fetch_assoc();
+                $existingInspection = $existingRow ?: null;
                 $existingInspectionId = (int)($existingRow['id'] ?? 0);
                 $existingInspectionStatus = (string)($existingRow['status'] ?? '');
             }
@@ -858,8 +873,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'The Engineer already started this inspection workflow. Its assignment and schedule are now locked.';
             }
 
+            $notificationHash = inquiry_center_schedule_notification_hash($engineerId, $scheduleValue, $siteNotes);
+            $hasScheduleChanges = $existingInspectionId <= 0
+                || (int)($existingInspection['engineer_id'] ?? 0) !== $engineerId
+                || (string)($existingInspection['scheduled_at'] ?? '') !== $scheduleValue
+                || trim((string)($existingInspection['site_notes'] ?? '')) !== $siteNotes;
+            $storedNotificationHash = trim((string)($existingInspection['schedule_notification_hash'] ?? ''));
+            $needsClientNotification = $existingInspectionId <= 0
+                || $storedNotificationHash === ''
+                || !hash_equals($storedNotificationHash, $notificationHash);
+
             $stmt = null;
-            if ($error === '') {
+            if ($error === '' && $hasScheduleChanges) {
                 $stmt = $existingInspectionId > 0
                     ? $conn->prepare(
                         'UPDATE site_inspections
@@ -872,9 +897,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
             }
 
-            if ($error === '' && !$stmt) {
+            if ($error === '' && $hasScheduleChanges && !$stmt) {
                 $error = 'Failed to prepare inspection schedule.';
-            } elseif ($error === '' && $stmt) {
+            } elseif ($error === '' && $hasScheduleChanges && $stmt) {
                 $createdBy = (int)($_SESSION['user_id'] ?? 0);
                 if ($existingInspectionId > 0) {
                     $stmt->bind_param('issi', $engineerId, $scheduleValue, $siteNotes, $existingInspectionId);
@@ -883,6 +908,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ($stmt->execute()) {
                     $savedInspectionId = $existingInspectionId > 0 ? $existingInspectionId : (int)$conn->insert_id;
+                } else {
+                    $error = 'Failed to save inspection schedule.';
+                }
+            }
+
+            if ($error === '' && !$hasScheduleChanges && !$needsClientNotification) {
+                $message = 'Schedule Confirmed.';
+            }
+
+            if ($error === '') {
+                $savedInspectionId = $existingInspectionId > 0 ? $existingInspectionId : (int)$conn->insert_id;
+                $createdBy = (int)($_SESSION['user_id'] ?? 0);
+
+                if ($hasScheduleChanges) {
                     $linkQuotation = $conn->prepare(
                         'UPDATE inquiry_quotation_drafts SET inspection_id = ? WHERE id = ? AND status = ?'
                     );
@@ -901,7 +940,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     audit_log_event(
                         $conn,
                         $createdBy,
-                                $existingInspectionId > 0 ? 'reschedule_site_inspection' : 'schedule_site_inspection',
+                        $existingInspectionId > 0 ? 'reschedule_site_inspection' : 'schedule_site_inspection',
                         'service_inquiry',
                         $inquiryId,
                         null,
@@ -910,14 +949,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'scheduled_at' => $scheduleValue,
                         ]
                     );
+                }
+
+                if ($needsClientNotification) {
                     try {
                         inquiry_quote_send_final_confirmation($conn, $acceptedQuotationId);
+                        $markNotified = $conn->prepare(
+                            'UPDATE site_inspections
+                             SET schedule_notified_at = NOW(), schedule_notification_hash = ?
+                             WHERE id = ?'
+                        );
+                        if (!$markNotified) {
+                            throw new RuntimeException('Inspection schedule was saved, but notification status was not saved.');
+                        }
+                        $markNotified->bind_param('si', $notificationHash, $savedInspectionId);
+                        if (!$markNotified->execute() || $markNotified->affected_rows <= 0) {
+                            throw new RuntimeException('Inspection schedule was saved, but notification status was not saved.');
+                        }
                         $message = 'Inspection schedule confirmed and client notified.';
                     } catch (Throwable $mailThrowable) {
                         $error = $mailThrowable->getMessage();
                     }
-                } else {
-                    $error = 'Failed to save inspection schedule.';
                 }
             }
         }
@@ -1131,6 +1183,8 @@ $inspectionResult = $conn->query(
         si.inquiry_id,
         si.engineer_id,
         si.scheduled_at,
+        si.schedule_notified_at,
+        si.schedule_notification_hash,
         si.status,
         si.created_at,
         si.acknowledged_at,
@@ -1764,14 +1818,34 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <?php $inspectionScheduleLocked = $latestInspection && (string)($latestInspection['status'] ?? '') !== 'Assigned'; ?>
+                                        <?php
+                                            $currentScheduleHash = $latestInspection
+                                                ? inquiry_center_schedule_notification_hash(
+                                                    (int)($latestInspection['engineer_id'] ?? 0),
+                                                    (string)($latestInspection['scheduled_at'] ?? ''),
+                                                    (string)($latestInspection['site_notes'] ?? '')
+                                                )
+                                                : '';
+                                            $storedScheduleHash = (string)($latestInspection['schedule_notification_hash'] ?? '');
+                                            $isScheduleConfirmed = $latestInspection
+                                                && !empty($latestInspection['schedule_notified_at'])
+                                                && $storedScheduleHash !== ''
+                                                && hash_equals($storedScheduleHash, $currentScheduleHash);
+                                            $scheduleSubmitLabel = $latestInspection && $isScheduleConfirmed
+                                                ? 'Update Schedule & Notify Client'
+                                                : 'Confirm Inspection Schedule & Send to Client';
+                                        ?>
                                         <?php if ($inspectionScheduleLocked): ?>
                                             <div class="inquiry-empty">The Engineer has acknowledged or started this inspection. Assignment and schedule changes are locked.</div>
                                         <?php endif; ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form <?php echo !$canScheduleInspection || $inspectionScheduleLocked ? 'hidden' : ''; ?>>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" <?php echo !$canScheduleInspection || $inspectionScheduleLocked ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <strong><?php echo $latestInspection ? 'Update Final Inspection Schedule' : 'Set Final Inspection Schedule'; ?></strong>
+                                            <strong><?php echo $latestInspection ? 'Update Inspection Schedule' : 'Set Inspection Schedule'; ?></strong>
+                                            <?php if ($isScheduleConfirmed): ?>
+                                                <span class="inquiry-schedule-confirmed">Schedule Confirmed</span>
+                                            <?php endif; ?>
                                             <div class="inquiry-schedule-grid">
                                                 <label>
                                                     <span>Engineer</span>
@@ -1808,7 +1882,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions">
-                                                <button type="submit" class="btn-primary" <?php echo empty($engineers) ? 'disabled' : ''; ?>>Confirm Inspection Schedule & Send to Client</button>
+                                                <button type="submit" class="btn-primary" data-schedule-submit <?php echo empty($engineers) || $isScheduleConfirmed ? 'disabled' : ''; ?>><?php echo $scheduleSubmitLabel; ?></button>
                                                 <button type="button" class="btn-secondary inquiry-clear-inputs" data-inquiry-clear-inputs>Clear inputs</button>
                                             </div>
                                         </form>

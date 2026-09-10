@@ -454,6 +454,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateTooltip = form.querySelector('.js-admin-date-tooltip');
         const modal = form.closest('.inquiry-modal');
         const draftKey = modal?.dataset.inquiryId ? 'edgeInquiryScheduleDraft:' + modal.dataset.inquiryId : '';
+        const submitButton = form.querySelector('[data-schedule-submit]');
+        const clearButton = form.querySelector('[data-inquiry-clear-inputs]');
 
         const syncInvalidUi = function () {
             if (form.dataset.submitAttempted !== '1') {
@@ -611,9 +613,31 @@ document.addEventListener('DOMContentLoaded', function () {
             sessionStorage.setItem(draftKey, JSON.stringify(draft));
         };
 
+        const getScheduleState = function () {
+            return JSON.stringify({
+                engineer_id: form.querySelector('select[name="engineer_id"]')?.value || '',
+                inspection_date: dateInput.value,
+                inspection_time: timeInput.value,
+                site_notes: form.querySelector('textarea[name="site_notes"]')?.value || '',
+            });
+        };
+        const initialScheduleState = getScheduleState();
+        const syncScheduleSubmitState = function () {
+            if (!submitButton || form.dataset.submitting === '1') {
+                return;
+            }
+
+            const isConfirmed = form.dataset.scheduleConfirmed === '1';
+            if (isConfirmed) {
+                submitButton.disabled = getScheduleState() === initialScheduleState;
+            }
+        };
+
         form.querySelectorAll('select, input, textarea').forEach(function (field) {
             field.addEventListener('input', saveDraft);
             field.addEventListener('change', saveDraft);
+            field.addEventListener('input', syncScheduleSubmitState);
+            field.addEventListener('change', syncScheduleSubmitState);
             field.addEventListener('input', function () {
                 if (form.dataset.submitAttempted === '1') syncInvalidUi();
             });
@@ -626,7 +650,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        form.querySelector('[data-inquiry-clear-inputs]')?.addEventListener('click', function () {
+        clearButton?.addEventListener('click', function () {
             form.reset();
             form.dataset.submitAttempted = '0';
             form.querySelectorAll('.is-invalid').forEach(function (field) {
@@ -635,9 +659,15 @@ document.addEventListener('DOMContentLoaded', function () {
             hiddenSchedule.value = '';
             if (draftKey) sessionStorage.removeItem(draftKey);
             syncTimeOptions();
+            syncScheduleSubmitState();
         });
 
         form.addEventListener('submit', function (event) {
+            if (form.dataset.submitting === '1') {
+                event.preventDefault();
+                return;
+            }
+
             form.dataset.submitAttempted = '1';
             validateScheduleTime();
             if (!form.checkValidity()) {
@@ -651,6 +681,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 : '';
 
             if (form.dataset.confirmed === '1') {
+                form.dataset.submitting = '1';
+                if (submitButton) {
+                    const spinner = document.createElement('span');
+                    const label = document.createElement('span');
+                    spinner.className = 'inquiry-send-spinner';
+                    spinner.setAttribute('aria-hidden', 'true');
+                    label.textContent = 'Confirming...';
+                    submitButton.disabled = true;
+                    submitButton.classList.add('inquiry-send-button--loading');
+                    submitButton.replaceChildren(spinner, label);
+                }
+                if (clearButton) clearButton.disabled = true;
                 if (draftKey) sessionStorage.removeItem(draftKey);
                 return;
             }

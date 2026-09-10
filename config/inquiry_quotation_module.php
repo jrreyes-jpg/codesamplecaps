@@ -886,10 +886,10 @@ function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void
 {
     $quotation = inquiry_quote_fetch_full($conn, $draftId);
     if (!$quotation || inquiry_quote_normalize_status((string)($quotation['status'] ?? '')) !== 'accepted') {
-        throw new RuntimeException('Only an accepted quotation can be finalized.');
+        throw new RuntimeException('Only an accepted quotation can have an inspection schedule confirmed.');
     }
     if (empty($quotation['scheduled_at']) || empty($quotation['engineer_name'])) {
-        throw new RuntimeException('Save the Engineer and inspection schedule before sending the final quotation.');
+        throw new RuntimeException('Save the Engineer and inspection schedule before notifying the client about the accepted quotation.');
     }
 
     $recipientEmail = strtolower(trim((string)($quotation['sent_to_email'] ?? '')));
@@ -898,7 +898,7 @@ function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void
     }
     if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
         error_log('Inquiry quotation approval email skipped: invalid recipient for draft #' . (int)($quotation['id'] ?? 0));
-        throw new RuntimeException('The client email is invalid. Update it before sending the final quotation.');
+        throw new RuntimeException('The client email is invalid. Update it before sending the schedule notice.');
     }
 
     $recipientName = trim((string)($quotation['sent_to_name'] ?? ''));
@@ -915,13 +915,13 @@ function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void
     try {
         $lockStmt = $conn->prepare("SELECT status FROM inquiry_quotation_drafts WHERE id = ? FOR UPDATE");
         if (!$lockStmt) {
-            throw new RuntimeException('Unable to lock the final quotation.');
+            throw new RuntimeException('Unable to lock the accepted quotation.');
         }
         $lockStmt->bind_param('i', $draftId);
         $lockStmt->execute();
         $lockedRow = $lockStmt->get_result()->fetch_assoc();
         if (inquiry_quote_normalize_status((string)($lockedRow['status'] ?? '')) !== 'accepted') {
-            throw new RuntimeException('This quotation can no longer be finalized.');
+            throw new RuntimeException('This accepted quotation can no longer receive a schedule notice.');
         }
 
         $tokenStmt = $conn->prepare(
@@ -930,11 +930,11 @@ function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void
              WHERE id = ? AND status = "accepted"'
         );
         if (!$tokenStmt) {
-            throw new RuntimeException('Unable to prepare the final quotation link.');
+            throw new RuntimeException('Unable to prepare the accepted quotation link.');
         }
         $tokenStmt->bind_param('si', $publicTokenHash, $draftId);
         if (!$tokenStmt->execute() || $tokenStmt->affected_rows <= 0) {
-            throw new RuntimeException('Unable to save the final quotation link.');
+            throw new RuntimeException('Unable to save the accepted quotation link.');
         }
 
         if (!$emailService->sendInquiryQuotationFinalConfirmation(

@@ -92,7 +92,7 @@ $inventoryItems = inventory_clerk_fetch_items($conn);
 </head>
 <body>
 <div class="container">
-    <?php include __DIR__ . '/inventory_clerk_sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar/inventory_clerk_sidebar.php'; ?>
     <main class="main-content inventory-clerk-content-shell">
         <?php inventory_clerk_render_header($conn); ?>
         <div class="page-stack">

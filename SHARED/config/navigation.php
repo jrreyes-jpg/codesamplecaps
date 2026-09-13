@@ -62,7 +62,7 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'worker_summary', 'label' => 'Worker Summary', 'mini' => 'Work', 'href' => '/codesamplecaps/FOREMAN/dashboards/worker_summary.php', 'icon' => 'user', 'active' => ['/FOREMAN/dashboards/worker_summary.php']],
         ],
         'inventory_clerk' => [
-            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Dash', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php', 'icon' => 'dashboard', 'active' => ['/INVENTORY_CLERK/sidebar/dashboard.php', '/INVENTORY_CLERK/dashboards/inventory_clerk_dashboard.php']],
+            ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Dash', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/INVENTORY_CLERK/dashboards/dashboard.php', '/INVENTORY_CLERK/dashboards/dashboard.php']],
             [
                 'module' => 'asset_inventory', 'label' => 'Asset / QR Inventory', 'mini' => 'Assets', 'icon' => 'assets',
                 'children' => [
@@ -123,7 +123,7 @@ function shared_navigation_role_home(string $role): string
         'engineer' => '/codesamplecaps/ENGINEER/dashboards/dashboard.php',
         'super_admin' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php',
         'foreman' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php',
-        'inventory_clerk' => '/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php',
+        'inventory_clerk' => '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php',
         'client' => '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
     ][$role] ?? '/codesamplecaps/LOGIN/php/login.php';
 }

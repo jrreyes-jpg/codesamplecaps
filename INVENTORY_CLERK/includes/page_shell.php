@@ -86,11 +86,13 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
         <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
         <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
         <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-        <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/inventory_clerk_dashboard.css">
-        <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
+        <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/inventory-clerk-content.css">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
-        <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
+        <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
         <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
         <?php foreach ($pageStyles as $stylePath): ?>
             <link rel="stylesheet" href="<?php echo htmlspecialchars((string)$stylePath, ENT_QUOTES, 'UTF-8'); ?>">

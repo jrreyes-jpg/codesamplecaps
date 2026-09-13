@@ -52,17 +52,17 @@ if ($shortageResult) {
     <title>Materials</title>
     <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
     <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/inventory-clerk-content.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/materials.css">
 </head>
 <body>
 <div class="container">
     <?php include __DIR__ . '/inventory_clerk_sidebar.php'; ?>
-    <main class="main-content">
+    <main class="main-content inventory-clerk-content-shell">
         <?php inventory_clerk_render_header($conn); ?>
         <div class="page-stack materials-page">
         <section class="form-panel">

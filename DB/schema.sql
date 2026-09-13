@@ -246,6 +246,22 @@ CREATE TABLE `inquiry_quotation_drafts` (
   KEY `idx_inquiry_quote_status` (`status`),
   KEY `idx_inquiry_quote_parent_revision` (`parent_draft_id`,`revision_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `materials` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `material_code` varchar(50) NOT NULL,
+  `material_name` varchar(180) NOT NULL,
+  `category` varchar(80) DEFAULT NULL,
+  `unit` varchar(30) NOT NULL DEFAULT 'unit',
+  `physical_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `reserved_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `reorder_level` decimal(12,2) DEFAULT NULL,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_materials_code` (`material_code`),
+  KEY `idx_materials_status_name` (`status`,`material_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -253,6 +269,7 @@ CREATE TABLE `inquiry_quotation_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `draft_id` int(11) NOT NULL,
   `item_type` varchar(30) NOT NULL,
+  `material_id` int(11) DEFAULT NULL,
   `item_name` varchar(180) NOT NULL,
   `quantity` decimal(12,2) NOT NULL DEFAULT 1.00,
   `unit` varchar(30) NOT NULL DEFAULT 'unit',
@@ -261,7 +278,9 @@ CREATE TABLE `inquiry_quotation_items` (
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  KEY `idx_inquiry_quote_items_draft` (`draft_id`)
+  KEY `idx_inquiry_quote_items_draft` (`draft_id`),
+  KEY `idx_inquiry_quote_items_material` (`material_id`),
+  CONSTRAINT `fk_inquiry_quotation_items_material` FOREIGN KEY (`material_id`) REFERENCES `materials` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -896,6 +915,43 @@ CREATE TABLE `service_inquiries` (
   KEY `idx_service_inquiries_client_id` (`client_id`),
   CONSTRAINT `fk_service_inquiries_client` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `project_material_reservations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `project_id` int(11) NOT NULL,
+  `material_id` int(11) NOT NULL,
+  `required_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `reserved_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `issued_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `status` enum('active','fulfilled','cancelled') NOT NULL DEFAULT 'active',
+  `created_by` int(11) NOT NULL,
+  `cancelled_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_project_material_reservation` (`project_id`,`material_id`),
+  KEY `idx_project_material_reservations_material_status` (`material_id`,`status`),
+  CONSTRAINT `fk_project_material_reservations_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_project_material_reservations_material` FOREIGN KEY (`material_id`) REFERENCES `materials` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_project_material_reservations_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `material_stock_movements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `material_id` int(11) NOT NULL,
+  `reservation_id` int(11) DEFAULT NULL,
+  `movement_type` enum('stock_in','project_issue','manual_stock_out','adjustment_in','adjustment_out') NOT NULL,
+  `quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `physical_before` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `physical_after` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `remarks` text DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_material_stock_movements_material_created` (`material_id`,`created_at`),
+  KEY `idx_material_stock_movements_reservation` (`reservation_id`),
+  CONSTRAINT `fk_material_stock_movements_material` FOREIGN KEY (`material_id`) REFERENCES `materials` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_material_stock_movements_reservation` FOREIGN KEY (`reservation_id`) REFERENCES `project_material_reservations` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_material_stock_movements_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -904,6 +960,7 @@ CREATE TABLE `site_inspection_cost_items` (
   `inspection_id` int(11) NOT NULL,
   `item_type` varchar(30) NOT NULL DEFAULT 'material',
   `inventory_id` int(11) DEFAULT NULL,
+  `material_id` int(11) DEFAULT NULL,
   `item_name` varchar(180) NOT NULL,
   `quantity` decimal(12,2) NOT NULL DEFAULT 1.00,
   `unit` varchar(30) NOT NULL DEFAULT 'unit',
@@ -915,7 +972,9 @@ CREATE TABLE `site_inspection_cost_items` (
   PRIMARY KEY (`id`),
   KEY `idx_site_inspection_cost_items_inspection` (`inspection_id`),
   KEY `idx_site_inspection_cost_items_inventory` (`inventory_id`),
-  KEY `idx_site_inspection_cost_items_type` (`item_type`)
+  KEY `idx_site_inspection_cost_items_material` (`material_id`),
+  KEY `idx_site_inspection_cost_items_type` (`item_type`),
+  CONSTRAINT `fk_site_inspection_cost_items_material` FOREIGN KEY (`material_id`) REFERENCES `materials` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

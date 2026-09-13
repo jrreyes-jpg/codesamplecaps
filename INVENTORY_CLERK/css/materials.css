@@ -1,0 +1,88 @@
+/* Materials page lang ito. Hiwalay ang reusable Asset / QR pages. */
+.materials-page {
+    gap: 20px;
+}
+
+.materials-page .form-panel {
+    margin-bottom: 0;
+}
+
+.materials-page__eyebrow {
+    margin: 0 0 6px;
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.material-code-preview {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    padding: 0 13px;
+    border: 1px dashed #9fb4c9;
+    border-radius: 8px;
+    background: #f7fafc;
+    color: #52657a;
+    font-weight: 600;
+}
+
+.materials-table-note {
+    margin: 0 0 14px;
+    color: #667085;
+}
+
+.materials-table th,
+.materials-table td {
+    white-space: nowrap;
+}
+
+.materials-empty {
+    padding: 22px !important;
+    color: #667085;
+    text-align: center;
+}
+
+.material-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.material-status--available,
+.material-status--covered {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.material-status--low,
+.material-status--needs {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.material-status--out {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+@media (max-width: 768px) {
+    .materials-page {
+        gap: 14px;
+    }
+
+    .material-code-preview {
+        width: 100%;
+    }
+
+    .materials-table th,
+    .materials-table td {
+        white-space: normal;
+    }
+}

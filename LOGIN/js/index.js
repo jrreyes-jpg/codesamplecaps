@@ -50,6 +50,17 @@ const showNotification = (message, type = 'info') => {
     }, 4000);
 };
 
+const inquiryFormReturnStatuses = new Set([
+    'invalid',
+    'contact_not_allowed',
+    'contact_mismatch',
+    'email_error',
+    'expired',
+    'server_error',
+]);
+
+const shouldAutoOpenInquiryModal = () => inquiryFormReturnStatuses.has(String(window.edgeInquiryStatus || ''));
+
 const showInquirySuccessModal = () => {
     const modal = document.createElement('div');
     modal.className = 'inquiry-success-modal';
@@ -302,9 +313,17 @@ const initConsultationModal = () => {
         }
     });
 
-    if (new URLSearchParams(window.location.search).has('inquiry') && window.edgeInquiryStatus !== 'success') {
+    if (shouldAutoOpenInquiryModal()) {
         openInquiryModal();
+    } else {
+        closeInquiryModal();
     }
+
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted && !shouldAutoOpenInquiryModal()) {
+            closeInquiryModal();
+        }
+    });
 };
 
 const initServiceCards = () => {
@@ -978,11 +997,6 @@ const restoreInquiryDraft = () => {
             }
             syncOtherServiceField();
 
-            const inquiryModal = document.getElementById('inquiryModal');
-            if (inquiryModal) {
-                inquiryModal.classList.add('is-open');
-                inquiryModal.setAttribute('aria-hidden', 'false');
-            }
         };
 
         contactInput.addEventListener('input', () => {

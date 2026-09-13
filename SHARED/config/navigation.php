@@ -63,10 +63,24 @@ function shared_navigation_items_for_role(string $role): array
         ],
         'inventory_clerk' => [
             ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Dash', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php', 'icon' => 'dashboard', 'active' => ['/INVENTORY_CLERK/sidebar/dashboard.php', '/INVENTORY_CLERK/dashboards/inventory_clerk_dashboard.php']],
-            ['module' => 'inventory', 'label' => 'Inventory', 'mini' => 'Inv', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/sidebar/inventory.php']],
-            ['module' => 'stock_in', 'label' => 'Stock In', 'mini' => 'In', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_in.php', 'icon' => 'stock-in', 'active' => ['/INVENTORY_CLERK/sidebar/stock_in.php']],
-            ['module' => 'stock_out', 'label' => 'Stock Out', 'mini' => 'Out', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_out.php', 'icon' => 'stock-out', 'active' => ['/INVENTORY_CLERK/sidebar/stock_out.php']],
-            ['module' => 'stock_history', 'label' => 'Stock History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/sidebar/stock_history.php']],
+            [
+                'module' => 'asset_inventory', 'label' => 'Asset / QR Inventory', 'mini' => 'Assets', 'icon' => 'assets',
+                'children' => [
+                    ['module' => 'inventory', 'label' => 'Inventory', 'mini' => 'Inv', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/sidebar/inventory.php']],
+                    ['module' => 'stock_in', 'label' => 'Stock In', 'mini' => 'In', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_in.php', 'icon' => 'stock-in', 'active' => ['/INVENTORY_CLERK/sidebar/stock_in.php']],
+                    ['module' => 'stock_out', 'label' => 'Stock Out', 'mini' => 'Out', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_out.php', 'icon' => 'stock-out', 'active' => ['/INVENTORY_CLERK/sidebar/stock_out.php']],
+                    ['module' => 'stock_history', 'label' => 'Stock History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/sidebar/stock_history.php']],
+                ],
+            ],
+            [
+                'module' => 'materials', 'label' => 'Consumable Materials', 'mini' => 'Mat', 'icon' => 'inventory',
+                'children' => [
+                    ['module' => 'materials', 'label' => 'Materials', 'mini' => 'List', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/materials.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/sidebar/materials.php']],
+                    ['module' => 'material_stock_in', 'label' => 'Material Stock In', 'mini' => 'In', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/material_stock_in.php', 'icon' => 'stock-in', 'active' => ['/INVENTORY_CLERK/sidebar/material_stock_in.php']],
+                    ['module' => 'material_issue', 'label' => 'Material Issue', 'mini' => 'Issue', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/material_issue.php', 'icon' => 'stock-out', 'active' => ['/INVENTORY_CLERK/sidebar/material_issue.php']],
+                    ['module' => 'material_history', 'label' => 'Material History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/sidebar/material_stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/sidebar/material_stock_history.php']],
+                ],
+            ],
         ],
         'client' => [
             [

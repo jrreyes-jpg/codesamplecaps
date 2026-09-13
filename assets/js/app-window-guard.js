@@ -1,4 +1,4 @@
-// Shared window guard: iwas duplicate dashboard windows kapag may old tab/window na nagising.
+// Shared window guard: check login session at sync lang ang tunay na logout.
 (function () {
     const rolePaths = [
         '/codesamplecaps/ADMIN/',
@@ -9,7 +9,6 @@
         '/codesamplecaps/CLIENT/',
     ];
     const currentRolePath = rolePaths.find((path) => window.location.pathname.startsWith(path));
-    const homePath = '/codesamplecaps/LOGIN/php/index.php';
     const loginLogoutPath = '/codesamplecaps/LOGIN/php/login.php?logout=1';
     const loginTimeoutPath = '/codesamplecaps/LOGIN/php/login.php?timeout=1';
     const logoutPath = '/codesamplecaps/LOGIN/php/logout.php';
@@ -20,28 +19,6 @@
     if (!currentRolePath) {
         return;
     }
-
-    const roleKey = currentRolePath.replace('/codesamplecaps/', '').replace('/', '').toLowerCase();
-    const activeKey = `edge.${roleKey}.activeWindow`;
-    const windowKey = `edge.${roleKey}.windowId`;
-
-    let windowId = sessionStorage.getItem(windowKey);
-    if (!windowId) {
-        windowId = String(Date.now()) + '-' + Math.random().toString(16).slice(2);
-        sessionStorage.setItem(windowKey, windowId);
-    }
-
-    const markActive = function () {
-        try {
-            localStorage.setItem(activeKey, JSON.stringify({
-                id: windowId,
-                path: window.location.pathname + window.location.search,
-                at: Date.now(),
-            }));
-        } catch (error) {
-            // Kapag blocked ang storage, normal page pa rin.
-        }
-    };
 
     const redirectToLoggedOutLogin = function (reason) {
         if (window.location.pathname.startsWith('/codesamplecaps/LOGIN/')) {
@@ -54,7 +31,6 @@
     const broadcastLogout = function () {
         try {
             localStorage.setItem(logoutBroadcastKey, JSON.stringify({
-                id: windowId,
                 at: Date.now(),
                 path: window.location.pathname + window.location.search,
             }));
@@ -101,28 +77,9 @@
         });
     };
 
-    const moveOldHiddenWindow = function (state) {
-        if (!state || state.id === windowId || !document.hidden) {
-            return;
-        }
-
-        window.location.replace(homePath);
-    };
-
     window.addEventListener('storage', function (event) {
         if (event.key === logoutBroadcastKey && event.newValue) {
             redirectToLoggedOutLogin();
-            return;
-        }
-
-        if (event.key !== activeKey || !event.newValue) {
-            return;
-        }
-
-        try {
-            moveOldHiddenWindow(JSON.parse(event.newValue));
-        } catch (error) {
-            // Ignore invalid storage payload.
         }
     });
 
@@ -134,17 +91,14 @@
     }, true);
 
     window.addEventListener('focus', function () {
-        markActive();
         checkSessionStillValid();
     });
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) {
-            markActive();
             checkSessionStillValid();
         }
     });
 
     bindLogoutLinks();
-    markActive();
     checkSessionStillValid();
 })();

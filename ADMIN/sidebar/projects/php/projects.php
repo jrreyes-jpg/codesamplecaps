@@ -1295,7 +1295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $decisionStmt = $conn->prepare(
-                "SELECT d.id
+                "SELECT d.id, d.inspection_id
                  FROM inspection_quotation_decisions d
                  INNER JOIN site_inspections si ON si.id = d.inspection_id
                  WHERE d.inquiry_id = ?
@@ -1310,7 +1310,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $decisionStmt->bind_param('ii', $sourceInquiryId, $quotationDraftId);
             $decisionStmt->execute();
-            if (!$decisionStmt->get_result()->fetch_assoc()) {
+            $postInspectionDecision = $decisionStmt->get_result()->fetch_assoc();
+            if (!$postInspectionDecision) {
                 set_projects_old_input($createProjectInput);
                 set_projects_flash('error', 'Choose the post-inspection quotation decision before creating this project.');
                 redirect_projects_page();
@@ -1557,6 +1558,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_by' => $createdBy,
                 'engineer_ids' => $engineerIds,
                 'quotation_draft_id' => $projectSource === 'inquiry_quotation' ? $quotationDraftId : 0,
+                'material_reservation_inspection_id' => $projectSource === 'inquiry_quotation'
+                    ? (int)($postInspectionDecision['inspection_id'] ?? 0)
+                    : 0,
                 'budget_amount' => $budgetAmount,
                 'budget_notes' => $budgetNotes,
                 'additional_info_json' => $additionalInfoJson,

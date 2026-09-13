@@ -127,6 +127,7 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                     <button
                         class="menu-link menu-link--button menu-link--group-toggle"
                         type="button"
+                        title="<?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-sidebar-group-toggle
                         aria-expanded="<?php echo $hasActiveChild ? 'true' : 'false'; ?>"
                     >
@@ -155,6 +156,7 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                                 <a
                                     href="<?php echo htmlspecialchars((string)$childItem['href'], ENT_QUOTES, 'UTF-8'); ?>"
                                     class="menu-link menu-submenu-link<?php echo $isChildActive ? ' active-link' : ''; ?>"
+                                    title="<?php echo htmlspecialchars((string)$childItem['label'], ENT_QUOTES, 'UTF-8'); ?>"
                                     <?php echo $isChildActive ? 'aria-current="page" data-active="true"' : ''; ?>
                                     <?php echo isset($childItem['data_section_link']) ? 'data-section-link="' . htmlspecialchars((string)$childItem['data_section_link'], ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
                                 >
@@ -179,12 +181,14 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                             id="<?php echo htmlspecialchars((string)($item['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                             class="menu-link menu-link--button<?php echo $isActive ? ' active-link' : ''; ?>"
                             type="button"
+                            title="<?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?>"
                             <?php echo $isActive ? 'data-active="true"' : ''; ?>
                         >
                     <?php else: ?>
                         <a
                             href="<?php echo htmlspecialchars((string)$item['href'], ENT_QUOTES, 'UTF-8'); ?>"
                             class="menu-link<?php echo $isActive ? ' active-link' : ''; ?>"
+                            title="<?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?>"
                             <?php echo $isActive ? 'aria-current="page" data-active="true"' : ''; ?>
                             <?php echo isset($item['data_section_link']) ? 'data-section-link="' . htmlspecialchars((string)$item['data_section_link'], ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
                         >

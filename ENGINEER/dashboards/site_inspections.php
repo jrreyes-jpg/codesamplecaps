@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/site_inspections.php';
 require_once __DIR__ . '/../../config/audit_log.php';
+require_once __DIR__ . '/../../config/material_stock.php';
 require_once __DIR__ . '/../includes/engineer_helpers.php';
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -98,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $itemTypes = $_POST['item_type'] ?? [];
         $inventoryIds = $_POST['inventory_id'] ?? [];
+        $materialIds = $_POST['material_id'] ?? [];
         $itemNames = $_POST['item_name'] ?? [];
         $quantities = $_POST['quantity'] ?? [];
         $units = $_POST['unit'] ?? [];
@@ -124,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? (string)$itemTypes[$index]
                 : 'material';
             $inventoryId = (int)($inventoryIds[$index] ?? 0);
+            $materialId = (int)($materialIds[$index] ?? 0);
 
             if ($itemName === '' && $quantity <= 0 && $unitCost <= 0) {
                 continue;
@@ -155,6 +158,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
+            if ($materialId > 0 && !material_stock_material_exists($conn, $materialId)) {
+                $error = 'Selected material is no longer available. Please choose again.';
+                break;
+            }
+
             if ($costingAction === 'submit_to_admin' && $unitCost <= 0) {
                 $error = 'Unit cost must be greater than 0 before submitting to Admin.';
                 break;
@@ -168,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rows[] = [
                 'item_type' => $itemType,
                 'inventory_id' => $inventoryId > 0 ? $inventoryId : null,
+                'material_id' => $materialId > 0 ? $materialId : null,
                 'item_name' => $itemName,
                 'quantity' => $quantity,
                 'unit' => $unit,
@@ -206,8 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $insertStmt = $conn->prepare(
                     'INSERT INTO site_inspection_cost_items
-                     (inspection_id, item_type, inventory_id, item_name, quantity, unit, unit_cost, line_total, notes)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                     (inspection_id, item_type, inventory_id, material_id, item_name, quantity, unit, unit_cost, line_total, notes)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                 );
                 if (!$insertStmt) {
                     throw new RuntimeException('Failed to prepare costing save.');
@@ -216,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($rows as $row) {
                     $itemType = $row['item_type'];
                     $inventoryId = $row['inventory_id'];
+                    $materialId = $row['material_id'];
                     $itemName = $row['item_name'];
                     $quantity = $row['quantity'];
                     $unit = $row['unit'];
@@ -223,10 +233,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $lineTotal = $row['line_total'];
                     $itemNotes = $row['notes'];
                     $insertStmt->bind_param(
-                        'isisdsdds',
+                        'isiisdsdds',
                         $inspectionId,
                         $itemType,
                         $inventoryId,
+                        $materialId,
                         $itemName,
                         $quantity,
                         $unit,
@@ -297,16 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$inventoryOptions = [];
-$inventoryResult = $conn->query(
-    "SELECT i.id, i.quantity, i.status, a.asset_name, a.asset_category, a.asset_type
-     FROM inventory i
-     INNER JOIN assets a ON a.id = i.asset_id
-     ORDER BY a.asset_name ASC"
-);
-if ($inventoryResult) {
-    $inventoryOptions = $inventoryResult->fetch_all(MYSQLI_ASSOC);
-}
+$materialOptions = material_stock_fetch_active_materials($conn);
 
 $inspections = [];
 $stmt = $conn->prepare(
@@ -413,6 +415,7 @@ require __DIR__ . '/../layout/header.php';
                         $costItems = [[
                             'item_type' => 'material',
                             'inventory_id' => '',
+                            'material_id' => '',
                             'item_name' => '',
                             'quantity' => 1,
                             'unit' => 'unit',
@@ -532,16 +535,18 @@ require __DIR__ . '/../layout/header.php';
                                             </select>
                                         </label>
                                         <label>
-                                            <span>Inventory</span>
-                                            <select name="inventory_id[]" data-inventory-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <option value="">No inventory link</option>
-                                                <?php foreach ($inventoryOptions as $inventory): ?>
+                                            <span>Material Reference</span>
+                                            <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
+                                            <select name="material_id[]" data-material-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <option value="">Manual / non-stock item</option>
+                                                <?php foreach ($materialOptions as $material): ?>
                                                     <option
-                                                        value="<?php echo (int)$inventory['id']; ?>"
-                                                        data-name="<?php echo htmlspecialchars((string)$inventory['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                                        <?php echo (int)($item['inventory_id'] ?? 0) === (int)$inventory['id'] ? 'selected' : ''; ?>
+                                                        value="<?php echo (int)$material['id']; ?>"
+                                                        data-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        <?php echo (int)($item['material_id'] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>
                                                     >
-                                                        <?php echo htmlspecialchars((string)$inventory['asset_name'], ENT_QUOTES, 'UTF-8'); ?> | Stock: <?php echo (int)$inventory['quantity']; ?>
+                                                        <?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> | Available: <?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>

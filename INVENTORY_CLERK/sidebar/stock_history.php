@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/stock_helpers.php';
+require_once __DIR__ . '/../includes/page_shell.php';
 
 inventory_clerk_ensure_stock_movement_table($conn);
 
@@ -23,9 +24,12 @@ if ($result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock History</title>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
+    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
     <link rel="stylesheet" href="../css/inventory_clerk_dashboard.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/layout.css">
@@ -34,6 +38,7 @@ if ($result) {
 <div class="container">
     <?php include __DIR__ . '/inventory_clerk_sidebar.php'; ?>
     <main class="main-content">
+        <?php inventory_clerk_render_header($conn); ?>
         <div class="page-stack">
             <section class="form-panel">
                 <h1 class="section-title-inline">Stock History</h1>
@@ -75,6 +80,7 @@ if ($result) {
         </div>
     </main>
 </div>
-<script src="../js/inventory_clerk_dashboard.js"></script>
+<script src="/codesamplecaps/assets/js/app-window-guard.js"></script>
+<script src="/codesamplecaps/SHARED/header/core/operations-header.js"></script>
 </body>
 </html>

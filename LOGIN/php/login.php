@@ -39,6 +39,48 @@ function login_debug_log(string $event, array $context = []): void
     );
 }
 
+function login_redirect_if_authenticated(mysqli $conn): void
+{
+    $allowedRoles = ['super_admin', 'admin', 'inventory_clerk', 'engineer', 'foreman', 'client'];
+    $hasSessionData = isset($_SESSION['user_id'])
+        || isset($_SESSION['role'])
+        || isset($_SESSION['auth_user_agent']);
+
+    if (!auth_session_is_valid_for_roles($allowedRoles)) {
+        if ($hasSessionData) {
+            auth_destroy_session();
+        }
+        return;
+    }
+
+    auth_enforce_activity_timeout();
+
+    $userId = (int)$_SESSION['user_id'];
+    $sessionRole = (string)$_SESSION['role'];
+    $stmt = $conn->prepare('SELECT role, status FROM users WHERE id = ? LIMIT 1');
+
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+
+    if (
+        !$user
+        || strtolower((string)($user['status'] ?? '')) !== 'active'
+        || (string)($user['role'] ?? '') !== $sessionRole
+    ) {
+        auth_destroy_session();
+        return;
+    }
+
+    auth_redirect_authenticated_user();
+}
+
+login_redirect_if_authenticated($conn);
+
 $error = '';
 $failed_attempts_display = '';
 $attempts_left = null;
@@ -68,7 +110,6 @@ if (isset($_GET['timeout'])) {
     $error_class = 'login-toast-success';
     login_debug_log('logout_page_rendered');
 } else {
-    auth_redirect_authenticated_user();
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $login_flash['error'] !== '') {
         $error = $login_flash['error'];
         $failed_attempts_display = $login_flash['attempts_display'];

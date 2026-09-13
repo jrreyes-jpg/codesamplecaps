@@ -414,7 +414,7 @@ function inquiry_quote_client_can_access(mysqli $conn, int $draftId, int $client
 function inquiry_quote_fetch_items(mysqli $conn, int $draftId): array
 {
     $stmt = $conn->prepare(
-        'SELECT item_type, item_name, quantity, unit, unit_cost, line_total, notes
+        'SELECT item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes
          FROM inquiry_quotation_items
          WHERE draft_id = ?
          ORDER BY id ASC'
@@ -497,7 +497,7 @@ function inquiry_quote_create_post_inspection_revision(
         }
 
         $costStmt = $conn->prepare(
-            'SELECT item_type, item_name, quantity, unit, unit_cost, line_total, notes
+            'SELECT item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes
              FROM site_inspection_cost_items
              WHERE inspection_id = ? ORDER BY id ASC'
         );
@@ -560,21 +560,22 @@ function inquiry_quote_create_post_inspection_revision(
 
         $itemStmt = $conn->prepare(
             'INSERT INTO inquiry_quotation_items
-             (draft_id, item_type, item_name, quantity, unit, unit_cost, line_total, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+             (draft_id, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$itemStmt) {
             throw new RuntimeException('Unable to copy inspection costing.');
         }
         foreach ($costItems as $item) {
             $type = (string)$item['item_type'];
+            $materialId = isset($item['material_id']) ? (int)$item['material_id'] : null;
             $name = (string)$item['item_name'];
             $quantity = (float)$item['quantity'];
             $unit = (string)$item['unit'];
             $unitCost = (float)$item['unit_cost'];
             $lineTotal = (float)$item['line_total'];
             $notes = (string)($item['notes'] ?? '');
-            $itemStmt->bind_param('issdsdds', $revisedDraftId, $type, $name, $quantity, $unit, $unitCost, $lineTotal, $notes);
+            $itemStmt->bind_param('isisdsdds', $revisedDraftId, $type, $materialId, $name, $quantity, $unit, $unitCost, $lineTotal, $notes);
             $itemStmt->execute();
         }
 
@@ -615,7 +616,7 @@ function inquiry_quote_mark_revision_as_final(mysqli $conn, int $draftId): void
 function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int $inspectionId, int $adminId, float $marginPercent = 15.0): int
 {
     $itemStmt = $conn->prepare(
-        'SELECT item_type, item_name, quantity, unit, unit_cost, line_total, notes
+        'SELECT item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes
          FROM site_inspection_cost_items
          WHERE inspection_id = ?
          ORDER BY id ASC'
@@ -662,8 +663,8 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
 
         $insertItem = $conn->prepare(
             'INSERT INTO inquiry_quotation_items
-             (draft_id, item_type, item_name, quantity, unit, unit_cost, line_total, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+             (draft_id, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$insertItem) {
             throw new RuntimeException('Unable to prepare quotation items.');
@@ -671,13 +672,14 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
 
         foreach ($items as $item) {
             $itemType = (string)($item['item_type'] ?? 'material');
+            $materialId = isset($item['material_id']) ? (int)$item['material_id'] : null;
             $itemName = (string)($item['item_name'] ?? '');
             $quantity = (float)($item['quantity'] ?? 0);
             $unit = (string)($item['unit'] ?? 'unit');
             $unitCost = (float)($item['unit_cost'] ?? 0);
             $lineTotal = (float)($item['line_total'] ?? 0);
             $notes = (string)($item['notes'] ?? '');
-            $insertItem->bind_param('issdsdds', $draftId, $itemType, $itemName, $quantity, $unit, $unitCost, $lineTotal, $notes);
+            $insertItem->bind_param('isisdsdds', $draftId, $itemType, $materialId, $itemName, $quantity, $unit, $unitCost, $lineTotal, $notes);
             $insertItem->execute();
         }
 

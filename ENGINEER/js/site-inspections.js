@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const rows = Array.from(form.querySelectorAll('.costing-row')).map(function (row) {
             return {
                 item_type: row.querySelector('select[name="item_type[]"]')?.value || 'material',
-                inventory_id: row.querySelector('select[name="inventory_id[]"]')?.value || '',
+                inventory_id: row.querySelector('input[name="inventory_id[]"]')?.value || '',
+                material_id: row.querySelector('select[name="material_id[]"]')?.value || '',
                 item_name: row.querySelector('input[name="item_name[]"]')?.value || '',
                 quantity: row.querySelector('input[name="quantity[]"]')?.value || '',
                 unit: row.querySelector('select[name="unit[]"]')?.value || 'unit',
@@ -52,7 +53,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const fillRow = function (row, data) {
         row.querySelector('select[name="item_type[]"]').value = data.item_type || 'material';
-        row.querySelector('select[name="inventory_id[]"]').value = data.inventory_id || '';
+        const materialPicker = row.querySelector('select[name="material_id[]"]');
+        if (materialPicker) {
+            materialPicker.value = data.material_id || '';
+        }
         row.querySelector('input[name="item_name[]"]').value = data.item_name || '';
         row.querySelector('input[name="quantity[]"]').value = data.quantity || '1';
         row.querySelector('select[name="unit[]"]').value = data.unit || 'unit';
@@ -339,12 +343,17 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        row.querySelector('[data-inventory-picker]')?.addEventListener('change', function (event) {
+        row.querySelector('[data-material-picker]')?.addEventListener('change', function (event) {
             const option = event.target.selectedOptions[0];
             const name = option?.getAttribute('data-name') || '';
+            const unit = option?.getAttribute('data-unit') || '';
             const nameField = row.querySelector('input[name="item_name[]"]');
+            const unitField = row.querySelector('select[name="unit[]"]');
             if (name && nameField && nameField.value.trim() === '') {
                 nameField.value = name;
+            }
+            if (unit && unitField && Array.from(unitField.options).some((optionItem) => optionItem.value === unit)) {
+                unitField.value = unit;
             }
             saveFormDraft(form);
         });

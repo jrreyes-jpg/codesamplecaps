@@ -8,4 +8,5 @@ storage/sessions/
 storage/logs/
 storage/profile_photos/
 uploads/profile_photos/
+DB/backups/
 *.log

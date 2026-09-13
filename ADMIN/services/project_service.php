@@ -1,5 +1,4 @@
 <?php
-
 /*
 |--------------------------------------------------------------------------
 | PROJECT_SERVICE.PHP
@@ -9,6 +8,8 @@
 | Dito nilalagay ang common logic para hindi lumobo ang projects.php.
 |--------------------------------------------------------------------------
 */
+
+require_once __DIR__ . '/../../config/material_stock.php';
 
 if (!function_exists('get_column_type')) {
     function get_column_type(mysqli $conn, string $tableName, string $columnName): ?string {
@@ -248,6 +249,11 @@ if (!function_exists('project_service_create_project')) {
                 if (!$linkQuotation->execute() || $linkQuotation->affected_rows <= 0) {
                     throw new RuntimeException('Accepted quotation is already linked or no longer available.');
                 }
+            }
+
+            $inspectionId = (int)($data['material_reservation_inspection_id'] ?? 0);
+            if ($quotationDraftId > 0 && $inspectionId > 0) {
+                material_stock_reserve_approved_inspection_requirements($conn, $projectId, $inspectionId, $createdBy);
             }
 
             $conn->commit();

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../includes/admin_auth.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../../config/material_stock.php';
 
 $editId = (int)($_GET['edit_id'] ?? $_POST['edit_id'] ?? 0);
 $isEditMode = $editId > 0;
@@ -85,6 +86,7 @@ $quotationNo = $isEditMode
 $error = '';
 $defaultItems = $savedItems ?: [[
     'item_type' => 'material',
+    'material_id' => '',
     'item_name' => '',
     'quantity' => '1',
     'unit' => 'unit',
@@ -92,6 +94,7 @@ $defaultItems = $savedItems ?: [[
     'notes' => '',
 ]];
 $postedTypes = is_array($_POST['item_type'] ?? null) ? $_POST['item_type'] : array_column($defaultItems, 'item_type');
+$postedMaterialIds = is_array($_POST['material_id'] ?? null) ? $_POST['material_id'] : array_column($defaultItems, 'material_id');
 $postedNames = is_array($_POST['item_name'] ?? null) ? $_POST['item_name'] : array_column($defaultItems, 'item_name');
 $postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : array_column($defaultItems, 'quantity');
 $postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : array_column($defaultItems, 'unit');
@@ -118,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $unit = trim((string)($postedUnits[$index] ?? 'unit'));
             $unitCost = (float)($postedUnitCosts[$index] ?? 0);
             $notes = trim((string)($postedNotes[$index] ?? ''));
+            $materialId = $itemType === 'material' ? (int)($postedMaterialIds[$index] ?? 0) : 0;
 
             if ($itemName === '' || strlen($itemName) > 180) {
                 $error = 'Each quotation item needs a valid name.';
@@ -125,6 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!in_array($itemType, $allowedTypes, true)) {
                 $error = 'Please select a valid item type.';
+                break;
+            }
+            if ($materialId > 0 && !material_stock_material_exists($conn, $materialId)) {
+                $error = 'Selected material is no longer available. Please choose again.';
                 break;
             }
             if ($quantity <= 0 || $quantity > 999999 || $unitCost < 0 || $unitCost > 999999999) {
@@ -140,6 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $subtotal += $lineTotal;
             $quotationItems[] = [
                 'type' => $itemType,
+                'material_id' => $materialId > 0 ? $materialId : null,
                 'name' => $itemName,
                 'quantity' => $quantity,
                 'unit' => $unit,
@@ -208,15 +217,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $itemStmt = $conn->prepare(
                     'INSERT INTO inquiry_quotation_items
-                     (draft_id, item_type, item_name, quantity, unit, unit_cost, line_total, notes)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                     (draft_id, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
                 );
                 if (!$itemStmt) {
                     throw new RuntimeException('Unable to prepare quotation items.');
                 }
 
                 foreach ($quotationItems as $item) {
-                    $itemStmt->bind_param('issdsdds', $draftId, $item['type'], $item['name'], $item['quantity'], $item['unit'], $item['unit_cost'], $item['line_total'], $item['notes']);
+                    $itemStmt->bind_param('isisdsdds', $draftId, $item['type'], $item['material_id'], $item['name'], $item['quantity'], $item['unit'], $item['unit_cost'], $item['line_total'], $item['notes']);
                     $itemStmt->execute();
                 }
 
@@ -255,6 +264,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$materialOptions = material_stock_fetch_active_materials($conn);
 
 $adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Edge Automation';
 $adminCssFiles = [
@@ -328,6 +339,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php foreach ($postedNames as $index => $postedName): ?>
                         <div class="quotation-create-item" data-quotation-item>
                             <label><span>Type</span><select name="item_type[]" required><?php foreach (['material' => 'Material', 'labor' => 'Labor', 'equipment' => 'Equipment', 'service' => 'Service', 'other' => 'Other'] as $typeValue => $typeLabel): ?><option value="<?php echo $typeValue; ?>" <?php echo (string)($postedTypes[$index] ?? '') === $typeValue ? 'selected' : ''; ?>><?php echo $typeLabel; ?></option><?php endforeach; ?></select></label>
+                            <label><span>Material Reference</span><select name="material_id[]"><option value="">Manual / non-stock item</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" <?php echo (int)($postedMaterialIds[$index] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> | Available: <?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
                             <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required></label>
                             <label><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required></label>
                             <label><span>Unit</span><input type="text" name="unit[]" maxlength="30" value="<?php echo htmlspecialchars((string)($postedUnits[$index] ?? 'unit'), ENT_QUOTES, 'UTF-8'); ?>" required></label>
@@ -345,6 +357,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <template data-quotation-item-template>
                     <div class="quotation-create-item" data-quotation-item>
                         <label><span>Type</span><select name="item_type[]" required><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="service">Service</option><option value="other">Other</option></select></label>
+                        <label><span>Material Reference</span><select name="material_id[]"><option value="">Manual / non-stock item</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> | Available: <?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
                         <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" required></label>
                         <label><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="1" required></label>
                         <label><span>Unit</span><input type="text" name="unit[]" maxlength="30" value="unit" required></label>

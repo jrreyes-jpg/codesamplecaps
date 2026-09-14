@@ -292,6 +292,9 @@
                 closeAllGroups(sidebar);
             }
             setSidebarState(shouldCollapse, true);
+            if (!shouldCollapse) {
+                initializeSidebarGroups(sidebar);
+            }
             restoreAfterLayout();
         });
 

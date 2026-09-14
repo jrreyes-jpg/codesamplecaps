@@ -125,7 +125,7 @@ if (!function_exists('shared_sidebar_has_active_children')) {
             <?php if ($hasChildren): ?>
                 <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open has-active-child' : ''; ?>">
                     <button
-                        class="menu-link menu-link--button menu-link--group-toggle"
+                        class="menu-link menu-link--button menu-link--group-toggle<?php echo $hasActiveChild ? ' active-link' : ''; ?>"
                         type="button"
                         title="<?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-sidebar-group-toggle

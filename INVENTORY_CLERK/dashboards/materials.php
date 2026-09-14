@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $exception) {
         $_SESSION[$flashKey] = ['type' => 'error', 'message' => $exception->getMessage()];
     }
-    header('Location: /codesamplecaps/INVENTORY_CLERK/sidebar/materials.php');
+    header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/materials.php');
     exit;
 }
 
@@ -43,28 +43,10 @@ $shortageResult = $conn->query(
 if ($shortageResult) {
     $shortages = $shortageResult->fetch_all(MYSQLI_ASSOC);
 }
+
+inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $materials, $shortages): void {
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Materials</title>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/inventory-clerk-content.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/materials.css">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../sidebar/inventory_clerk_sidebar.php'; ?>
-    <main class="main-content inventory-clerk-content-shell">
-        <?php inventory_clerk_render_header($conn); ?>
-        <div class="page-stack materials-page">
+    <div class="page-stack materials-page">
         <section class="form-panel">
             <p class="materials-page__eyebrow">Consumable stock</p>
             <h1 class="section-title-inline">Materials</h1>
@@ -107,9 +89,10 @@ if ($shortageResult) {
             <?php endforeach; ?>
             </tbody></table></div>
         </section>
-    </div></main>
-</div>
-<script src="/codesamplecaps/assets/js/app-window-guard.js"></script>
-<script src="/codesamplecaps/SHARED/header/core/operations-header.js"></script>
-</body>
-</html>
+    </div>
+<?php
+}, [
+    '/codesamplecaps/INVENTORY_CLERK/css/materials.css',
+], '', [
+    '/codesamplecaps/INVENTORY_CLERK/js/materials.js',
+]);

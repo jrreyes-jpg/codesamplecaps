@@ -142,7 +142,7 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                         <span class="menu-text"><?php echo htmlspecialchars((string)$item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                         <span class="menu-group-arrow" aria-hidden="true">
                             <svg class="menu-group-arrow-svg" viewBox="0 0 20 20" focusable="false" aria-hidden="true">
-                                <path d="M6 8l4 4 4-4"></path>
+                                <path d="M8 6l4 4-4 4"></path>
                             </svg>
                         </span>
                     </button>

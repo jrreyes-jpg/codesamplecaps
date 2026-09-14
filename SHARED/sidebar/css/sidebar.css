@@ -237,16 +237,21 @@
 
 .sidebar .menu-link--group-toggle .menu-text {
     flex: 1;
+    min-width: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .sidebar .menu-group-arrow {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+    margin-left: 12px;
+    color: currentColor;
     flex-shrink: 0;
-    color: inherit;
     transition: transform 0.18s ease;
 }
 
@@ -261,7 +266,7 @@
 }
 
 .sidebar .nav-menu-group.is-open > .menu-link--group-toggle .menu-group-arrow {
-    transform: rotate(180deg);
+    transform: rotate(90deg);
 }
 
 .sidebar .menu-link:hover,

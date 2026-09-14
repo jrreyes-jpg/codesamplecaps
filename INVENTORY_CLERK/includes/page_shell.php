@@ -60,7 +60,7 @@ if (!function_exists('inventory_clerk_render_header')) {
         $operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
         $operationsHeaderActionsClass = 'global-topbar__actions';
         $operationsHeaderClockClass = 'global-topbar__clock';
-        $operationsHeaderHomeHref = '/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php';
+        $operationsHeaderHomeHref = '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php';
         $operationsHeaderBrandText = 'EDGE Automation';
         $operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
         $operationsHeaderBrandLabel = 'Go to Inventory Clerk dashboard';

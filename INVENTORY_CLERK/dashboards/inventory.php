@@ -21,7 +21,7 @@ function determine_inventory_status_for_page(int $quantity, ?int $minStock): str
 }
 
 function redirect_inventory_page(): void {
-    header('Location: /codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php');
+    header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php');
     exit();
 }
 
@@ -439,10 +439,10 @@ inventory_clerk_render_page(
                 </div>
             </section>
             <div class="dashboard-actions">
-                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/dashboard.php" class="action-chip">Overview</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php" class="action-chip active-chip">Inventory Records</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_in.php" class="action-chip">Stock In</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/stock_out.php" class="action-chip">Stock Out</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php" class="action-chip">Overview</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php" class="action-chip active-chip">Inventory Records</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_in.php" class="action-chip">Stock In</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_out.php" class="action-chip">Stock Out</a>
             </div>
         </section>
 
@@ -504,11 +504,11 @@ inventory_clerk_render_page(
             <section class="form-panel">
                 <h1 class="section-title-inline">Inventory Items</h1>
                 <div class="dashboard-actions">
-                    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
-                    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
-                    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=low-stock" class="action-chip<?php echo $statusFilter === 'low-stock' ? ' active-chip' : ''; ?>">Low Stock</a>
-                    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=out-of-stock" class="action-chip<?php echo $statusFilter === 'out-of-stock' ? ' active-chip' : ''; ?>">Out of Stock</a>
-                    <a href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=available" class="action-chip<?php echo $statusFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
+                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
+                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
+                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=low-stock" class="action-chip<?php echo $statusFilter === 'low-stock' ? ' active-chip' : ''; ?>">Low Stock</a>
+                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=out-of-stock" class="action-chip<?php echo $statusFilter === 'out-of-stock' ? ' active-chip' : ''; ?>">Out of Stock</a>
+                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=available" class="action-chip<?php echo $statusFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
                 </div>
 
                 <?php if (empty($inventoryItems)): ?>
@@ -614,6 +614,7 @@ inventory_clerk_render_page(
         </div>
 <?php
     },
-    ['/codesamplecaps/INVENTORY_CLERK/css/inventory-page.css'],
-    'inventory-page'
+    ['/codesamplecaps/INVENTORY_CLERK/css/inventory.css'],
+    'inventory-page',
+    ['/codesamplecaps/INVENTORY_CLERK/js/inventory.js']
 );

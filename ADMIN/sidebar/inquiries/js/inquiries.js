@@ -1262,6 +1262,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const materialSelect = row.querySelector('select[name="material_id[]"]');
             const isMaterial = typeSelect?.value === 'material';
 
+            row.classList.toggle('is-material-item', isMaterial);
+
             if (materialReference) {
                 materialReference.hidden = !isMaterial;
             }

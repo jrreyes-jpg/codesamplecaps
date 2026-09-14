@@ -17,70 +17,51 @@ $result = $conn->query(
 if ($result) {
     $movements = $result->fetch_all(MYSQLI_ASSOC);
 }
+
+inventory_clerk_render_page('Stock History', function () use ($movements): void {
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock History</title>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <script src="/codesamplecaps/SHARED/sidebar/js/sidebar.js" defer></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-    <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/inventory-clerk-content.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/header.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/notifications.css">
-</head>
-<body>
-<div class="container">
-    <?php include __DIR__ . '/../sidebar/inventory_clerk_sidebar.php'; ?>
-    <main class="main-content inventory-clerk-content-shell">
-        <?php inventory_clerk_render_header($conn); ?>
-        <div class="page-stack">
-            <section class="form-panel">
-                <h1 class="section-title-inline">Stock History</h1>
-                <?php if (empty($movements)): ?>
-                    <div class="empty-state">No stock movement yet.</div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
+    <div class="page-stack stock-history-page">
+        <section class="form-panel">
+            <h1 class="section-title-inline">Stock History</h1>
+            <?php if (empty($movements)): ?>
+                <div class="empty-state">No stock movement yet.</div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Item</th>
+                                <th>Type</th>
+                                <th>Qty</th>
+                                <th>Before</th>
+                                <th>After</th>
+                                <th>User</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($movements as $movement): ?>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Item</th>
-                                    <th>Type</th>
-                                    <th>Qty</th>
-                                    <th>Before</th>
-                                    <th>After</th>
-                                    <th>User</th>
-                                    <th>Remarks</th>
+                                    <td><?php echo htmlspecialchars((string)$movement['created_at']); ?></td>
+                                    <td><?php echo htmlspecialchars((string)$movement['asset_name']); ?></td>
+                                    <td><?php echo htmlspecialchars(str_replace('_', ' ', (string)$movement['movement_type'])); ?></td>
+                                    <td><?php echo (int)$movement['quantity']; ?></td>
+                                    <td><?php echo (int)$movement['previous_quantity']; ?></td>
+                                    <td><?php echo (int)$movement['new_quantity']; ?></td>
+                                    <td><?php echo htmlspecialchars((string)($movement['full_name'] ?? 'System')); ?></td>
+                                    <td><?php echo htmlspecialchars((string)($movement['remarks'] ?? '')); ?></td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($movements as $movement): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars((string)$movement['created_at']); ?></td>
-                                        <td><?php echo htmlspecialchars((string)$movement['asset_name']); ?></td>
-                                        <td><?php echo htmlspecialchars(str_replace('_', ' ', (string)$movement['movement_type'])); ?></td>
-                                        <td><?php echo (int)$movement['quantity']; ?></td>
-                                        <td><?php echo (int)$movement['previous_quantity']; ?></td>
-                                        <td><?php echo (int)$movement['new_quantity']; ?></td>
-                                        <td><?php echo htmlspecialchars((string)($movement['full_name'] ?? 'System')); ?></td>
-                                        <td><?php echo htmlspecialchars((string)($movement['remarks'] ?? '')); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </section>
-        </div>
-    </main>
-</div>
-<script src="/codesamplecaps/assets/js/app-window-guard.js"></script>
-<script src="/codesamplecaps/SHARED/header/core/operations-header.js"></script>
-</body>
-</html>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+    </div>
+<?php
+}, [
+    '/codesamplecaps/INVENTORY_CLERK/css/stock_history.css',
+], '', [
+    '/codesamplecaps/INVENTORY_CLERK/js/stock_history.js',
+]);

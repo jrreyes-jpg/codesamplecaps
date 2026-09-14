@@ -73,7 +73,7 @@ if (!function_exists('inventory_clerk_render_header')) {
     }
 }
 
-function inventory_clerk_render_page(string $pageTitle, callable $renderContent, array $pageStyles = [], string $mainClass = ''): void
+function inventory_clerk_render_page(string $pageTitle, callable $renderContent, array $pageStyles = [], string $mainClass = '', array $pageScripts = []): void
 {
     global $conn;
     $mainClasses = trim('main-content ' . $mainClass);
@@ -90,7 +90,7 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/admin_ui/css/base.css">
-        <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/css/inventory-clerk-content.css">
+        <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/common/css/inventory-clerk-common.css">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
         <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
@@ -111,6 +111,10 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
     </div>
     <script src="/codesamplecaps/assets/js/app-window-guard.js"></script>
     <script src="/codesamplecaps/SHARED/header/core/operations-header.js"></script>
+    <script src="/codesamplecaps/INVENTORY_CLERK/common/js/inventory-clerk-common.js" defer></script>
+    <?php foreach ($pageScripts as $scriptPath): ?>
+        <script src="<?php echo htmlspecialchars((string)$scriptPath, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
+    <?php endforeach; ?>
     </body>
     </html>
     <?php

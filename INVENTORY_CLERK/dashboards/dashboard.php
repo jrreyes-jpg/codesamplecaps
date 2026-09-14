@@ -36,4 +36,8 @@ inventory_clerk_render_page('Inventory Overview', function () use ($metrics): vo
             </div>
         </section>
 <?php
-});
+}, [
+    '/codesamplecaps/INVENTORY_CLERK/css/dashboard.css',
+], '', [
+    '/codesamplecaps/INVENTORY_CLERK/js/dashboard.js',
+]);

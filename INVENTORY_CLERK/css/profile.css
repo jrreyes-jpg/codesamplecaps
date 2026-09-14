@@ -1,0 +1,81 @@
+.inventory-clerk-profile-page {
+    width: min(100%, 1120px);
+    margin: 0 auto;
+}
+
+.inventory-clerk-profile-page__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.inventory-clerk-profile-page__eyebrow {
+    margin: 0 0 5px;
+    color: #15803d;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.inventory-clerk-profile-page__heading h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: clamp(1.45rem, 2.5vw, 2rem);
+}
+
+.inventory-clerk-profile-page__heading p:not(.inventory-clerk-profile-page__eyebrow) {
+    margin: 6px 0 0;
+    color: #64748b;
+}
+
+.inventory-clerk-profile-page__role {
+    flex: 0 0 auto;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.inventory-clerk-profile-page__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.inventory-clerk-profile-page__tab {
+    padding: 9px 13px;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    color: #475569;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.inventory-clerk-profile-page__tab:hover,
+.inventory-clerk-profile-page__tab:focus-visible {
+    border-color: #86efac;
+    color: #166534;
+    outline: none;
+}
+
+.inventory-clerk-profile-page__tab.is-active {
+    border-color: #16a34a;
+    background: #16a34a;
+    color: #ffffff;
+}
+
+@media (max-width: 560px) {
+    .inventory-clerk-profile-page__heading {
+        flex-direction: column;
+    }
+
+    .inventory-clerk-profile-page__role {
+        align-self: flex-start;
+    }
+}

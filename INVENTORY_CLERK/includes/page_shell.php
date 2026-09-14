@@ -92,6 +92,7 @@ if (!function_exists('inventory_clerk_render_header')) {
         $headerProfileInitials = $initials;
         $headerProfileAlt = 'Inventory Clerk profile photo';
         $headerProfileLinks = [
+            ['label' => 'My Profile', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/profile.php'],
             ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
         ];
         include __DIR__ . '/../../SHARED/header/profile/php/profile.php';

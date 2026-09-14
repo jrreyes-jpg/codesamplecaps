@@ -5,6 +5,17 @@ require_once __DIR__ . '/../../config/material_stock.php';
 
 $csrfToken = auth_csrf_token('inventory_clerk_materials');
 $flashKey = 'inventory_clerk_materials_flash';
+$materialCategories = [
+    'Cable & Wire',
+    'Connectors & Terminals',
+    'Conduit & Raceway',
+    'Fasteners & Hardware',
+    'Electrical Components',
+    'Network Components',
+    'Automation / Control Components',
+    'Other',
+];
+$materialUnits = ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter', 'Other'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -12,11 +23,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Security check failed. Please try again.');
         }
         $reorder = trim((string)($_POST['reorder_level'] ?? ''));
+        $category = trim((string)($_POST['category'] ?? ''));
+        $unit = trim((string)($_POST['unit'] ?? ''));
+        if ($reorder === '' || !is_numeric($reorder) || !is_finite((float)$reorder) || (float)$reorder <= 0) {
+            throw new RuntimeException('Reorder level must be greater than zero.');
+        }
+        if (!in_array($category, $materialCategories, true) || !in_array($unit, $materialUnits, true)) {
+            throw new RuntimeException('Please choose a valid category and unit.');
+        }
         $code = material_stock_create_material(
             $conn,
             (string)($_POST['material_name'] ?? ''),
-            (string)($_POST['category'] ?? ''),
-            (string)($_POST['unit'] ?? ''),
+            $category,
+            $unit,
             $reorder === '' ? null : (float)$reorder
         );
         $_SESSION[$flashKey] = ['type' => 'success', 'message' => 'Material ' . $code . ' created. Add Stock In when stock arrives.'];
@@ -44,21 +63,18 @@ if ($shortageResult) {
     $shortages = $shortageResult->fetch_all(MYSQLI_ASSOC);
 }
 
-inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $materials, $shortages): void {
+inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $materials, $shortages, $materialCategories, $materialUnits): void {
 ?>
     <div class="page-stack materials-page">
         <section class="form-panel">
-            <p class="materials-page__eyebrow">Consumable stock</p>
             <h1 class="section-title-inline">Materials</h1>
-            <p>Wire, cable, conduit, bolts, and similar items. Reusable tools stay in Asset / QR Inventory.</p>
             <?php if ($flash): ?><div class="alert <?php echo $flash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>"><?php echo htmlspecialchars($flash['message']); ?></div><?php endif; ?>
-            <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+            <form method="POST" data-material-form><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <div class="form-grid">
-                    <div class="input-group"><label>Material Code</label><output class="material-code-preview">Made by system after save</output></div>
-                    <div class="input-group"><label for="material_name">Material Name</label><input id="material_name" name="material_name" maxlength="180" required></div>
-                    <div class="input-group"><label for="category">Category</label><input id="category" name="category" maxlength="80"></div>
-                    <div class="input-group"><label for="unit">Unit</label><input id="unit" name="unit" value="pcs" maxlength="30" required></div>
-                    <div class="input-group"><label for="reorder_level">Reorder Level</label><input id="reorder_level" name="reorder_level" type="number" min="0" step="0.01"></div>
+                    <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required data-material-name></div>
+                    <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select></div>
+                    <div class="input-group"><label for="unit">Unit</label><select id="unit" name="unit" required data-material-unit><option value="">Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>"<?php echo $unit === 'pcs' ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select></div>
+                    <div class="input-group"><label for="reorder_level">Reorder Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Alert when available stock reaches this level or lower." data-tooltip="Alert when available stock reaches this level or lower.">i</span></label><input id="reorder_level" name="reorder_level" type="number" min="0.01" step="0.01" required inputmode="decimal" data-reorder-level></div>
                 </div>
                 <div class="form-actions"><button type="submit" class="btn-primary">Add Material</button></div>
             </form>

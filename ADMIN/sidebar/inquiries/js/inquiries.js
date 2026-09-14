@@ -1252,12 +1252,44 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         };
 
+        const syncMaterialReference = function (row, shouldFillMaterialDetails) {
+            const typeSelect = row.querySelector('select[name="item_type[]"]');
+            const materialReference = row.querySelector('[data-quotation-material-reference]');
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const isMaterial = typeSelect?.value === 'material';
+
+            if (materialReference) {
+                materialReference.hidden = !isMaterial;
+            }
+
+            if (!isMaterial && materialSelect) {
+                materialSelect.value = '';
+                return;
+            }
+
+            if (!shouldFillMaterialDetails || !materialSelect?.value) {
+                return;
+            }
+
+            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+            const itemName = row.querySelector('input[name="item_name[]"]');
+            const unit = row.querySelector('input[name="unit[]"]');
+
+            if (itemName && selectedOption?.dataset.materialName) {
+                itemName.value = selectedOption.dataset.materialName;
+            }
+            if (unit && selectedOption?.dataset.materialUnit) {
+                unit.value = selectedOption.dataset.materialUnit;
+            }
+        };
+
         addButton?.addEventListener('click', function () {
             if (!items || !template || items.children.length >= 50) {
                 return;
             }
 
             items.appendChild(template.content.cloneNode(true));
+            syncMaterialReference(items.lastElementChild, false);
             updateQuotationPreview();
             updateEditSubmitState();
         });
@@ -1271,6 +1303,20 @@ document.addEventListener('DOMContentLoaded', function () {
             removeButton.closest('[data-quotation-item]')?.remove();
             updateQuotationPreview();
             updateEditSubmitState();
+        });
+
+        items?.addEventListener('change', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (!row) {
+                return;
+            }
+
+            if (event.target.matches('select[name="item_type[]"]')) {
+                syncMaterialReference(row, false);
+            }
+            if (event.target.matches('select[name="material_id[]"]')) {
+                syncMaterialReference(row, true);
+            }
         });
 
         form?.addEventListener('submit', function (event) {
@@ -1304,6 +1350,9 @@ document.addEventListener('DOMContentLoaded', function () {
             updateEditSubmitState();
         });
         form?.addEventListener('change', updateEditSubmitState);
+        items?.querySelectorAll('[data-quotation-item]').forEach(function (row) {
+            syncMaterialReference(row, false);
+        });
         updateQuotationPreview();
         initialQuotationState = serializeQuotationForm();
         updateEditSubmitState();

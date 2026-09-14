@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
             if ($quantity <= 0 || $quantity > 999999 || $unitCost < 0 || $unitCost > 999999999) {
-                $error = 'Check the quantity and unit cost of each item.';
+                $error = 'Check the quantity and estimated unit cost of each item.';
                 break;
             }
             if ($unit === '' || strlen($unit) > 30 || strlen($notes) > 2000) {
@@ -312,9 +312,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
             <div class="quotation-create-client-grid">
                 <div><span>Contact Person</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                <div><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual Client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                <div><span>Email</span><strong><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                <?php if (trim((string)$inquiry['company_name']) !== ''): ?>
+                    <div><span>Company / Organization</span><strong><?php echo htmlspecialchars((string)$inquiry['company_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                <?php endif; ?>
                 <div><span>Service</span><strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                 <div><span>Location</span><strong><?php echo htmlspecialchars(trim((string)$inquiry['site_address'] . ', ' . (string)$inquiry['barangay'] . ', ' . (string)$inquiry['city_municipality'] . ', ' . (string)$inquiry['province'], ' ,'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
             </div>
@@ -338,12 +338,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-items" data-quotation-items>
                     <?php foreach ($postedNames as $index => $postedName): ?>
                         <div class="quotation-create-item" data-quotation-item>
-                            <label><span>Type</span><select name="item_type[]" required><?php foreach (['material' => 'Material', 'labor' => 'Labor', 'equipment' => 'Equipment (Billable / Rental)', 'service' => 'Service', 'other' => 'Other'] as $typeValue => $typeLabel): ?><option value="<?php echo $typeValue; ?>" <?php echo (string)($postedTypes[$index] ?? '') === $typeValue ? 'selected' : ''; ?>><?php echo $typeLabel; ?></option><?php endforeach; ?></select></label>
-                            <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo (string)($postedTypes[$index] ?? '') !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><select name="material_id[]"><option value="">Manual / non-stock material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo (int)($postedMaterialIds[$index] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> | Available: <?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
+                            <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required><?php foreach (['material' => 'Material', 'labor' => 'Labor', 'equipment' => 'Equipment (Billable / Rental)', 'service' => 'Service', 'other' => 'Other'] as $typeValue => $typeLabel): ?><option value="<?php echo $typeValue; ?>" <?php echo (string)($postedTypes[$index] ?? '') === $typeValue ? 'selected' : ''; ?>><?php echo $typeLabel; ?></option><?php endforeach; ?></select></label>
+                            <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo (string)($postedTypes[$index] ?? '') !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><select name="material_id[]"><option value="">Manual / non-stock material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo (int)($postedMaterialIds[$index] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
                             <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required></label>
-                            <label><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required></label>
-                            <label><span>Unit</span><input type="text" name="unit[]" maxlength="30" value="<?php echo htmlspecialchars((string)($postedUnits[$index] ?? 'unit'), ENT_QUOTES, 'UTF-8'); ?>" required></label>
-                            <label><span>Unit Cost</span><input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required></label>
+                            <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required></label>
+                            <label class="quotation-create-item__unit"><span>Unit</span><input type="text" name="unit[]" maxlength="30" value="<?php echo htmlspecialchars((string)($postedUnits[$index] ?? 'unit'), ENT_QUOTES, 'UTF-8'); ?>" required></label>
+                            <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required></label>
+                            <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                             <label class="quotation-create-item__notes"><span>Notes / Exclusion</span><input type="text" name="item_notes[]" maxlength="2000" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></label>
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item">Remove</button>
                         </div>
@@ -356,12 +357,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                 <template data-quotation-item-template>
                     <div class="quotation-create-item" data-quotation-item>
-                        <label><span>Type</span><select name="item_type[]" required><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment (Billable / Rental)</option><option value="service">Service</option><option value="other">Other</option></select></label>
-                        <label class="quotation-create-item__material-reference" data-quotation-material-reference><span>Material Reference</span><select name="material_id[]"><option value="">Manual / non-stock material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> | Available: <?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
+                        <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment (Billable / Rental)</option><option value="service">Service</option><option value="other">Other</option></select></label>
+                        <label class="quotation-create-item__material-reference" data-quotation-material-reference><span>Material Reference</span><select name="material_id[]"><option value="">Manual / non-stock material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
                         <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" required></label>
-                        <label><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="1" required></label>
-                        <label><span>Unit</span><input type="text" name="unit[]" maxlength="30" value="unit" required></label>
-                        <label><span>Unit Cost</span><input type="number" name="unit_cost[]" min="0" step="0.01" required></label>
+                        <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="1" required></label>
+                        <label class="quotation-create-item__unit"><span>Unit</span><input type="text" name="unit[]" maxlength="30" value="unit" required></label>
+                        <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0" step="0.01" required></label>
+                        <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                         <label class="quotation-create-item__notes"><span>Notes / Exclusion</span><input type="text" name="item_notes[]" maxlength="2000"></label>
                         <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item">Remove</button>
                     </div>

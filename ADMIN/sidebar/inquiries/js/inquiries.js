@@ -1235,7 +1235,11 @@ document.addEventListener('DOMContentLoaded', function () {
             items?.querySelectorAll('[data-quotation-item]').forEach(function (item) {
                 const quantity = Number.parseFloat(item.querySelector('input[name="quantity[]"]')?.value || '0');
                 const unitCost = Number.parseFloat(item.querySelector('input[name="unit_cost[]"]')?.value || '0');
-                subtotal += Math.max(0, quantity) * Math.max(0, unitCost);
+                const lineTotal = Math.max(0, quantity) * Math.max(0, unitCost);
+                const lineTotalOutput = item.querySelector('[data-quotation-line-total]');
+
+                subtotal += lineTotal;
+                if (lineTotalOutput) lineTotalOutput.textContent = lineTotal.toFixed(2);
             });
 
             const margin = Number.parseFloat(marginInput?.value || '0');

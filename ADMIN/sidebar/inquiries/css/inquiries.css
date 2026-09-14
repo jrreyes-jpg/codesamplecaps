@@ -76,6 +76,7 @@
 .quotation-create-client-grid span,
 .quotation-create-scope > span,
 .quotation-create-item label > span,
+.quotation-create-item__line-total > span,
 .quotation-create-summary label > span,
 .quotation-create-summary div > span {
     display: block;
@@ -129,13 +130,59 @@
 
 .quotation-create-item {
     display: grid;
-    grid-template-columns: 140px minmax(180px, 1.5fr) 90px 100px 140px minmax(160px, 1fr) auto;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     align-items: end;
     gap: 10px;
     padding: 14px;
     border: 1px solid #dce8e3;
     border-radius: 14px;
     background: #fbfdfc;
+}
+
+.quotation-create-item__type {
+    grid-column: span 2;
+}
+
+.quotation-create-item__material-reference {
+    grid-column: span 3;
+}
+
+.quotation-create-item__name {
+    grid-column: span 3;
+}
+
+.quotation-create-item__quantity,
+.quotation-create-item__unit {
+    grid-column: span 1;
+}
+
+.quotation-create-item__cost {
+    grid-column: span 2;
+}
+
+.quotation-create-item__line-total {
+    grid-column: span 2;
+    min-width: 0;
+    min-height: 42px;
+    padding: 9px 10px;
+    border: 1px solid #cfe3d8;
+    border-radius: 9px;
+    background: #f1f8f4;
+}
+
+.quotation-create-item__line-total strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #0f6847;
+    font-size: .94rem;
+}
+
+.quotation-create-item__notes {
+    grid-column: span 8;
+}
+
+.quotation-create-item .quotation-create-remove {
+    grid-column: span 2;
 }
 
 .quotation-create-item label,
@@ -233,12 +280,28 @@
 
 @media (max-width: 1180px) {
     .quotation-create-item {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .quotation-create-item__type {
+        grid-column: span 2;
+    }
+
+    .quotation-create-item__material-reference {
+        grid-column: span 4;
     }
 
     .quotation-create-item__name,
     .quotation-create-item__notes {
-        grid-column: span 2;
+        grid-column: span 3;
+    }
+
+    .quotation-create-item__quantity,
+    .quotation-create-item__unit,
+    .quotation-create-item__cost,
+    .quotation-create-item__line-total,
+    .quotation-create-item .quotation-create-remove {
+        grid-column: span 1;
     }
 }
 
@@ -266,7 +329,14 @@
     }
 
     .quotation-create-item__name,
-    .quotation-create-item__notes {
+    .quotation-create-item__notes,
+    .quotation-create-item__type,
+    .quotation-create-item__material-reference,
+    .quotation-create-item__quantity,
+    .quotation-create-item__unit,
+    .quotation-create-item__cost,
+    .quotation-create-item__line-total,
+    .quotation-create-item .quotation-create-remove {
         grid-column: auto;
     }
 }

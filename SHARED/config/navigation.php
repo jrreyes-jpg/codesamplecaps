@@ -75,7 +75,7 @@ function shared_navigation_items_for_role(string $role): array
             [
                 'module' => 'materials', 'label' => 'Consumable Materials', 'mini' => 'Mat', 'icon' => 'inventory',
                 'children' => [
-                    ['module' => 'materials', 'label' => 'Materials', 'mini' => 'List', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/dashboards/materials.php']],
+                    ['module' => 'materials', 'label' => 'Material Master List', 'mini' => 'List', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/dashboards/materials.php']],
                     ['module' => 'material_stock_in', 'label' => 'Material Stock In', 'mini' => 'In', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_in.php', 'icon' => 'stock-in', 'active' => ['/INVENTORY_CLERK/dashboards/material_stock_in.php']],
                     ['module' => 'material_issue', 'label' => 'Material Issue', 'mini' => 'Issue', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/material_issue.php', 'icon' => 'stock-out', 'active' => ['/INVENTORY_CLERK/dashboards/material_issue.php']],
                     ['module' => 'material_history', 'label' => 'Material History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/dashboards/material_stock_history.php']],

@@ -20,6 +20,28 @@
     font-weight: 600;
 }
 
+.materials-unit-change-message:not(:empty) {
+    margin-left: 4px;
+    color: #b45309;
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.materials-field-error {
+    display: block;
+    min-height: 18px;
+    margin-top: 5px;
+    visibility: hidden;
+    color: #b91c1c;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.materials-field-error:not(:empty) {
+    visibility: visible;
+}
+
 .materials-info-tooltip {
     position: relative;
     display: inline-grid;
@@ -63,9 +85,155 @@
     transform: translateY(0);
 }
 
-.materials-table-note {
-    margin: 0 0 14px;
-    color: #667085;
+.materials-table-tooltip {
+    display: inline-grid;
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+    place-items: center;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: #1d4ed8;
+    cursor: pointer;
+    font-size: .7rem;
+    font-style: normal;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.materials-floating-tooltip {
+    position: fixed;
+    z-index: 4000;
+    max-width: min(260px, calc(100vw - 16px));
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #0f172a;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .22);
+    color: #ffffff;
+    font-size: .75rem;
+    font-weight: 500;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.materials-toast-stack {
+    position: fixed;
+    top: 92px;
+    right: clamp(16px, 3vw, 44px);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(336px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.materials-toast {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 10px 11px;
+    border: 1px solid #86efac;
+    border-radius: 12px;
+    background: #f0fdf4;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .14);
+    color: #166534;
+    pointer-events: auto;
+    animation: materials-toast-in .2s ease-out;
+}
+
+.materials-toast__icon {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border-radius: 50%;
+    background: currentColor;
+    color: #ffffff;
+    font-size: .82rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.materials-toast__content {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.materials-toast--success {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.materials-toast--success .materials-toast__content span,
+.materials-toast--success button {
+    color: #3f6212;
+}
+
+.materials-toast--warning {
+    border-color: #fcd34d;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.materials-toast--warning .materials-toast__content span,
+.materials-toast--warning button {
+    color: #a16207;
+}
+
+.materials-toast--error {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.materials-toast--error .materials-toast__content span,
+.materials-toast--error button {
+    color: #b91c1c;
+}
+
+.materials-toast__content strong,
+.materials-toast__content span {
+    display: block;
+}
+
+.materials-toast__content strong {
+    font-size: .84rem;
+    line-height: 1.2;
+}
+
+.materials-toast__content span {
+    margin-top: 2px;
+    font-size: .75rem;
+    line-height: 1.3;
+}
+
+.materials-toast button {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.materials-toast.is-hiding {
+    animation: materials-toast-out .18s ease-in forwards;
+}
+
+@keyframes materials-toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes materials-toast-out {
+    to { opacity: 0; transform: translateY(-8px); }
 }
 
 .materials-table th,
@@ -105,6 +273,11 @@
 .material-status--out {
     background: #fee2e2;
     color: #b91c1c;
+}
+
+.material-status--no-stock-yet {
+    background: #e5e7eb;
+    color: #475569;
 }
 
 @media (max-width: 768px) {

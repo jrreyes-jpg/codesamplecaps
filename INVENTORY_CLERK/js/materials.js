@@ -14,66 +14,158 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     const toast = document.querySelector('[data-material-toast]');
     const toastClose = document.querySelector('[data-material-toast-close]');
-    const availableTooltip = document.querySelector('.materials-table-tooltip');
+    const tooltipTriggers = document.querySelectorAll('.materials-info-tooltip, .materials-table-tooltip');
+    const actionForms = document.querySelectorAll('[data-material-confirm]');
+    const actionMenus = document.querySelectorAll('[data-material-action-menu]');
     let floatingTooltip = null;
+    let floatingTooltipTrigger = null;
 
-    const closeAvailableTooltip = function () {
+    const closeFloatingTooltip = function () {
         if (!floatingTooltip) {
             return;
         }
 
         floatingTooltip.remove();
         floatingTooltip = null;
-        availableTooltip?.setAttribute('aria-expanded', 'false');
+        floatingTooltipTrigger?.setAttribute('aria-expanded', 'false');
+        floatingTooltipTrigger = null;
     };
 
-    const openAvailableTooltip = function () {
-        if (!availableTooltip || floatingTooltip) {
+    const openFloatingTooltip = function (trigger) {
+        if (!trigger || floatingTooltipTrigger === trigger) {
             return;
         }
 
+        closeFloatingTooltip();
+
         floatingTooltip = document.createElement('div');
         floatingTooltip.className = 'materials-floating-tooltip';
-        floatingTooltip.textContent = availableTooltip.dataset.tooltip || '';
+        floatingTooltip.textContent = trigger.dataset.tooltip || '';
         document.body.appendChild(floatingTooltip);
 
-        const triggerBox = availableTooltip.getBoundingClientRect();
+        const triggerBox = trigger.getBoundingClientRect();
         const tooltipBox = floatingTooltip.getBoundingClientRect();
         const viewportPadding = 8;
         const top = triggerBox.bottom + tooltipBox.height + viewportPadding <= window.innerHeight
             ? triggerBox.bottom + viewportPadding
             : Math.max(viewportPadding, triggerBox.top - tooltipBox.height - viewportPadding);
         const left = Math.min(
-            Math.max(viewportPadding, triggerBox.right - tooltipBox.width),
+            Math.max(viewportPadding, triggerBox.left + (triggerBox.width / 2) - (tooltipBox.width / 2)),
             window.innerWidth - tooltipBox.width - viewportPadding
         );
 
         floatingTooltip.style.top = top + 'px';
         floatingTooltip.style.left = left + 'px';
-        availableTooltip.setAttribute('aria-expanded', 'true');
+        floatingTooltipTrigger = trigger;
+        trigger.setAttribute('aria-expanded', 'true');
     };
 
-    availableTooltip?.addEventListener('pointerenter', openAvailableTooltip);
-    availableTooltip?.addEventListener('pointerleave', closeAvailableTooltip);
-    availableTooltip?.addEventListener('focus', openAvailableTooltip);
-    availableTooltip?.addEventListener('blur', closeAvailableTooltip);
-    availableTooltip?.addEventListener('click', function (event) {
-        event.stopPropagation();
-        if (floatingTooltip) {
-            closeAvailableTooltip();
+    tooltipTriggers.forEach(function (trigger) {
+        trigger.addEventListener('pointerenter', function () { openFloatingTooltip(trigger); });
+        trigger.addEventListener('pointerleave', closeFloatingTooltip);
+        trigger.addEventListener('focus', function () { openFloatingTooltip(trigger); });
+        trigger.addEventListener('blur', closeFloatingTooltip);
+        trigger.addEventListener('click', function (event) {
+            event.stopPropagation();
+            if (floatingTooltipTrigger === trigger) {
+                closeFloatingTooltip();
+                return;
+            }
+            openFloatingTooltip(trigger);
+        });
+        trigger.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                trigger.click();
+            }
+        });
+    });
+    document.addEventListener('click', closeFloatingTooltip);
+    window.addEventListener('resize', closeFloatingTooltip);
+    window.addEventListener('scroll', closeFloatingTooltip, true);
+
+    actionForms.forEach(function (actionForm) {
+        actionForm.addEventListener('submit', function (event) {
+            if (!window.confirm(actionForm.dataset.confirmMessage || 'Continue?')) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    const closeActionMenus = function (exceptMenu) {
+        actionMenus.forEach(function (actionMenu) {
+            if (actionMenu === exceptMenu) {
+                return;
+            }
+
+            const toggle = actionMenu.querySelector('[data-material-action-toggle]');
+            const panel = actionMenu._floatingPanel || actionMenu.querySelector('[data-material-action-panel]');
+            toggle?.setAttribute('aria-expanded', 'false');
+            if (panel) {
+                panel.hidden = true;
+                if (panel.parentElement !== actionMenu) {
+                    actionMenu.appendChild(panel);
+                }
+                panel.style.top = '';
+                panel.style.left = '';
+                actionMenu._floatingPanel = null;
+            }
+        });
+    };
+
+    const placeActionMenu = function (toggle, panel) {
+        if (!toggle || !panel) {
             return;
         }
-        openAvailableTooltip();
+
+        const toggleBox = toggle.getBoundingClientRect();
+        const panelWidth = panel.offsetWidth;
+        const panelHeight = panel.offsetHeight;
+        const gap = 6;
+        const top = toggleBox.bottom + panelHeight + gap <= window.innerHeight
+            ? toggleBox.bottom + gap
+            : Math.max(gap, toggleBox.top - panelHeight - gap);
+        const left = Math.max(gap, Math.min(toggleBox.right - panelWidth, window.innerWidth - panelWidth - gap));
+        panel.style.top = top + 'px';
+        panel.style.left = left + 'px';
+    };
+
+    actionMenus.forEach(function (actionMenu) {
+        const toggle = actionMenu.querySelector('[data-material-action-toggle]');
+        const panel = actionMenu.querySelector('[data-material-action-panel]');
+        toggle?.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const willOpen = panel?.hidden;
+            closeActionMenus(willOpen ? actionMenu : null);
+            if (panel) {
+                if (willOpen) {
+                    document.body.appendChild(panel);
+                    actionMenu._floatingPanel = panel;
+                    panel.hidden = false;
+                    placeActionMenu(toggle, panel);
+                } else {
+                    panel.hidden = true;
+                    actionMenu.appendChild(panel);
+                    actionMenu._floatingPanel = null;
+                }
+            }
+            toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
     });
-    availableTooltip?.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            availableTooltip.click();
+    document.addEventListener('click', function (event) {
+        if (event.target.closest('[data-material-action-menu], [data-material-action-panel]')) {
+            return;
+        }
+        closeActionMenus(null);
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeActionMenus(null);
         }
     });
-    document.addEventListener('click', closeAvailableTooltip);
-    window.addEventListener('resize', closeAvailableTooltip);
-    window.addEventListener('scroll', closeAvailableTooltip, true);
+    window.addEventListener('resize', function () {
+        closeActionMenus(null);
+    });
 
     if (!materialName || !category || !unit) {
         return;

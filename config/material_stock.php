@@ -39,19 +39,107 @@ if (!function_exists('material_stock_next_status')) {
 if (!function_exists('material_stock_fetch_active_materials')) {
     function material_stock_fetch_active_materials(mysqli $conn): array
     {
+        return material_stock_fetch_materials($conn, 'active');
+    }
+}
+
+if (!function_exists('material_stock_fetch_materials')) {
+    function material_stock_fetch_materials(mysqli $conn, string $filter = 'active'): array
+    {
         if (!material_stock_is_ready($conn)) {
             return [];
         }
 
+        $where = match ($filter) {
+            'inactive' => "WHERE status = 'inactive'",
+            'all' => '',
+            default => "WHERE status = 'active'",
+        };
         $result = $conn->query(
             "SELECT id, material_code, material_name, category, unit, physical_quantity, reserved_quantity, reorder_level, status,
                     GREATEST(physical_quantity - reserved_quantity, 0) AS available_quantity
              FROM materials
-             WHERE status = 'active'
+             {$where}
              ORDER BY material_name ASC, id ASC"
         );
 
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+}
+
+if (!function_exists('material_stock_archive_material')) {
+    function material_stock_archive_material(mysqli $conn, int $materialId): void
+    {
+        if ($materialId <= 0) {
+            throw new RuntimeException('Material not found.');
+        }
+
+        $conn->begin_transaction();
+        try {
+            $materialStmt = $conn->prepare(
+                "SELECT id, status, physical_quantity, reserved_quantity
+                 FROM materials
+                 WHERE id = ?
+                 FOR UPDATE"
+            );
+            if (!$materialStmt) {
+                throw new RuntimeException('Unable to check material.');
+            }
+            $materialStmt->bind_param('i', $materialId);
+            $materialStmt->execute();
+            $material = $materialStmt->get_result()->fetch_assoc();
+            if (!$material || (string)$material['status'] !== 'active') {
+                throw new RuntimeException('Active material not found.');
+            }
+
+            $reservationStmt = $conn->prepare(
+                "SELECT id
+                 FROM project_material_reservations
+                 WHERE material_id = ? AND status = 'active'
+                 FOR UPDATE"
+            );
+            if (!$reservationStmt) {
+                throw new RuntimeException('Unable to check material reservations.');
+            }
+            $reservationStmt->bind_param('i', $materialId);
+            $reservationStmt->execute();
+            $hasActiveReservation = (bool)$reservationStmt->get_result()->fetch_assoc();
+
+            if ((float)$material['physical_quantity'] > 0 || (float)$material['reserved_quantity'] > 0 || $hasActiveReservation) {
+                throw new RuntimeException('Cannot archive material while stock or active reservations remain.');
+            }
+
+            $archiveStmt = $conn->prepare("UPDATE materials SET status = 'inactive' WHERE id = ? AND status = 'active'");
+            if (!$archiveStmt) {
+                throw new RuntimeException('Unable to archive material.');
+            }
+            $archiveStmt->bind_param('i', $materialId);
+            if (!$archiveStmt->execute() || $archiveStmt->affected_rows !== 1) {
+                throw new RuntimeException('Material status changed. Please try again.');
+            }
+            $conn->commit();
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            throw $exception;
+        }
+    }
+}
+
+if (!function_exists('material_stock_restore_material')) {
+    function material_stock_restore_material(mysqli $conn, int $materialId): void
+    {
+        if ($materialId <= 0) {
+            throw new RuntimeException('Material not found.');
+        }
+
+        $stmt = $conn->prepare("UPDATE materials SET status = 'active' WHERE id = ? AND status = 'inactive'");
+        if (!$stmt) {
+            throw new RuntimeException('Unable to restore material.');
+        }
+        $stmt->bind_param('i', $materialId);
+        if (!$stmt->execute() || $stmt->affected_rows !== 1) {
+            throw new RuntimeException('Archived material not found.');
+        }
     }
 }
 
@@ -162,10 +250,10 @@ if (!function_exists('material_stock_reserve_approved_inspection_requirements'))
             }
 
             $materialStmt = $conn->prepare(
-                'SELECT id, physical_quantity, reserved_quantity
+                "SELECT id, physical_quantity, reserved_quantity
                  FROM materials
-                 WHERE id = ?
-                 FOR UPDATE'
+                 WHERE id = ? AND status = 'active'
+                 FOR UPDATE"
             );
             if (!$materialStmt) {
                 throw new RuntimeException('Unable to lock material stock.');
@@ -268,7 +356,7 @@ if (!function_exists('material_stock_add_stock_in')) {
 
         $conn->begin_transaction();
         try {
-            $lock = $conn->prepare('SELECT physical_quantity FROM materials WHERE id = ? FOR UPDATE');
+            $lock = $conn->prepare("SELECT physical_quantity FROM materials WHERE id = ? AND status = 'active' FOR UPDATE");
             if (!$lock) {
                 throw new RuntimeException('Unable to lock material.');
             }
@@ -393,7 +481,7 @@ if (!function_exists('material_stock_manual_stock_out')) {
 
         $conn->begin_transaction();
         try {
-            $lock = $conn->prepare('SELECT physical_quantity, reserved_quantity FROM materials WHERE id = ? FOR UPDATE');
+            $lock = $conn->prepare("SELECT physical_quantity, reserved_quantity FROM materials WHERE id = ? AND status = 'active' FOR UPDATE");
             if (!$lock) {
                 throw new RuntimeException('Unable to lock material.');
             }

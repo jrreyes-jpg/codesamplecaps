@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../config/material_stock.php';
 
 $csrfToken = auth_csrf_token('inventory_clerk_materials');
 $flashKey = 'inventory_clerk_materials_flash';
+$materialFilter = in_array($_GET['material_filter'] ?? 'active', ['active', 'inactive', 'all'], true)
+    ? (string)($_GET['material_filter'] ?? 'active')
+    : 'active';
 $defaultFormValues = [
     'material_name' => '',
     'category' => '',
@@ -49,6 +52,39 @@ function inventory_clerk_material_name_exists(mysqli $conn, string $materialName
     }
 
     return false;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['material_action'])) {
+    $action = (string)$_POST['material_action'];
+    $redirectFilter = in_array($_POST['material_filter'] ?? '', ['active', 'inactive', 'all'], true)
+        ? (string)$_POST['material_filter']
+        : 'active';
+
+    try {
+        if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'inventory_clerk_materials')) {
+            throw new RuntimeException('Security check failed. Please try again.');
+        }
+
+        $materialId = (int)($_POST['material_id'] ?? 0);
+        if ($action === 'archive') {
+            material_stock_archive_material($conn, $materialId);
+            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material archived', 'message' => 'Material archived.'];
+        } elseif ($action === 'restore') {
+            material_stock_restore_material($conn, $materialId);
+            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material restored', 'message' => 'Material restored.'];
+        } else {
+            throw new RuntimeException('Invalid material action.');
+        }
+    } catch (Throwable $exception) {
+        $_SESSION[$flashKey] = [
+            'type' => 'error',
+            'title' => $action === 'archive' ? 'Cannot archive material' : 'Cannot restore material',
+            'message' => $exception->getMessage(),
+        ];
+    }
+
+    header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/materials.php?material_filter=' . urlencode($redirectFilter));
+    exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -113,7 +149,7 @@ $flash = $_SESSION[$flashKey] ?? null;
 unset($_SESSION[$flashKey]);
 $formValues = array_merge($defaultFormValues, is_array($flash['values'] ?? null) ? $flash['values'] : []);
 $formErrors = is_array($flash['field_errors'] ?? null) ? $flash['field_errors'] : [];
-$materials = material_stock_fetch_active_materials($conn);
+$materials = material_stock_fetch_materials($conn, $materialFilter);
 $stockedMaterialIds = [];
 $stockHistoryResult = $conn->query(
     "SELECT DISTINCT material_id
@@ -139,7 +175,7 @@ if ($shortageResult) {
     $shortages = $shortageResult->fetch_all(MYSQLI_ASSOC);
 }
 
-inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $formValues, $formErrors, $materials, $stockedMaterialIds, $shortages, $materialCategories, $materialUnits): void {
+inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $formValues, $formErrors, $materials, $stockedMaterialIds, $shortages, $materialCategories, $materialUnits, $materialFilter): void {
 ?>
     <div class="page-stack materials-page">
         <section class="form-panel">
@@ -155,16 +191,20 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
             </form>
         </section>
         <section class="form-panel">
-            <h2 class="section-title-inline">Material Master List</h2>
-            <div class="table-responsive"><table class="data-table materials-table"><thead><tr><th>Material Code</th><th>Material Name</th><th>Category</th><th>Unit</th><th>Physical</th><th>Reserved</th><th>Available <span class="materials-table-tooltip" tabindex="0" role="button" aria-expanded="false" aria-label="Physical stock minus quantity reserved for projects." title="Physical stock minus quantity reserved for projects." data-tooltip="Physical stock minus quantity reserved for projects.">i</span></th><th>Low Stock Alert Level</th><th>Status</th></tr></thead><tbody>
-            <?php if ($materials === []): ?><tr><td colspan="9" class="materials-empty">No materials yet.</td></tr><?php endif; ?>
+            <div class="materials-master-list__heading"><h2 class="section-title-inline">Material Master List</h2><nav class="materials-filter" aria-label="Material filter"><?php foreach (['active' => 'Active', 'inactive' => 'Archived', 'all' => 'All'] as $filterValue => $filterLabel): ?><a class="materials-filter__link<?php echo $materialFilter === $filterValue ? ' is-active' : ''; ?>" href="?material_filter=<?php echo htmlspecialchars($filterValue); ?>"><?php echo htmlspecialchars($filterLabel); ?></a><?php endforeach; ?></nav></div>
+            <div class="table-responsive"><table class="data-table materials-table"><thead><tr><th>Material</th><th>Category</th><th>Unit</th><th>Physical</th><th>Reserved</th><th>Available <span class="materials-table-tooltip" tabindex="0" role="button" aria-expanded="false" aria-label="Physical stock minus quantity reserved for projects." title="Physical stock minus quantity reserved for projects." data-tooltip="Physical stock minus quantity reserved for projects.">i</span></th><th>Alert Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Shows a Low Stock warning when available quantity reaches this level or lower." data-tooltip="Shows a Low Stock warning when available quantity reaches this level or lower.">i</span></th><th>Status</th><th>Actions</th></tr></thead><tbody>
+            <?php if ($materials === []): ?><tr><td colspan="9" class="materials-empty">No materials in this filter.</td></tr><?php endif; ?>
             <?php foreach ($materials as $material): ?>
                 <?php
                 $physical = (float)$material['physical_quantity'];
                 $available = (float)$material['available_quantity'];
                 $reorder = $material['reorder_level'] === null ? null : (float)$material['reorder_level'];
                 $hasReceivedStock = isset($stockedMaterialIds[(int)$material['id']]);
-                if ($physical <= 0) {
+                $isArchived = (string)$material['status'] === 'inactive';
+                if ($isArchived) {
+                    $stockState = 'archived';
+                    $stockLabel = 'Archived';
+                } elseif ($physical <= 0) {
                     $stockState = $hasReceivedStock ? 'out' : 'no-stock-yet';
                     $stockLabel = $hasReceivedStock ? 'Out of Stock' : 'No Stock Yet';
                 } elseif ($available > 0 && $reorder !== null && $available <= $reorder) {
@@ -175,7 +215,7 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
                     $stockLabel = 'In Stock';
                 }
                 ?>
-                <tr><td><strong><?php echo htmlspecialchars($material['material_code']); ?></strong></td><td><?php echo htmlspecialchars($material['material_name']); ?></td><td><?php echo htmlspecialchars((string)($material['category'] ?: '—')); ?></td><td><?php echo htmlspecialchars($material['unit']); ?></td><td><?php echo htmlspecialchars((string)$material['physical_quantity']); ?></td><td><?php echo htmlspecialchars((string)$material['reserved_quantity']); ?></td><td><?php echo htmlspecialchars((string)$material['available_quantity']); ?></td><td><?php echo $reorder === null ? '—' : htmlspecialchars((string)$material['reorder_level']); ?></td><td><span class="material-status material-status--<?php echo $stockState; ?>"><?php echo $stockLabel; ?></span></td></tr>
+                <tr class="<?php echo $isArchived ? 'materials-row--archived' : ''; ?>"><td data-label="Material"><strong class="materials-table__name"><?php echo htmlspecialchars($material['material_name']); ?></strong><small class="materials-table__code"><?php echo htmlspecialchars($material['material_code']); ?></small></td><td data-label="Category"><?php echo htmlspecialchars((string)($material['category'] ?: '—')); ?></td><td data-label="Unit"><?php echo htmlspecialchars($material['unit']); ?></td><td data-label="Physical"><?php echo htmlspecialchars((string)$material['physical_quantity']); ?></td><td data-label="Reserved"><?php echo htmlspecialchars((string)$material['reserved_quantity']); ?></td><td data-label="Available"><?php echo htmlspecialchars((string)$material['available_quantity']); ?></td><td data-label="Alert Level"><?php echo $reorder === null ? '—' : htmlspecialchars((string)$material['reorder_level']); ?></td><td data-label="Status"><span class="material-status material-status--<?php echo $stockState; ?>"><?php echo $stockLabel; ?></span></td><td data-label="Actions"><div class="materials-action-menu" data-material-action-menu><button type="button" class="materials-action-menu__toggle" aria-label="Open actions for <?php echo htmlspecialchars($material['material_name']); ?>" aria-expanded="false" data-material-action-toggle>⋮</button><div class="materials-action-menu__panel" hidden data-material-action-panel><form method="POST" class="materials-row-action"<?php echo !$isArchived ? ' data-material-confirm data-confirm-message="Archive this material? It will no longer be available for new transactions."' : ''; ?>><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>"><input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>"><input type="hidden" name="material_filter" value="<?php echo htmlspecialchars($materialFilter); ?>"><input type="hidden" name="material_action" value="<?php echo $isArchived ? 'restore' : 'archive'; ?>"><button type="submit" class="materials-row-action__button<?php echo $isArchived ? ' materials-row-action__button--restore' : ''; ?>"><?php echo $isArchived ? 'Restore' : 'Archive'; ?></button></form></div></div></td></tr>
             <?php endforeach; ?>
             </tbody></table></div>
         </section>

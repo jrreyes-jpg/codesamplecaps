@@ -450,13 +450,16 @@ if (!function_exists('material_stock_add_stock_in')) {
     function material_stock_add_stock_in(mysqli $conn, int $materialId, mixed $quantityInput, ?string $remarks, int $userId): array
     {
         $rawQuantity = is_string($quantityInput) ? trim($quantityInput) : (string)$quantityInput;
-        if ($rawQuantity === '' || !is_numeric($rawQuantity)) {
-            throw new RuntimeException('Stock In quantity must be greater than zero.');
+        if ($rawQuantity === '') {
+            throw new RuntimeException('Quantity In is required.');
+        }
+        if (!is_numeric($rawQuantity)) {
+            throw new RuntimeException('Enter a quantity greater than zero.');
         }
 
         $quantity = (float)$rawQuantity;
         if (!is_finite($quantity) || $quantity <= 0) {
-            throw new RuntimeException('Stock In quantity must be greater than zero.');
+            throw new RuntimeException('Enter a quantity greater than zero.');
         }
 
         $conn->begin_transaction();

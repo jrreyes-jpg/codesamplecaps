@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'quantity' => $submittedQuantity,
                 'remarks' => $submittedRemarks,
             ],
-            'quantity_error' => str_starts_with($message, 'Stock In quantity') || str_starts_with($message, 'Quantity In'),
+            'quantity_error' => str_starts_with($message, 'Quantity In') || str_starts_with($message, 'Enter a quantity'),
         ];
     }
     $redirect = '/codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_in.php';
@@ -82,7 +82,7 @@ if (!$selectedMaterialIsActive) {
 <div class="page-stack material-stock-in-page">
     <section class="form-panel">
         <h1 class="section-title-inline">Material Stock In</h1>
-        <form method="POST" class="material-stock-in-form" data-material-stock-in-form>
+        <form method="POST" class="material-stock-in-form" data-material-stock-in-form novalidate>
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
             <div class="form-grid">
                 <div class="input-group">
@@ -90,9 +90,10 @@ if (!$selectedMaterialIsActive) {
                     <select id="material_id" name="material_id" required data-material-stock-in-material>
                         <option value="">Select material</option>
                         <?php foreach ($materials as $material): ?>
-                            <option value="<?php echo (int)$material['id']; ?>" data-unit="<?php echo htmlspecialchars((string)$material['unit']); ?>"<?php echo (int)$material['id'] === $selectedMaterialId ? ' selected' : ''; ?>><?php echo htmlspecialchars($material['material_code'] . ' | ' . $material['material_name'] . ' | Physical: ' . inventory_clerk_material_stock_in_display_quantity((float)$material['physical_quantity'], (string)$material['unit'])); ?></option>
+                            <option value="<?php echo (int)$material['id']; ?>" data-unit="<?php echo htmlspecialchars((string)$material['unit']); ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name']); ?>" data-physical-quantity="<?php echo htmlspecialchars((string)$material['physical_quantity']); ?>"<?php echo (int)$material['id'] === $selectedMaterialId ? ' selected' : ''; ?>><?php echo htmlspecialchars($material['material_code'] . ' | ' . $material['material_name'] . ' | Physical: ' . inventory_clerk_material_stock_in_display_quantity((float)$material['physical_quantity'], (string)$material['unit'])); ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <span class="material-stock-in-field-error" data-material-stock-in-material-error aria-live="polite"></span>
                 </div>
                 <div class="input-group">
                     <label for="quantity">Quantity In</label>
@@ -102,6 +103,7 @@ if (!$selectedMaterialIsActive) {
                 <div class="input-group">
                     <label for="remarks">Remarks (Optional)</label>
                     <input id="remarks" name="remarks" maxlength="2000" value="<?php echo htmlspecialchars((string)$formValues['remarks']); ?>">
+                    <span class="material-stock-in-field-error" aria-hidden="true"></span>
                 </div>
             </div>
             <div class="form-actions"><button type="submit" class="btn-primary">Save Material Stock In</button></div>
@@ -118,6 +120,22 @@ if (!$selectedMaterialIsActive) {
         </div>
     </div>
 <?php endif; ?>
+<div class="material-stock-in-confirm" hidden data-material-stock-in-confirm>
+    <div class="material-stock-in-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="materialStockInConfirmTitle">
+        <h2 id="materialStockInConfirmTitle">Confirm Stock In</h2>
+        <dl class="material-stock-in-confirm__details">
+            <div><dt>Material</dt><dd data-confirm-material></dd></div>
+            <div><dt>Quantity In</dt><dd data-confirm-quantity></dd></div>
+            <div><dt>Current Physical</dt><dd data-confirm-current></dd></div>
+            <div><dt>New Physical</dt><dd data-confirm-new></dd></div>
+            <div hidden data-confirm-remarks-row><dt>Remarks</dt><dd data-confirm-remarks></dd></div>
+        </dl>
+        <div class="material-stock-in-confirm__actions">
+            <button type="button" class="btn-secondary" data-material-stock-in-confirm-cancel>Cancel</button>
+            <button type="button" class="btn-primary" data-material-stock-in-confirm-submit>Confirm Stock In</button>
+        </div>
+    </div>
+</div>
 <?php }, [
     '/codesamplecaps/INVENTORY_CLERK/css/material_stock_in.css',
 ], '', [

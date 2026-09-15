@@ -6,6 +6,11 @@
     min-width: 0;
 }
 
+.material-stock-in-page .input-group input,
+.material-stock-in-page .input-group select {
+    min-height: 44px;
+}
+
 .material-stock-in-field-error {
     display: block;
     min-height: 18px;
@@ -14,6 +19,94 @@
     font-size: .75rem;
     font-weight: 600;
     line-height: 1.3;
+}
+
+.material-stock-in-confirm[hidden] {
+    display: none;
+}
+
+.material-stock-in-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 3200;
+    display: grid;
+    padding: 20px;
+    place-items: center;
+    background: rgba(15, 23, 42, .48);
+}
+
+.material-stock-in-confirm__panel {
+    width: min(420px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 20px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, .24);
+}
+
+.material-stock-in-confirm__panel h2 {
+    margin: 0 0 14px;
+    color: #172033;
+    font-size: 1.05rem;
+}
+
+.material-stock-in-confirm__details {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.material-stock-in-confirm__details > div {
+    display: grid;
+    grid-template-columns: minmax(118px, .8fr) minmax(0, 1.2fr);
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.material-stock-in-confirm__details dt {
+    color: #64748b;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.material-stock-in-confirm__details dd {
+    margin: 0;
+    color: #172033;
+    font-size: .85rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.material-stock-in-confirm__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 18px;
+}
+
+@media (max-width: 420px) {
+    .material-stock-in-confirm {
+        padding: 12px;
+    }
+
+    .material-stock-in-confirm__panel {
+        padding: 16px;
+    }
+
+    .material-stock-in-confirm__details > div {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+
+    .material-stock-in-confirm__actions {
+        flex-direction: column-reverse;
+    }
+
+    .material-stock-in-confirm__actions button {
+        width: 100%;
+    }
 }
 
 .material-stock-in-toast-stack {

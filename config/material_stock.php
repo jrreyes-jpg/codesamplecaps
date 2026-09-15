@@ -143,6 +143,105 @@ if (!function_exists('material_stock_restore_material')) {
     }
 }
 
+if (!function_exists('material_stock_has_usage_reference')) {
+    function material_stock_has_usage_reference(mysqli $conn, int $materialId, bool $forUpdate = false): bool
+    {
+        // Ito lang ang lahat ng current database tables na may material_id reference.
+        $tables = [
+            'material_stock_movements',
+            'project_material_reservations',
+            'inquiry_quotation_items',
+            'site_inspection_cost_items',
+        ];
+
+        foreach ($tables as $table) {
+            $sql = "SELECT id FROM {$table} WHERE material_id = ? LIMIT 1" . ($forUpdate ? ' FOR UPDATE' : '');
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                throw new RuntimeException('Unable to check material usage.');
+            }
+            $stmt->bind_param('i', $materialId);
+            $stmt->execute();
+            if ($stmt->get_result()->fetch_assoc()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('material_stock_fetch_deletable_material_ids')) {
+    function material_stock_fetch_deletable_material_ids(mysqli $conn): array
+    {
+        $result = $conn->query(
+            'SELECT m.id
+             FROM materials m
+             WHERE m.physical_quantity = 0
+               AND m.reserved_quantity = 0
+               AND NOT EXISTS (SELECT 1 FROM material_stock_movements sm WHERE sm.material_id = m.id)
+               AND NOT EXISTS (SELECT 1 FROM project_material_reservations pmr WHERE pmr.material_id = m.id)
+               AND NOT EXISTS (SELECT 1 FROM inquiry_quotation_items iqi WHERE iqi.material_id = m.id)
+               AND NOT EXISTS (SELECT 1 FROM site_inspection_cost_items sici WHERE sici.material_id = m.id)'
+        );
+        if (!$result) {
+            return [];
+        }
+
+        return array_map('intval', array_column($result->fetch_all(MYSQLI_ASSOC), 'id'));
+    }
+}
+
+if (!function_exists('material_stock_permanently_delete_material')) {
+    function material_stock_permanently_delete_material(mysqli $conn, int $materialId): void
+    {
+        $unsafeMessage = 'This material can no longer be permanently deleted because it has usage or inventory history.';
+        if ($materialId <= 0) {
+            throw new RuntimeException($unsafeMessage);
+        }
+
+        $conn->begin_transaction();
+        try {
+            $materialStmt = $conn->prepare(
+                'SELECT id, physical_quantity, reserved_quantity
+                 FROM materials
+                 WHERE id = ?
+                 FOR UPDATE'
+            );
+            if (!$materialStmt) {
+                throw new RuntimeException('Unable to check material.');
+            }
+            $materialStmt->bind_param('i', $materialId);
+            $materialStmt->execute();
+            $material = $materialStmt->get_result()->fetch_assoc();
+
+            if (!$material
+                || (float)$material['physical_quantity'] !== 0.0
+                || (float)$material['reserved_quantity'] !== 0.0
+                || material_stock_has_usage_reference($conn, $materialId, true)) {
+                throw new RuntimeException($unsafeMessage);
+            }
+
+            $deleteStmt = $conn->prepare(
+                'DELETE FROM materials
+                 WHERE id = ? AND physical_quantity = 0 AND reserved_quantity = 0'
+            );
+            if (!$deleteStmt) {
+                throw new RuntimeException('Unable to permanently delete material.');
+            }
+            $deleteStmt->bind_param('i', $materialId);
+            if (!$deleteStmt->execute() || $deleteStmt->affected_rows !== 1) {
+                throw new RuntimeException($unsafeMessage);
+            }
+
+            $conn->commit();
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            throw $exception;
+        }
+    }
+}
+
 if (!function_exists('material_stock_create_material')) {
     function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $unit, ?float $reorderLevel): string
     {

@@ -72,13 +72,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['material_action'])) {
         } elseif ($action === 'restore') {
             material_stock_restore_material($conn, $materialId);
             $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material restored', 'message' => 'Material restored.'];
+        } elseif ($action === 'permanent_delete') {
+            material_stock_permanently_delete_material($conn, $materialId);
+            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material deleted', 'message' => 'Material permanently deleted.'];
         } else {
             throw new RuntimeException('Invalid material action.');
         }
     } catch (Throwable $exception) {
         $_SESSION[$flashKey] = [
             'type' => 'error',
-            'title' => $action === 'archive' ? 'Cannot archive material' : 'Cannot restore material',
+            'title' => match ($action) {
+                'archive' => 'Cannot archive material',
+                'restore' => 'Cannot restore material',
+                'permanent_delete' => 'Cannot delete material',
+                default => 'Cannot update material',
+            },
             'message' => $exception->getMessage(),
         ];
     }
@@ -150,6 +158,7 @@ unset($_SESSION[$flashKey]);
 $formValues = array_merge($defaultFormValues, is_array($flash['values'] ?? null) ? $flash['values'] : []);
 $formErrors = is_array($flash['field_errors'] ?? null) ? $flash['field_errors'] : [];
 $materials = material_stock_fetch_materials($conn, $materialFilter);
+$deletableMaterialIds = array_fill_keys(material_stock_fetch_deletable_material_ids($conn), true);
 $stockedMaterialIds = [];
 $stockHistoryResult = $conn->query(
     "SELECT DISTINCT material_id
@@ -175,7 +184,7 @@ if ($shortageResult) {
     $shortages = $shortageResult->fetch_all(MYSQLI_ASSOC);
 }
 
-inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $formValues, $formErrors, $materials, $stockedMaterialIds, $shortages, $materialCategories, $materialUnits, $materialFilter): void {
+inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $formValues, $formErrors, $materials, $deletableMaterialIds, $stockedMaterialIds, $shortages, $materialCategories, $materialUnits, $materialFilter): void {
 ?>
     <div class="page-stack materials-page">
         <section class="form-panel">
@@ -201,6 +210,7 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
                 $reorder = $material['reorder_level'] === null ? null : (float)$material['reorder_level'];
                 $hasReceivedStock = isset($stockedMaterialIds[(int)$material['id']]);
                 $isArchived = (string)$material['status'] === 'inactive';
+                $isDeletable = isset($deletableMaterialIds[(int)$material['id']]);
                 if ($isArchived) {
                     $stockState = 'archived';
                     $stockLabel = 'Archived';
@@ -215,7 +225,7 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
                     $stockLabel = 'In Stock';
                 }
                 ?>
-                <tr class="<?php echo $isArchived ? 'materials-row--archived' : ''; ?>"><td data-label="Material"><strong class="materials-table__name"><?php echo htmlspecialchars($material['material_name']); ?></strong><small class="materials-table__code"><?php echo htmlspecialchars($material['material_code']); ?></small></td><td data-label="Category"><?php echo htmlspecialchars((string)($material['category'] ?: '—')); ?></td><td data-label="Unit"><?php echo htmlspecialchars($material['unit']); ?></td><td data-label="Physical"><?php echo htmlspecialchars((string)$material['physical_quantity']); ?></td><td data-label="Reserved"><?php echo htmlspecialchars((string)$material['reserved_quantity']); ?></td><td data-label="Available"><?php echo htmlspecialchars((string)$material['available_quantity']); ?></td><td data-label="Alert Level"><?php echo $reorder === null ? '—' : htmlspecialchars((string)$material['reorder_level']); ?></td><td data-label="Status"><span class="material-status material-status--<?php echo $stockState; ?>"><?php echo $stockLabel; ?></span></td><td data-label="Actions"><div class="materials-action-menu" data-material-action-menu><button type="button" class="materials-action-menu__toggle" aria-label="Open actions for <?php echo htmlspecialchars($material['material_name']); ?>" aria-expanded="false" data-material-action-toggle>⋮</button><div class="materials-action-menu__panel" hidden data-material-action-panel><form method="POST" class="materials-row-action"<?php echo !$isArchived ? ' data-material-confirm data-confirm-message="Archive this material? It will no longer be available for new transactions."' : ''; ?>><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>"><input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>"><input type="hidden" name="material_filter" value="<?php echo htmlspecialchars($materialFilter); ?>"><input type="hidden" name="material_action" value="<?php echo $isArchived ? 'restore' : 'archive'; ?>"><button type="submit" class="materials-row-action__button<?php echo $isArchived ? ' materials-row-action__button--restore' : ''; ?>"><?php echo $isArchived ? 'Restore' : 'Archive'; ?></button></form></div></div></td></tr>
+                <tr class="<?php echo $isArchived ? 'materials-row--archived' : ''; ?>"><td data-label="Material"><strong class="materials-table__name"><?php echo htmlspecialchars($material['material_name']); ?></strong><small class="materials-table__code"><?php echo htmlspecialchars($material['material_code']); ?></small></td><td data-label="Category"><?php echo htmlspecialchars((string)($material['category'] ?: '—')); ?></td><td data-label="Unit"><?php echo htmlspecialchars($material['unit']); ?></td><td data-label="Physical"><?php echo htmlspecialchars((string)$material['physical_quantity']); ?></td><td data-label="Reserved"><?php echo htmlspecialchars((string)$material['reserved_quantity']); ?></td><td data-label="Available"><?php echo htmlspecialchars((string)$material['available_quantity']); ?></td><td data-label="Alert Level"><?php echo $reorder === null ? '—' : htmlspecialchars((string)$material['reorder_level']); ?></td><td data-label="Status"><span class="material-status material-status--<?php echo $stockState; ?>"><?php echo $stockLabel; ?></span></td><td data-label="Actions"><div class="materials-action-menu" data-material-action-menu><button type="button" class="materials-action-menu__toggle" aria-label="Open actions for <?php echo htmlspecialchars($material['material_name']); ?>" aria-expanded="false" data-material-action-toggle>⋮</button><div class="materials-action-menu__panel" hidden data-material-action-panel><form method="POST" class="materials-row-action"<?php echo !$isArchived ? ' data-material-confirm data-confirm-message="Archive this material? It will no longer be available for new transactions."' : ''; ?>><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>"><input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>"><input type="hidden" name="material_filter" value="<?php echo htmlspecialchars($materialFilter); ?>"><input type="hidden" name="material_action" value="<?php echo $isArchived ? 'restore' : 'archive'; ?>"><button type="submit" class="materials-row-action__button<?php echo $isArchived ? ' materials-row-action__button--restore' : ''; ?>"><?php echo $isArchived ? 'Restore' : 'Archive'; ?></button></form><?php if ($isDeletable): ?><form method="POST" class="materials-row-action materials-row-action--danger" data-material-confirm data-confirm-message="This permanently deletes the material and cannot be undone."><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>"><input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>"><input type="hidden" name="material_filter" value="<?php echo htmlspecialchars($materialFilter); ?>"><input type="hidden" name="material_action" value="permanent_delete"><button type="submit" class="materials-row-action__button materials-row-action__button--delete">Permanent Delete</button></form><?php endif; ?></div></div></td></tr>
             <?php endforeach; ?>
             </tbody></table></div>
         </section>

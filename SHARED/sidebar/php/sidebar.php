@@ -175,7 +175,7 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                         <?php endforeach; ?>
                     </ul>
                     <?php if ($hasCollapsedContextChildren): ?>
-                        <ul class="sidebar-contextual-children" aria-label="Consumable Materials shortcuts">
+                        <ul class="sidebar-contextual-children" aria-label="<?php echo htmlspecialchars((string)$item['label'] . ' shortcuts', ENT_QUOTES, 'UTF-8'); ?>">
                             <?php foreach ($item['children'] as $childItem): ?>
                                 <?php if (!is_array($childItem)): ?>
                                     <?php continue; ?>

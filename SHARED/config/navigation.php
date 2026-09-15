@@ -65,6 +65,7 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Dash', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/INVENTORY_CLERK/dashboards/dashboard.php', '/INVENTORY_CLERK/dashboards/dashboard.php']],
             [
                 'module' => 'asset_inventory', 'label' => 'Asset / QR Inventory', 'mini' => 'Assets', 'icon' => 'assets',
+                'collapsed_context_children' => true,
                 'children' => [
                     ['module' => 'inventory', 'label' => 'Inventory', 'mini' => 'Inv', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/dashboards/inventory.php']],
                     ['module' => 'stock_in', 'label' => 'Stock In', 'mini' => 'In', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/stock_in.php', 'icon' => 'stock-in', 'active' => ['/INVENTORY_CLERK/dashboards/stock_in.php']],

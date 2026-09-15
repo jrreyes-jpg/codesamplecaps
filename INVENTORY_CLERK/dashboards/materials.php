@@ -21,8 +21,8 @@ $materialCategories = [
     'Automation / Control Components',
     'Other',
 ];
-$materialUnits = ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter', 'Other'];
-$wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set'];
+$materialUnits = ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter', 'bundle', 'sheet', 'pair', 'tube'];
+$wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
 
 function inventory_clerk_material_name_key(string $name): string
 {
@@ -68,13 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $materialName = $submittedValues['material_name'];
         $reorderValue = is_numeric($reorder) ? (float)$reorder : 0.0;
         if ($reorder === '' || !is_numeric($reorder) || !is_finite($reorderValue) || $reorderValue <= 0) {
-            throw new RuntimeException('Reorder level must be greater than zero.');
+            throw new RuntimeException('Low Stock Alert Level must be greater than zero.');
         }
         if (!in_array($category, $materialCategories, true) || !in_array($unit, $materialUnits, true)) {
             throw new RuntimeException('Please choose a valid category and unit.');
         }
         if (in_array($unit, $wholeCountUnits, true) && $reorderValue !== (float)floor($reorderValue)) {
-            throw new RuntimeException('Reorder level must be a whole number for ' . $unit . '.');
+            throw new RuntimeException('Low Stock Alert Level must be a whole number for ' . $unit . '.');
         }
         if (inventory_clerk_material_name_exists($conn, $materialName)) {
             throw new RuntimeException('Material already exists.');
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => $message,
             'values' => $submittedValues,
             'field_errors' => [
-                'reorder_level' => str_starts_with($message, 'Reorder level') ? $message : '',
+                'reorder_level' => str_starts_with($message, 'Low Stock Alert Level') ? $message : '',
                 'category' => $message === 'Please choose a valid category and unit.' ? 'Choose a valid category.' : '',
                 'unit' => $message === 'Please choose a valid category and unit.' ? 'Choose a valid unit.' : '',
             ],
@@ -149,14 +149,14 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
                     <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><span class="materials-field-error" data-material-error="material_name" aria-live="polite"></span></div>
                     <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo $formValues['category'] === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="category" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['category'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="unit">Unit</label><select id="unit" name="unit" required data-material-unit><option value="">Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>"<?php echo $formValues['unit'] === $unit ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="unit" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['unit'] ?? '')); ?></span></div>
-                    <div class="input-group"><label for="reorder_level">Reorder Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Alert when available stock reaches this level or lower." data-tooltip="Alert when available stock reaches this level or lower.">i</span> <span class="materials-unit-change-message" data-unit-change-message aria-live="polite"></span></label><input id="reorder_level" name="reorder_level" type="number" min="1" step="1" required inputmode="numeric" value="<?php echo htmlspecialchars($formValues['reorder_level']); ?>" data-reorder-level><span class="materials-field-error" data-material-error="reorder_level" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['reorder_level'] ?? '')); ?></span></div>
+                    <div class="input-group"><label for="reorder_level">Low Stock Alert Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Shows a Low Stock warning when available quantity reaches this level or lower." data-tooltip="Shows a Low Stock warning when available quantity reaches this level or lower.">i</span> <span class="materials-unit-change-message" data-unit-change-message aria-live="polite"></span></label><input id="reorder_level" name="reorder_level" type="number" min="1" step="1" required inputmode="numeric" value="<?php echo htmlspecialchars($formValues['reorder_level']); ?>" data-reorder-level><span class="materials-field-error" data-material-error="reorder_level" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['reorder_level'] ?? '')); ?></span></div>
                 </div>
                 <div class="form-actions"><button type="submit" class="btn-primary">Add Material</button></div>
             </form>
         </section>
         <section class="form-panel">
             <h2 class="section-title-inline">Material Master List</h2>
-            <div class="table-responsive"><table class="data-table materials-table"><thead><tr><th>Material Code</th><th>Material Name</th><th>Category</th><th>Unit</th><th>Physical</th><th>Reserved</th><th>Available <span class="materials-table-tooltip" tabindex="0" role="button" aria-expanded="false" aria-label="Physical stock minus quantity reserved for projects." title="Physical stock minus quantity reserved for projects." data-tooltip="Physical stock minus quantity reserved for projects.">i</span></th><th>Reorder Level</th><th>Status</th></tr></thead><tbody>
+            <div class="table-responsive"><table class="data-table materials-table"><thead><tr><th>Material Code</th><th>Material Name</th><th>Category</th><th>Unit</th><th>Physical</th><th>Reserved</th><th>Available <span class="materials-table-tooltip" tabindex="0" role="button" aria-expanded="false" aria-label="Physical stock minus quantity reserved for projects." title="Physical stock minus quantity reserved for projects." data-tooltip="Physical stock minus quantity reserved for projects.">i</span></th><th>Low Stock Alert Level</th><th>Status</th></tr></thead><tbody>
             <?php if ($materials === []): ?><tr><td colspan="9" class="materials-empty">No materials yet.</td></tr><?php endif; ?>
             <?php foreach ($materials as $material): ?>
                 <?php

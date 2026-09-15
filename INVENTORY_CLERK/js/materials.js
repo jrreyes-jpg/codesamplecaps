@@ -85,9 +85,10 @@ document.addEventListener('DOMContentLoaded', function () {
         { words: ['rj45', 'connector', 'terminal'], category: 'Connectors & Terminals', unit: 'pcs' },
         { words: ['conduit'], category: 'Conduit & Raceway', unit: 'meter' },
     ];
-    const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set'];
+    const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
     let categoryChangedByUser = false;
     let unitChangedByUser = false;
+    let reorderLevelTouched = false;
 
     const isWholeCountUnit = function (unitValue) {
         return wholeCountUnits.includes(unitValue ?? unit.value);
@@ -150,9 +151,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (reorderLevel.value.trim() !== '' && !isValidReorderValue(reorderLevel.value, unit.value)) {
             reorderLevel.value = '';
-            showUnitChangeMessage('Reorder Level was cleared for ' + unit.value + '.');
+            showUnitChangeMessage('Low Stock Alert Level was cleared for ' + unit.value + '.');
         }
-        validateReorderLevel();
+        validateReorderLevel(reorderLevelTouched);
     };
 
     const findSuggestion = function (value) {
@@ -201,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
         validateMaterialName();
     });
 
-    const validateReorderLevel = function () {
+    const validateReorderLevel = function (showError) {
         if (!reorderLevel) {
             return true;
         }
@@ -217,10 +218,29 @@ document.addEventListener('DOMContentLoaded', function () {
             message = 'Use a whole number for ' + unit.value + '.';
         }
 
-        return setFieldError(reorderLevel, fieldErrors.reorderLevel, message);
+        if (showError) {
+            reorderLevel.setCustomValidity(message);
+            reorderLevel.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            if (fieldErrors.reorderLevel) {
+                fieldErrors.reorderLevel.textContent = message;
+            }
+        } else {
+            // Huwag magpakita ng error bago pa mag-input ang clerk.
+            reorderLevel.setCustomValidity('');
+            reorderLevel.removeAttribute('aria-invalid');
+        }
+
+        return message === '';
     };
 
-    reorderLevel?.addEventListener('input', validateReorderLevel);
+    reorderLevel?.addEventListener('input', function () {
+        reorderLevelTouched = true;
+        validateReorderLevel(true);
+    });
+    reorderLevel?.addEventListener('blur', function () {
+        reorderLevelTouched = true;
+        validateReorderLevel(true);
+    });
     reorderLevel?.addEventListener('keydown', function (event) {
         if (['e', 'E', '+', '-'].includes(event.key)) {
             event.preventDefault();
@@ -231,7 +251,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const nameValid = validateMaterialName();
         const categoryValid = validateCategory();
         const unitValid = validateUnit();
-        const reorderValid = validateReorderLevel();
+        reorderLevelTouched = true;
+        const reorderValid = validateReorderLevel(true);
         const isValid = nameValid && categoryValid && unitValid && reorderValid;
         if (!isValid) {
             event.preventDefault();

@@ -447,15 +447,21 @@ if (!function_exists('material_stock_reserve_approved_inspection_requirements'))
 }
 
 if (!function_exists('material_stock_add_stock_in')) {
-    function material_stock_add_stock_in(mysqli $conn, int $materialId, float $quantity, ?string $remarks, int $userId): void
+    function material_stock_add_stock_in(mysqli $conn, int $materialId, mixed $quantityInput, ?string $remarks, int $userId): array
     {
-        if ($quantity <= 0) {
+        $rawQuantity = is_string($quantityInput) ? trim($quantityInput) : (string)$quantityInput;
+        if ($rawQuantity === '' || !is_numeric($rawQuantity)) {
+            throw new RuntimeException('Stock In quantity must be greater than zero.');
+        }
+
+        $quantity = (float)$rawQuantity;
+        if (!is_finite($quantity) || $quantity <= 0) {
             throw new RuntimeException('Stock In quantity must be greater than zero.');
         }
 
         $conn->begin_transaction();
         try {
-            $lock = $conn->prepare("SELECT physical_quantity FROM materials WHERE id = ? AND status = 'active' FOR UPDATE");
+            $lock = $conn->prepare("SELECT material_name, unit, physical_quantity FROM materials WHERE id = ? AND status = 'active' FOR UPDATE");
             if (!$lock) {
                 throw new RuntimeException('Unable to lock material.');
             }
@@ -464,6 +470,11 @@ if (!function_exists('material_stock_add_stock_in')) {
             $material = $lock->get_result()->fetch_assoc();
             if (!$material) {
                 throw new RuntimeException('Material not found.');
+            }
+
+            $wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
+            if (in_array((string)$material['unit'], $wholeCountUnits, true) && $quantity !== floor($quantity)) {
+                throw new RuntimeException('Quantity In must be a whole number for ' . $material['unit'] . '.');
             }
 
             $before = (float)$material['physical_quantity'];
@@ -480,6 +491,12 @@ if (!function_exists('material_stock_add_stock_in')) {
             $movement->bind_param('idddsi', $materialId, $quantity, $before, $after, $remarks, $userId);
             $movement->execute();
             $conn->commit();
+
+            return [
+                'material_name' => (string)$material['material_name'],
+                'unit' => (string)$material['unit'],
+                'quantity' => $quantity,
+            ];
         } catch (Throwable $exception) {
             $conn->rollback();
             throw $exception;

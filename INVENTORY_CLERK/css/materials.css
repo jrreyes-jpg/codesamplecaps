@@ -383,12 +383,31 @@
 
 .materials-table td:nth-child(1),
 .materials-table td:nth-child(2) {
+    text-align: left;
     white-space: normal;
 }
 
+.materials-table th:nth-child(1),
+.materials-table th:nth-child(2) {
+    text-align: left;
+}
+
+.materials-table th:nth-child(n+3),
 .materials-table td:nth-child(n+3):not(:last-child) {
     white-space: nowrap;
     text-align: center;
+}
+
+.materials-table td:nth-child(4),
+.materials-table td:nth-child(5),
+.materials-table td:nth-child(6),
+.materials-table td:nth-child(7) {
+    font-variant-numeric: tabular-nums;
+}
+
+.materials-table td:nth-child(6) {
+    color: #0f766e;
+    font-weight: 700;
 }
 
 .materials-table th:last-child,
@@ -396,6 +415,10 @@
     padding-right: 14px;
     padding-left: 14px;
     text-align: center;
+}
+
+.materials-row--archived .materials-table__name {
+    color: #475569;
 }
 
 .materials-empty {

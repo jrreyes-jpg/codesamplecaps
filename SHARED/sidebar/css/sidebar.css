@@ -345,6 +345,13 @@
     padding-left: 10px;
 }
 
+.sidebar .sidebar-contextual-children {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
 .sidebar .menu-mini-label {
     display: none;
     color: rgba(240, 253, 244, 0.86);
@@ -441,6 +448,40 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+.sidebar.shrink .nav-menu-group--collapsed-context.has-active-child > .menu-link--group-toggle,
+.sidebar.shrink .nav-menu-group--collapsed-context.has-active-child > .menu-submenu,
+html.ops-sidebar-shrink-pref .sidebar .nav-menu-group--collapsed-context.has-active-child > .menu-link--group-toggle,
+html.ops-sidebar-shrink-pref .sidebar .nav-menu-group--collapsed-context.has-active-child > .menu-submenu {
+    display: none !important;
+}
+
+.sidebar.shrink .nav-menu-group--collapsed-context.has-active-child > .sidebar-contextual-children,
+html.ops-sidebar-shrink-pref .sidebar .nav-menu-group--collapsed-context.has-active-child > .sidebar-contextual-children {
+    display: grid;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.sidebar.shrink .sidebar-contextual-children .menu-link,
+html.ops-sidebar-shrink-pref .sidebar .sidebar-contextual-children .menu-link {
+    min-height: 64px;
+    margin: 0;
+    padding: 7px 4px;
+}
+
+.sidebar.shrink .sidebar-contextual-children .menu-icon,
+html.ops-sidebar-shrink-pref .sidebar .sidebar-contextual-children .menu-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+}
+
+.sidebar.shrink .sidebar-contextual-children .menu-mini-label,
+html.ops-sidebar-shrink-pref .sidebar .sidebar-contextual-children .menu-mini-label {
+    max-width: 78px;
+    font-size: .58rem;
 }
 
 html.ops-sidebar-shrink-pref .sidebar {

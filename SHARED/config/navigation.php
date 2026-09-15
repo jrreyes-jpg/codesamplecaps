@@ -74,6 +74,7 @@ function shared_navigation_items_for_role(string $role): array
             ],
             [
                 'module' => 'materials', 'label' => 'Consumable Materials', 'mini' => 'Mat', 'icon' => 'inventory',
+                'collapsed_context_children' => true,
                 'children' => [
                     ['module' => 'materials', 'label' => 'Material Master List', 'mini' => 'List', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/dashboards/materials.php']],
                     ['module' => 'material_stock_in', 'label' => 'Material Stock In', 'mini' => 'In', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_in.php', 'icon' => 'stock-in', 'active' => ['/INVENTORY_CLERK/dashboards/material_stock_in.php']],

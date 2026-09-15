@@ -118,12 +118,13 @@ if (!function_exists('shared_sidebar_has_active_children')) {
             <?php
                 $hasChildren = isset($item['children']) && is_array($item['children']) && $item['children'] !== [];
                 $hasActiveChild = $hasChildren && shared_sidebar_has_active_children($item, $sharedSidebarPath, $sharedSidebarCurrent);
+                $hasCollapsedContextChildren = $hasChildren && !empty($item['collapsed_context_children']);
                 $isActive = $hasChildren
                     ? $hasActiveChild
                     : shared_sidebar_is_active($item, $sharedSidebarPath, $sharedSidebarCurrent);
             ?>
             <?php if ($hasChildren): ?>
-                <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open has-active-child' : ''; ?>">
+                <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open has-active-child' : ''; ?><?php echo $hasCollapsedContextChildren ? ' nav-menu-group--collapsed-context' : ''; ?>">
                     <button
                         class="menu-link menu-link--button menu-link--group-toggle<?php echo $hasActiveChild ? ' active-link' : ''; ?>"
                         type="button"
@@ -173,6 +174,34 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                             </li>
                         <?php endforeach; ?>
                     </ul>
+                    <?php if ($hasCollapsedContextChildren): ?>
+                        <ul class="sidebar-contextual-children" aria-label="Consumable Materials shortcuts">
+                            <?php foreach ($item['children'] as $childItem): ?>
+                                <?php if (!is_array($childItem)): ?>
+                                    <?php continue; ?>
+                                <?php endif; ?>
+                                <?php $isChildActive = shared_sidebar_is_active($childItem, $sharedSidebarPath, $sharedSidebarCurrent); ?>
+                                <li>
+                                    <a
+                                        href="<?php echo htmlspecialchars((string)$childItem['href'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        class="menu-link sidebar-contextual-child<?php echo $isChildActive ? ' active-link' : ''; ?>"
+                                        title="<?php echo htmlspecialchars((string)$childItem['label'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        <?php echo $isChildActive ? 'aria-current="page" data-active="true"' : ''; ?>
+                                    >
+                                        <span class="menu-visual" aria-hidden="true">
+                                            <span class="menu-icon">
+                                                <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                                    <?php echo shared_sidebar_icon((string)$childItem['icon']); ?>
+                                                </svg>
+                                            </span>
+                                            <span class="menu-mini-label"><?php echo htmlspecialchars((string)$childItem['mini'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </span>
+                                        <span class="menu-text"><?php echo htmlspecialchars((string)$childItem['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
                 </li>
             <?php else: ?>
                 <li>

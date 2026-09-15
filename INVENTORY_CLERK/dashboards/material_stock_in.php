@@ -15,10 +15,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $exception) {
         $_SESSION[$flashKey] = ['type' => 'error', 'message' => $exception->getMessage()];
     }
-    header('Location: /codesamplecaps/INVENTORY_CLERK/sidebar/material_stock_in.php'); exit;
+    header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_in.php'); exit;
 }
-$flash = $_SESSION[$flashKey] ?? null; unset($_SESSION[$flashKey]); $materials = material_stock_fetch_active_materials($conn);
+$flash = $_SESSION[$flashKey] ?? null;
+unset($_SESSION[$flashKey]);
+$materials = material_stock_fetch_active_materials($conn);
+$selectedMaterialId = filter_input(INPUT_GET, 'material_id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+$selectedMaterialIsActive = $selectedMaterialId === 0;
+foreach ($materials as $material) {
+    if ((int)$material['id'] === $selectedMaterialId) {
+        $selectedMaterialIsActive = true;
+        break;
+    }
+}
+if (!$selectedMaterialIsActive) {
+    $selectedMaterialId = 0;
+    $flash = ['type' => 'error', 'message' => 'Selected material is unavailable for Stock In.'];
+}
 ?>
-<?php inventory_clerk_render_page('Material Stock In', function () use ($flash, $csrfToken, $materials): void { ?>
-<div class="page-stack"><section class="form-panel"><h1 class="section-title-inline">Material Stock In</h1><?php if ($flash): ?><div class="alert <?php echo $flash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>"><?php echo htmlspecialchars($flash['message']); ?></div><?php endif; ?><form method="POST"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>"><div class="form-grid"><div class="input-group"><label>Material</label><select name="material_id" required><option value="">Select material</option><?php foreach ($materials as $material): ?><option value="<?php echo (int)$material['id']; ?>"><?php echo htmlspecialchars($material['material_code'] . ' | ' . $material['material_name'] . ' | Physical: ' . $material['physical_quantity'] . ' ' . $material['unit']); ?></option><?php endforeach; ?></select></div><div class="input-group"><label>Quantity In</label><input name="quantity" type="number" min="0.01" step="0.01" required></div><div class="input-group"><label>Remarks</label><input name="remarks" maxlength="2000"></div></div><div class="form-actions"><button class="btn-primary">Save Material Stock In</button></div></form></section></div>
+<?php inventory_clerk_render_page('Material Stock In', function () use ($flash, $csrfToken, $materials, $selectedMaterialId): void { ?>
+<div class="page-stack"><section class="form-panel"><h1 class="section-title-inline">Material Stock In</h1><?php if ($flash): ?><div class="alert <?php echo $flash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>"><?php echo htmlspecialchars($flash['message']); ?></div><?php endif; ?><form method="POST"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>"><div class="form-grid"><div class="input-group"><label>Material</label><select name="material_id" required><option value="">Select material</option><?php foreach ($materials as $material): ?><option value="<?php echo (int)$material['id']; ?>"<?php echo (int)$material['id'] === $selectedMaterialId ? ' selected' : ''; ?>><?php echo htmlspecialchars($material['material_code'] . ' | ' . $material['material_name'] . ' | Physical: ' . $material['physical_quantity'] . ' ' . $material['unit']); ?></option><?php endforeach; ?></select></div><div class="input-group"><label>Quantity In</label><input name="quantity" type="number" min="0.01" step="0.01" required></div><div class="input-group"><label>Remarks</label><input name="remarks" maxlength="2000"></div></div><div class="form-actions"><button class="btn-primary">Save Material Stock In</button></div></form></section></div>
 <?php }); ?>

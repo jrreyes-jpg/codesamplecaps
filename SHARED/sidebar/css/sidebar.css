@@ -584,10 +584,11 @@ html.ops-sidebar-shrink-pref .sidebar .menu-submenu {
     position: fixed;
     top: var(--sidebar-submenu-top, 96px);
     left: calc(var(--ops-sidebar-collapsed-width) + 8px);
-    width: 220px;
+    width: 260px;
+    max-width: calc(100vw - var(--ops-sidebar-collapsed-width) - 18px);
     max-height: min(60vh, 420px);
     margin: 0;
-    padding: 10px;
+    padding: 12px;
     overflow-y: auto;
     border: 1px solid var(--ops-sidebar-line);
     border-radius: 16px;
@@ -612,17 +613,19 @@ html.ops-sidebar-shrink-pref .sidebar .nav-menu-group.is-open.is-flyout-open > .
 
 .sidebar.shrink .menu-submenu .menu-link,
 html.ops-sidebar-shrink-pref .sidebar .menu-submenu .menu-link {
-    min-height: 50px;
+    box-sizing: border-box;
+    min-height: 54px;
     flex-direction: row;
     justify-content: flex-start;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: 12px;
+    padding: 9px 12px;
     text-align: left;
 }
 
 .sidebar.shrink .menu-submenu .menu-visual,
 html.ops-sidebar-shrink-pref .sidebar .menu-submenu .menu-visual {
-    min-width: 42px;
+    min-width: 40px;
+    width: 40px;
     flex-direction: row;
     gap: 0;
 }
@@ -636,13 +639,29 @@ html.ops-sidebar-shrink-pref .sidebar .menu-submenu .menu-mini-label {
 html.ops-sidebar-shrink-pref .sidebar .menu-submenu .menu-text {
     position: static;
     width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
     height: auto;
     padding: 0;
     margin: 0;
-    overflow: visible;
+    overflow: hidden;
     clip: auto;
     white-space: nowrap;
+    text-overflow: ellipsis;
     border: 0;
+}
+
+@media (max-width: 920px) and (min-width: 769px) {
+    .sidebar.shrink .menu-submenu .menu-link,
+    html.ops-sidebar-shrink-pref .sidebar .menu-submenu .menu-link {
+        min-height: 56px;
+    }
+
+    .sidebar.shrink .menu-submenu .menu-text,
+    html.ops-sidebar-shrink-pref .sidebar .menu-submenu .menu-text {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }
 
 .main-content {

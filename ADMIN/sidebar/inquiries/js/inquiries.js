@@ -1215,6 +1215,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
         const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
+        const unitOptionsByType = {
+            material: ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
+            labor: ['person', 'hour', 'day', 'lot'],
+            equipment: ['unit', 'hour', 'day', 'set', 'lot'],
+            service: ['service', 'job', 'lot'],
+            other: ['unit', 'lot'],
+        };
+        const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person'];
 
         const serializeQuotationForm = function () {
             return form ? new URLSearchParams(new FormData(form)).toString() : '';
@@ -1256,11 +1264,87 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         };
 
+        const setQuantityMessage = function (row, message) {
+            const quantityInput = row.querySelector('input[name="quantity[]"]');
+            const quantityError = row.querySelector('[data-quotation-quantity-error]');
+            if (!quantityInput) {
+                return;
+            }
+
+            quantityInput.setCustomValidity(message);
+            quantityInput.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            if (quantityError) {
+                quantityError.textContent = message;
+            }
+        };
+
+        const validateQuotationQuantity = function (row, clearInvalidQuantity) {
+            const quantityInput = row.querySelector('input[name="quantity[]"]');
+            const unitSelect = row.querySelector('select[name="unit[]"]');
+            if (!quantityInput || !unitSelect) {
+                return true;
+            }
+
+            const quantity = Number.parseFloat(quantityInput.value || '0');
+            const unit = unitSelect.value.toLowerCase();
+            let message = '';
+
+            if (quantityInput.value.trim() === '' || !Number.isFinite(quantity) || quantity <= 0) {
+                message = 'Enter a quantity greater than zero.';
+            } else if (wholeCountUnits.includes(unit) && !Number.isInteger(quantity)) {
+                message = 'Use a whole number for ' + unit + '.';
+            }
+
+            if (message !== '' && clearInvalidQuantity && quantityInput.value.trim() !== '') {
+                quantityInput.value = '';
+                message = 'Qty was cleared because ' + unit + ' needs a whole number.';
+            }
+
+            setQuantityMessage(row, message);
+            return message === '';
+        };
+
+        const setUnitOptions = function (row, options, preferredUnit, isLocked) {
+            const unitSelect = row.querySelector('select[name="unit[]"]');
+            if (!unitSelect) {
+                return;
+            }
+
+            const normalizedPreferredUnit = (preferredUnit || '').toLowerCase();
+            const selectedUnit = options.find(function (option) {
+                return option.toLowerCase() === normalizedPreferredUnit;
+            }) || options[0] || '';
+
+            unitSelect.replaceChildren();
+            options.forEach(function (option) {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option;
+                optionElement.selected = option.toLowerCase() === selectedUnit.toLowerCase();
+                unitSelect.appendChild(optionElement);
+            });
+
+            unitSelect.classList.toggle('is-locked', isLocked);
+            unitSelect.setAttribute('aria-readonly', isLocked ? 'true' : 'false');
+            unitSelect.tabIndex = isLocked ? -1 : 0;
+
+            const quantityInput = row.querySelector('input[name="quantity[]"]');
+            const selectedUnitIsWhole = wholeCountUnits.includes(selectedUnit.toLowerCase());
+            if (quantityInput) {
+                quantityInput.min = selectedUnitIsWhole ? '1' : '0.01';
+                quantityInput.step = selectedUnitIsWhole ? '1' : '0.01';
+                quantityInput.inputMode = selectedUnitIsWhole ? 'numeric' : 'decimal';
+            }
+        };
+
         const syncMaterialReference = function (row, shouldFillMaterialDetails) {
             const typeSelect = row.querySelector('select[name="item_type[]"]');
             const materialReference = row.querySelector('[data-quotation-material-reference]');
             const materialSelect = row.querySelector('select[name="material_id[]"]');
             const isMaterial = typeSelect?.value === 'material';
+            const selectedOption = materialSelect?.options[materialSelect.selectedIndex];
+            const isLinkedMaterial = isMaterial && /^[1-9]\d*$/.test(materialSelect?.value || '');
+            const currentUnit = row.querySelector('select[name="unit[]"]')?.value || '';
 
             row.classList.toggle('is-material-item', isMaterial);
 
@@ -1270,23 +1354,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isMaterial && materialSelect) {
                 materialSelect.value = '';
-                return;
             }
 
-            if (!shouldFillMaterialDetails || !materialSelect?.value) {
-                return;
+            if (isLinkedMaterial) {
+                setUnitOptions(row, [selectedOption?.dataset.materialUnit || 'unit'], selectedOption?.dataset.materialUnit || 'unit', true);
+            } else {
+                setUnitOptions(row, unitOptionsByType[typeSelect?.value] || unitOptionsByType.other, currentUnit, false);
             }
 
-            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
             const itemName = row.querySelector('input[name="item_name[]"]');
-            const unit = row.querySelector('input[name="unit[]"]');
 
-            if (itemName && selectedOption?.dataset.materialName) {
+            if (shouldFillMaterialDetails && isLinkedMaterial && itemName && selectedOption?.dataset.materialName) {
                 itemName.value = selectedOption.dataset.materialName;
             }
-            if (unit && selectedOption?.dataset.materialUnit) {
-                unit.value = selectedOption.dataset.materialUnit;
-            }
+
+            validateQuotationQuantity(row, true);
         };
 
         addButton?.addEventListener('click', function () {
@@ -1323,9 +1405,27 @@ document.addEventListener('DOMContentLoaded', function () {
             if (event.target.matches('select[name="material_id[]"]')) {
                 syncMaterialReference(row, true);
             }
+            if (event.target.matches('select[name="unit[]"]')) {
+                if (event.target.classList.contains('is-locked')) {
+                    syncMaterialReference(row, false);
+                } else {
+                    validateQuotationQuantity(row, true);
+                }
+            }
+            updateQuotationPreview();
+            updateEditSubmitState();
         });
 
         form?.addEventListener('submit', function (event) {
+            const invalidQuantityRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
+                return !validateQuotationQuantity(row, false);
+            });
+            if (invalidQuantityRow) {
+                event.preventDefault();
+                invalidQuantityRow.querySelector('input[name="quantity[]"]')?.focus();
+                return;
+            }
+
             if (event.submitter?.hasAttribute('data-confirm-quotation-save')
                 && !window.confirm('Are you sure you want to save this quotation draft?')) {
                 event.preventDefault();
@@ -1351,7 +1451,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        form?.addEventListener('input', function () {
+        form?.addEventListener('input', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (row && event.target.matches('input[name="quantity[]"]')) {
+                validateQuotationQuantity(row, false);
+            }
             updateQuotationPreview();
             updateEditSubmitState();
         });

@@ -1242,8 +1242,11 @@ document.addEventListener('DOMContentLoaded', function () {
             let subtotal = 0;
             items?.querySelectorAll('[data-quotation-item]').forEach(function (item) {
                 const quantity = Number.parseFloat(item.querySelector('input[name="quantity[]"]')?.value || '0');
-                const unitCost = Number.parseFloat(item.querySelector('input[name="unit_cost[]"]')?.value || '0');
-                const lineTotal = Math.max(0, quantity) * Math.max(0, unitCost);
+                const unitCostInput = item.querySelector('input[name="unit_cost[]"]');
+                const unitCost = Number.parseFloat(unitCostInput?.value || '0');
+                const lineTotal = isValidEstimatedUnitCost(unitCostInput?.value || '')
+                    ? Math.max(0, quantity) * unitCost
+                    : 0;
                 const lineTotalOutput = item.querySelector('[data-quotation-line-total]');
 
                 subtotal += lineTotal;
@@ -1276,6 +1279,30 @@ document.addEventListener('DOMContentLoaded', function () {
             if (quantityError) {
                 quantityError.textContent = message;
             }
+        };
+
+        const isValidEstimatedUnitCost = function (rawValue) {
+            const value = Number.parseFloat(rawValue || '0');
+            return /^\d+(?:\.\d{1,2})?$/.test((rawValue || '').trim())
+                && Number.isFinite(value)
+                && value > 0;
+        };
+
+        const validateEstimatedUnitCost = function (row, showMessage) {
+            const unitCostInput = row.querySelector('input[name="unit_cost[]"]');
+            const costError = row.querySelector('[data-quotation-cost-error]');
+            if (!unitCostInput) {
+                return true;
+            }
+
+            const isValid = isValidEstimatedUnitCost(unitCostInput.value);
+            const message = isValid ? '' : 'Enter an estimated unit cost greater than zero.';
+            unitCostInput.setCustomValidity(message);
+            unitCostInput.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            if (costError && showMessage) {
+                costError.textContent = message;
+            }
+            return isValid;
         };
 
         const validateQuotationQuantity = function (row, clearInvalidQuantity) {
@@ -1426,6 +1453,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const invalidCostRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
+                return !validateEstimatedUnitCost(row, true);
+            });
+            if (invalidCostRow) {
+                event.preventDefault();
+                invalidCostRow.querySelector('input[name="unit_cost[]"]')?.focus();
+                return;
+            }
+
             if (event.submitter?.hasAttribute('data-confirm-quotation-save')
                 && !window.confirm('Are you sure you want to save this quotation draft?')) {
                 event.preventDefault();
@@ -1455,6 +1491,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const row = event.target.closest('[data-quotation-item]');
             if (row && event.target.matches('input[name="quantity[]"]')) {
                 validateQuotationQuantity(row, false);
+            }
+            if (row && event.target.matches('input[name="unit_cost[]"]')) {
+                validateEstimatedUnitCost(row, true);
             }
             updateQuotationPreview();
             updateEditSubmitState();

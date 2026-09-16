@@ -508,7 +508,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table__col-name {
-    width: 18%;
+    width: 16%;
 }
 
 .user-management-table__col-email {
@@ -520,11 +520,11 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table__col-role {
-    width: 13%;
+    width: 14%;
 }
 
 .user-management-table__col-status {
-    width: 12%;
+    width: 10%;
 }
 
 .user-management-table__col-created {
@@ -532,7 +532,42 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table__col-actions {
-    width: 10%;
+    width: 13%;
+}
+
+/* Mas maikli ang space kapag bukas ang sidebar, kaya Name ang inuuna kaysa Email. */
+@media (min-width: 961px) {
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-name {
+        width: 19%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-email {
+        width: 20%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-phone {
+        width: 13%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-role {
+        width: 14%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-status {
+        width: 10%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-created {
+        width: 11%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table__col-actions {
+        width: 13%;
+    }
+
+    html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table .responsive-table {
+        min-width: 980px;
+    }
 }
 
 .user-management-table .responsive-table thead {
@@ -556,10 +591,28 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .user-contact-value {
     display: block;
+    min-width: 0;
     color: #475569;
     font-size: 0.86rem;
     line-height: 1.35;
-    overflow-wrap: anywhere;
+}
+
+.user-contact-value--email {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-contact-value--phone {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.user-management-table td:first-child .table-input {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .hidden-save-form {
@@ -576,12 +629,14 @@ body:has([data-user-management-shell]) .user-management-panel {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 7px 12px;
+    max-width: 100%;
+    padding: 6px 10px;
     border-radius: 999px;
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .role-badge-admin {
@@ -854,14 +909,15 @@ body:has([data-user-management-shell]) .user-management-panel {
 .user-actions-menu__toggle {
     background: #0f766e;
     color: #ffffff;
-    min-width: 0;
+    min-width: 108px;
     min-height: 34px;
     padding: 8px 12px;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 12px;
     line-height: 1;
+    white-space: nowrap;
 }
 
 .user-actions-menu__toggle::after {
@@ -876,6 +932,43 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .user-actions-menu__toggle[aria-expanded="true"]::after {
     transform: rotate(225deg) translateY(2px);
+}
+
+.user-management-table .responsive-table th:nth-child(4),
+.user-management-table .responsive-table td:nth-child(4),
+.user-management-table .responsive-table th:nth-child(7),
+.user-management-table .responsive-table td:nth-child(7) {
+    text-align: center;
+}
+
+.user-management-table .responsive-table td:nth-child(7) {
+    padding-inline: 12px;
+    white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+    .user-management-table .responsive-table {
+        min-width: 920px;
+    }
+
+    .user-actions-menu__toggle {
+        width: 36px;
+        min-width: 36px;
+        padding: 0;
+        justify-content: center;
+        font-size: 0;
+    }
+
+    .user-actions-menu__toggle::before {
+        content: "⋮";
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .user-actions-menu__toggle::after {
+        display: none;
+    }
 }
 
 .user-actions-menu__list {

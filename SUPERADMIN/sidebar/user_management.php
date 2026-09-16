@@ -142,10 +142,10 @@ $messageType = $messageType ?? 'success';
                             <?php foreach ($managedUsers as $user): $status = $user['status'] ?? 'active'; $rowId = (int)$user['id']; $normalizedRole = normalizeRole((string)($user['role'] ?? '')); $deactivationBlockers = ($status === 'active' && !$userTrashView) ? getDeactivationBlockers($conn, $rowId, $normalizedRole) : []; ?>
                                 <tr class="user-row" data-row-id="<?php echo $rowId; ?>" data-user-search="<?php echo htmlspecialchars(strtolower(trim(($user['full_name'] ?? '') . ' ' . ($user['email'] ?? '') . ' ' . ($user['phone'] ?? '') . ' ' . $normalizedRole . ' ' . $status))); ?>">
                                     <td data-label="Name">
-                                        <input class="table-input" type="text" data-field="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" readonly required>
+                                        <input class="table-input" type="text" data-field="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" title="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?>" readonly required>
                                     </td>
-                                    <td data-label="Email"><span class="user-contact-value"><?php echo htmlspecialchars((string)($user['email'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
-                                    <td data-label="Phone"><span class="user-contact-value"><?php echo htmlspecialchars((string)($user['phone'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                    <td data-label="Email"><span class="user-contact-value user-contact-value--email" title="<?php echo htmlspecialchars((string)($user['email'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?>" tabindex="0"><?php echo htmlspecialchars((string)($user['email'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                    <td data-label="Phone"><span class="user-contact-value user-contact-value--phone"><?php echo htmlspecialchars((string)($user['phone'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
                                     <td data-label="Role">
                                         <span class="role-badge role-badge-<?php echo htmlspecialchars($normalizedRole); ?>"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $normalizedRole))); ?></span>
                                     </td>

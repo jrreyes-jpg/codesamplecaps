@@ -369,6 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     toastClose?.addEventListener('click', closeToast);
     if (toast) {
-        window.setTimeout(closeToast, 4000);
+        const toastDelay = toast.classList.contains('materials-toast--success') ? 4000 : 5000;
+        window.setTimeout(closeToast, toastDelay);
     }
 });

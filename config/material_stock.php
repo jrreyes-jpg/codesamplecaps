@@ -77,7 +77,7 @@ if (!function_exists('material_stock_archive_material')) {
         $conn->begin_transaction();
         try {
             $materialStmt = $conn->prepare(
-                "SELECT id, status, physical_quantity, reserved_quantity
+                "SELECT id, status, unit, physical_quantity, reserved_quantity
                  FROM materials
                  WHERE id = ?
                  FOR UPDATE"
@@ -105,8 +105,15 @@ if (!function_exists('material_stock_archive_material')) {
             $reservationStmt->execute();
             $hasActiveReservation = (bool)$reservationStmt->get_result()->fetch_assoc();
 
-            if ((float)$material['physical_quantity'] > 0 || (float)$material['reserved_quantity'] > 0 || $hasActiveReservation) {
-                throw new RuntimeException('Cannot archive material while stock or active reservations remain.');
+            if ((float)$material['physical_quantity'] > 0) {
+                $quantity = rtrim(rtrim(number_format((float)$material['physical_quantity'], 2, '.', ''), '0'), '.');
+                throw new RuntimeException($quantity . ' ' . (string)$material['unit'] . ' remain in stock. Issue or adjust the remaining stock before archiving.');
+            }
+            if ((float)$material['reserved_quantity'] > 0) {
+                throw new RuntimeException('Reserved stock must be 0 before archiving.');
+            }
+            if ($hasActiveReservation) {
+                throw new RuntimeException('This material still has an active project reservation.');
             }
 
             $archiveStmt = $conn->prepare("UPDATE materials SET status = 'inactive' WHERE id = ? AND status = 'active'");

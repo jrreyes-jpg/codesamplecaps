@@ -68,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['material_action'])) {
         $materialId = (int)($_POST['material_id'] ?? 0);
         if ($action === 'archive') {
             material_stock_archive_material($conn, $materialId);
-            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material archived', 'message' => 'Material archived.'];
+            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material archived', 'message' => 'Moved to Archived materials.'];
         } elseif ($action === 'restore') {
             material_stock_restore_material($conn, $materialId);
-            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material restored', 'message' => 'Material restored.'];
+            $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material restored', 'message' => 'Material is active again.'];
         } elseif ($action === 'permanent_delete') {
             material_stock_permanently_delete_material($conn, $materialId);
             $_SESSION[$flashKey] = ['type' => 'success', 'title' => 'Material deleted', 'message' => 'Material permanently deleted.'];
@@ -79,15 +79,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['material_action'])) {
             throw new RuntimeException('Invalid material action.');
         }
     } catch (Throwable $exception) {
+        $message = $exception->getMessage();
+        $isArchiveBlock = $action === 'archive' && in_array($message, [
+            'Reserved stock must be 0 before archiving.',
+            'This material still has an active project reservation.',
+        ], true);
+        if ($action === 'archive' && str_ends_with($message, 'Issue or adjust the remaining stock before archiving.')) {
+            $isArchiveBlock = true;
+        }
+        $isDeleteUsageBlock = $action === 'permanent_delete'
+            && str_starts_with($message, 'This material can no longer be permanently deleted');
         $_SESSION[$flashKey] = [
-            'type' => 'error',
-            'title' => match ($action) {
-                'archive' => 'Cannot archive material',
+            'type' => ($isArchiveBlock || $isDeleteUsageBlock) ? 'warning' : 'error',
+            'title' => $isDeleteUsageBlock ? 'Delete unavailable' : match ($action) {
+                'archive' => 'Archive blocked',
                 'restore' => 'Cannot restore material',
                 'permanent_delete' => 'Cannot delete material',
                 default => 'Cannot update material',
             },
-            'message' => $exception->getMessage(),
+            'message' => $isDeleteUsageBlock
+                ? 'This material has inventory or usage history and can only be archived.'
+                : $message,
         ];
     }
 
@@ -241,9 +253,10 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
     </div>
     <?php if ($flash): ?>
         <?php $toastType = in_array($flash['type'] ?? '', ['success', 'warning', 'error'], true) ? $flash['type'] : 'error'; ?>
+        <?php $toastIcon = $toastType === 'success' ? '✓' : ($toastType === 'warning' ? '⚠' : ''); ?>
         <div class="materials-toast-stack" aria-live="polite" aria-atomic="true" data-material-toast-stack>
             <div class="materials-toast materials-toast--<?php echo htmlspecialchars($toastType); ?>" role="<?php echo $toastType === 'error' ? 'alert' : 'status'; ?>" data-material-toast>
-                <span class="materials-toast__icon" aria-hidden="true"><?php echo $toastType === 'success' ? '✓' : ($toastType === 'warning' ? '!' : '×'); ?></span>
+                <?php if ($toastIcon !== ''): ?><span class="materials-toast__icon" aria-hidden="true"><?php echo $toastIcon; ?></span><?php endif; ?>
                 <div class="materials-toast__content"><strong><?php echo htmlspecialchars((string)($flash['title'] ?? 'Notice')); ?></strong><span><?php echo htmlspecialchars((string)($flash['message'] ?? '')); ?></span></div>
                 <button type="button" aria-label="Close notification" data-material-toast-close>&times;</button>
             </div>

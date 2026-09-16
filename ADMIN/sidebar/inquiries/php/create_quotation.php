@@ -90,8 +90,10 @@ $unitOptionsByType = [
 $wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person'];
 $materialOptions = material_stock_fetch_active_materials($conn);
 $materialUnitsById = [];
+$materialNamesById = [];
 foreach ($materialOptions as $materialOption) {
     $materialUnitsById[(int)$materialOption['id']] = (string)$materialOption['unit'];
+    $materialNamesById[(int)$materialOption['id']] = (string)$materialOption['material_name'];
 }
 
 function inquiry_quote_render_unit_options(array $unitOptionsByType, array $materialUnitsById, string $itemType, int $materialId, string $currentUnit): void
@@ -128,13 +130,25 @@ $postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : 
 $postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : array_column($defaultItems, 'unit');
 $postedUnitCosts = is_array($_POST['unit_cost'] ?? null) ? $_POST['unit_cost'] : array_column($defaultItems, 'unit_cost');
 $postedNotes = is_array($_POST['item_notes'] ?? null) ? $_POST['item_notes'] : array_column($defaultItems, 'notes');
-$marginPercent = (float)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15));
+$marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
+$marginPercent = is_numeric($marginPercentRaw) ? (float)$marginPercentRaw : 0.0;
+$markupError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'admin_create_inquiry_quotation')) {
         $error = 'Your form expired. Please refresh and try again.';
-    } elseif ($marginPercent < 0 || $marginPercent > 100) {
-        $error = 'Profit margin must be from 0 to 100 percent.';
+    } elseif ($marginPercentRaw === '') {
+        $markupError = 'Markup is required.';
+        $error = $markupError;
+    } elseif (!is_numeric($marginPercentRaw) || !is_finite($marginPercent)) {
+        $markupError = 'Markup must be a number from 0 to 100%.';
+        $error = $markupError;
+    } elseif ($marginPercent < 0) {
+        $markupError = 'Markup cannot be negative.';
+        $error = $markupError;
+    } elseif ($marginPercent > 100) {
+        $markupError = 'Markup cannot be greater than 100%.';
+        $error = $markupError;
     } elseif (count($postedNames) === 0 || count($postedNames) > 50) {
         $error = 'Add from 1 to 50 quotation items only.';
     } else {
@@ -153,10 +167,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notes = trim((string)($postedNotes[$index] ?? ''));
             $materialId = $itemType === 'material' ? (int)($postedMaterialIds[$index] ?? 0) : 0;
 
-            if ($itemName === '' || strlen($itemName) > 180) {
-                $error = 'Each quotation item needs a valid name.';
-                break;
-            }
             if (!in_array($itemType, $allowedTypes, true)) {
                 $error = 'Please select a valid item type.';
                 break;
@@ -165,12 +175,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Selected material is no longer available. Please choose again.';
                 break;
             }
-            if ($quantityRaw === '' || !is_numeric($quantityRaw) || !is_finite($quantity) || $quantity <= 0 || $quantity > 999999) {
-                $error = 'Check the quantity of each item.';
+            if ($itemType === 'material' && $materialId > 0) {
+                $itemName = $materialNamesById[$materialId] ?? '';
+            }
+            if ($itemName === '' || strlen($itemName) > 180) {
+                $error = 'Each quotation item needs a valid name.';
                 break;
             }
-            if ($unitCostRaw === '' || !preg_match('/^\d+(?:\.\d{1,2})?$/', $unitCostRaw) || !is_finite($unitCost) || $unitCost <= 0 || $unitCost > 999999999) {
-                $error = 'Enter an estimated unit cost greater than zero.';
+            if ($quantityRaw === '') {
+                $error = 'Quantity is required.';
+                break;
+            }
+            if (!is_numeric($quantityRaw) || !is_finite($quantity) || $quantity <= 0 || $quantity > 999999) {
+                $error = 'Quantity must be greater than 0.';
+                break;
+            }
+            if ($unitCostRaw === '') {
+                $error = 'Estimated Unit Cost is required.';
+                break;
+            }
+            if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $unitCostRaw) || !is_finite($unitCost) || $unitCost <= 0 || $unitCost > 999999999) {
+                $error = 'Estimated Unit Cost must be greater than 0.';
                 break;
             }
             if ($unit === '' || strlen($unit) > 30 || strlen($notes) > 2000) {
@@ -388,13 +413,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $rowMaterialId = (int)($postedMaterialIds[$index] ?? 0);
                         $rowUnit = (string)($postedUnits[$index] ?? 'pcs');
                         $rowUnitLocked = $rowType === 'material' && $rowMaterialId > 0;
+                        $rowNameLocked = $rowUnitLocked;
                         ?>
                         <div class="quotation-create-item<?php echo $rowType === 'material' ? ' is-material-item' : ''; ?>" data-quotation-item>
                             <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required><?php foreach (['material' => 'Material', 'labor' => 'Labor', 'equipment' => 'Equipment (Billable / Rental)', 'service' => 'Service', 'other' => 'Other'] as $typeValue => $typeLabel): ?><option value="<?php echo $typeValue; ?>" <?php echo $rowType === $typeValue ? 'selected' : ''; ?>><?php echo $typeLabel; ?></option><?php endforeach; ?></select></label>
                             <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo $rowType !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><select name="material_id[]">
                                     <option value="">Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowMaterialId === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual" <?php echo (string)($postedMaterialIds[$index] ?? '') === 'manual' ? ' selected' : ''; ?>>Manual / non-stock material</option>
                                 </select></label>
-                            <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required></label>
+                            <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required<?php echo $rowNameLocked ? ' class="is-linked-material-name" readonly aria-readonly="true"' : ''; ?>></label>
                             <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
                             <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select></label>
                             <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
@@ -441,7 +467,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </template>
 
                 <div class="quotation-create-summary">
-                    <label><span>Profit Margin (%)</span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars((string)$marginPercent, ENT_QUOTES, 'UTF-8'); ?>" required></label>
+                    <label><span>Markup (%)</span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($marginPercentRaw, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-summary__error" data-quotation-markup-error aria-live="polite"><?php echo htmlspecialchars($markupError, ENT_QUOTES, 'UTF-8'); ?></span></label>
                     <div><span>Subtotal</span><strong>PHP <span data-quotation-subtotal>0.00</span></strong></div>
                     <div><span>Profit</span><strong>PHP <span data-quotation-profit>0.00</span></strong></div>
                     <div class="quotation-create-grand-total"><span>Grand Total</span><strong>PHP <span data-quotation-total>0.00</span></strong></div>

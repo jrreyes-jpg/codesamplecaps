@@ -172,7 +172,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const suggestions = [
-        { words: ['pako', 'bolt', 'screw', 'nut'], category: 'Fasteners & Hardware', unit: 'pcs' },
+        { words: ['pako', 'nail'], category: 'Fasteners & Hardware', unit: 'kg' },
+        { words: ['bolt', 'screw', 'nut'], category: 'Fasteners & Hardware', unit: 'pcs' },
         { words: ['wire', 'cable'], category: 'Cable & Wire', unit: 'meter' },
         { words: ['rj45', 'connector', 'terminal'], category: 'Connectors & Terminals', unit: 'pcs' },
         { words: ['conduit'], category: 'Conduit & Raceway', unit: 'meter' },

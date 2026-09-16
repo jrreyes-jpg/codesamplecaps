@@ -17,10 +17,17 @@
 
 .quotation-create-back {
     display: inline-flex;
+    position: sticky;
+    top: 100px;
+    z-index: 12;
     align-self: flex-start;
     width: fit-content;
     margin-bottom: 18px;
     padding: 8px 12px;
+    border: 1px solid #d7e4de;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 6px 16px rgba(15, 61, 48, 0.08);
     text-decoration: none;
 }
 
@@ -160,7 +167,7 @@
 .quotation-create-item__unit,
 .quotation-create-item__cost {
     position: relative;
-    padding-bottom: 18px;
+    padding-bottom: 20px;
 }
 
 .quotation-create-item__quantity-error,
@@ -190,7 +197,7 @@
     border: 1px solid #cfe3d8;
     border-radius: 9px;
     background: #f1f8f4;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
 }
 
 .quotation-create-item__line-total strong {
@@ -216,6 +223,13 @@
     color: #4b6358;
     cursor: not-allowed;
     pointer-events: none;
+}
+
+.quotation-create-item__name input.is-linked-material-name {
+    border-color: #cfe3d8;
+    background: #eef7f1;
+    color: #2f5140;
+    cursor: default;
 }
 
 .quotation-create-item:not(.is-material-item) .quotation-create-item__type {
@@ -316,6 +330,23 @@
     background: #f3f7f5;
 }
 
+.quotation-create-summary > label {
+    display: grid;
+    align-content: start;
+}
+
+.quotation-create-summary__error {
+    display: block !important;
+    min-height: 14px;
+    margin: 5px 0 0 !important;
+    color: #b91c1c !important;
+    font-size: .7rem !important;
+    font-weight: 600 !important;
+    letter-spacing: normal !important;
+    line-height: 1.2;
+    text-transform: none !important;
+}
+
 .quotation-create-summary strong {
     color: #17382c;
     font-size: 1.05rem;
@@ -402,6 +433,10 @@
 }
 
 @media (max-width: 760px) {
+    .quotation-create-back {
+        top: 90px;
+    }
+
     .quotation-create-card {
         padding: 18px;
         border-radius: 16px;
@@ -434,6 +469,12 @@
     .quotation-create-item__line-total,
     .quotation-create-item .quotation-create-remove {
         grid-column: auto;
+    }
+}
+
+@media (max-width: 520px) {
+    .quotation-create-back {
+        top: 84px;
     }
 }
 

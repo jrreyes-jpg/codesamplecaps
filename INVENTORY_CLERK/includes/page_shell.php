@@ -29,39 +29,48 @@ if (!function_exists('inventory_clerk_render_header')) {
         $initials = substr($initials ?: 'IC', 0, 2);
 
         $inventoryAlerts = [];
+        $materialStockAlerts = [];
         $materialShortages = [];
-        $inventoryAlertCount = 0;
+        $notificationAlerts = [];
+        $materialStockAlertCount = 0;
         $materialShortageCount = 0;
-
-        $inventoryAlertCountResult = $conn->query(
-            "SELECT COUNT(*) AS alert_count
-             FROM inventory
-             WHERE status IN ('low-stock', 'out-of-stock')"
-        );
-        if ($inventoryAlertCountResult instanceof mysqli_result) {
-            $inventoryAlertCount = (int)(($inventoryAlertCountResult->fetch_assoc()['alert_count'] ?? 0));
-        }
 
         $inventoryAlertResult = $conn->query(
             "SELECT a.asset_name, i.quantity, i.min_stock, i.status
              FROM inventory i
              INNER JOIN assets a ON a.id = i.asset_id
              WHERE i.status IN ('low-stock', 'out-of-stock')
-             ORDER BY FIELD(i.status, 'out-of-stock', 'low-stock'), a.asset_name ASC
-             LIMIT 8"
+             ORDER BY FIELD(i.status, 'out-of-stock', 'low-stock'), a.asset_name ASC"
         );
         if ($inventoryAlertResult instanceof mysqli_result) {
             $inventoryAlerts = $inventoryAlertResult->fetch_all(MYSQLI_ASSOC);
         }
 
-        $materialShortageCountResult = $conn->query(
-            "SELECT COUNT(*) AS alert_count
-             FROM project_material_reservations r
-             WHERE r.status = 'active'
-               AND r.required_quantity > r.reserved_quantity + r.issued_quantity"
+        $materialStockAlertResult = $conn->query(
+            "SELECT m.id, m.material_name, m.unit, m.reorder_level,
+                    GREATEST(m.physical_quantity - m.reserved_quantity, 0) AS available_quantity,
+                    CASE
+                        WHEN m.physical_quantity <= 0
+                             AND EXISTS (SELECT 1 FROM material_stock_movements sm WHERE sm.material_id = m.id)
+                            THEN 'out-of-stock'
+                        ELSE 'low-stock'
+                    END AS alert_status
+             FROM materials m
+             WHERE m.status = 'active'
+               AND (
+                    (m.physical_quantity <= 0
+                     AND EXISTS (SELECT 1 FROM material_stock_movements sm WHERE sm.material_id = m.id))
+                    OR (
+                        GREATEST(m.physical_quantity - m.reserved_quantity, 0) > 0
+                        AND m.reorder_level IS NOT NULL
+                        AND GREATEST(m.physical_quantity - m.reserved_quantity, 0) <= m.reorder_level
+                    )
+               )
+             ORDER BY FIELD(alert_status, 'out-of-stock', 'low-stock'), m.material_name ASC"
         );
-        if ($materialShortageCountResult instanceof mysqli_result) {
-            $materialShortageCount = (int)(($materialShortageCountResult->fetch_assoc()['alert_count'] ?? 0));
+        if ($materialStockAlertResult instanceof mysqli_result) {
+            $materialStockAlerts = $materialStockAlertResult->fetch_all(MYSQLI_ASSOC);
+            $materialStockAlertCount = count($materialStockAlerts);
         }
 
         $materialShortageResult = $conn->query(
@@ -72,14 +81,68 @@ if (!function_exists('inventory_clerk_render_header')) {
              INNER JOIN materials m ON m.id = r.material_id
              WHERE r.status = 'active'
                AND r.required_quantity > r.reserved_quantity + r.issued_quantity
-             ORDER BY p.created_at ASC, r.id ASC
-             LIMIT 8"
+             ORDER BY p.created_at ASC, r.id ASC"
         );
         if ($materialShortageResult instanceof mysqli_result) {
             $materialShortages = $materialShortageResult->fetch_all(MYSQLI_ASSOC);
+            $materialShortageCount = count($materialShortages);
         }
 
-        $notificationAlertCount = $inventoryAlertCount + $materialShortageCount;
+        $formatAlertQuantity = static function (float $quantity): string {
+            return rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
+        };
+
+        foreach ($inventoryAlerts as $alert) {
+            $isOutOfStock = ($alert['status'] ?? '') === 'out-of-stock';
+            $detail = $formatAlertQuantity((float)$alert['quantity']) . ' available';
+            if ($alert['min_stock'] !== null) {
+                $detail .= ' • Alert at ' . $formatAlertQuantity((float)$alert['min_stock']);
+            }
+            $notificationAlerts[] = [
+                'priority' => $isOutOfStock ? 1 : 2,
+                'class' => $isOutOfStock ? 'danger' : 'warning',
+                'name' => (string)$alert['asset_name'],
+                'status' => $isOutOfStock ? 'Out of Stock' : 'Low Stock',
+                'detail' => $detail,
+                'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=' . ($isOutOfStock ? 'out-of-stock' : 'low-stock'),
+            ];
+        }
+
+        foreach ($materialStockAlerts as $alert) {
+            $isOutOfStock = ($alert['alert_status'] ?? '') === 'out-of-stock';
+            $detail = $formatAlertQuantity((float)$alert['available_quantity']) . ' ' . (string)$alert['unit'] . ' available';
+            if ($alert['reorder_level'] !== null) {
+                $detail .= ' • Alert at ' . $formatAlertQuantity((float)$alert['reorder_level']) . ' ' . (string)$alert['unit'];
+            }
+            $notificationAlerts[] = [
+                'priority' => $isOutOfStock ? 1 : 2,
+                'class' => $isOutOfStock ? 'danger' : 'warning',
+                'name' => (string)$alert['material_name'],
+                'status' => $isOutOfStock ? 'Out of Stock' : 'Low Stock',
+                'detail' => $detail,
+                'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php?material_filter=active',
+            ];
+        }
+
+        foreach ($materialShortages as $shortage) {
+            $notificationAlerts[] = [
+                'priority' => 3,
+                'class' => 'warning',
+                'name' => (string)$shortage['material_name'],
+                'status' => 'Needs Procurement',
+                'detail' => 'Short ' . $formatAlertQuantity((float)$shortage['shortage_quantity']) . ' ' . (string)$shortage['unit'] . ' • ' . (string)$shortage['project_name'],
+                'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php?material_filter=active#project-material-needs',
+            ];
+        }
+
+        usort($notificationAlerts, static function (array $left, array $right): int {
+            return [$left['priority'], $left['name']] <=> [$right['priority'], $right['name']];
+        });
+        $visibleNotificationAlerts = array_slice($notificationAlerts, 0, 5);
+        $notificationAlertCount = count($notificationAlerts);
+        $viewAllAlertsHref = ($materialStockAlertCount + $materialShortageCount) > 0
+            ? '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php?material_filter=active'
+            : '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=attention';
 
         ob_start();
         $headerProfileRootAttr = 'data-profile-root';
@@ -106,36 +169,26 @@ if (!function_exists('inventory_clerk_render_header')) {
                 <div class="topbar-notifications__panel-head">
                     <div>
                         <strong>Inventory Alerts</strong>
-                        <span><?php echo $notificationAlertCount > 0 ? $notificationAlertCount . ' need attention' : 'All clear'; ?></span>
+                        <span><?php echo $notificationAlertCount > 0 ? 'Current stock and material alerts' : 'All clear'; ?></span>
                     </div>
                 </div>
                 <?php if ($notificationAlertCount === 0): ?>
                     <div class="topbar-notifications__empty">No inventory alerts right now.</div>
                 <?php else: ?>
                     <div class="topbar-notifications__section">
-                        <?php foreach ($inventoryAlerts as $alert): ?>
-                            <?php $isOutOfStock = ($alert['status'] ?? '') === 'out-of-stock'; ?>
-                            <a class="notification-item notification-item--<?php echo $isOutOfStock ? 'danger' : 'warning'; ?>" href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=<?php echo $isOutOfStock ? 'out-of-stock' : 'low-stock'; ?>">
+                        <?php foreach ($visibleNotificationAlerts as $alert): ?>
+                            <a class="notification-item notification-item--<?php echo htmlspecialchars($alert['class']); ?>" href="<?php echo htmlspecialchars($alert['href']); ?>">
                                 <span class="notification-item__dot" aria-hidden="true"></span>
                                 <span class="notification-item__copy">
-                                    <strong><?php echo $isOutOfStock ? 'Out of Stock' : 'Low Stock'; ?></strong>
-                                    <span><?php echo htmlspecialchars((string)$alert['asset_name']); ?> · <?php echo (int)$alert['quantity']; ?> available<?php echo $alert['min_stock'] !== null ? ' · Min: ' . (int)$alert['min_stock'] : ''; ?></span>
+                                    <strong><?php echo htmlspecialchars($alert['name']); ?></strong>
+                                    <span><?php echo htmlspecialchars($alert['status']); ?> &bull; <?php echo htmlspecialchars($alert['detail']); ?></span>
                                 </span>
                             </a>
                         <?php endforeach; ?>
                     </div>
-                    <?php if ($materialShortages !== []): ?>
-                        <div class="topbar-notifications__section">
-                            <div class="topbar-notifications__section-title">Material Shortages</div>
-                            <?php foreach ($materialShortages as $shortage): ?>
-                                <a class="notification-item notification-item--warning" href="/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php">
-                                    <span class="notification-item__dot" aria-hidden="true"></span>
-                                    <span class="notification-item__copy">
-                                        <strong>Needs Procurement</strong>
-                                        <span><?php echo htmlspecialchars((string)$shortage['material_name']); ?> · Short <?php echo htmlspecialchars((string)$shortage['shortage_quantity'] . ' ' . $shortage['unit']); ?> · <?php echo htmlspecialchars((string)$shortage['project_name']); ?></span>
-                                    </span>
-                                </a>
-                            <?php endforeach; ?>
+                    <?php if ($notificationAlertCount > count($visibleNotificationAlerts)): ?>
+                        <div class="topbar-notifications__footer">
+                            <a class="topbar-notifications__view-all" href="<?php echo htmlspecialchars($viewAllAlertsHref); ?>">View all alerts</a>
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>

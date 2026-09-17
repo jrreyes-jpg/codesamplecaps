@@ -2,9 +2,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const materialName = document.querySelector('[data-material-name]');
     const category = document.querySelector('[data-material-category]');
     const unit = document.querySelector('[data-material-unit]');
+    const description = document.querySelector('[data-material-description]');
     const suggestion = document.querySelector('[data-material-suggestion]');
     const reorderLevel = document.querySelector('[data-reorder-level]');
     const form = document.querySelector('[data-material-form]');
+    const formSubmitButton = form?.querySelector('button[type="submit"]');
+    const materialModal = document.querySelector('[data-material-modal]');
+    const modalOpenButton = document.querySelector('[data-material-modal-open]');
+    const modalCloseButtons = document.querySelectorAll('[data-material-modal-close], [data-material-modal-cancel]');
     const unitChangeMessage = document.querySelector('[data-unit-change-message]');
     const fieldErrors = {
         materialName: document.querySelector('[data-material-error="material_name"]'),
@@ -14,6 +19,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     const toast = document.querySelector('[data-material-toast]');
     const toastClose = document.querySelector('[data-material-toast-close]');
+    const materialCreatedToast = document.querySelector('[data-material-created-toast]');
+    const draftMessage = document.querySelector('[data-material-draft-message]');
     const tooltipTriggers = document.querySelectorAll('.materials-info-tooltip, .materials-table-tooltip');
     const actionForms = document.querySelectorAll('[data-material-confirm]');
     const actionMenus = document.querySelectorAll('[data-material-action-menu]');
@@ -182,20 +189,94 @@ document.addEventListener('DOMContentLoaded', function () {
     let categoryChangedByUser = false;
     let unitChangedByUser = false;
     let reorderLevelTouched = fieldErrors.reorderLevel?.textContent.trim() !== '';
-    const trackedFields = [materialName, category, unit, reorderLevel].filter(Boolean);
+    const trackedFields = [materialName, category, unit, reorderLevel, description].filter(Boolean);
+    const initialFieldValues = new Map(trackedFields.map(function (field) {
+        return [field.name, field.value];
+    }));
     const initialFormState = trackedFields.map(function (field) {
         return field.name + '=' + field.value;
     }).join('&');
+    const materialDraftKey = materialModal?.dataset.materialDraftKey || 'edge_inventory_clerk_material_draft';
+    const materialDraftMaxAgeMs = 24 * 60 * 60 * 1000;
     let materialFormSubmitting = false;
 
+    const currentMaterialFormState = function () {
+        return trackedFields.map(function (field) {
+            return field.name + '=' + field.value;
+        }).join('&');
+    };
+
     const hasUnsavedMaterialChanges = function () {
-        if (materialFormSubmitting) {
+        if (materialFormSubmitting || !materialModal || materialModal.hidden) {
             return false;
         }
 
-        return trackedFields.map(function (field) {
-            return field.name + '=' + field.value;
-        }).join('&') !== initialFormState;
+        return currentMaterialFormState() !== initialFormState;
+    };
+
+    const clearLocalMaterialDraft = function () {
+        try {
+            window.localStorage.removeItem(materialDraftKey);
+        } catch (error) {
+            // Hindi critical kapag blocked ang local storage.
+        }
+    };
+
+    const saveLocalMaterialDraft = function () {
+        if (!materialModal || currentMaterialFormState() === initialFormState) {
+            clearLocalMaterialDraft();
+            return;
+        }
+
+        const fields = {};
+        trackedFields.forEach(function (field) {
+            fields[field.name] = field.value;
+        });
+
+        try {
+            window.localStorage.setItem(materialDraftKey, JSON.stringify({
+                savedAt: Date.now(),
+                fields: fields,
+            }));
+        } catch (error) {
+            // Hindi dapat hadlangan ang normal form kapag blocked ang local storage.
+        }
+    };
+
+    let draftMessageTimer = 0;
+    const showDraftMessage = function () {
+        if (!draftMessage) {
+            return;
+        }
+
+        window.clearTimeout(draftMessageTimer);
+        draftMessage.hidden = false;
+        draftMessageTimer = window.setTimeout(function () {
+            draftMessage.hidden = true;
+        }, 4000);
+    };
+
+    const restoreLocalMaterialDraft = function () {
+        let draft = null;
+        try {
+            draft = JSON.parse(window.localStorage.getItem(materialDraftKey) || 'null');
+        } catch (error) {
+            clearLocalMaterialDraft();
+            return false;
+        }
+
+        if (!draft || !draft.fields || !Number.isFinite(Number(draft.savedAt))
+            || Date.now() - Number(draft.savedAt) > materialDraftMaxAgeMs) {
+            clearLocalMaterialDraft();
+            return false;
+        }
+
+        trackedFields.forEach(function (field) {
+            if (typeof draft.fields[field.name] === 'string') {
+                field.value = draft.fields[field.name];
+            }
+        });
+        return currentMaterialFormState() !== initialFormState;
     };
 
     window.addEventListener('beforeunload', function (event) {
@@ -203,6 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        saveLocalMaterialDraft();
         event.preventDefault();
         event.returnValue = '';
     });
@@ -294,6 +376,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 suggestion.textContent = '';
                 suggestion.removeAttribute('title');
             }
+            if (!categoryChangedByUser) {
+                category.value = '';
+            }
+            if (!unitChangedByUser) {
+                unit.value = '';
+                updateReorderLevelForUnit();
+            }
             return;
         }
 
@@ -360,6 +449,60 @@ document.addEventListener('DOMContentLoaded', function () {
         return message === '';
     };
 
+    const openMaterialModal = function () {
+        if (!materialModal) {
+            return;
+        }
+
+        materialModal.hidden = false;
+        document.body.classList.add('materials-modal-open');
+        window.setTimeout(function () {
+            materialName?.focus();
+        }, 0);
+    };
+
+    const resetMaterialForm = function () {
+        trackedFields.forEach(function (field) {
+            field.value = initialFieldValues.get(field.name) ?? '';
+            field.setCustomValidity('');
+            field.removeAttribute('aria-invalid');
+        });
+        Object.values(fieldErrors).forEach(function (errorElement) {
+            if (errorElement) {
+                errorElement.textContent = '';
+            }
+        });
+        categoryChangedByUser = false;
+        unitChangedByUser = false;
+        reorderLevelTouched = false;
+        if (unitChangeMessage) {
+            unitChangeMessage.textContent = '';
+        }
+        clearLocalMaterialDraft();
+        updateReorderLevelForUnit();
+    };
+
+    const closeMaterialModal = function () {
+        if (!materialModal) {
+            return;
+        }
+
+        materialModal.hidden = true;
+        document.body.classList.remove('materials-modal-open');
+        modalOpenButton?.focus();
+    };
+
+    const requestMaterialModalClose = function () {
+        if (hasUnsavedMaterialChanges() && !window.confirm('Discard unsaved changes?')) {
+            return;
+        }
+
+        if (hasUnsavedMaterialChanges()) {
+            resetMaterialForm();
+        }
+        closeMaterialModal();
+    };
+
     reorderLevel?.addEventListener('input', function () {
         reorderLevelTouched = true;
         validateReorderLevel(reorderLevel.value.trim() !== '', false);
@@ -374,7 +517,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     updateReorderLevelForUnit();
+    trackedFields.forEach(function (field) {
+        field.addEventListener('input', saveLocalMaterialDraft);
+        field.addEventListener('change', saveLocalMaterialDraft);
+    });
+    modalOpenButton?.addEventListener('click', openMaterialModal);
+    modalCloseButtons.forEach(function (button) {
+        button.addEventListener('click', requestMaterialModalClose);
+    });
+    materialModal?.addEventListener('click', function (event) {
+        if (event.target === materialModal) {
+            requestMaterialModalClose();
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && materialModal && !materialModal.hidden) {
+            requestMaterialModalClose();
+        }
+    });
+    if (materialCreatedToast) {
+        clearLocalMaterialDraft();
+    }
+    const restoredDraft = !materialCreatedToast && restoreLocalMaterialDraft();
+    if (restoredDraft) {
+        updateReorderLevelForUnit();
+        openMaterialModal();
+        showDraftMessage();
+    } else if (materialModal?.dataset.openOnLoad === 'true') {
+        openMaterialModal();
+    }
     form?.addEventListener('submit', function (event) {
+        if (materialFormSubmitting) {
+            event.preventDefault();
+            return;
+        }
+
         const nameValid = validateMaterialName();
         const categoryValid = validateCategory();
         const unitValid = validateUnit();
@@ -390,7 +567,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        saveLocalMaterialDraft();
         materialFormSubmitting = true;
+        if (formSubmitButton) {
+            formSubmitButton.disabled = true;
+            formSubmitButton.textContent = 'Adding Material...';
+        }
     });
 
     const closeToast = function () {

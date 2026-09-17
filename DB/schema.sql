@@ -250,6 +250,7 @@ CREATE TABLE `materials` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `material_code` varchar(50) NOT NULL,
   `material_name` varchar(180) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
   `category` varchar(80) DEFAULT NULL,
   `unit` varchar(30) NOT NULL DEFAULT 'unit',
   `physical_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,

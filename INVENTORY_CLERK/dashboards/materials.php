@@ -10,8 +10,9 @@ $materialFilter = in_array($_GET['material_filter'] ?? 'active', ['active', 'ina
     : 'active';
 $defaultFormValues = [
     'material_name' => '',
+    'description' => '',
     'category' => '',
-    'unit' => 'pcs',
+    'unit' => '',
     'reorder_level' => '',
 ];
 $materialCategories = [
@@ -110,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['material_action'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submittedValues = [
         'material_name' => preg_replace('/\s+/', ' ', trim((string)($_POST['material_name'] ?? ''))) ?? '',
+        'description' => trim((string)($_POST['description'] ?? '')),
         'category' => trim((string)($_POST['category'] ?? '')),
         'unit' => trim((string)($_POST['unit'] ?? '')),
         'reorder_level' => trim((string)($_POST['reorder_level'] ?? '')),
@@ -122,6 +124,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $category = $submittedValues['category'];
         $unit = $submittedValues['unit'];
         $materialName = $submittedValues['material_name'];
+        $description = $submittedValues['description'];
+        $descriptionLength = function_exists('mb_strlen') ? mb_strlen($description) : strlen($description);
+        if ($descriptionLength > 255) {
+            throw new RuntimeException('Description / Specification must be 255 characters or less.');
+        }
         $reorderValue = is_numeric($reorder) ? (float)$reorder : 0.0;
         if ($reorder === '') {
             throw new RuntimeException('Required.');
@@ -143,7 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $materialName,
             $category,
             $unit,
-            $reorderValue
+            $reorderValue,
+            $description
         );
         $_SESSION[$flashKey] = [
             'type' => 'success',
@@ -175,6 +183,8 @@ $flash = $_SESSION[$flashKey] ?? null;
 unset($_SESSION[$flashKey]);
 $formValues = array_merge($defaultFormValues, is_array($flash['values'] ?? null) ? $flash['values'] : []);
 $formErrors = is_array($flash['field_errors'] ?? null) ? $flash['field_errors'] : [];
+$openMaterialModal = is_array($flash['values'] ?? null);
+$materialDraftKey = 'edge_inventory_clerk_material_draft_' . max(0, (int)($_SESSION['user_id'] ?? 0));
 $materials = material_stock_fetch_materials($conn, $materialFilter);
 $deletableMaterialIds = array_fill_keys(material_stock_fetch_deletable_material_ids($conn), true);
 $stockedMaterialIds = [];
@@ -202,20 +212,12 @@ if ($shortageResult) {
     $shortages = $shortageResult->fetch_all(MYSQLI_ASSOC);
 }
 
-inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $formValues, $formErrors, $materials, $deletableMaterialIds, $stockedMaterialIds, $shortages, $materialCategories, $materialUnits, $materialFilter): void {
+inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $formValues, $formErrors, $openMaterialModal, $materialDraftKey, $materials, $deletableMaterialIds, $stockedMaterialIds, $shortages, $materialCategories, $materialUnits, $materialFilter): void {
 ?>
     <div class="page-stack materials-page">
-        <section class="form-panel">
+        <section class="form-panel materials-page__header">
             <h1 class="section-title-inline">Materials</h1>
-            <form method="POST" data-material-form novalidate><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <div class="form-grid">
-                    <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><span class="materials-field-error" data-material-error="material_name" aria-live="polite"></span></div>
-                    <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo $formValues['category'] === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="category" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['category'] ?? '')); ?></span></div>
-                    <div class="input-group"><label for="unit">Unit</label><select id="unit" name="unit" required data-material-unit><option value="">Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>"<?php echo $formValues['unit'] === $unit ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="unit" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['unit'] ?? '')); ?></span></div>
-                    <div class="input-group"><label for="reorder_level">Low Stock Alert Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Shows a Low Stock warning when available quantity reaches this level or lower." data-tooltip="Shows a Low Stock warning when available quantity reaches this level or lower.">i</span> <span class="materials-unit-change-message" data-unit-change-message aria-live="polite"></span></label><input id="reorder_level" name="reorder_level" type="number" min="1" step="1" required inputmode="numeric" value="<?php echo htmlspecialchars($formValues['reorder_level']); ?>" data-reorder-level><span class="materials-field-error" data-material-error="reorder_level" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['reorder_level'] ?? '')); ?></span></div>
-                </div>
-                <div class="form-actions"><button type="submit" class="btn-primary">Add Material</button></div>
-            </form>
+            <button type="button" class="btn-primary materials-add-button" data-material-modal-open>+ Add Material</button>
         </section>
         <section class="form-panel">
             <div class="materials-master-list__heading"><h2 class="section-title-inline">Material Master List</h2><nav class="materials-filter" aria-label="Material filter"><?php foreach (['active' => 'Active', 'inactive' => 'Archived', 'all' => 'All'] as $filterValue => $filterLabel): ?><a class="materials-filter__link<?php echo $materialFilter === $filterValue ? ' is-active' : ''; ?>" href="?material_filter=<?php echo htmlspecialchars($filterValue); ?>"><?php echo htmlspecialchars($filterLabel); ?></a><?php endforeach; ?></nav></div>
@@ -247,7 +249,7 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
             <?php endforeach; ?>
             </tbody></table></div>
         </section>
-        <section class="form-panel">
+        <section id="project-material-needs" class="form-panel">
             <h2 class="section-title-inline">Project Material Needs</h2>
             <div class="table-responsive"><table class="data-table"><thead><tr><th>Project</th><th>Material</th><th>Required</th><th>Reserved</th><th>Issued</th><th>Shortage</th><th>Status</th></tr></thead><tbody>
             <?php foreach ($shortages as $shortage): ?>
@@ -257,11 +259,29 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
             </tbody></table></div>
         </section>
     </div>
+    <div class="materials-modal" data-material-modal data-open-on-load="<?php echo $openMaterialModal ? 'true' : 'false'; ?>" data-material-draft-key="<?php echo htmlspecialchars($materialDraftKey); ?>" hidden>
+        <section class="materials-modal__panel" role="dialog" aria-modal="true" aria-labelledby="addMaterialModalTitle">
+            <div class="materials-modal__head">
+                <div><h2 id="addMaterialModalTitle">Add Material</h2><p>Add a consumable material. Stock stays at zero until Stock In.</p><p class="materials-modal__draft-message" data-material-draft-message hidden>Unsaved material draft restored.</p></div>
+                <button type="button" class="materials-modal__close" aria-label="Close Add Material" data-material-modal-close>&times;</button>
+            </div>
+            <form method="POST" data-material-form novalidate><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <div class="form-grid">
+                    <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><span class="materials-field-error" data-material-error="material_name" aria-live="polite"></span></div>
+                    <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo $formValues['category'] === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="category" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['category'] ?? '')); ?></span></div>
+                    <div class="input-group"><label for="unit">Unit</label><select id="unit" name="unit" required data-material-unit><option value="">Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>"<?php echo $formValues['unit'] === $unit ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="unit" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['unit'] ?? '')); ?></span></div>
+                    <div class="input-group"><label for="reorder_level">Low Stock Alert Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Shows a Low Stock warning when available quantity reaches this level or lower." data-tooltip="Shows a Low Stock warning when available quantity reaches this level or lower.">i</span> <span class="materials-unit-change-message" data-unit-change-message aria-live="polite"></span></label><input id="reorder_level" name="reorder_level" type="number" min="1" step="1" required inputmode="numeric" value="<?php echo htmlspecialchars($formValues['reorder_level']); ?>" data-reorder-level><span class="materials-field-error" data-material-error="reorder_level" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['reorder_level'] ?? '')); ?></span></div>
+                    <div class="input-group materials-description-field"><label for="description">Description / Specification <span>(Optional)</span></label><textarea id="description" name="description" maxlength="255" rows="2" data-material-description><?php echo htmlspecialchars($formValues['description']); ?></textarea></div>
+                </div>
+                <div class="materials-modal__actions"><button type="button" class="btn-secondary" data-material-modal-cancel>Cancel</button><button type="submit" class="btn-primary">Add Material</button></div>
+            </form>
+        </section>
+    </div>
     <?php if ($flash): ?>
         <?php $toastType = in_array($flash['type'] ?? '', ['success', 'warning', 'error'], true) ? $flash['type'] : 'error'; ?>
         <?php $toastIcon = $toastType === 'success' ? '✓' : ($toastType === 'warning' ? '⚠' : ''); ?>
         <div class="materials-toast-stack" aria-live="polite" aria-atomic="true" data-material-toast-stack>
-            <div class="materials-toast materials-toast--<?php echo htmlspecialchars($toastType); ?>" role="<?php echo $toastType === 'error' ? 'alert' : 'status'; ?>" data-material-toast>
+            <div class="materials-toast materials-toast--<?php echo htmlspecialchars($toastType); ?>" role="<?php echo $toastType === 'error' ? 'alert' : 'status'; ?>" data-material-toast<?php echo ($flash['title'] ?? '') === 'Material added' ? ' data-material-created-toast' : ''; ?>>
                 <?php if ($toastIcon !== ''): ?><span class="materials-toast__icon" aria-hidden="true"><?php echo $toastIcon; ?></span><?php endif; ?>
                 <div class="materials-toast__content"><strong><?php echo htmlspecialchars((string)($flash['title'] ?? 'Notice')); ?></strong><span><?php echo htmlspecialchars((string)($flash['message'] ?? '')); ?></span></div>
                 <button type="button" aria-label="Close notification" data-material-toast-close>&times;</button>

@@ -56,7 +56,7 @@ if (!function_exists('material_stock_fetch_materials')) {
             default => "WHERE status = 'active'",
         };
         $result = $conn->query(
-            "SELECT id, material_code, material_name, category, unit, physical_quantity, reserved_quantity, reorder_level, status,
+            "SELECT id, material_code, material_name, description, category, unit, physical_quantity, reserved_quantity, reorder_level, status,
                     GREATEST(physical_quantity - reserved_quantity, 0) AS available_quantity
              FROM materials
              {$where}
@@ -250,11 +250,12 @@ if (!function_exists('material_stock_permanently_delete_material')) {
 }
 
 if (!function_exists('material_stock_create_material')) {
-    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $unit, ?float $reorderLevel): string
+    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $unit, ?float $reorderLevel, ?string $description = null): string
     {
         $name = trim($name);
         $category = trim((string)$category);
         $unit = trim($unit);
+        $description = trim((string)$description);
 
         if ($name === '' || $unit === '') {
             throw new RuntimeException('Material name and unit are required.');
@@ -270,13 +271,13 @@ if (!function_exists('material_stock_create_material')) {
             $temporaryCode = 'MAT-TEMP-' . bin2hex(random_bytes(12));
             $reorderValue = $reorderLevel === null ? '' : (string)$reorderLevel;
             $insert = $conn->prepare(
-                'INSERT INTO materials (material_code, material_name, category, unit, reorder_level)
-                 VALUES (?, ?, NULLIF(?, \'\'), ?, NULLIF(?, \'\'))'
+                'INSERT INTO materials (material_code, material_name, description, category, unit, reorder_level)
+                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'))'
             );
             if (!$insert) {
                 throw new RuntimeException('Unable to create material.');
             }
-            $insert->bind_param('sssss', $temporaryCode, $name, $category, $unit, $reorderValue);
+            $insert->bind_param('ssssss', $temporaryCode, $name, $description, $category, $unit, $reorderValue);
             if (!$insert->execute()) {
                 throw new RuntimeException('Unable to create material.');
             }

@@ -7,8 +7,126 @@
     margin-bottom: 0;
 }
 
-.materials-page .form-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.materials-page__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.materials-add-button {
+    flex: 0 0 auto;
+}
+
+.materials-description-field {
+    grid-column: 1 / -1;
+}
+
+.materials-description-field textarea {
+    min-height: 64px;
+}
+
+.materials-description-field label span {
+    color: #64748b;
+    font-size: .78rem;
+    font-weight: 500;
+}
+
+.materials-modal {
+    position: fixed;
+    z-index: 4200;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, .48);
+}
+
+.materials-modal[hidden] {
+    display: none;
+}
+
+.materials-modal__panel {
+    width: min(100%, 720px);
+    max-height: min(700px, calc(100vh - 48px));
+    overflow-y: auto;
+    padding: 18px;
+    border: 1px solid #dbe4ee;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .25);
+}
+
+.materials-modal__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.materials-modal__head h2 {
+    margin: 0;
+    color: #172033;
+    font-size: 1.2rem;
+}
+
+.materials-modal__head p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: .84rem;
+    line-height: 1.45;
+}
+
+.materials-modal__draft-message {
+    display: inline-flex;
+    margin-top: 8px !important;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: .76rem !important;
+    font-weight: 600;
+}
+
+.materials-modal__close {
+    display: inline-grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #334155;
+    cursor: pointer;
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.materials-modal__close:hover,
+.materials-modal__close:focus-visible {
+    background: #e2e8f0;
+    color: #0f172a;
+    outline: none;
+}
+
+.materials-modal .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 0;
+}
+
+.materials-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 0;
+}
+
+body.materials-modal-open {
+    overflow: hidden;
 }
 
 .materials-master-list__heading {
@@ -575,16 +693,37 @@
         align-items: flex-start;
         flex-direction: column;
     }
-}
 
-@media (max-width: 1080px) {
-    .materials-page .form-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .materials-modal {
+        padding: 16px;
+    }
+
+    .materials-modal__panel {
+        max-height: calc(100vh - 32px);
+        padding: 18px;
     }
 }
 
 @media (max-width: 560px) {
-    .materials-page .form-grid {
+    .materials-page__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .materials-add-button {
+        width: 100%;
+    }
+
+    .materials-modal .form-grid {
         grid-template-columns: 1fr;
+    }
+
+    .materials-modal__actions {
+        flex-direction: column-reverse;
+    }
+
+    .materials-modal__actions .btn-primary,
+    .materials-modal__actions .btn-secondary {
+        width: 100%;
     }
 }

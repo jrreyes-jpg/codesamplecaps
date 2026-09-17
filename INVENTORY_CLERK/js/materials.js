@@ -182,6 +182,30 @@ document.addEventListener('DOMContentLoaded', function () {
     let categoryChangedByUser = false;
     let unitChangedByUser = false;
     let reorderLevelTouched = fieldErrors.reorderLevel?.textContent.trim() !== '';
+    const trackedFields = [materialName, category, unit, reorderLevel].filter(Boolean);
+    const initialFormState = trackedFields.map(function (field) {
+        return field.name + '=' + field.value;
+    }).join('&');
+    let materialFormSubmitting = false;
+
+    const hasUnsavedMaterialChanges = function () {
+        if (materialFormSubmitting) {
+            return false;
+        }
+
+        return trackedFields.map(function (field) {
+            return field.name + '=' + field.value;
+        }).join('&') !== initialFormState;
+    };
+
+    window.addEventListener('beforeunload', function (event) {
+        if (!hasUnsavedMaterialChanges()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+    });
 
     const isWholeCountUnit = function (unitValue) {
         return wholeCountUnits.includes(unitValue ?? unit.value);
@@ -311,9 +335,9 @@ document.addEventListener('DOMContentLoaded', function () {
         let message = '';
 
         if (!hasValue) {
-            message = requireValue ? 'Low Stock Alert Level is required.' : '';
+            message = requireValue ? 'Required.' : '';
         } else if (!Number.isFinite(value) || value <= 0) {
-            message = 'Low Stock Alert Level must be greater than 0.';
+            message = 'Must be greater than 0.';
         } else if (needsWholeNumber && !Number.isInteger(value)) {
             message = 'Use a whole number for ' + unit.value + '.';
         }
@@ -363,7 +387,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return field.getAttribute('aria-invalid') === 'true';
             });
             invalidField?.focus();
+            return;
         }
+
+        materialFormSubmitting = true;
     });
 
     const closeToast = function () {

@@ -124,10 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $materialName = $submittedValues['material_name'];
         $reorderValue = is_numeric($reorder) ? (float)$reorder : 0.0;
         if ($reorder === '') {
-            throw new RuntimeException('Low Stock Alert Level is required.');
+            throw new RuntimeException('Required.');
         }
         if (!is_numeric($reorder) || !is_finite($reorderValue) || $reorderValue <= 0) {
-            throw new RuntimeException('Low Stock Alert Level must be greater than 0.');
+            throw new RuntimeException('Must be greater than 0.');
         }
         if (!in_array($category, $materialCategories, true) || !in_array($unit, $materialUnits, true)) {
             throw new RuntimeException('Please choose a valid category and unit.');
@@ -158,7 +158,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => $message,
             'values' => $submittedValues,
             'field_errors' => [
-                'reorder_level' => str_starts_with($message, 'Low Stock Alert Level') ? $message : '',
+                'reorder_level' => (
+                    in_array($message, ['Required.', 'Must be greater than 0.'], true)
+                    || str_starts_with($message, 'Low Stock Alert Level')
+                ) ? $message : '',
                 'category' => $message === 'Please choose a valid category and unit.' ? 'Choose a valid category.' : '',
                 'unit' => $message === 'Please choose a valid category and unit.' ? 'Choose a valid unit.' : '',
             ],
@@ -204,7 +207,7 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
     <div class="page-stack materials-page">
         <section class="form-panel">
             <h1 class="section-title-inline">Materials</h1>
-            <form method="POST" data-material-form><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+            <form method="POST" data-material-form novalidate><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <div class="form-grid">
                     <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><span class="materials-field-error" data-material-error="material_name" aria-live="polite"></span></div>
                     <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo $formValues['category'] === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="category" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['category'] ?? '')); ?></span></div>

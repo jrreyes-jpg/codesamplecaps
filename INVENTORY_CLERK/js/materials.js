@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const materialName = document.querySelector('[data-material-name]');
-    const materialNameSuggestions = document.querySelector('[data-material-name-suggestions]');
+    const materialNameSuggestionPanel = document.querySelector('[data-material-name-suggestions]');
     const category = document.querySelector('[data-material-category]');
     const unit = document.querySelector('[data-material-unit]');
     const description = document.querySelector('[data-material-description]');
@@ -197,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'RJ45 Connector',
         'PVC Conduit',
     ];
+    let activeMaterialNameSuggestionIndex = -1;
     const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
     let categoryChangedByUser = false;
     let unitChangedByUser = false;
@@ -330,24 +331,84 @@ document.addEventListener('DOMContentLoaded', function () {
         return /^[\p{L}\p{N}\s\-/.()]+$/u.test(value) && /\p{L}/u.test(value);
     };
 
-    const updateMaterialNameSuggestions = function () {
-        if (!materialNameSuggestions) {
+    const closeMaterialNameSuggestions = function () {
+        if (!materialNameSuggestionPanel) {
             return;
         }
 
+        activeMaterialNameSuggestionIndex = -1;
+        materialNameSuggestionPanel.replaceChildren();
+        materialNameSuggestionPanel.hidden = true;
+        materialName.setAttribute('aria-expanded', 'false');
+    };
+
+    const getMatchingMaterialNameSuggestions = function () {
         const value = normalizeMaterialName(materialName.value);
         const query = value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
-        materialNameSuggestions.replaceChildren();
         if (query.length < 2 || !/\p{L}/u.test(value)) {
+            return [];
+        }
+
+        return materialNameSuggestionValues.filter(function (item) {
+            return item.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '').includes(query);
+        });
+    };
+
+    const selectMaterialNameSuggestion = function (value) {
+        materialName.value = value;
+        closeMaterialNameSuggestions();
+        applySuggestion();
+        validateMaterialName(false, false);
+        saveLocalMaterialDraft();
+        materialName.focus();
+    };
+
+    const updateMaterialNameSuggestions = function () {
+        if (!materialNameSuggestionPanel) {
             return;
         }
 
-        materialNameSuggestionValues.filter(function (item) {
-            return item.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '').includes(query);
-        }).forEach(function (item) {
-            const option = document.createElement('option');
-            option.value = item;
-            materialNameSuggestions.appendChild(option);
+        const matches = getMatchingMaterialNameSuggestions();
+        closeMaterialNameSuggestions();
+        if (matches.length === 0) {
+            return;
+        }
+
+        matches.forEach(function (item, index) {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'materials-name-suggestions__item';
+            option.dataset.materialSuggestionIndex = String(index);
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', 'false');
+            option.textContent = item;
+            option.addEventListener('mousedown', function (event) {
+                event.preventDefault();
+            });
+            option.addEventListener('click', function () {
+                selectMaterialNameSuggestion(item);
+            });
+            materialNameSuggestionPanel.appendChild(option);
+        });
+        materialNameSuggestionPanel.hidden = false;
+        materialName.setAttribute('aria-expanded', 'true');
+    };
+
+    const setActiveMaterialNameSuggestion = function (index) {
+        if (!materialNameSuggestionPanel || materialNameSuggestionPanel.hidden) {
+            return;
+        }
+
+        const options = Array.from(materialNameSuggestionPanel.querySelectorAll('[role="option"]'));
+        if (options.length === 0) {
+            return;
+        }
+
+        activeMaterialNameSuggestionIndex = (index + options.length) % options.length;
+        options.forEach(function (option, optionIndex) {
+            const isActive = optionIndex === activeMaterialNameSuggestionIndex;
+            option.classList.toggle('is-active', isActive);
+            option.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
     };
 
@@ -473,9 +534,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     materialName.addEventListener('blur', function () {
         materialName.value = normalizeMaterialName(materialName.value);
-        updateMaterialNameSuggestions();
+        closeMaterialNameSuggestions();
         validateMaterialName(true, true);
         saveLocalMaterialDraft();
+    });
+    materialName.addEventListener('keydown', function (event) {
+        if (!materialNameSuggestionPanel || materialNameSuggestionPanel.hidden) {
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActiveMaterialNameSuggestion(activeMaterialNameSuggestionIndex + 1);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActiveMaterialNameSuggestion(activeMaterialNameSuggestionIndex - 1);
+        } else if (event.key === 'Enter' && activeMaterialNameSuggestionIndex >= 0) {
+            event.preventDefault();
+            const activeOption = materialNameSuggestionPanel.querySelector('[data-material-suggestion-index="' + activeMaterialNameSuggestionIndex + '"]');
+            activeOption?.click();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            closeMaterialNameSuggestions();
+        }
     });
 
     const validateReorderLevel = function (showError, requireValue) {
@@ -565,9 +647,7 @@ document.addEventListener('DOMContentLoaded', function () {
             suggestion.textContent = '';
             suggestion.removeAttribute('title');
         }
-        if (materialNameSuggestions) {
-            materialNameSuggestions.replaceChildren();
-        }
+        closeMaterialNameSuggestions();
         if (unitChangeMessage) {
             unitChangeMessage.textContent = '';
         }
@@ -661,6 +741,11 @@ document.addEventListener('DOMContentLoaded', function () {
     materialModal?.addEventListener('click', function (event) {
         if (event.target === materialModal) {
             requestMaterialModalClose();
+        }
+    });
+    document.addEventListener('click', function (event) {
+        if (event.target !== materialName && !materialNameSuggestionPanel?.contains(event.target)) {
+            closeMaterialNameSuggestions();
         }
     });
     document.addEventListener('keydown', function (event) {

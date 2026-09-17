@@ -122,7 +122,53 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 0;
+    margin-top: 20px;
+}
+
+.materials-confirm-modal {
+    position: fixed;
+    z-index: 4300;
+    inset: 0;
+    display: grid;
+    padding: 20px;
+    place-items: center;
+    background: rgba(15, 23, 42, .42);
+}
+
+.materials-confirm-modal[hidden] {
+    display: none;
+}
+
+.materials-confirm-modal__panel {
+    width: min(100%, 360px);
+    padding: 20px;
+    border: 1px solid #dbe4ee;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .24);
+}
+
+.materials-confirm-modal__panel h2,
+.materials-confirm-modal__panel p {
+    margin: 0;
+}
+
+.materials-confirm-modal__panel h2 {
+    color: #172033;
+    font-size: 1.05rem;
+}
+
+.materials-confirm-modal__panel p {
+    margin-top: 7px;
+    color: #64748b;
+    font-size: .9rem;
+}
+
+.materials-confirm-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
 }
 
 body.materials-modal-open {
@@ -722,8 +768,14 @@ body.materials-modal-open {
         flex-direction: column-reverse;
     }
 
+    .materials-confirm-modal__actions {
+        flex-direction: column-reverse;
+    }
+
     .materials-modal__actions .btn-primary,
-    .materials-modal__actions .btn-secondary {
+    .materials-modal__actions .btn-secondary,
+    .materials-confirm-modal__actions .btn-primary,
+    .materials-confirm-modal__actions .btn-secondary {
         width: 100%;
     }
 }

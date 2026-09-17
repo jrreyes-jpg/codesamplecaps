@@ -125,6 +125,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $unit = $submittedValues['unit'];
         $materialName = $submittedValues['material_name'];
         $description = $submittedValues['description'];
+        if ($materialName === '') {
+            throw new RuntimeException('Material Name is required.');
+        }
+        if (
+            preg_match('/^[\p{L}\p{N}\s\-\/\.\(\)]+$/u', $materialName) !== 1
+            || preg_match('/\p{L}/u', $materialName) !== 1
+        ) {
+            throw new RuntimeException('Enter a valid material name.');
+        }
         $descriptionLength = function_exists('mb_strlen') ? mb_strlen($description) : strlen($description);
         if ($descriptionLength > 255) {
             throw new RuntimeException('Description / Specification must be 255 characters or less.');
@@ -166,6 +175,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => $message,
             'values' => $submittedValues,
             'field_errors' => [
+                'material_name' => in_array($message, [
+                    'Material Name is required.',
+                    'Enter a valid material name.',
+                ], true) ? $message : '',
                 'reorder_level' => (
                     in_array($message, ['Required.', 'Must be greater than 0.'], true)
                     || str_starts_with($message, 'Low Stock Alert Level')
@@ -267,14 +280,24 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
             </div>
             <form method="POST" data-material-form novalidate><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <div class="form-grid">
-                    <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><span class="materials-field-error" data-material-error="material_name" aria-live="polite"></span></div>
+                    <div class="input-group"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><input id="material_name" name="material_name" maxlength="180" required list="materialNameSuggestions" value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><datalist id="materialNameSuggestions" data-material-name-suggestions></datalist><span class="materials-field-error" data-material-error="material_name" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['material_name'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo $formValues['category'] === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="category" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['category'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="unit">Unit</label><select id="unit" name="unit" required data-material-unit><option value="">Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>"<?php echo $formValues['unit'] === $unit ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="unit" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['unit'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="reorder_level">Low Stock Alert Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Shows a Low Stock warning when available quantity reaches this level or lower." data-tooltip="Shows a Low Stock warning when available quantity reaches this level or lower.">i</span> <span class="materials-unit-change-message" data-unit-change-message aria-live="polite"></span></label><input id="reorder_level" name="reorder_level" type="number" min="1" step="1" required inputmode="numeric" value="<?php echo htmlspecialchars($formValues['reorder_level']); ?>" data-reorder-level><span class="materials-field-error" data-material-error="reorder_level" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['reorder_level'] ?? '')); ?></span></div>
                     <div class="input-group materials-description-field"><label for="description">Description / Specification <span>(Optional)</span></label><textarea id="description" name="description" maxlength="255" rows="2" data-material-description><?php echo htmlspecialchars($formValues['description']); ?></textarea></div>
                 </div>
-                <div class="materials-modal__actions"><button type="button" class="btn-secondary" data-material-modal-cancel>Cancel</button><button type="submit" class="btn-primary">Add Material</button></div>
+                <div class="materials-modal__actions"><button type="button" class="btn-secondary" data-material-clear-form>Clear Form</button><button type="submit" class="btn-primary">Add Material</button></div>
             </form>
+        </section>
+    </div>
+    <div class="materials-confirm-modal" data-material-clear-confirmation hidden>
+        <section class="materials-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="clearMaterialFormTitle">
+            <h2 id="clearMaterialFormTitle">Clear Form?</h2>
+            <p>Clear all entered values?</p>
+            <div class="materials-confirm-modal__actions">
+                <button type="button" class="btn-secondary" data-material-clear-keep>Keep Editing</button>
+                <button type="button" class="btn-primary" data-material-clear-confirm>Clear Form</button>
+            </div>
         </section>
     </div>
     <?php if ($flash): ?>

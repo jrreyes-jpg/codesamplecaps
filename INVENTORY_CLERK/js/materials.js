@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const materialName = document.querySelector('[data-material-name]');
+    const materialNameSuggestions = document.querySelector('[data-material-name-suggestions]');
     const category = document.querySelector('[data-material-category]');
     const unit = document.querySelector('[data-material-unit]');
     const description = document.querySelector('[data-material-description]');
@@ -9,7 +10,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const formSubmitButton = form?.querySelector('button[type="submit"]');
     const materialModal = document.querySelector('[data-material-modal]');
     const modalOpenButton = document.querySelector('[data-material-modal-open]');
-    const modalCloseButtons = document.querySelectorAll('[data-material-modal-close], [data-material-modal-cancel]');
+    const modalCloseButtons = document.querySelectorAll('[data-material-modal-close]');
+    const clearFormButton = document.querySelector('[data-material-clear-form]');
+    const clearConfirmationModal = document.querySelector('[data-material-clear-confirmation]');
+    const clearConfirmationKeepButton = document.querySelector('[data-material-clear-keep]');
+    const clearConfirmationConfirmButton = document.querySelector('[data-material-clear-confirm]');
     const unitChangeMessage = document.querySelector('[data-unit-change-message]');
     const fieldErrors = {
         materialName: document.querySelector('[data-material-error="material_name"]'),
@@ -185,6 +190,13 @@ document.addEventListener('DOMContentLoaded', function () {
         { words: ['rj45', 'connector', 'terminal'], category: 'Connectors & Terminals', unit: 'pcs' },
         { words: ['conduit'], category: 'Conduit & Raceway', unit: 'meter' },
     ];
+    const materialNameSuggestionValues = [
+        'Pako',
+        'Screw',
+        'Wire CAT 5',
+        'RJ45 Connector',
+        'PVC Conduit',
+    ];
     const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
     let categoryChangedByUser = false;
     let unitChangedByUser = false;
@@ -310,9 +322,55 @@ document.addEventListener('DOMContentLoaded', function () {
         return message === '';
     };
 
-    const validateMaterialName = function () {
-        const message = materialName.value.trim() === '' ? 'Enter a material name.' : '';
-        return setFieldError(materialName, fieldErrors.materialName, message);
+    const normalizeMaterialName = function (value) {
+        return value.trim().replace(/\s+/g, ' ');
+    };
+
+    const isValidMaterialName = function (value) {
+        return /^[\p{L}\p{N}\s\-/.()]+$/u.test(value) && /\p{L}/u.test(value);
+    };
+
+    const updateMaterialNameSuggestions = function () {
+        if (!materialNameSuggestions) {
+            return;
+        }
+
+        const value = normalizeMaterialName(materialName.value);
+        const query = value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+        materialNameSuggestions.replaceChildren();
+        if (query.length < 2 || !/\p{L}/u.test(value)) {
+            return;
+        }
+
+        materialNameSuggestionValues.filter(function (item) {
+            return item.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '').includes(query);
+        }).forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = item;
+            materialNameSuggestions.appendChild(option);
+        });
+    };
+
+    const validateMaterialName = function (showError, requireValue) {
+        const value = normalizeMaterialName(materialName.value);
+        let message = '';
+
+        if (value === '') {
+            message = requireValue ? 'Material Name is required.' : '';
+        } else if (!isValidMaterialName(value)) {
+            message = 'Enter a valid material name.';
+        }
+
+        if (showError) {
+            return setFieldError(materialName, fieldErrors.materialName, message);
+        }
+
+        materialName.setCustomValidity('');
+        materialName.removeAttribute('aria-invalid');
+        if (fieldErrors.materialName) {
+            fieldErrors.materialName.textContent = '';
+        }
+        return message === '';
     };
 
     const validateCategory = function () {
@@ -410,7 +468,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     materialName.addEventListener('input', function () {
         applySuggestion();
-        validateMaterialName();
+        updateMaterialNameSuggestions();
+        validateMaterialName(false, false);
+    });
+    materialName.addEventListener('blur', function () {
+        materialName.value = normalizeMaterialName(materialName.value);
+        updateMaterialNameSuggestions();
+        validateMaterialName(true, true);
+        saveLocalMaterialDraft();
     });
 
     const validateReorderLevel = function (showError, requireValue) {
@@ -482,6 +547,68 @@ document.addEventListener('DOMContentLoaded', function () {
         updateReorderLevelForUnit();
     };
 
+    const clearMaterialForm = function () {
+        trackedFields.forEach(function (field) {
+            field.value = '';
+            field.setCustomValidity('');
+            field.removeAttribute('aria-invalid');
+        });
+        Object.values(fieldErrors).forEach(function (errorElement) {
+            if (errorElement) {
+                errorElement.textContent = '';
+            }
+        });
+        categoryChangedByUser = false;
+        unitChangedByUser = false;
+        reorderLevelTouched = false;
+        if (suggestion) {
+            suggestion.textContent = '';
+            suggestion.removeAttribute('title');
+        }
+        if (materialNameSuggestions) {
+            materialNameSuggestions.replaceChildren();
+        }
+        if (unitChangeMessage) {
+            unitChangeMessage.textContent = '';
+        }
+        clearLocalMaterialDraft();
+        updateReorderLevelForUnit();
+        materialName.focus();
+    };
+
+    const hasMaterialFormValues = function () {
+        return trackedFields.some(function (field) {
+            return field.value.trim() !== '';
+        });
+    };
+
+    const closeClearConfirmation = function (returnFocus = true) {
+        if (!clearConfirmationModal) {
+            return;
+        }
+
+        clearConfirmationModal.hidden = true;
+        if (returnFocus) {
+            clearFormButton?.focus();
+        }
+    };
+
+    const requestClearMaterialForm = function () {
+        if (!hasMaterialFormValues()) {
+            clearMaterialForm();
+            return;
+        }
+
+        if (!clearConfirmationModal) {
+            return;
+        }
+
+        clearConfirmationModal.hidden = false;
+        window.setTimeout(function () {
+            clearConfirmationKeepButton?.focus();
+        }, 0);
+    };
+
     const closeMaterialModal = function () {
         if (!materialModal) {
             return;
@@ -525,12 +652,23 @@ document.addEventListener('DOMContentLoaded', function () {
     modalCloseButtons.forEach(function (button) {
         button.addEventListener('click', requestMaterialModalClose);
     });
+    clearFormButton?.addEventListener('click', requestClearMaterialForm);
+    clearConfirmationKeepButton?.addEventListener('click', closeClearConfirmation);
+    clearConfirmationConfirmButton?.addEventListener('click', function () {
+        closeClearConfirmation(false);
+        clearMaterialForm();
+    });
     materialModal?.addEventListener('click', function (event) {
         if (event.target === materialModal) {
             requestMaterialModalClose();
         }
     });
     document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && clearConfirmationModal && !clearConfirmationModal.hidden) {
+            event.preventDefault();
+            closeClearConfirmation();
+            return;
+        }
         if (event.key === 'Escape' && materialModal && !materialModal.hidden) {
             requestMaterialModalClose();
         }
@@ -552,7 +690,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const nameValid = validateMaterialName();
+        materialName.value = normalizeMaterialName(materialName.value);
+        const nameValid = validateMaterialName(true, true);
         const categoryValid = validateCategory();
         const unitValid = validateUnit();
         reorderLevelTouched = true;

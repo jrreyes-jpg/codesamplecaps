@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
     let categoryChangedByUser = false;
     let unitChangedByUser = false;
-    let reorderLevelTouched = false;
+    let reorderLevelTouched = fieldErrors.reorderLevel?.textContent.trim() !== '';
 
     const isWholeCountUnit = function (unitValue) {
         return wholeCountUnits.includes(unitValue ?? unit.value);
@@ -242,11 +242,16 @@ document.addEventListener('DOMContentLoaded', function () {
         reorderLevel.step = isWholeUnit ? '1' : '0.01';
         reorderLevel.inputMode = isWholeUnit ? 'numeric' : 'decimal';
 
+        let clearedForUnitChange = false;
         if (reorderLevel.value.trim() !== '' && !isValidReorderValue(reorderLevel.value, unit.value)) {
             reorderLevel.value = '';
+            clearedForUnitChange = true;
             showUnitChangeMessage('Low Stock Alert Level was cleared for ' + unit.value + '.');
         }
-        validateReorderLevel(reorderLevelTouched);
+        validateReorderLevel(
+            !clearedForUnitChange && reorderLevelTouched,
+            !clearedForUnitChange && reorderLevelTouched
+        );
     };
 
     const findSuggestion = function (value) {
@@ -295,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
         validateMaterialName();
     });
 
-    const validateReorderLevel = function (showError) {
+    const validateReorderLevel = function (showError, requireValue) {
         if (!reorderLevel) {
             return true;
         }
@@ -305,8 +310,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const needsWholeNumber = isWholeCountUnit();
         let message = '';
 
-        if (!hasValue || !Number.isFinite(value) || value <= 0) {
-            message = 'Enter a reorder level greater than zero.';
+        if (!hasValue) {
+            message = requireValue ? 'Low Stock Alert Level is required.' : '';
+        } else if (!Number.isFinite(value) || value <= 0) {
+            message = 'Low Stock Alert Level must be greater than 0.';
         } else if (needsWholeNumber && !Number.isInteger(value)) {
             message = 'Use a whole number for ' + unit.value + '.';
         }
@@ -321,6 +328,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Huwag magpakita ng error bago pa mag-input ang clerk.
             reorderLevel.setCustomValidity('');
             reorderLevel.removeAttribute('aria-invalid');
+            if (fieldErrors.reorderLevel) {
+                fieldErrors.reorderLevel.textContent = '';
+            }
         }
 
         return message === '';
@@ -328,11 +338,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     reorderLevel?.addEventListener('input', function () {
         reorderLevelTouched = true;
-        validateReorderLevel(true);
+        validateReorderLevel(reorderLevel.value.trim() !== '', false);
     });
     reorderLevel?.addEventListener('blur', function () {
         reorderLevelTouched = true;
-        validateReorderLevel(true);
+        validateReorderLevel(true, true);
     });
     reorderLevel?.addEventListener('keydown', function (event) {
         if (['e', 'E', '+', '-'].includes(event.key)) {
@@ -345,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const categoryValid = validateCategory();
         const unitValid = validateUnit();
         reorderLevelTouched = true;
-        const reorderValid = validateReorderLevel(true);
+        const reorderValid = validateReorderLevel(true, true);
         const isValid = nameValid && categoryValid && unitValid && reorderValid;
         if (!isValid) {
             event.preventDefault();

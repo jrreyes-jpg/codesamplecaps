@@ -123,8 +123,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $unit = $submittedValues['unit'];
         $materialName = $submittedValues['material_name'];
         $reorderValue = is_numeric($reorder) ? (float)$reorder : 0.0;
-        if ($reorder === '' || !is_numeric($reorder) || !is_finite($reorderValue) || $reorderValue <= 0) {
-            throw new RuntimeException('Low Stock Alert Level must be greater than zero.');
+        if ($reorder === '') {
+            throw new RuntimeException('Low Stock Alert Level is required.');
+        }
+        if (!is_numeric($reorder) || !is_finite($reorderValue) || $reorderValue <= 0) {
+            throw new RuntimeException('Low Stock Alert Level must be greater than 0.');
         }
         if (!in_array($category, $materialCategories, true) || !in_array($unit, $materialUnits, true)) {
             throw new RuntimeException('Please choose a valid category and unit.');

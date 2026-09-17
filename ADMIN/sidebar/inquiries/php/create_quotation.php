@@ -9,6 +9,7 @@ $editId = (int)($_GET['edit_id'] ?? $_POST['edit_id'] ?? 0);
 $isEditMode = $editId > 0;
 $quotationDraft = null;
 $savedItems = [];
+$savedAssetRequirements = [];
 
 if ($isEditMode) {
     $draftStmt = $conn->prepare(
@@ -33,6 +34,20 @@ if ($isEditMode) {
 
     $inquiryId = (int)$quotationDraft['inquiry_id'];
     $savedItems = inquiry_quote_fetch_items($conn, $editId);
+
+    $assetRequirementsStmt = $conn->prepare(
+        'SELECT asset_name, quantity_required, notes
+         FROM inquiry_quotation_asset_requirements
+         WHERE draft_id = ?
+         ORDER BY id ASC'
+    );
+    if (!$assetRequirementsStmt) {
+        http_response_code(500);
+        exit('Unable to load asset requirements.');
+    }
+    $assetRequirementsStmt->bind_param('i', $editId);
+    $assetRequirementsStmt->execute();
+    $savedAssetRequirements = $assetRequirementsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 } else {
     $inquiryId = (int)($_GET['inquiry_id'] ?? $_POST['inquiry_id'] ?? 0);
 }
@@ -130,6 +145,17 @@ $postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : 
 $postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : array_column($defaultItems, 'unit');
 $postedUnitCosts = is_array($_POST['unit_cost'] ?? null) ? $_POST['unit_cost'] : array_column($defaultItems, 'unit_cost');
 $postedNotes = is_array($_POST['item_notes'] ?? null) ? $_POST['item_notes'] : array_column($defaultItems, 'notes');
+$defaultAssetRequirements = $savedAssetRequirements;
+$isQuotationPost = $_SERVER['REQUEST_METHOD'] === 'POST';
+$postedAssetNames = $isQuotationPost
+    ? (is_array($_POST['asset_requirement_name'] ?? null) ? $_POST['asset_requirement_name'] : [])
+    : array_column($defaultAssetRequirements, 'asset_name');
+$postedAssetQuantities = $isQuotationPost
+    ? (is_array($_POST['asset_requirement_quantity'] ?? null) ? $_POST['asset_requirement_quantity'] : [])
+    : array_column($defaultAssetRequirements, 'quantity_required');
+$postedAssetNotes = $isQuotationPost
+    ? (is_array($_POST['asset_requirement_notes'] ?? null) ? $_POST['asset_requirement_notes'] : [])
+    : array_column($defaultAssetRequirements, 'notes');
 $marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
 $marginPercent = is_numeric($marginPercentRaw) ? (float)$marginPercentRaw : 0.0;
 $markupError = '';
@@ -151,9 +177,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $markupError;
     } elseif (count($postedNames) === 0 || count($postedNames) > 50) {
         $error = 'Add from 1 to 50 quotation items only.';
+    } elseif (count($postedAssetNames) > 50) {
+        $error = 'Add up to 50 asset requirements only.';
     } else {
         $allowedTypes = ['material', 'labor', 'equipment', 'service', 'other'];
         $quotationItems = [];
+        $assetRequirements = [];
         $subtotal = 0.0;
 
         foreach ($postedNames as $index => $postedName) {
@@ -236,6 +265,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '') {
+            foreach ($postedAssetNames as $index => $postedAssetName) {
+                $assetName = preg_replace('/\s+/', ' ', trim((string)$postedAssetName)) ?? '';
+                $quantityRaw = trim((string)($postedAssetQuantities[$index] ?? ''));
+                $quantity = is_numeric($quantityRaw) ? (float)$quantityRaw : 0.0;
+                $notes = trim((string)($postedAssetNotes[$index] ?? ''));
+
+                if ($assetName === '' || strlen($assetName) > 180
+                    || preg_match('/^[\p{L}\p{N}\s\-\/\.\(\)]+$/u', $assetName) !== 1
+                    || preg_match('/\p{L}/u', $assetName) !== 1) {
+                    $error = 'Each asset requirement needs a valid asset or equipment name.';
+                    break;
+                }
+                if (!preg_match('/^\d+$/', $quantityRaw) || !is_finite($quantity) || $quantity < 1 || $quantity > 999999) {
+                    $error = 'Asset requirement quantity must be a whole number of at least 1.';
+                    break;
+                }
+                if (strlen($notes) > 2000) {
+                    $error = 'Asset requirement notes must be 2000 characters or less.';
+                    break;
+                }
+
+                $assetRequirements[] = [
+                    'name' => $assetName,
+                    'quantity' => $quantity,
+                    'notes' => $notes,
+                ];
+            }
+        }
+
+        if ($error === '') {
             $profitAmount = round($subtotal * ($marginPercent / 100), 2);
             $grandTotal = round($subtotal + $profitAmount, 2);
             $status = 'Draft';
@@ -273,6 +332,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $deleteItems->bind_param('i', $draftId);
                     $deleteItems->execute();
+
+                    $deleteAssetRequirements = $conn->prepare('DELETE FROM inquiry_quotation_asset_requirements WHERE draft_id = ?');
+                    if (!$deleteAssetRequirements) {
+                        throw new RuntimeException('Unable to prepare asset requirement update.');
+                    }
+                    $deleteAssetRequirements->bind_param('i', $draftId);
+                    $deleteAssetRequirements->execute();
                 } else {
                     $stmt = $conn->prepare(
                         'INSERT INTO inquiry_quotation_drafts
@@ -300,6 +366,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($quotationItems as $item) {
                     $itemStmt->bind_param('isisdsdds', $draftId, $item['type'], $item['material_id'], $item['name'], $item['quantity'], $item['unit'], $item['unit_cost'], $item['line_total'], $item['notes']);
                     $itemStmt->execute();
+                }
+
+                if ($assetRequirements !== []) {
+                    $assetRequirementStmt = $conn->prepare(
+                        'INSERT INTO inquiry_quotation_asset_requirements
+                         (draft_id, asset_name, quantity_required, notes)
+                         VALUES (?, ?, ?, ?)'
+                    );
+                    if (!$assetRequirementStmt) {
+                        throw new RuntimeException('Unable to prepare asset requirements.');
+                    }
+
+                    foreach ($assetRequirements as $assetRequirement) {
+                        $assetRequirementStmt->bind_param(
+                            'isds',
+                            $draftId,
+                            $assetRequirement['name'],
+                            $assetRequirement['quantity'],
+                            $assetRequirement['notes']
+                        );
+                        $assetRequirementStmt->execute();
+                    }
                 }
 
                 if (!$isEditMode) {
@@ -463,6 +551,37 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                         <label class="quotation-create-item__notes"><span>Notes / Exclusions (Optional)</span><input type="text" name="item_notes[]" maxlength="2000"></label>
                         <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
+                    </div>
+                </template>
+
+                <section class="quotation-asset-requirements" aria-labelledby="assetRequirementsTitle">
+                    <div class="quotation-asset-requirements__head">
+                        <div>
+                            <h2 id="assetRequirementsTitle">Asset Requirements <span>Internal Planning Only</span></h2>
+                            <p>Reusable company assets needed for the project. Not included in quotation pricing.</p>
+                        </div>
+                    </div>
+                    <div class="quotation-asset-requirements__items" data-quotation-asset-requirements>
+                        <?php foreach ($postedAssetNames as $index => $postedAssetName): ?>
+                            <div class="quotation-asset-requirement" data-quotation-asset-requirement>
+                                <label class="quotation-asset-requirement__name"><span>Asset / Equipment</span><input type="text" name="asset_requirement_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedAssetName, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-asset-requirement__error" data-quotation-asset-name-error aria-live="polite"></span></label>
+                                <label class="quotation-asset-requirement__quantity"><span>Qty Needed</span><input type="number" name="asset_requirement_quantity[]" min="1" step="1" inputmode="numeric" value="<?php echo htmlspecialchars((string)($postedAssetQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-asset-requirement__error" data-quotation-asset-quantity-error aria-live="polite"></span></label>
+                                <label class="quotation-asset-requirement__notes"><span>Notes (Optional)</span><input type="text" name="asset_requirement_notes[]" maxlength="2000" value="<?php echo htmlspecialchars((string)($postedAssetNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></label>
+                                <button type="button" class="quotation-asset-requirement__remove" data-quotation-remove-asset-requirement aria-label="Remove asset requirement"><span aria-hidden="true">🗑</span><span>Remove</span></button>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="quotation-create-add-row">
+                        <button type="button" class="btn-secondary" data-quotation-add-asset-requirement>+ Add Asset Requirement</button>
+                    </div>
+                </section>
+
+                <template data-quotation-asset-requirement-template>
+                    <div class="quotation-asset-requirement" data-quotation-asset-requirement>
+                        <label class="quotation-asset-requirement__name"><span>Asset / Equipment</span><input type="text" name="asset_requirement_name[]" maxlength="180" required><span class="quotation-asset-requirement__error" data-quotation-asset-name-error aria-live="polite"></span></label>
+                        <label class="quotation-asset-requirement__quantity"><span>Qty Needed</span><input type="number" name="asset_requirement_quantity[]" min="1" step="1" inputmode="numeric" value="1" required><span class="quotation-asset-requirement__error" data-quotation-asset-quantity-error aria-live="polite"></span></label>
+                        <label class="quotation-asset-requirement__notes"><span>Notes (Optional)</span><input type="text" name="asset_requirement_notes[]" maxlength="2000"></label>
+                        <button type="button" class="quotation-asset-requirement__remove" data-quotation-remove-asset-requirement aria-label="Remove asset requirement"><span aria-hidden="true">🗑</span><span>Remove</span></button>
                     </div>
                 </template>
 

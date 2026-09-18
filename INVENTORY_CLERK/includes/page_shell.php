@@ -1,6 +1,7 @@
 <?php
 // Iisang shell para shared ang header, sidebar, at page spacing ng Inventory Clerk.
 require_once __DIR__ . '/../../config/profile_photo_storage.php';
+require_once __DIR__ . '/asset_inventory_display.php';
 
 if (!function_exists('inventory_clerk_render_header')) {
     function inventory_clerk_render_header(mysqli $conn): void
@@ -28,23 +29,40 @@ if (!function_exists('inventory_clerk_render_header')) {
         }
         $initials = substr($initials ?: 'IC', 0, 2);
 
-        $inventoryAlerts = [];
         $materialStockAlerts = [];
         $materialShortages = [];
         $notificationAlerts = [];
         $materialStockAlertCount = 0;
         $materialShortageCount = 0;
 
-        $inventoryAlertResult = $conn->query(
-            "SELECT a.asset_name, i.quantity, i.min_stock, i.status
+        $assetAlertResult = $conn->query(
+            "SELECT
+                a.asset_name,
+                a.criticality,
+                i.quantity,
+                i.min_stock,
+                i.status,
+                COALESCE(unit_totals.total_units, 0) AS total_unit_instances,
+                COALESCE(unit_totals.available_units, 0) AS available_unit_instances,
+                COALESCE(unit_totals.deployed_units, 0) AS deployed_unit_instances,
+                COALESCE(unit_totals.maintenance_units, 0) AS maintenance_unit_instances,
+                COALESCE(unit_totals.lost_units, 0) AS lost_unit_instances
              FROM inventory i
              INNER JOIN assets a ON a.id = i.asset_id
-             WHERE i.status IN ('low-stock', 'out-of-stock')
-             ORDER BY FIELD(i.status, 'out-of-stock', 'low-stock'), a.asset_name ASC"
+             LEFT JOIN (
+                SELECT inventory_id,
+                    COUNT(*) AS total_units,
+                    SUM(status = 'available') AS available_units,
+                    SUM(status = 'deployed') AS deployed_units,
+                    SUM(status = 'maintenance') AS maintenance_units,
+                    SUM(status = 'lost') AS lost_units
+                FROM asset_units
+                WHERE status <> 'archived'
+                GROUP BY inventory_id
+             ) unit_totals ON unit_totals.inventory_id = i.id
+             WHERE a.deleted_at IS NULL
+             ORDER BY a.asset_name ASC"
         );
-        if ($inventoryAlertResult instanceof mysqli_result) {
-            $inventoryAlerts = $inventoryAlertResult->fetch_all(MYSQLI_ASSOC);
-        }
 
         $materialStockAlertResult = $conn->query(
             "SELECT m.id, m.material_name, m.unit, m.reorder_level,
@@ -92,20 +110,19 @@ if (!function_exists('inventory_clerk_render_header')) {
             return rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
         };
 
-        foreach ($inventoryAlerts as $alert) {
-            $isOutOfStock = ($alert['status'] ?? '') === 'out-of-stock';
-            $detail = $formatAlertQuantity((float)$alert['quantity']) . ' available';
-            if ($alert['min_stock'] !== null) {
-                $detail .= ' • Alert at ' . $formatAlertQuantity((float)$alert['min_stock']);
+        if ($assetAlertResult instanceof mysqli_result) {
+            foreach ($assetAlertResult->fetch_all(MYSQLI_ASSOC) as $asset) {
+                $assetAlert = inventory_clerk_asset_alert_data($asset, inventory_clerk_asset_display_data($asset));
+                if ($assetAlert === null) {
+                    continue;
+                }
+
+                $notificationAlerts[] = [
+                    ...$assetAlert,
+                    'name' => (string)$asset['asset_name'],
+                    'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=attention',
+                ];
             }
-            $notificationAlerts[] = [
-                'priority' => $isOutOfStock ? 1 : 2,
-                'class' => $isOutOfStock ? 'danger' : 'warning',
-                'name' => (string)$alert['asset_name'],
-                'status' => $isOutOfStock ? 'Out of Stock' : 'Low Stock',
-                'detail' => $detail,
-                'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=' . ($isOutOfStock ? 'out-of-stock' : 'low-stock'),
-            ];
         }
 
         foreach ($materialStockAlerts as $alert) {

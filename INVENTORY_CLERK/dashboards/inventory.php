@@ -118,22 +118,22 @@ $maintenanceUnits = 0;
 
 foreach ($inventoryItems as $item) {
     $assetTypes[(int)$item['asset_id']] = true;
-    $hasPhysicalUnits = (int)($item['total_unit_instances'] ?? 0) > 0;
-    $totalUnits += $hasPhysicalUnits ? (int)$item['total_unit_instances'] : (int)$item['quantity'];
-    $availableUnits += $hasPhysicalUnits ? (int)$item['available_unit_instances'] : (int)$item['quantity'];
-    $deployedUnits += $hasPhysicalUnits ? (int)$item['deployed_unit_instances'] : 0;
-    $maintenanceUnits += $hasPhysicalUnits ? (int)$item['maintenance_unit_instances'] : 0;
+    $counts = inventory_clerk_asset_display_data($item);
+    $totalUnits += $counts['total'];
+    $availableUnits += $counts['available'];
+    $deployedUnits += $counts['deployed'];
+    $maintenanceUnits += $counts['maintenance'];
 }
 $visibleInventoryItems = array_values(array_filter($inventoryItems, static function (array $item) use ($inventoryFilter): bool {
     if ($inventoryFilter === 'all') {
         return true;
     }
 
-    $hasPhysicalUnits = (int)($item['total_unit_instances'] ?? 0) > 0;
-    $available = $hasPhysicalUnits ? (int)$item['available_unit_instances'] : (int)$item['quantity'];
-    $deployed = $hasPhysicalUnits ? (int)$item['deployed_unit_instances'] : 0;
-    $maintenance = $hasPhysicalUnits ? (int)$item['maintenance_unit_instances'] : 0;
-    $lost = $hasPhysicalUnits ? (int)$item['lost_unit_instances'] : 0;
+    $counts = inventory_clerk_asset_display_data($item);
+    $available = $counts['available'];
+    $deployed = $counts['deployed'];
+    $maintenance = $counts['maintenance'];
+    $lost = $counts['lost'];
 
     return match ($inventoryFilter) {
         'available' => $available > 0,
@@ -151,23 +151,23 @@ inventory_clerk_render_page(
         <section class="form-panel">
             <h1 class="section-title-inline">Inventory Management</h1>
             <section class="metrics-grid">
-                <div class="metric-card">
+                <div class="metric-card inventory-metric-card inventory-metric-card--asset-types">
                     <span>Asset Types</span>
                     <strong><?php echo count($assetTypes); ?></strong>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card inventory-metric-card inventory-metric-card--total-units">
                     <span>Total Units</span>
                     <strong><?php echo $totalUnits; ?></strong>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card inventory-metric-card inventory-metric-card--available">
                     <span>Available</span>
                     <strong><?php echo $availableUnits; ?></strong>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card inventory-metric-card inventory-metric-card--deployed">
                     <span>Deployed / In Use</span>
                     <strong><?php echo $deployedUnits; ?></strong>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card inventory-metric-card inventory-metric-card--maintenance">
                     <span>Maintenance</span>
                     <strong><?php echo $maintenanceUnits; ?></strong>
                 </div>
@@ -180,11 +180,11 @@ inventory_clerk_render_page(
                 <button type="button" class="btn-primary inventory-page__add-asset" data-add-asset-open>+ Add Asset</button>
             </div>
             <div class="dashboard-actions">
-                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=all" class="action-chip<?php echo $inventoryFilter === 'all' ? ' active-chip' : ''; ?>">All</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=available" class="action-chip<?php echo $inventoryFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=deployed" class="action-chip<?php echo $inventoryFilter === 'deployed' ? ' active-chip' : ''; ?>">Deployed / In Use</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=maintenance" class="action-chip<?php echo $inventoryFilter === 'maintenance' ? ' active-chip' : ''; ?>">Maintenance</a>
-                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=attention" class="action-chip<?php echo $inventoryFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=all" class="action-chip inventory-filter inventory-filter--all<?php echo $inventoryFilter === 'all' ? ' active-chip' : ''; ?>">All</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=available" class="action-chip inventory-filter inventory-filter--available<?php echo $inventoryFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=deployed" class="action-chip inventory-filter inventory-filter--deployed<?php echo $inventoryFilter === 'deployed' ? ' active-chip' : ''; ?>">Deployed / In Use</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=maintenance" class="action-chip inventory-filter inventory-filter--maintenance<?php echo $inventoryFilter === 'maintenance' ? ' active-chip' : ''; ?>">Maintenance</a>
+                <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?filter=attention" class="action-chip inventory-filter inventory-filter--attention<?php echo $inventoryFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
             </div>
 
             <?php if ($assetFlash): ?>
@@ -199,16 +199,11 @@ inventory_clerk_render_page(
                 <div class="projects-grid">
                     <?php foreach ($visibleInventoryItems as $item): ?>
                             <?php
-                            $hasPhysicalUnits = (int)($item['total_unit_instances'] ?? 0) > 0;
-                            $totalUnitCount = $hasPhysicalUnits
-                                ? (int)$item['total_unit_instances']
-                                : (int)$item['quantity'];
-                            $availableUnitCount = $hasPhysicalUnits
-                                ? (int)$item['available_unit_instances']
-                                : (int)$item['quantity'];
-                            $deployedUnitCount = $hasPhysicalUnits ? (int)$item['deployed_unit_instances'] : 0;
-                            $maintenanceUnitCount = $hasPhysicalUnits ? (int)$item['maintenance_unit_instances'] : 0;
-                            $lostUnitCount = $hasPhysicalUnits ? (int)$item['lost_unit_instances'] : 0;
+                            $counts = inventory_clerk_asset_display_data($item);
+                            $totalUnitCount = $counts['total'];
+                            $availableUnitCount = $counts['available'];
+                            $deployedUnitCount = $counts['deployed'];
+                            $maintenanceUnitCount = $counts['maintenance'];
                             $categoryLabel = ucwords(strtolower((string)$item['asset_category']));
                             $categoryLabel = preg_replace_callback(
                                 '/\b(it|qr)\b/i',
@@ -220,26 +215,9 @@ inventory_clerk_render_page(
                                 ? ucwords(str_replace('-', ' ', $criticalityValue))
                                 : 'Not set';
 
-                            // Display lang ito. Hindi nito binabago ang database status.
-                            if (!$hasPhysicalUnits && $totalUnitCount === 0 && $availableUnitCount === 0) {
-                                $displayStatus = 'awaiting-stock-in';
-                                $statusLabel = 'Awaiting Stock In';
-                            } elseif (in_array((string)$item['status'], ['low-stock', 'out-of-stock'], true) || $lostUnitCount > 0) {
-                                $displayStatus = 'attention';
-                                $statusLabel = 'Attention';
-                            } elseif ($maintenanceUnitCount > 0 && $availableUnitCount === 0) {
-                                $displayStatus = 'maintenance';
-                                $statusLabel = 'Maintenance';
-                            } elseif ($deployedUnitCount > 0 && $availableUnitCount === 0) {
-                                $displayStatus = 'deployed';
-                                $statusLabel = 'Deployed / In Use';
-                            } elseif ($availableUnitCount > 0) {
-                                $displayStatus = 'available';
-                                $statusLabel = 'Available';
-                            } else {
-                                $displayStatus = 'attention';
-                                $statusLabel = 'Attention';
-                            }
+                            $displayStatusData = inventory_clerk_asset_display_status($item, $counts);
+                            $displayStatus = $displayStatusData['key'];
+                            $statusLabel = $displayStatusData['label'];
                             ?>
                             <article class="project-card asset-summary-card">
                                 <div class="asset-summary-card__header">

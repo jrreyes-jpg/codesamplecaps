@@ -87,6 +87,12 @@
     color: #c2410c;
 }
 
+.inventory-page .asset-summary-card__status--low-availability {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #a16207;
+}
+
 .inventory-page .asset-summary-card__status--attention {
     border-color: #fecaca;
     background: #fef2f2;
@@ -170,6 +176,82 @@
 .inventory-page .metrics-grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
     margin-bottom: 16px;
+}
+
+.inventory-page .inventory-metric-card {
+    border-top: 3px solid #94a3b8;
+}
+
+.inventory-page .inventory-metric-card strong {
+    color: #334155;
+}
+
+.inventory-page .inventory-metric-card--total-units,
+.inventory-page .inventory-metric-card--deployed {
+    border-top-color: #60a5fa;
+}
+
+.inventory-page .inventory-metric-card--total-units strong,
+.inventory-page .inventory-metric-card--deployed strong {
+    color: #1d4ed8;
+}
+
+.inventory-page .inventory-metric-card--available {
+    border-top-color: #4ade80;
+}
+
+.inventory-page .inventory-metric-card--available strong {
+    color: #15803d;
+}
+
+.inventory-page .inventory-metric-card--maintenance {
+    border-top-color: #fbbf24;
+}
+
+.inventory-page .inventory-metric-card--maintenance strong {
+    color: #b45309;
+}
+
+.inventory-page .inventory-filter {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.inventory-page .inventory-filter:hover,
+.inventory-page .inventory-filter:focus-visible {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.inventory-page .inventory-filter--all.active-chip {
+    border-color: #334155;
+    background: #334155;
+    color: #ffffff;
+}
+
+.inventory-page .inventory-filter--available.active-chip {
+    border-color: #16a34a;
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.inventory-page .inventory-filter--deployed.active-chip {
+    border-color: #2563eb;
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.inventory-page .inventory-filter--maintenance.active-chip {
+    border-color: #d97706;
+    background: #d97706;
+    color: #ffffff;
+}
+
+.inventory-page .inventory-filter--attention.active-chip {
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #ffffff;
 }
 
 .inventory-page__section-head {

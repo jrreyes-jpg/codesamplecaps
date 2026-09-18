@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const openModal = () => {
         modal.classList.add('active');
         modal.setAttribute('aria-hidden', 'false');
-        setStatus('Starting scanner...');
+        setStatus('Ready to scan. Point the camera at a QR code.');
         workerInput.value = '';
         notesInput.value = '';
         assetInfo.textContent = '';
@@ -175,10 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     setStatus(err.message || 'Failed to load asset.', true);
                 }
             },
-            (errorMessage) => {
-                if (!scanLocked && !lastScannedContext) {
-                    scannerError.textContent = errorMessage;
-                }
+            () => {
+                // Normal ito kapag walang QR sa current camera frame.
+                // Huwag ipakita bilang error habang naghihintay ng scan.
             }
         ).catch((err) => {
             setStatus('Camera access denied or unavailable.', true);

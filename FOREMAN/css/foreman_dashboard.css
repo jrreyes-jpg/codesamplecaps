@@ -1,19 +1,14 @@
+/* Shared base/header para pareho ang Foreman shell sa operations pages. */
+@import url('/codesamplecaps/SHARED/admin_ui/css/base.css');
+@import url('/codesamplecaps/SHARED/header/core/header.css');
+
 body {
     opacity: 1;
 }
 
 .main-content {
-    margin-left: var(--sidebar-width);
-    width: calc(100% - var(--sidebar-width));
     min-height: 100vh;
-    padding: 92px 32px 32px;
-    transition: margin-left var(--transition-slow), width var(--transition-slow);
-}
-
-.main-content.sidebar-shrink,
-.main-content.sidebar-collapsed {
-    margin-left: var(--sidebar-collapsed-width);
-    width: calc(100% - var(--sidebar-collapsed-width));
+    padding: 112px 32px 32px;
 }
 
 .page-shell {
@@ -1125,9 +1120,7 @@ body {
 
 @media (max-width: 768px) {
     .main-content {
-        margin-left: 0 !important;
-        width: 100%;
-        padding: 92px 18px 18px;
+        padding: 96px 18px 18px;
     }
 
     .metrics-grid,

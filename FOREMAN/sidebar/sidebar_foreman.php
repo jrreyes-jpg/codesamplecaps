@@ -1,36 +1,40 @@
 <?php
 require_once __DIR__ . '/../includes/foreman_helpers.php';
+require_once __DIR__ . '/../../config/profile_photo_storage.php';
 
-$currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
-$currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
-$currentFile = basename($currentPath);
-$foremanProfileName = $foremanProfileName ?? (string)($_SESSION['name'] ?? 'Foreman');
-$foremanProfileRole = 'Foreman';
+// Shared sidebar ang gamit ng Foreman. Dito lang ang role data ng header.
+$foremanUserId = (int)($_SESSION['user_id'] ?? 0);
+$foremanProfileName = trim((string)($foremanProfileName ?? ($_SESSION['name'] ?? 'Foreman')));
+$foremanProfilePhotoUrl = '';
+
+if ($foremanUserId > 0) {
+    $profileStatement = $conn->prepare(
+        'SELECT full_name, profile_photo_path FROM users WHERE id = ? LIMIT 1'
+    );
+
+    if ($profileStatement) {
+        $profileStatement->bind_param('i', $foremanUserId);
+        $profileStatement->execute();
+        $profile = $profileStatement->get_result()->fetch_assoc() ?: [];
+        $profileStatement->close();
+
+        $foremanProfileName = trim((string)($profile['full_name'] ?? $foremanProfileName)) ?: 'Foreman';
+        $photoPath = trim((string)($profile['profile_photo_path'] ?? ''));
+        if ($photoPath !== '') {
+            $foremanProfilePhotoUrl = profile_photo_public_url($photoPath, $foremanUserId);
+        }
+    }
+}
+
 $foremanProfileInitials = foreman_profile_initials($foremanProfileName);
 $foremanNotifications = $foremanNotifications ?? [
     'attention_count' => 0,
     'logs_today' => 0,
     'scans_today' => 0,
 ];
-
-$isOverview = $currentFile === 'foreman_dashboard.php';
-$isArchive = $currentFile === 'projects.php' && (str_contains($currentQuery, 'view=trash') || str_contains($currentQuery, 'view=archive'));
-$isProjects = $currentFile === 'projects.php' && !$isArchive;
-$isReports = in_array($currentFile, ['reports.php', 'report_list.php', 'report_detail.php'], true);
-$isProcurement = $currentFile === 'procurement.php';
-$isQuotations = $currentFile === 'quotation_reviews.php';
-$isAssets = $currentFile === 'asset_status.php';
-$isLogs = $currentFile === 'usage_logs.php';
-$isWorkers = $currentFile === 'worker_summary.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
-<header class="global-topbar" aria-live="polite">
-    <a href="/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php" class="global-topbar__copy global-topbar__brand-link" aria-label="Go to Foreman overview">
-        <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo" class="global-topbar__brand-logo">
-        <strong>EDGE Automation</strong>
-    </a>
-
-    <div class="global-topbar__actions">
+<?php ob_start(); ?>
         <div class="topbar-notifications" data-notification-root>
             <button
                 title="Notifications"
@@ -84,43 +88,39 @@ $isWorkers = $currentFile === 'worker_summary.php';
             </div>
         </div>
 
-        <div class="topbar-profile" data-profile-root>
-            <button
-                id="topbarProfileToggle"
-                class="topbar-profile__toggle"
-                type="button"
-                aria-label="Open profile menu"
-                aria-controls="topbarProfileDropdown"
-                aria-expanded="false"
-            >
-                <span class="topbar-profile__avatar"><?php echo htmlspecialchars($foremanProfileInitials); ?></span>
-                <span class="topbar-profile__chevron" aria-hidden="true">
-                    <svg viewBox="0 0 20 20" focusable="false">
-                        <path d="M5 7.5 10 12.5 15 7.5"></path>
-                    </svg>
-                </span>
-            </button>
-
-            <div id="topbarProfileDropdown" class="topbar-profile__dropdown" hidden>
-                <div class="topbar-profile__panel-head">
-                    <span class="topbar-profile__avatar topbar-profile__avatar--panel"><?php echo htmlspecialchars($foremanProfileInitials); ?></span>
-                    <div>
-                        <strong><?php echo htmlspecialchars($foremanProfileName); ?></strong>
-                        <span><?php echo htmlspecialchars($foremanProfileRole); ?></span>
-                    </div>
-                </div>
-                <div class="topbar-profile__links">
-                    <a href="/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php">Overview</a>
-                    <a href="/codesamplecaps/LOGIN/php/forgot.php">Reset Password</a>
-                    <a href="/codesamplecaps/LOGIN/php/logout.php">Logout</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="global-topbar__clock">
-            <span class="global-topbar__clock-label">Philippines Time</span>
-            <strong class="global-topbar__time" data-ph-time>--:--:--</strong>
-            <span class="global-topbar__date" data-ph-date>Loading date...</span>
-        </div>
-    </div>
-</header>
+        <?php
+        $headerProfileRootAttr = 'data-profile-root';
+        $headerProfileToggleId = 'topbarProfileToggle';
+        $headerProfileDropdownId = 'topbarProfileDropdown';
+        $headerProfileToggleAttr = 'data-profile-toggle';
+        $headerProfileName = $foremanProfileName;
+        $headerProfileRole = 'Foreman';
+        $headerProfilePhotoUrl = $foremanProfilePhotoUrl;
+        $headerProfileInitials = $foremanProfileInitials;
+        $headerProfileAlt = 'Foreman profile photo';
+        $headerProfileLinks = [
+            ['label' => 'Overview', 'href' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php'],
+            ['label' => 'Reset Password', 'href' => '/codesamplecaps/LOGIN/php/forgot.php'],
+            ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
+        ];
+        include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
+        ?>
+<?php
+$operationsHeaderActionsHtml = (string)ob_get_clean();
+$operationsHeaderRole = 'foreman';
+$operationsHeaderClass = 'global-topbar';
+$operationsHeaderBrandClass = 'global-topbar__copy global-topbar__brand-link';
+$operationsHeaderActionsClass = 'global-topbar__actions';
+$operationsHeaderClockClass = 'global-topbar__clock';
+$operationsHeaderHomeHref = '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php';
+$operationsHeaderBrandText = 'EDGE Automation';
+$operationsHeaderLogoClass = 'global-topbar__brand-logo operations-topbar__brand-logo';
+$operationsHeaderBrandLabel = 'Go to Foreman overview';
+$operationsHeaderTime = '--:--:--';
+$operationsHeaderDate = 'Loading date...';
+$operationsHeaderTimeAttr = 'class="global-topbar__time" data-ph-time';
+$operationsHeaderDateAttr = 'class="global-topbar__date" data-ph-date';
+$operationsHeaderAttrs = 'aria-live="polite"';
+include __DIR__ . '/../../SHARED/header/core/operations-header.php';
+?>
+<script src="/codesamplecaps/SHARED/header/core/operations-header.js" defer></script>

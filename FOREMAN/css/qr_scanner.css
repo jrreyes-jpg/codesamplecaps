@@ -70,8 +70,34 @@
 }
 
 .qr-asset-info {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid #dbe4ee;
+    border-radius: 8px;
+    background: #f8fafc;
     font-size: 14px;
     line-height: 1.4;
+}
+
+.qr-asset-info:empty {
+    display: none;
+}
+
+.qr-asset-info__row {
+    display: grid;
+    grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
+    gap: 8px;
+}
+
+.qr-asset-info__label {
+    color: #52616f;
+    font-weight: 700;
+}
+
+.qr-asset-info__value {
+    color: #1f2937;
+    overflow-wrap: anywhere;
 }
 
 .qr-input-row {

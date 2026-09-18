@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html5QrCode = null;
     let lastScannedContext = null;
+    let scanLocked = false;
 
     const parseAssetContext = (decodedText) => {
         if (!decodedText) return null;
@@ -61,6 +62,36 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage.style.color = isError ? '#e74c3c' : '#2c3e50';
     };
 
+    const formatStatus = (value) => String(value || 'Unknown')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+    const showAssetDetails = (asset) => {
+        const details = [
+            ['Asset', asset.asset_name || 'Unknown asset'],
+            ['Unit Code', asset.unit_code || 'General asset QR'],
+            ['Category', asset.asset_category || 'Not set'],
+            ['Status', formatStatus(asset.unit_status || asset.asset_status)],
+        ];
+
+        assetInfo.replaceChildren();
+        details.forEach(([label, value]) => {
+            const row = document.createElement('div');
+            row.className = 'qr-asset-info__row';
+
+            const labelElement = document.createElement('span');
+            labelElement.className = 'qr-asset-info__label';
+            labelElement.textContent = `${label}:`;
+
+            const valueElement = document.createElement('span');
+            valueElement.className = 'qr-asset-info__value';
+            valueElement.textContent = value;
+
+            row.append(labelElement, valueElement);
+            assetInfo.appendChild(row);
+        });
+    };
+
     const stopScanner = async () => {
         if (html5QrCode) {
             try {
@@ -81,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         assetInfo.textContent = '';
         scannerError.textContent = '';
         lastScannedContext = null;
+        scanLocked = false;
 
         if (!window.Html5Qrcode) {
             setStatus('QR scanner library not loaded.', true);
@@ -92,6 +124,10 @@ document.addEventListener('DOMContentLoaded', () => {
             { facingMode: 'environment' },
             { fps: 10, qrbox: 250 },
             async (decodedText) => {
+                if (scanLocked) {
+                    return;
+                }
+
                 const assetContext = parseAssetContext(decodedText);
                 if (!assetContext || !assetContext.assetId) {
                     setStatus('Unrecognized QR format. Please scan a valid asset code.', true);
@@ -107,7 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                // May valid scan na. Huwag na basahin ang susunod na camera frames.
+                scanLocked = true;
                 lastScannedContext = assetContext;
+                scannerError.textContent = '';
                 setStatus('QR scanned. Fetching asset...');
 
                 try {
@@ -126,19 +165,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     const asset = json.asset;
-                    assetInfo.innerHTML = `
-                        <strong>${asset.asset_name}</strong> (ID: ${asset.id})<br>
-                        Unit: ${asset.unit_code || '<em>General asset QR</em>'}<br>
-                        Type: ${asset.asset_type || '<em>n/a</em>'}<br>
-                        Status: ${asset.asset_status}<br>
-                        Serial: ${asset.serial_number || '<em>n/a</em>'}`;
+                    showAssetDetails(asset);
+                    scannerError.textContent = '';
+                    await stopScanner();
                     setStatus('Asset loaded. Enter worker name and press Log.');
                 } catch (err) {
+                    scanLocked = false;
+                    lastScannedContext = null;
                     setStatus(err.message || 'Failed to load asset.', true);
                 }
             },
             (errorMessage) => {
-                if (!lastScannedContext) {
+                if (!scanLocked && !lastScannedContext) {
                     scannerError.textContent = errorMessage;
                 }
             }

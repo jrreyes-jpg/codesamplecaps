@@ -53,10 +53,15 @@ if (!asset_table_exists($conn, 'assets')) {
 }
 
 $assetStatement = $conn->prepare(
-    'SELECT id, asset_name, asset_type, serial_number, asset_status
+    "SELECT id,
+            asset_name,
+            COALESCE(NULLIF(asset_category, ''), NULLIF(asset_type, ''), 'Not set') AS asset_category,
+            asset_type,
+            serial_number,
+            asset_status
      FROM assets
      WHERE id = ?
-     LIMIT 1'
+     LIMIT 1"
 );
 
 if (!$assetStatement) {

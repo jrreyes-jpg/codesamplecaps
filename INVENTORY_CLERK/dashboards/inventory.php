@@ -208,21 +208,52 @@ inventory_clerk_render_page(
                                 : (int)$item['quantity'];
                             $deployedUnitCount = $hasPhysicalUnits ? (int)$item['deployed_unit_instances'] : 0;
                             $maintenanceUnitCount = $hasPhysicalUnits ? (int)$item['maintenance_unit_instances'] : 0;
-                            $statusLabel = ucwords(str_replace('-', ' ', (string)$item['status']));
+                            $lostUnitCount = $hasPhysicalUnits ? (int)$item['lost_unit_instances'] : 0;
+                            $categoryLabel = ucwords(strtolower((string)$item['asset_category']));
+                            $categoryLabel = preg_replace_callback(
+                                '/\b(it|qr)\b/i',
+                                static fn (array $match): string => strtoupper($match[0]),
+                                $categoryLabel
+                            ) ?? $categoryLabel;
+                            $criticalityValue = strtolower(trim((string)($item['criticality'] ?? '')));
+                            $criticalityLabel = $criticalityValue !== ''
+                                ? ucwords(str_replace('-', ' ', $criticalityValue))
+                                : 'Not set';
+
+                            // Display lang ito. Hindi nito binabago ang database status.
+                            if (!$hasPhysicalUnits && $totalUnitCount === 0 && $availableUnitCount === 0) {
+                                $displayStatus = 'awaiting-stock-in';
+                                $statusLabel = 'Awaiting Stock In';
+                            } elseif (in_array((string)$item['status'], ['low-stock', 'out-of-stock'], true) || $lostUnitCount > 0) {
+                                $displayStatus = 'attention';
+                                $statusLabel = 'Attention';
+                            } elseif ($maintenanceUnitCount > 0 && $availableUnitCount === 0) {
+                                $displayStatus = 'maintenance';
+                                $statusLabel = 'Maintenance';
+                            } elseif ($deployedUnitCount > 0 && $availableUnitCount === 0) {
+                                $displayStatus = 'deployed';
+                                $statusLabel = 'Deployed / In Use';
+                            } elseif ($availableUnitCount > 0) {
+                                $displayStatus = 'available';
+                                $statusLabel = 'Available';
+                            } else {
+                                $displayStatus = 'attention';
+                                $statusLabel = 'Attention';
+                            }
                             ?>
                             <article class="project-card asset-summary-card">
                                 <div class="asset-summary-card__header">
                                     <div>
                                         <h3><?php echo htmlspecialchars($item['asset_name']); ?></h3>
-                                        <p class="asset-summary-card__category"><?php echo htmlspecialchars((string)$item['asset_category']); ?></p>
+                                        <p class="asset-summary-card__category"><?php echo htmlspecialchars($categoryLabel); ?></p>
                                     </div>
-                                    <span class="status-pill status-<?php echo htmlspecialchars($item['status']); ?>">
+                                    <span class="asset-summary-card__status asset-summary-card__status--<?php echo htmlspecialchars($displayStatus); ?>">
                                         <?php echo htmlspecialchars($statusLabel); ?>
                                     </span>
                                 </div>
 
                                 <dl class="asset-summary-card__details">
-                                    <div><dt>Criticality</dt><dd><?php echo htmlspecialchars((string)($item['criticality'] ?: 'Not set')); ?></dd></div>
+                                    <div><dt>Criticality</dt><dd><span class="asset-summary-card__criticality asset-summary-card__criticality--<?php echo htmlspecialchars($criticalityValue ?: 'not-set'); ?>"><?php echo htmlspecialchars($criticalityLabel); ?></span></dd></div>
                                     <div><dt>Total Units</dt><dd><?php echo $totalUnitCount; ?></dd></div>
                                     <div><dt>Available</dt><dd><?php echo $availableUnitCount; ?></dd></div>
                                     <div><dt>Deployed / In Use</dt><dd><?php echo $deployedUnitCount; ?></dd></div>
@@ -231,8 +262,12 @@ inventory_clerk_render_page(
                                 </dl>
 
                                 <div class="asset-summary-card__actions" aria-label="Asset actions">
-                                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_in.php" class="btn-secondary">Stock In</a>
-                                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_out.php" class="btn-secondary">Stock Out</a>
+                                    <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_in.php" class="btn-primary">Stock In</a>
+                                    <?php if ($availableUnitCount > 0): ?>
+                                        <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_out.php" class="btn-secondary">Stock Out</a>
+                                    <?php else: ?>
+                                        <span class="btn-secondary asset-summary-card__action-disabled" aria-disabled="true" title="No available units to stock out.">Stock Out</span>
+                                    <?php endif; ?>
                                 </div>
                             </article>
                     <?php endforeach; ?>

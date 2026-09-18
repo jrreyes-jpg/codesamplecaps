@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/stock_helpers.php';
 require_once __DIR__ . '/../includes/page_shell.php';
 require_once __DIR__ . '/../../config/material_stock.php';
+require_once __DIR__ . '/../../config/material_detail_suggestion_service.php';
 
 $csrfToken = auth_csrf_token('inventory_clerk_materials');
 $flashKey = 'inventory_clerk_materials_flash';
@@ -15,17 +16,8 @@ $defaultFormValues = [
     'unit' => '',
     'reorder_level' => '',
 ];
-$materialCategories = [
-    'Cable & Wire',
-    'Connectors & Terminals',
-    'Conduit & Raceway',
-    'Fasteners & Hardware',
-    'Electrical Components',
-    'Network Components',
-    'Automation / Control Components',
-    'Other',
-];
-$materialUnits = ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter', 'bundle', 'sheet', 'pair', 'tube'];
+$materialCategories = material_detail_suggestion_categories();
+$materialUnits = material_detail_suggestion_units();
 $wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
 
 function inventory_clerk_material_name_key(string $name): string
@@ -276,7 +268,7 @@ inventory_clerk_render_page('Materials', function () use ($csrfToken, $flash, $f
             </div>
             <form method="POST" data-material-form novalidate><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <div class="form-grid">
-                    <div class="input-group materials-name-field"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><div class="materials-name-field__control"><input id="material_name" name="material_name" maxlength="180" required autocomplete="off" aria-autocomplete="list" aria-controls="materialNameSuggestions" aria-expanded="false" value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><div id="materialNameSuggestions" class="materials-name-suggestions" role="listbox" data-material-name-suggestions hidden></div></div><span class="materials-field-error" data-material-error="material_name" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['material_name'] ?? '')); ?></span></div>
+                    <div class="input-group materials-name-field"><label for="material_name">Material Name <span class="materials-suggestion" data-material-suggestion aria-live="polite"></span></label><div class="materials-name-field__control"><input id="material_name" name="material_name" maxlength="180" required autocomplete="off" aria-autocomplete="list" aria-controls="materialNameSuggestions" aria-expanded="false" value="<?php echo htmlspecialchars($formValues['material_name']); ?>" data-material-name><div id="materialNameSuggestions" class="materials-name-suggestions" role="listbox" data-material-name-suggestions hidden></div></div><div class="materials-name-field__suggest-actions"><button type="button" class="materials-suggest-details" data-material-suggest-details>Suggest Details</button><span class="materials-suggest-feedback" data-material-suggest-feedback aria-live="polite"></span></div><span class="materials-field-error" data-material-error="material_name" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['material_name'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="category">Category</label><select id="category" name="category" required data-material-category><option value="">Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo $formValues['category'] === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="category" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['category'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="unit">Unit</label><select id="unit" name="unit" required data-material-unit><option value="">Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>"<?php echo $formValues['unit'] === $unit ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select><span class="materials-field-error" data-material-error="unit" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['unit'] ?? '')); ?></span></div>
                     <div class="input-group"><label for="reorder_level">Low Stock Alert Level <span class="materials-info-tooltip" tabindex="0" role="img" aria-label="Shows a Low Stock warning when available quantity reaches this level or lower." data-tooltip="Shows a Low Stock warning when available quantity reaches this level or lower.">i</span> <span class="materials-unit-change-message" data-unit-change-message aria-live="polite"></span></label><input id="reorder_level" name="reorder_level" type="number" min="1" step="1" required inputmode="numeric" value="<?php echo htmlspecialchars($formValues['reorder_level']); ?>" data-reorder-level><span class="materials-field-error" data-material-error="reorder_level" aria-live="polite"><?php echo htmlspecialchars((string)($formErrors['reorder_level'] ?? '')); ?></span></div>

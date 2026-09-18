@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const unit = document.querySelector('[data-material-unit]');
     const description = document.querySelector('[data-material-description]');
     const suggestion = document.querySelector('[data-material-suggestion]');
+    const suggestDetailsButton = document.querySelector('[data-material-suggest-details]');
+    const suggestDetailsFeedback = document.querySelector('[data-material-suggest-feedback]');
     const reorderLevel = document.querySelector('[data-reorder-level]');
     const form = document.querySelector('[data-material-form]');
     const formSubmitButton = form?.querySelector('button[type="submit"]');
@@ -531,6 +533,12 @@ document.addEventListener('DOMContentLoaded', function () {
         applySuggestion();
         updateMaterialNameSuggestions();
         validateMaterialName(false, false);
+        showSuggestDetailsFeedback('');
+    });
+    materialName.addEventListener('focus', function () {
+        if (normalizeMaterialName(materialName.value) === '') {
+            validateMaterialName(false, false);
+        }
     });
     materialName.addEventListener('blur', function () {
         materialName.value = normalizeMaterialName(materialName.value);
@@ -557,6 +565,86 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             event.stopPropagation();
             closeMaterialNameSuggestions();
+        }
+    });
+
+    const showSuggestDetailsFeedback = function (message, state = '') {
+        if (!suggestDetailsFeedback) {
+            return;
+        }
+
+        suggestDetailsFeedback.textContent = message;
+        suggestDetailsFeedback.classList.toggle('is-success', state === 'success');
+        suggestDetailsFeedback.classList.toggle('is-warning', state === 'warning');
+        suggestDetailsFeedback.classList.toggle('is-error', state === 'error');
+    };
+
+    suggestDetailsButton?.addEventListener('click', async function () {
+        const name = normalizeMaterialName(materialName.value);
+        if (name === '') {
+            validateMaterialName(true, true);
+            showSuggestDetailsFeedback('Enter a material name first.', 'error');
+            materialName.focus();
+            return;
+        }
+        if (!isValidMaterialName(name)) {
+            validateMaterialName(true, true);
+            showSuggestDetailsFeedback('Enter a valid material name first.', 'error');
+            materialName.focus();
+            return;
+        }
+
+        const csrfToken = form?.querySelector('input[name="csrf_token"]')?.value || '';
+        const defaultText = suggestDetailsButton.textContent;
+        suggestDetailsButton.disabled = true;
+        suggestDetailsButton.textContent = 'Suggesting...';
+        showSuggestDetailsFeedback('');
+
+        try {
+            const response = await fetch('/codesamplecaps/INVENTORY_CLERK/api/suggest_material_details.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new URLSearchParams({
+                    material_name: name,
+                    csrf_token: csrfToken,
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error('Suggestion unavailable');
+            }
+            if (result.asset_like) {
+                showSuggestDetailsFeedback('This item appears to be a reusable asset. Please verify before adding it as a material.', 'warning');
+                return;
+            }
+
+            const categoryOption = Array.from(category.options).find(function (option) {
+                return option.value === result.category;
+            });
+            const unitOption = Array.from(unit.options).find(function (option) {
+                return option.value === result.unit;
+            });
+            if (!categoryOption || !unitOption || typeof result.description !== 'string') {
+                throw new Error('Invalid suggestion');
+            }
+
+            category.value = result.category;
+            unit.value = result.unit;
+            description.value = result.description;
+            validateMaterialName(false, false);
+            validateCategory();
+            validateUnit();
+            updateReorderLevelForUnit();
+            saveLocalMaterialDraft();
+            showSuggestDetailsFeedback('Suggested details added. Review before saving.', 'success');
+        } catch (error) {
+            showSuggestDetailsFeedback('Unable to suggest details. Please enter them manually.', 'error');
+        } finally {
+            suggestDetailsButton.disabled = false;
+            suggestDetailsButton.textContent = defaultText;
         }
     });
 
@@ -647,6 +735,7 @@ document.addEventListener('DOMContentLoaded', function () {
             suggestion.textContent = '';
             suggestion.removeAttribute('title');
         }
+        showSuggestDetailsFeedback('');
         closeMaterialNameSuggestions();
         if (unitChangeMessage) {
             unitChangeMessage.textContent = '';

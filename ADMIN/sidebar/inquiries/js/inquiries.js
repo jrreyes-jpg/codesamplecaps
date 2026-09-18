@@ -1209,9 +1209,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const items = quotationCreate.querySelector('[data-quotation-items]');
         const template = quotationCreate.querySelector('[data-quotation-item-template]');
         const addButton = quotationCreate.querySelector('[data-quotation-add-item]');
-        const assetRequirements = quotationCreate.querySelector('[data-quotation-asset-requirements]');
-        const assetRequirementTemplate = quotationCreate.querySelector('[data-quotation-asset-requirement-template]');
-        const addAssetRequirementButton = quotationCreate.querySelector('[data-quotation-add-asset-requirement]');
         const subtotalOutput = quotationCreate.querySelector('[data-quotation-subtotal]');
         const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
         const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
@@ -1227,7 +1224,6 @@ document.addEventListener('DOMContentLoaded', function () {
             other: ['unit', 'lot'],
         };
         const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person'];
-
         const serializeQuotationForm = function () {
             return form ? new URLSearchParams(new FormData(form)).toString() : '';
         };
@@ -1290,36 +1286,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return /^\d+(?:\.\d{1,2})?$/.test((rawValue || '').trim())
                 && Number.isFinite(value)
                 && value > 0;
-        };
-
-        const validateAssetRequirement = function (row, showMessage) {
-            const nameInput = row.querySelector('input[name="asset_requirement_name[]"]');
-            const quantityInput = row.querySelector('input[name="asset_requirement_quantity[]"]');
-            const nameError = row.querySelector('[data-quotation-asset-name-error]');
-            const quantityError = row.querySelector('[data-quotation-asset-quantity-error]');
-            const name = nameInput?.value.trim().replace(/\s+/g, ' ') || '';
-            const quantityRaw = quantityInput?.value.trim() || '';
-            let nameMessage = '';
-            let quantityMessage = '';
-
-            if (name === '' || !/^[\p{L}\p{N}\s\-/.()]+$/u.test(name) || !/\p{L}/u.test(name)) {
-                nameMessage = 'Enter a valid asset or equipment name.';
-            }
-            if (!/^\d+$/.test(quantityRaw) || Number(quantityRaw) < 1) {
-                quantityMessage = 'Use a whole number of at least 1.';
-            }
-
-            if (nameInput) {
-                nameInput.setCustomValidity(nameMessage);
-                nameInput.setAttribute('aria-invalid', nameMessage !== '' ? 'true' : 'false');
-            }
-            if (quantityInput) {
-                quantityInput.setCustomValidity(quantityMessage);
-                quantityInput.setAttribute('aria-invalid', quantityMessage !== '' ? 'true' : 'false');
-            }
-            if (nameError) nameError.textContent = showMessage ? nameMessage : '';
-            if (quantityError) quantityError.textContent = showMessage ? quantityMessage : '';
-            return nameMessage === '' && quantityMessage === '';
         };
 
         const validateMarkup = function (showMessage, requireValue) {
@@ -1492,16 +1458,6 @@ document.addEventListener('DOMContentLoaded', function () {
             updateEditSubmitState();
         });
 
-        addAssetRequirementButton?.addEventListener('click', function () {
-            if (!assetRequirements || !assetRequirementTemplate || assetRequirements.children.length >= 50) {
-                return;
-            }
-
-            assetRequirements.appendChild(assetRequirementTemplate.content.cloneNode(true));
-            updateEditSubmitState();
-            assetRequirements.lastElementChild?.querySelector('input[name="asset_requirement_name[]"]')?.focus();
-        });
-
         items?.addEventListener('click', function (event) {
             const removeButton = event.target.closest('[data-quotation-remove-item]');
             if (!removeButton || items.querySelectorAll('[data-quotation-item]').length <= 1) {
@@ -1510,16 +1466,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             removeButton.closest('[data-quotation-item]')?.remove();
             updateQuotationPreview();
-            updateEditSubmitState();
-        });
-
-        assetRequirements?.addEventListener('click', function (event) {
-            const removeButton = event.target.closest('[data-quotation-remove-asset-requirement]');
-            if (!removeButton) {
-                return;
-            }
-
-            removeButton.closest('[data-quotation-asset-requirement]')?.remove();
             updateEditSubmitState();
         });
 
@@ -1571,15 +1517,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const invalidAssetRequirement = Array.from(assetRequirements?.querySelectorAll('[data-quotation-asset-requirement]') || []).find(function (row) {
-                return !validateAssetRequirement(row, true);
-            });
-            if (invalidAssetRequirement) {
-                event.preventDefault();
-                invalidAssetRequirement.querySelector('[aria-invalid="true"]')?.focus();
-                return;
-            }
-
             if (event.submitter?.hasAttribute('data-confirm-quotation-save')
                 && !window.confirm('Are you sure you want to save this quotation draft?')) {
                 event.preventDefault();
@@ -1598,13 +1535,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const unitCost = item.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
                 return itemName !== '' || unitCost !== '';
             });
-            const hasAssetRequirementData = Array.from(assetRequirements?.querySelectorAll('[data-quotation-asset-requirement]') || []).some(function (row) {
-                return Array.from(row.querySelectorAll('input')).some(function (input) {
-                    return input.value.trim() !== '';
-                });
-            });
-
-            if ((hasCostBreakdownData || hasAssetRequirementData)
+            if (hasCostBreakdownData
                 && !window.confirm('You have unsaved changes in the cost breakdown. Are you sure you want to cancel and lose this data?')) {
                 event.preventDefault();
             }
@@ -1620,10 +1551,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (row && event.target.matches('input[name="unit_cost[]"]')) {
                 validateEstimatedUnitCost(row, true, false);
-            }
-            const assetRequirement = event.target.closest('[data-quotation-asset-requirement]');
-            if (assetRequirement) {
-                validateAssetRequirement(assetRequirement, false);
             }
             updateQuotationPreview();
             updateEditSubmitState();
@@ -1642,12 +1569,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (event.target.matches('input[name="unit_cost[]"]')) {
                 validateEstimatedUnitCost(row, true, true);
-            }
-        });
-        assetRequirements?.addEventListener('focusout', function (event) {
-            const row = event.target.closest('[data-quotation-asset-requirement]');
-            if (row && event.target.matches('input[name="asset_requirement_name[]"], input[name="asset_requirement_quantity[]"]')) {
-                validateAssetRequirement(row, true);
             }
         });
         form?.addEventListener('invalid', function (event) {

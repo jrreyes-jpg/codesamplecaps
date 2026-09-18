@@ -270,6 +270,10 @@ inventory_clerk_render_page(
                                 <?php endforeach; ?>
                             </select>
                             <span class="inventory-add-asset-modal__error"><?php echo htmlspecialchars((string)($addAssetErrors['asset_category'] ?? '')); ?></span>
+                            <div class="inventory-add-asset-modal__suggestion">
+                                <button type="button" class="btn-secondary inventory-add-asset-modal__suggest-button" data-category-suggest>Suggest Category</button>
+                                <span class="inventory-add-asset-modal__suggest-feedback" data-category-suggest-feedback aria-live="polite"></span>
+                            </div>
                         </div>
                         <div class="input-group">
                             <label for="add_asset_criticality">Criticality *</label>

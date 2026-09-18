@@ -183,6 +183,36 @@
     line-height: 1.35;
 }
 
+.inventory-add-asset-modal__suggestion {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 38px;
+}
+
+.inventory-add-asset-modal__suggest-button {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: .82rem;
+}
+
+.inventory-add-asset-modal__suggest-feedback {
+    flex: 1 1 150px;
+    min-height: 17px;
+    color: #475569;
+    font-size: .78rem;
+    line-height: 1.35;
+}
+
+.inventory-add-asset-modal__suggest-feedback.is-error {
+    color: #b91c1c;
+}
+
+.inventory-add-asset-modal__suggest-feedback.is-success {
+    color: #166534;
+}
+
 .inventory-add-asset-modal__actions {
     justify-content: flex-end;
     margin-top: 12px;

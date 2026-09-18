@@ -92,6 +92,12 @@ private function env($key, $default = null)
         $this->settings['MAIL_FROM_NAME'] = $this->env('MAIL_FROM_NAME') ?: 'Edge Automation';
         $this->settings['CONTACT_EMAIL'] = $this->env('CONTACT_EMAIL') ?: $this->settings['MAIL_FROM_ADDRESS'];
 
+        // Optional web-assisted Asset category suggestion. Keep keys only in .env.
+        $this->settings['ASSET_CATEGORY_SUGGESTION_PROVIDER'] = $this->env('ASSET_CATEGORY_SUGGESTION_PROVIDER') ?: '';
+        $this->settings['ASSET_CATEGORY_SUGGESTION_API_KEY'] = $this->env('ASSET_CATEGORY_SUGGESTION_API_KEY') ?: '';
+        $this->settings['ASSET_CATEGORY_SUGGESTION_MODEL'] = $this->env('ASSET_CATEGORY_SUGGESTION_MODEL') ?: '';
+        $this->settings['ASSET_CATEGORY_SUGGESTION_ENDPOINT'] = $this->env('ASSET_CATEGORY_SUGGESTION_ENDPOINT') ?: '';
+
         // ============ SECURITY ============
         $this->settings['PASSWORD_RESET_EXPIRY_MINUTES'] = 15;
         $this->settings['ACCOUNT_ACTIVATION_EXPIRY_MINUTES'] = 60;

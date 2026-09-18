@@ -67,25 +67,21 @@ if (!function_exists('asset_units_column_exists')) {
 }
 
 if (!function_exists('build_asset_unit_label')) {
-    function build_asset_unit_label(int $inventoryId, int $unitNumber, string $serialNumber = ''): string
+    function build_asset_unit_label(int $assetId, int $unitNumber): string
     {
-        $base = trim($serialNumber) !== '' ? trim($serialNumber) : ('INV-' . $inventoryId);
-        return sprintf('%s-U%03d', $base, $unitNumber);
+        // Stable ito kahit walang master serial ang bagong Asset Master.
+        return sprintf('AST-%06d-U%03d', $assetId, $unitNumber);
     }
 }
 
 if (!function_exists('build_asset_unit_qr_value')) {
-    function build_asset_unit_qr_value(int $assetId, int $unitId, string $unitCode, string $serialNumber = ''): string
+    function build_asset_unit_qr_value(int $assetId, int $unitId, string $unitCode): string
     {
         $parts = [
             'asset_id=' . $assetId,
             'unit_id=' . $unitId,
             'unit_code=' . rawurlencode($unitCode),
         ];
-
-        if ($serialNumber !== '') {
-            $parts[] = 'sn=' . rawurlencode($serialNumber);
-        }
 
         return implode('|', $parts);
     }
@@ -386,8 +382,7 @@ if (!function_exists('asset_units_fetch_inventory_context')) {
         $sql = "SELECT
                 i.id AS inventory_id,
                 i.asset_id,
-                i.quantity AS available_quantity,
-                a.serial_number,";
+                i.quantity AS available_quantity,";
 
         if ($hasProjectDeploymentTables) {
             $sql .= "
@@ -454,7 +449,7 @@ if (!function_exists('asset_units_count_active_rows')) {
 }
 
 if (!function_exists('asset_units_insert_new_rows')) {
-    function asset_units_insert_new_rows(mysqli $conn, int $inventoryId, int $assetId, string $serialNumber, int $count): void
+    function asset_units_insert_new_rows(mysqli $conn, int $inventoryId, int $assetId, int $count): void
     {
         if ($count <= 0) {
             return;
@@ -472,7 +467,7 @@ if (!function_exists('asset_units_insert_new_rows')) {
 
         for ($offset = 1; $offset <= $count; $offset++) {
             $unitNumber = $maxUnitNumber + $offset;
-            $unitCode = build_asset_unit_label($inventoryId, $unitNumber, $serialNumber);
+            $unitCode = build_asset_unit_label($assetId, $unitNumber);
             $placeholderQr = 'pending:' . $assetId . ':' . $inventoryId . ':' . $unitNumber . ':' . microtime(true);
 
             $insertStatement = $conn->prepare(
@@ -489,7 +484,7 @@ if (!function_exists('asset_units_insert_new_rows')) {
             }
 
             $assetUnitId = (int)$insertStatement->insert_id;
-            $qrValue = build_asset_unit_qr_value($assetId, $assetUnitId, $unitCode, $serialNumber);
+            $qrValue = build_asset_unit_qr_value($assetId, $assetUnitId, $unitCode);
 
             $updateStatement = $conn->prepare('UPDATE asset_units SET qr_code_value = ? WHERE id = ?');
             if (
@@ -758,9 +753,11 @@ if (!function_exists('asset_units_reconcile_active_deployments')) {
 }
 
 if (!function_exists('asset_units_sync_for_inventory')) {
-    function asset_units_sync_for_inventory(mysqli $conn, int $inventoryId, ?int $desiredAvailableQuantity = null): void
+    function asset_units_sync_for_inventory(mysqli $conn, int $inventoryId, ?int $desiredAvailableQuantity = null, bool $ensureSchema = true): void
     {
-        ensure_asset_unit_tracking_schema($conn);
+        if ($ensureSchema) {
+            ensure_asset_unit_tracking_schema($conn);
+        }
 
         $context = asset_units_fetch_inventory_context($conn, $inventoryId);
         if (!$context) {
@@ -779,7 +776,6 @@ if (!function_exists('asset_units_sync_for_inventory')) {
                 $conn,
                 $inventoryId,
                 (int)($context['asset_id'] ?? 0),
-                (string)($context['serial_number'] ?? ''),
                 $desiredTotalUnits - $currentTotalUnits
             );
         } elseif ($currentTotalUnits > $desiredTotalUnits) {

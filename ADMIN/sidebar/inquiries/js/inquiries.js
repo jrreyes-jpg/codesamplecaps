@@ -1130,7 +1130,9 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
 
             if (form.dataset.confirmed !== '1') {
-                showConfirm(form, 'Send this quotation to the client by email?', [
+                showConfirm(form, form.dataset.quoteKind === 'initial'
+                    ? 'Send this initial quotation to the client by email?'
+                    : 'Send this revised quotation to the client by email?', [
                     { label: 'Client', value: form.dataset.quoteRecipientName || '' },
                     { label: 'Email', value: form.dataset.quoteRecipientEmail || '' },
                     { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
@@ -1146,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             form.dataset.submitting = '1';
             const submitButton = form.querySelector('button[type="submit"]');
-            const defaultText = submitButton?.textContent || 'Send Quotation to Client';
+            const defaultText = submitButton?.textContent || 'Send Initial Quotation to Client';
             const sendingModal = form.closest('.inquiry-modal');
             if (submitButton) {
                 submitButton.disabled = true;
@@ -1518,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (event.submitter?.hasAttribute('data-confirm-quotation-save')
-                && !window.confirm('Are you sure you want to save this quotation draft?')) {
+                && !window.confirm('Create this initial quotation draft?')) {
                 event.preventDefault();
                 return;
             }

@@ -12,7 +12,7 @@ $savedItems = [];
 
 if ($isEditMode) {
     $draftStmt = $conn->prepare(
-        'SELECT id, inquiry_id, quotation_no, status, subtotal, profit_margin_percent, profit_amount, grand_total
+        'SELECT id, inquiry_id, parent_draft_id, revision_no, quotation_no, status, subtotal, profit_margin_percent, profit_amount, grand_total
          FROM inquiry_quotation_drafts
          WHERE id = ? LIMIT 1'
     );
@@ -36,6 +36,11 @@ if ($isEditMode) {
 } else {
     $inquiryId = (int)($_GET['inquiry_id'] ?? $_POST['inquiry_id'] ?? 0);
 }
+
+$isInitialQuotationDraft = !$isEditMode
+    || (empty($quotationDraft['parent_draft_id']) && (int)($quotationDraft['revision_no'] ?? 0) === 0);
+$quotationDraftLabel = $isInitialQuotationDraft ? 'Initial quotation draft' : 'Revised quotation draft';
+$quotationDisplayLabel = $isInitialQuotationDraft ? 'Initial Quotation Draft' : 'Revised Quotation Draft';
 
 if ($inquiryId <= 0) {
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
@@ -323,7 +328,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'grand_total' => $grandTotal,
                 ]);
 
-                $_SESSION['inquiry_center_flash'] = $isEditMode ? 'Quotation draft updated.' : 'Quotation draft created.';
+                $_SESSION['inquiry_center_flash'] = $isEditMode
+                    ? $quotationDraftLabel . ' updated.'
+                    : 'Initial quotation draft created.';
                 header(
                     'Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
                         . $inquiryId
@@ -340,7 +347,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Edge Automation';
+$adminPageTitle = ($isEditMode
+    ? ($isInitialQuotationDraft ? 'Edit Initial Quotation' : 'Edit Revised Quotation')
+    : 'Create Initial Quotation') . ' - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -371,8 +380,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
             <div class="quotation-create-heading">
                 <div>
-                    <span class="reports-kicker<?php echo $isEditMode ? '' : ' quotation-create-status'; ?>"><?php echo $isEditMode ? 'Quotation Draft' : 'Verified Lead'; ?></span>
-                    <h1><?php echo $isEditMode ? 'Edit Quotation' : 'Create Quotation'; ?></h1>
+                    <span class="reports-kicker<?php echo $isEditMode ? '' : ' quotation-create-status'; ?>"><?php echo $isEditMode ? $quotationDisplayLabel : 'Verified Lead'; ?></span>
+                    <h1><?php echo $isEditMode ? ($isInitialQuotationDraft ? 'Edit Initial Quotation' : 'Edit Revised Quotation') : 'Create Initial Quotation'; ?></h1>
                     <?php if ($isEditMode): ?>
                         <p>Update the draft scope costs before approval and sending.</p>
                     <?php endif; ?>
@@ -479,7 +488,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Quotation Draft'; ?></button>
+                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Initial Quotation Draft'; ?></button>
                     <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>&amp;tab=quotation" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>

@@ -94,8 +94,12 @@ function inquiry_center_schedule_notification_hash(int $engineerId, string $sche
 function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): string
 {
     if (!$quotationDraft) {
-        return 'Create the quotation first, then send it to the client for review.';
+        return 'Create the initial quotation first, then send it to the client for review.';
     }
+
+    $isInitialQuotation = empty($quotationDraft['parent_draft_id'])
+        && (int)($quotationDraft['revision_no'] ?? 0) === 0;
+    $quotationName = $isInitialQuotation ? 'initial quotation' : 'revised quotation';
 
     $status = inquiry_quote_normalize_status((string)($quotationDraft['status'] ?? ''));
     if ($status === 'accepted') {
@@ -107,10 +111,10 @@ function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): 
     }
 
     if ($status === 'rejected') {
-        return 'Client rejected the quotation. Review the client note before taking the next action.';
+        return 'Client rejected the ' . $quotationName . '. Review the client note before taking the next action.';
     }
 
-    return 'Send quotation to client and wait for approval before assigning Engineer.';
+    return 'Send the ' . $quotationName . ' to the client and wait for approval before assigning Engineer.';
 }
 
 function inquiry_center_redirect(string $view, string $message): void
@@ -593,17 +597,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ['status' => $statusBeforeSend],
                     ['status' => 'sent']
                 );
+                $isInitialQuotation = empty($quotationBeforeSend['parent_draft_id'])
+                    && (int)($quotationBeforeSend['revision_no'] ?? 0) === 0;
+                $quotationSentMessage = $isInitialQuotation
+                    ? 'Initial quotation sent to client.'
+                    : 'Revised quotation sent to client.';
                 if ($isAjaxRequest) {
-                    $_SESSION['inquiry_center_flash'] = 'Quotation sent to client.';
+                    $_SESSION['inquiry_center_flash'] = $quotationSentMessage;
                     header('Content-Type: application/json; charset=UTF-8');
                     echo json_encode([
                         'success' => true,
-                        'message' => 'Quotation sent to client.',
+                        'message' => $quotationSentMessage,
                         'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead&open=inquiryModal' . $inquiryId . '&tab=quotation',
                     ]);
                     exit();
                 }
-                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', 'Quotation sent to client.');
+                inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', $quotationSentMessage);
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -1457,6 +1466,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $originalQuotation = $originalQuotationByInquiry[(int)$inquiry['id']] ?? $quotationDraft; ?>
+                    <?php $isInitialQuotationDraft = $quotationDraft
+                        && empty($quotationDraft['parent_draft_id'])
+                        && (int)($quotationDraft['revision_no'] ?? 0) === 0; ?>
                     <?php $postInspectionDecision = $latestInspection ? ($postInspectionDecisionByInspection[(int)$latestInspection['id']] ?? null) : null; ?>
                     <?php $quotationListStatus = $quotationDraft ? inquiry_quote_normalize_status((string)$quotationDraft['status']) : ''; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
@@ -1490,7 +1502,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             $nextActionLabel = 'Review Revision';
                             $nextActionTab = 'quotation';
                         } elseif (in_array($quotationStage, ['draft', 'approved', 'rejected'], true)) {
-                            $nextActionLabel = $quotationStage === 'approved' ? 'Send Quotation' : 'Review Quotation';
+                            $nextActionLabel = $quotationStage === 'approved'
+                                ? ($isInitialQuotationDraft ? 'Send Initial Quotation' : 'Send Revised Quotation')
+                                : ($isInitialQuotationDraft ? 'Review Initial Quotation' : 'Review Revised Quotation');
                             $nextActionTab = 'quotation';
                         } elseif ($showCosting) {
                             $nextActionLabel = 'Prepare Quotation';
@@ -1503,7 +1517,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 ? 'quotation'
                                 : 'inspection';
                         } elseif ($currentStatus === 'Verified Lead') {
-                            $nextActionLabel = 'Create Quotation';
+                            $nextActionLabel = 'Create Initial Quotation';
                             $nextActionTab = 'quotation';
                         } elseif ($currentStatus === 'Not Qualified') {
                             $nextActionLabel = 'View Review';
@@ -1905,7 +1919,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         ?>
                                         <div class="inquiry-quote-draft">
                                             <div>
-                                                <span>Quotation Draft</span>
+                                                <span><?php echo $isInitialQuotationDraft ? 'Initial Quotation Draft' : 'Revised Quotation Draft'; ?></span>
                                                 <strong><?php echo htmlspecialchars((string)$quotationDraft['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
@@ -2017,7 +2031,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php if (in_array($quotationStatus, ['draft', 'approved'], true) && empty($quotationDraft['project_id'])): ?>
                                             <?php if (!$quotationRecipient || empty($quotationRecipient['email'])): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide">
-                                                    <span>Send Quotation</span>
+                                                    <span><?php echo $isInitialQuotationDraft ? 'Send Initial Quotation' : 'Send Revised Quotation'; ?></span>
                                                     <strong>Recipient email is missing. Update the inquiry or client account first.</strong>
                                                 </div>
                                             <?php else: ?>
@@ -2028,12 +2042,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 data-quote-recipient-email="<?php echo htmlspecialchars((string)$quotationRecipient['email'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-quote-recipient-contact="<?php echo htmlspecialchars((string)$quotationRecipient['contact'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-quote-recipient-source="<?php echo htmlspecialchars((string)$quotationRecipient['source_label'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-quote-kind="<?php echo $isInitialQuotationDraft ? 'initial' : 'revised'; ?>"
                                             >
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="action" value="send_quotation_to_client">
                                                 <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                 <input type="hidden" name="draft_id" value="<?php echo (int)$quotationDraft['id']; ?>">
-                                                <button type="submit" class="btn-primary inquiry-quote-send-button">Send Quotation to Client</button>
+                                                <button type="submit" class="btn-primary inquiry-quote-send-button"><?php echo $isInitialQuotationDraft ? 'Send Initial Quotation to Client' : 'Send Revised Quotation to Client'; ?></button>
                                             </form>
                                             <?php endif; ?>
                                         <?php elseif (!empty($quotationDraft['project_id'])): ?>
@@ -2057,7 +2072,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <button type="submit" class="btn-primary">Generate Quotation Draft</button>
                                         </form>
                                     <?php elseif ($currentStatus === 'Verified Lead'): ?>
-                                        <a class="btn-primary inquiry-modal__primary-action inquiry-quotation-primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Quotation</a>
+                                        <a class="btn-primary inquiry-modal__primary-action inquiry-quotation-primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Initial Quotation</a>
                                     <?php else: ?>
                                         <div class="inquiry-empty">Quotation is not available for this inquiry.</div>
                                     <?php endif; ?>

@@ -214,6 +214,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const materialDraftKey = materialModal?.dataset.materialDraftKey || 'edge_inventory_clerk_material_draft';
     const materialDraftMaxAgeMs = 24 * 60 * 60 * 1000;
     let materialFormSubmitting = false;
+    let aiSuggestedForMaterialName = '';
+    let aiDetailsNeedReview = false;
 
     const currentMaterialFormState = function () {
         return trackedFields.map(function (field) {
@@ -330,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const isValidMaterialName = function (value) {
-        return /^[\p{L}\p{N}\s\-/.()]+$/u.test(value) && /\p{L}/u.test(value);
+        return /^[\p{L}\p{N}\s\-/.()&]+$/u.test(value) && /\p{L}/u.test(value);
     };
 
     const closeMaterialNameSuggestions = function () {
@@ -359,6 +361,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectMaterialNameSuggestion = function (value) {
         materialName.value = value;
         closeMaterialNameSuggestions();
+        if (aiSuggestedForMaterialName !== '' && value !== aiSuggestedForMaterialName) {
+            aiSuggestedForMaterialName = '';
+            aiDetailsNeedReview = true;
+            showSuggestDetailsFeedback('Material name changed. Review details or suggest again.', 'warning');
+        }
         applySuggestion();
         validateMaterialName(false, false);
         saveLocalMaterialDraft();
@@ -459,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 4000);
     };
 
-    const updateReorderLevelForUnit = function () {
+    const updateReorderLevelForUnit = function (preserveCurrentValue = false) {
         if (!reorderLevel) {
             return;
         }
@@ -470,10 +477,13 @@ document.addEventListener('DOMContentLoaded', function () {
         reorderLevel.inputMode = isWholeUnit ? 'numeric' : 'decimal';
 
         let clearedForUnitChange = false;
-        if (reorderLevel.value.trim() !== '' && !isValidReorderValue(reorderLevel.value, unit.value)) {
+        if (!preserveCurrentValue && reorderLevel.value.trim() !== '' && !isValidReorderValue(reorderLevel.value, unit.value)) {
             reorderLevel.value = '';
             clearedForUnitChange = true;
             showUnitChangeMessage('Low Stock Alert Level was cleared for ' + unit.value + '.');
+        }
+        if (preserveCurrentValue) {
+            return;
         }
         validateReorderLevel(
             !clearedForUnitChange && reorderLevelTouched,
@@ -530,10 +540,37 @@ document.addEventListener('DOMContentLoaded', function () {
         updateReorderLevelForUnit();
     });
     materialName.addEventListener('input', function () {
-        applySuggestion();
+        const name = normalizeMaterialName(materialName.value);
+        const changedAfterAiSuggestion = aiSuggestedForMaterialName !== '' && name !== '' && name !== aiSuggestedForMaterialName;
+
+        if (name === '') {
+            category.value = '';
+            unit.value = '';
+            description.value = '';
+            categoryChangedByUser = false;
+            unitChangedByUser = false;
+            aiSuggestedForMaterialName = '';
+            aiDetailsNeedReview = false;
+            if (suggestion) {
+                suggestion.textContent = '';
+                suggestion.removeAttribute('title');
+            }
+            showSuggestDetailsFeedback('');
+            closeMaterialNameSuggestions();
+            updateReorderLevelForUnit(true);
+        } else if (changedAfterAiSuggestion) {
+            aiSuggestedForMaterialName = '';
+            aiDetailsNeedReview = true;
+            showSuggestDetailsFeedback('Material name changed. Review details or suggest again.', 'warning');
+        } else if (aiDetailsNeedReview) {
+            showSuggestDetailsFeedback('Material name changed. Review details or suggest again.', 'warning');
+        } else {
+            applySuggestion();
+            showSuggestDetailsFeedback('');
+        }
+
         updateMaterialNameSuggestions();
         validateMaterialName(false, false);
-        showSuggestDetailsFeedback('');
     });
     materialName.addEventListener('focus', function () {
         if (normalizeMaterialName(materialName.value) === '') {
@@ -583,13 +620,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const name = normalizeMaterialName(materialName.value);
         if (name === '') {
             validateMaterialName(true, true);
-            showSuggestDetailsFeedback('Enter a material name first.', 'error');
             materialName.focus();
             return;
         }
         if (!isValidMaterialName(name)) {
             validateMaterialName(true, true);
-            showSuggestDetailsFeedback('Enter a valid material name first.', 'error');
             materialName.focus();
             return;
         }
@@ -634,10 +669,12 @@ document.addEventListener('DOMContentLoaded', function () {
             category.value = result.category;
             unit.value = result.unit;
             description.value = result.description;
+            aiSuggestedForMaterialName = name;
+            aiDetailsNeedReview = false;
             validateMaterialName(false, false);
             validateCategory();
             validateUnit();
-            updateReorderLevelForUnit();
+            updateReorderLevelForUnit(true);
             saveLocalMaterialDraft();
             showSuggestDetailsFeedback('Suggested details added. Review before saving.', 'success');
         } catch (error) {
@@ -709,6 +746,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         categoryChangedByUser = false;
         unitChangedByUser = false;
+        aiSuggestedForMaterialName = '';
+        aiDetailsNeedReview = false;
         reorderLevelTouched = false;
         if (unitChangeMessage) {
             unitChangeMessage.textContent = '';
@@ -730,6 +769,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         categoryChangedByUser = false;
         unitChangedByUser = false;
+        aiSuggestedForMaterialName = '';
+        aiDetailsNeedReview = false;
         reorderLevelTouched = false;
         if (suggestion) {
             suggestion.textContent = '';

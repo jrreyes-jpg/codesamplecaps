@@ -25,7 +25,7 @@ function material_detail_suggestion_valid_name(string $name): bool
 {
     $name = preg_replace('/\s+/', ' ', trim($name)) ?? '';
     return $name !== ''
-        && preg_match('/^[\p{L}\p{N}\s\-\/\.\(\)]+$/u', $name) === 1
+        && preg_match('/^[\p{L}\p{N}\s\-\/\.\(\)&]+$/u', $name) === 1
         && preg_match('/\p{L}/u', $name) === 1;
 }
 

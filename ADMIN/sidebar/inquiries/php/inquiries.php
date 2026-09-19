@@ -1522,6 +1522,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         } elseif ($currentStatus === 'Not Qualified') {
                             $nextActionLabel = 'View Review';
                         }
+                        $nextActionClass = $nextActionLabel === 'Review Initial Quotation'
+                            ? ' inquiry-next-action--review'
+                            : '';
                     ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
                         <div class="inquiry-card__head">
@@ -1563,7 +1566,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php else: ?>
                             <button
                                 type="button"
-                                class="inquiry-open-modal inquiry-next-action"
+                                class="inquiry-open-modal inquiry-next-action<?php echo $nextActionClass; ?>"
                                 data-inquiry-modal-open="inquiryModal<?php echo (int)$inquiry['id']; ?>"
                                 data-inquiry-open-tab="<?php echo htmlspecialchars($nextActionTab, ENT_QUOTES, 'UTF-8'); ?>"
                             >

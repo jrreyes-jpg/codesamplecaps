@@ -1231,6 +1231,11 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         let initialQuotationState = '';
+        let quotationSubmitAccepted = false;
+
+        const isQuotationDirty = function () {
+            return serializeQuotationForm() !== initialQuotationState;
+        };
 
         const updateEditSubmitState = function () {
             if (!isEditMode || !updateSubmitButton) {
@@ -1376,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return message === '';
         };
 
-        const setUnitOptions = function (row, options, preferredUnit, isLocked) {
+        const setUnitOptions = function (row, options, preferredUnit, isLocked, allowEmpty = false) {
             const unitSelect = row.querySelector('select[name="unit[]"]');
             if (!unitSelect) {
                 return;
@@ -1385,9 +1390,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const normalizedPreferredUnit = (preferredUnit || '').toLowerCase();
             const selectedUnit = options.find(function (option) {
                 return option.toLowerCase() === normalizedPreferredUnit;
-            }) || options[0] || '';
+            }) || (allowEmpty ? '' : options[0] || '');
 
             unitSelect.replaceChildren();
+            if (allowEmpty) {
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Select unit';
+                placeholder.selected = selectedUnit === '';
+                unitSelect.appendChild(placeholder);
+            }
             options.forEach(function (option) {
                 const optionElement = document.createElement('option');
                 optionElement.value = option;
@@ -1409,14 +1421,94 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        const syncMaterialReference = function (row) {
+        const setMaterialReferenceMessage = function (row, message) {
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const materialError = row.querySelector('[data-quotation-material-error]');
+            if (!materialSelect) {
+                return;
+            }
+
+            materialSelect.setCustomValidity(message);
+            materialSelect.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            if (materialError) {
+                materialError.textContent = message;
+            }
+        };
+
+        const validateMaterialReference = function (row, showMessage) {
+            const typeSelect = row.querySelector('select[name="item_type[]"]');
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            if (!materialSelect || typeSelect?.value !== 'material') {
+                setMaterialReferenceMessage(row, '');
+                return true;
+            }
+
+            const message = materialSelect.value === ''
+                ? 'Select a material or Manual / non-stock material.'
+                : '';
+            setMaterialReferenceMessage(row, showMessage ? message : '');
+            return message === '';
+        };
+
+        const validateDuplicateMaterialReferences = function (showMessage) {
+            const materialRows = Array.from(items?.querySelectorAll('[data-quotation-item]') || []);
+            const selectedIds = new Map();
+            materialRows.forEach(function (row) {
+                const typeSelect = row.querySelector('select[name="item_type[]"]');
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                const materialId = materialSelect?.value || '';
+                if (typeSelect?.value === 'material' && /^[1-9]\d*$/.test(materialId)) {
+                    selectedIds.set(materialId, (selectedIds.get(materialId) || 0) + 1);
+                }
+            });
+
+            let isValid = true;
+            materialRows.forEach(function (row) {
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                const materialError = row.querySelector('[data-quotation-material-error]');
+                const materialId = materialSelect?.value || '';
+                const isDuplicate = /^[1-9]\d*$/.test(materialId) && (selectedIds.get(materialId) || 0) > 1;
+                if (isDuplicate) {
+                    isValid = false;
+                    setMaterialReferenceMessage(row, showMessage ? 'This material is already added. Edit the existing row instead.' : '');
+                } else if (materialError?.textContent === 'This material is already added. Edit the existing row instead.') {
+                    setMaterialReferenceMessage(row, '');
+                }
+            });
+            return isValid;
+        };
+
+        const clearMaterialDependentValues = function (row) {
+            const itemName = row.querySelector('input[name="item_name[]"]');
+            const unitCostInput = row.querySelector('input[name="unit_cost[]"]');
+            const costError = row.querySelector('[data-quotation-cost-error]');
+            if (itemName) {
+                itemName.value = '';
+            }
+            if (unitCostInput) {
+                unitCostInput.value = '';
+                unitCostInput.setCustomValidity('');
+                unitCostInput.removeAttribute('aria-invalid');
+            }
+            if (costError) {
+                costError.textContent = '';
+            }
+        };
+
+        const syncMaterialReference = function (row, resetForMaterialChange = false) {
             const typeSelect = row.querySelector('select[name="item_type[]"]');
             const materialReference = row.querySelector('[data-quotation-material-reference]');
             const materialSelect = row.querySelector('select[name="material_id[]"]');
             const isMaterial = typeSelect?.value === 'material';
+            if (!isMaterial && materialSelect) {
+                materialSelect.value = '';
+            }
+            const materialValue = materialSelect?.value || '';
             const selectedOption = materialSelect?.options[materialSelect.selectedIndex];
-            const isLinkedMaterial = isMaterial && /^[1-9]\d*$/.test(materialSelect?.value || '');
+            const isLinkedMaterial = isMaterial && /^[1-9]\d*$/.test(materialValue);
+            const isManualMaterial = isMaterial && materialValue === 'manual';
             const currentUnit = row.querySelector('select[name="unit[]"]')?.value || '';
+            const itemName = row.querySelector('input[name="item_name[]"]');
 
             row.classList.toggle('is-material-item', isMaterial);
 
@@ -1424,17 +1516,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 materialReference.hidden = !isMaterial;
             }
 
-            if (!isMaterial && materialSelect) {
-                materialSelect.value = '';
+            if (materialSelect) {
+                materialSelect.required = isMaterial;
+            }
+
+            if (resetForMaterialChange && isMaterial) {
+                clearMaterialDependentValues(row);
             }
 
             if (isLinkedMaterial) {
                 setUnitOptions(row, [selectedOption?.dataset.materialUnit || 'unit'], selectedOption?.dataset.materialUnit || 'unit', true);
+            } else if (isMaterial) {
+                const preserveManualUnit = !resetForMaterialChange && isManualMaterial && currentUnit !== '';
+                setUnitOptions(row, unitOptionsByType.material, preserveManualUnit ? currentUnit : '', false, !preserveManualUnit);
             } else {
                 setUnitOptions(row, unitOptionsByType[typeSelect?.value] || unitOptionsByType.other, currentUnit, false);
             }
-
-            const itemName = row.querySelector('input[name="item_name[]"]');
 
             if (itemName) {
                 itemName.readOnly = isLinkedMaterial;
@@ -1447,6 +1544,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             validateQuotationQuantity(row, true, false, false);
+            validateMaterialReference(row, false);
         };
 
         addButton?.addEventListener('click', function () {
@@ -1467,6 +1565,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             removeButton.closest('[data-quotation-item]')?.remove();
+            validateDuplicateMaterialReferences(true);
             updateQuotationPreview();
             updateEditSubmitState();
         });
@@ -1479,9 +1578,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (event.target.matches('select[name="item_type[]"]')) {
                 syncMaterialReference(row);
+                validateDuplicateMaterialReferences(true);
             }
             if (event.target.matches('select[name="material_id[]"]')) {
-                syncMaterialReference(row);
+                syncMaterialReference(row, true);
+                validateMaterialReference(row, true);
+                validateDuplicateMaterialReferences(true);
             }
             if (event.target.matches('select[name="unit[]"]')) {
                 if (event.target.classList.contains('is-locked')) {
@@ -1498,6 +1600,21 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!validateMarkup(true, true)) {
                 event.preventDefault();
                 marginInput?.focus();
+                return;
+            }
+
+            const invalidMaterialReferenceRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
+                return !validateMaterialReference(row, true);
+            });
+            if (invalidMaterialReferenceRow) {
+                event.preventDefault();
+                invalidMaterialReferenceRow.querySelector('select[name="material_id[]"]')?.focus();
+                return;
+            }
+
+            if (!validateDuplicateMaterialReferences(true)) {
+                event.preventDefault();
+                items?.querySelector('[data-quotation-material-error]:not(:empty)')?.closest('[data-quotation-material-reference]')?.querySelector('select[name="material_id[]"]')?.focus();
                 return;
             }
 
@@ -1528,19 +1645,36 @@ document.addEventListener('DOMContentLoaded', function () {
             if (event.submitter?.hasAttribute('data-confirm-quotation-update')
                 && !window.confirm('Are you sure you want to save and update these quotation changes?')) {
                 event.preventDefault();
+                return;
             }
+
+            quotationSubmitAccepted = true;
         });
 
-        quotationCreate.querySelector('[data-quotation-cancel]')?.addEventListener('click', function (event) {
-            const hasCostBreakdownData = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).some(function (item) {
-                const itemName = item.querySelector('input[name="item_name[]"]')?.value.trim() || '';
-                const unitCost = item.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
-                return itemName !== '' || unitCost !== '';
-            });
-            if (hasCostBreakdownData
-                && !window.confirm('You have unsaved changes in the cost breakdown. Are you sure you want to cancel and lose this data?')) {
-                event.preventDefault();
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('a[href]');
+            if (!link || link.target === '_blank' || link.hasAttribute('download') || !isQuotationDirty()) {
+                return;
             }
+
+            const destination = link.getAttribute('href') || '';
+            if (destination === '' || destination.startsWith('#') || destination.startsWith('javascript:')) {
+                return;
+            }
+
+            if (!window.confirm('You have unsaved changes. Leave without saving?')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+
+        window.addEventListener('beforeunload', function (event) {
+            if (quotationSubmitAccepted || !isQuotationDirty()) {
+                return;
+            }
+
+            event.preventDefault();
+            event.returnValue = '';
         });
 
         form?.addEventListener('input', function (event) {
@@ -1589,6 +1723,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (event.target.matches('input[name="unit_cost[]"]')) {
                 validateEstimatedUnitCost(row, true, true);
+            }
+            if (event.target.matches('select[name="material_id[]"]')) {
+                validateMaterialReference(row, true);
             }
         }, true);
         form?.addEventListener('change', updateEditSubmitState);

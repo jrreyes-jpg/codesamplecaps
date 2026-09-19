@@ -166,6 +166,8 @@
 
 .quotation-create-item__material-reference {
     grid-column: span 4;
+    position: relative;
+    padding-bottom: 20px;
 }
 
 .quotation-create-item__name {
@@ -185,7 +187,8 @@
 }
 
 .quotation-create-item__quantity-error,
-.quotation-create-item__cost-error {
+.quotation-create-item__cost-error,
+.quotation-create-item__material-error {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -197,6 +200,24 @@
     letter-spacing: normal !important;
     line-height: 1.2;
     text-transform: none !important;
+}
+
+.quotation-create-item__material-error {
+    white-space: normal;
+}
+
+.inquiry-next-action--review {
+    border-color: #1d4ed8;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.inquiry-next-action--review:hover,
+.inquiry-next-action--review:focus-visible {
+    border-color: #1e40af;
+    background: #dbeafe;
+    color: #1e3a8a;
+    outline: none;
 }
 
 .quotation-create-item__cost {

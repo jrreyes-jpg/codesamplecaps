@@ -61,6 +61,12 @@ function inquiry_center_format_money(float $amount): string
     return 'PHP ' . number_format($amount, 2);
 }
 
+function inquiry_center_filter_url(array $params = []): string
+{
+    $query = http_build_query(array_filter($params, static fn($value): bool => $value !== '' && $value !== null));
+    return '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . ($query !== '' ? '?' . $query : '');
+}
+
 function inquiry_center_allowed_next_statuses(string $currentStatus): array
 {
     // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
@@ -1077,6 +1083,7 @@ if ($engineerResult) {
 }
 
 $statusFilter = trim((string)($_GET['status'] ?? ''));
+$quotationFilter = trim((string)($_GET['quotation_filter'] ?? ''));
 $search = trim((string)($_GET['search'] ?? ''));
 $view = trim((string)($_GET['view'] ?? 'active'));
 if (!in_array($view, ['active', 'archive'], true)) {
@@ -1084,6 +1091,10 @@ if (!in_array($view, ['active', 'archive'], true)) {
 }
 if (!in_array($statusFilter, $inquiryFilterStatuses, true)) {
     $statusFilter = '';
+}
+$quotationFilterOptions = ['needs_quotation', 'draft', 'awaiting_client', 'accepted', 'needs_revision', 'rejected'];
+if (!in_array($quotationFilter, $quotationFilterOptions, true)) {
+    $quotationFilter = '';
 }
 
 $hasInquiryQuotationTable = inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts');
@@ -1131,7 +1142,7 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
         }
     }
 
-    if ($view === 'active' && $statusFilter !== 'Rejected' && $hasInquiryQuotationTable) {
+    if ($view === 'active' && $statusFilter !== 'Rejected' && $quotationFilter !== 'rejected' && $hasInquiryQuotationTable) {
         $where[] = "NOT EXISTS (
             SELECT 1 FROM inquiry_quotation_drafts rejected_quote
             WHERE rejected_quote.inquiry_id = service_inquiries.id
@@ -1145,6 +1156,49 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
                 )
             )
         )";
+    }
+
+    if ($view === 'active' && $quotationFilter !== '' && $hasInquiryQuotationTable) {
+        $initialQuoteWhere = 'initial_quote.inquiry_id = service_inquiries.id
+            AND initial_quote.revision_no = 0
+            AND initial_quote.parent_draft_id IS NULL';
+
+        if ($quotationFilter === 'needs_quotation') {
+            $where[] = "status = 'Verified Lead' AND NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts initial_quote
+                WHERE $initialQuoteWhere
+            )";
+        } elseif ($quotationFilter === 'draft') {
+            $where[] = "EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts initial_quote
+                WHERE $initialQuoteWhere
+                AND LOWER(initial_quote.status) IN ('draft', 'approved')
+            )";
+        } elseif ($quotationFilter === 'awaiting_client') {
+            $where[] = "EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts initial_quote
+                WHERE $initialQuoteWhere
+                AND LOWER(initial_quote.status) = 'sent'
+            )";
+        } elseif ($quotationFilter === 'accepted') {
+            $where[] = "EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts initial_quote
+                WHERE $initialQuoteWhere
+                AND LOWER(initial_quote.status) = 'accepted'
+            )";
+        } elseif ($quotationFilter === 'needs_revision') {
+            $where[] = "EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts initial_quote
+                WHERE $initialQuoteWhere
+                AND LOWER(initial_quote.status) IN ('revision_requested', 'for_revision')
+            )";
+        } elseif ($quotationFilter === 'rejected') {
+            $where[] = "EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts initial_quote
+                WHERE $initialQuoteWhere
+                AND LOWER(initial_quote.status) = 'rejected'
+            )";
+        }
     }
 
     if ($search !== '') {
@@ -1429,28 +1483,33 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
         <form class="inquiry-filter-bar" method="GET">
             <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, email, contact, status, notes, address, service, or archive reason">
-            <select name="status">
-                <option value="">All statuses</option>
-                <?php foreach ($inquiryFilterStatuses as $status): ?>
-                    <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $statusFilter === $status ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
+            <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
+            <?php if ($quotationFilter !== ''): ?><input type="hidden" name="quotation_filter" value="<?php echo htmlspecialchars($quotationFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
             <div class="inquiry-filter-actions">
                 <button type="submit" class="btn-primary">Filter</button>
                 <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary">Reset</a>
             </div>
         </form>
 
-        <div class="inquiry-status-strip" aria-label="Inquiry status summary">
-            <a class="inquiry-view-link <?php echo $view === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Active</a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Pending Review' ? 'is-active' : ''; ?>" data-status="Pending Review" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Pending+Review<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Pending: <?php echo $pendingCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Verified Lead' ? 'is-active' : ''; ?>" data-status="Verified Lead" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Verified+Lead<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Verified: <?php echo $verifiedCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'For Inspection' ? 'is-active' : ''; ?>" data-status="For Inspection" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">For Inspection: <?php echo $inspectionCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Rejected' ? 'is-active' : ''; ?>" data-status="Rejected" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Rejected<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Rejected: <?php echo $rejectedCount; ?></a>
-            <a class="inquiry-status inquiry-status-link <?php echo $statusFilter === 'Not Qualified' ? 'is-active' : ''; ?>" data-status="Not Qualified" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=Not+Qualified<?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Not Qualified: <?php echo $notQualifiedCount; ?></a>
-            <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?view=archive">Archive</a>
+        <nav class="inquiry-status-strip inquiry-status-strip--primary" aria-label="Inquiry lifecycle filters">
+            <a class="inquiry-view-link <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url($search !== '' ? ['search' => $search] : []), ENT_QUOTES, 'UTF-8'); ?>">All</a>
+            <?php foreach (['Pending Review', 'Verified Lead', 'For Inspection', 'Not Qualified'] as $status): ?>
+                <a class="inquiry-status inquiry-status-link <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?></a>
+            <?php endforeach; ?>
+            <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">Archived</a>
+        </nav>
+
+        <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['', 'Verified Lead', 'For Inspection'], true); ?>
+        <?php if ($showQuotationFilters): ?>
+            <nav class="inquiry-status-strip inquiry-status-strip--quotation" aria-label="Initial quotation filters">
+                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Accepted', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
+                <?php if ($statusFilter === 'For Inspection'): unset($quotationFilterChips['needs_quotation']); endif; ?>
+                <?php foreach ($quotationFilterChips as $filterKey => $filterLabel): ?>
+                    <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey]), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($filterLabel, ENT_QUOTES, 'UTF-8'); ?></a>
+                <?php endforeach; ?>
+            </nav>
+        <?php endif; ?>
         </div>
 
         <?php if (empty($inquiryRows)): ?>

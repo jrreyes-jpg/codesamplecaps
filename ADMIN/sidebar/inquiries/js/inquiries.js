@@ -298,114 +298,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const filterForm = document.querySelector('.inquiry-filter-bar');
-    const liveSearchInput = filterForm?.querySelector('input[name="search"]');
-    let liveSearchTimer = null;
-    let liveSearchRequest = null;
-
     filterForm?.addEventListener('submit', showPageLoading);
-
-    const syncLiveSearchEmptyState = function (visibleCardCount) {
-        const currentCards = Array.from(document.querySelectorAll('[data-inquiry-card-id]'));
-        let emptyMessage = document.querySelector('[data-inquiry-live-search-empty]');
-
-        if (!emptyMessage && currentCards[0]?.parentElement) {
-            emptyMessage = document.createElement('div');
-            emptyMessage.className = 'inquiry-empty';
-            emptyMessage.setAttribute('data-inquiry-live-search-empty', '');
-            emptyMessage.textContent = 'No inquiries found.';
-            currentCards[0].parentElement.after(emptyMessage);
-        }
-
-        if (emptyMessage) {
-            emptyMessage.hidden = visibleCardCount !== 0;
-        }
-    };
-
-    const filterCurrentChipCards = function (searchValue) {
-        const keyword = searchValue.trim().toLocaleLowerCase();
-        let visibleCardCount = 0;
-
-        document.querySelectorAll('[data-inquiry-card-id]').forEach(function (card) {
-            const isMatch = keyword === '' || card.textContent.toLocaleLowerCase().includes(keyword);
-            card.hidden = !isMatch;
-            if (isMatch) visibleCardCount += 1;
-        });
-
-        syncLiveSearchEmptyState(visibleCardCount);
-    };
-
-    const runLiveSearch = function () {
-        const requestUrl = new URL(filterForm.getAttribute('action') || window.location.href, window.location.origin);
-        const activeViewLink = document.querySelector('.inquiry-view-link.is-active');
-        const activeStatusLink = document.querySelector('.inquiry-status-link.is-active');
-        const activeViewUrl = activeViewLink ? new URL(activeViewLink.href) : null;
-        const activeStatus = activeStatusLink?.dataset.status || '';
-        const searchValue = liveSearchInput.value.trim();
-
-        requestUrl.searchParams.delete('action');
-        requestUrl.searchParams.delete('open');
-        requestUrl.searchParams.delete('tab');
-        requestUrl.searchParams.delete('inquiry_id');
-
-        if (activeViewUrl?.searchParams.get('view') === 'archive') {
-            requestUrl.searchParams.set('view', 'archive');
-        } else {
-            requestUrl.searchParams.delete('view');
-        }
-
-        if (activeStatus) requestUrl.searchParams.set('status', activeStatus);
-        else requestUrl.searchParams.delete('status');
-        if (searchValue) requestUrl.searchParams.set('search', searchValue);
-        else requestUrl.searchParams.delete('search');
-
-        liveSearchRequest?.abort();
-        liveSearchRequest = new AbortController();
-
-        fetch(requestUrl.toString(), {
-            headers: { Accept: 'text/html' },
-            cache: 'no-store',
-            signal: liveSearchRequest.signal,
-        })
-            .then(function (response) {
-                if (!response.ok) throw new Error('Unable to search inquiries.');
-                return response.text();
-            })
-            .then(function (html) {
-                const resultDocument = new DOMParser().parseFromString(html, 'text/html');
-                const matchingIds = new Set(Array.from(resultDocument.querySelectorAll('[data-inquiry-card-id]')).map(function (card) {
-                    return card.getAttribute('data-inquiry-card-id');
-                }));
-                const currentCards = Array.from(document.querySelectorAll('[data-inquiry-card-id]'));
-                let visibleCardCount = 0;
-
-                currentCards.forEach(function (card) {
-                    const isMatch = matchingIds.has(card.getAttribute('data-inquiry-card-id'));
-                    card.hidden = !isMatch;
-                    if (isMatch) visibleCardCount += 1;
-                });
-
-                syncLiveSearchEmptyState(visibleCardCount);
-
-                window.history.replaceState(window.history.state, document.title, requestUrl.toString());
-            })
-            .catch(function (error) {
-                if (error.name !== 'AbortError' && typeof window.showToast === 'function') {
-                    window.showToast('Unable to search inquiries right now.', 'error');
-                }
-            });
-    };
-
-    liveSearchInput?.addEventListener('input', function () {
-        window.clearTimeout(liveSearchTimer);
-        filterCurrentChipCards(liveSearchInput.value);
-
-        if (liveSearchInput.value === '') {
-            runLiveSearch();
-            return;
-        }
-
-        liveSearchTimer = window.setTimeout(runLiveSearch, 250);
-    });
 
     document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
         modal.addEventListener('click', function (event) {
@@ -1480,10 +1373,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const clearMaterialDependentValues = function (row) {
             const itemName = row.querySelector('input[name="item_name[]"]');
+            const quantityInput = row.querySelector('input[name="quantity[]"]');
+            const quantityError = row.querySelector('[data-quotation-quantity-error]');
             const unitCostInput = row.querySelector('input[name="unit_cost[]"]');
             const costError = row.querySelector('[data-quotation-cost-error]');
             if (itemName) {
                 itemName.value = '';
+            }
+            if (quantityInput) {
+                quantityInput.value = '';
+                quantityInput.setCustomValidity('');
+                quantityInput.removeAttribute('aria-invalid');
+            }
+            if (quantityError) {
+                quantityError.textContent = '';
             }
             if (unitCostInput) {
                 unitCostInput.value = '';

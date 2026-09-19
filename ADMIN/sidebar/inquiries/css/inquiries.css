@@ -162,6 +162,8 @@
 
 .quotation-create-item__type {
     grid-column: span 2;
+    position: relative;
+    padding-bottom: 20px;
 }
 
 .quotation-create-item__material-reference {
@@ -172,6 +174,8 @@
 
 .quotation-create-item__name {
     grid-column: span 6;
+    position: relative;
+    padding-bottom: 20px;
 }
 
 .quotation-create-item__quantity,
@@ -206,17 +210,17 @@
     white-space: normal;
 }
 
-.inquiry-next-action--review {
+.inquiry-next-action.inquiry-next-action--review {
     border-color: #1d4ed8;
-    background: #eff6ff;
-    color: #1e3a8a;
+    background: #1e3a8a;
+    color: #ffffff;
 }
 
-.inquiry-next-action--review:hover,
-.inquiry-next-action--review:focus-visible {
+.inquiry-next-action.inquiry-next-action--review:hover,
+.inquiry-next-action.inquiry-next-action--review:focus-visible {
     border-color: #1e40af;
-    background: #dbeafe;
-    color: #1e3a8a;
+    background: #1d4ed8;
+    color: #ffffff;
     outline: none;
 }
 
@@ -580,7 +584,7 @@
 
 .inquiry-filter-bar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 220px auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     align-items: center;
 }
@@ -1029,6 +1033,47 @@
     flex-wrap: wrap;
     align-items: center;
     padding: 0 2px 2px;
+}
+
+.inquiry-status-strip--primary {
+    margin-top: 2px;
+}
+
+.inquiry-status-strip--quotation {
+    gap: 6px;
+    margin-top: 2px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.inquiry-quotation-filter {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 9px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: .74rem;
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.inquiry-quotation-filter:hover,
+.inquiry-quotation-filter:focus-visible {
+    border-color: #64748b;
+    background: #eff6ff;
+    color: #1e3a8a;
+    outline: none;
+}
+
+.inquiry-quotation-filter.is-active {
+    border-color: #1e3a8a;
+    background: #1e3a8a;
+    color: #ffffff;
 }
 
 .inquiry-view-link {
@@ -1644,6 +1689,56 @@ body.inquiry-modal-open {
 
     .inquiry-next-action {
         width: 100%;
+    }
+}
+
+/* Mobile lang ito. Alisin ang desktop sidebar space para sakto ang Inquiry Center sa screen. */
+@media (max-width: 768px) {
+    .main-content.admin-dashboard-content {
+        width: 100% !important;
+        margin-left: 0 !important;
+        padding: 118px 14px 20px;
+    }
+
+    .inquiries-shell,
+    .inquiry-filter-bar,
+    .inquiry-status-strip,
+    .inquiry-list,
+    .inquiry-card {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .inquiry-filter-bar {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .inquiry-filter-bar input {
+        min-width: 0;
+    }
+
+    .inquiry-filter-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .inquiry-filter-actions .btn-primary,
+    .inquiry-filter-actions .btn-secondary {
+        min-width: 0;
+        width: 100%;
+        padding-inline: 10px;
+        text-align: center;
+    }
+
+    .inquiry-status-strip {
+        gap: 6px;
+        padding-inline: 0;
+    }
+
+    .inquiry-card {
+        padding: 14px;
     }
 }
 

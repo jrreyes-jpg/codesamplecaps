@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/site_inspections.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
 $error = '';
@@ -990,7 +991,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($newStatus === 'Pending Review') {
             $error = 'Please update the status before saving.';
         } else {
-            $stmt = $conn->prepare('SELECT status, admin_notes FROM service_inquiries WHERE id = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT status, admin_notes, client_name, email FROM service_inquiries WHERE id = ? LIMIT 1');
             if (!$stmt) {
                 $error = 'Unable to load inquiry.';
             } else {
@@ -1029,9 +1030,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'admin_notes' => $adminNotes,
                                 ]
                             );
-                            $successMessage = $newStatus === 'Verified Lead'
-                                ? 'Inquiry marked as verified.'
-                                : 'Inquiry updated successfully.';
+                            $previousStatus = (string)($current['status'] ?? 'Pending Review');
+                            $shouldNotifyClient = $previousStatus !== $newStatus
+                                && in_array($newStatus, ['Verified Lead', 'Not Qualified'], true);
+                            $notificationFailed = false;
+
+                            if ($shouldNotifyClient) {
+                                $emailService = new EmailService();
+                                $wasSent = filter_var((string)($current['email'] ?? ''), FILTER_VALIDATE_EMAIL)
+                                    && $emailService->sendInquiryReviewStatusUpdate(
+                                        (string)$current['email'],
+                                        (string)($current['client_name'] ?? ''),
+                                        $newStatus
+                                    );
+
+                                if (!$wasSent) {
+                                    $notificationFailed = true;
+                                    error_log(
+                                        'Inquiry status email failed for inquiry #' . $inquiryId
+                                        . ': ' . $emailService->getError()
+                                    );
+                                }
+                            }
+
+                            if ($shouldNotifyClient && !$notificationFailed) {
+                                $successMessage = 'Review saved and client notified.';
+                            } elseif ($shouldNotifyClient) {
+                                $successMessage = 'Review saved, but the client email notification could not be sent.';
+                            } elseif ($newStatus === 'Verified Lead') {
+                                $successMessage = 'Inquiry marked as verified.';
+                            } else {
+                                $successMessage = 'Inquiry updated successfully.';
+                            }
                             $targetTab = $newStatus === 'Verified Lead' ? 'quotation' : 'client';
 
                             if ($isAjaxRequest) {

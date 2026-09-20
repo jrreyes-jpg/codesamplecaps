@@ -233,6 +233,65 @@ class EmailService {
         }
     }
 
+    public function sendInquiryReviewStatusUpdate(string $recipientEmail, string $recipientName, string $status): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $messages = [
+                'Verified Lead' => [
+                    'heading' => 'Your inquiry was reviewed',
+                    'body' => 'Your inquiry has been reviewed and verified by Edge Automation.<br><br>Our team will now proceed with the next step of your request. We will contact you through your registered email or contact number when further information or action is needed.',
+                    'plain' => 'Your inquiry has been reviewed and verified by Edge Automation. Our team will now proceed with the next step of your request. We will contact you through your registered email or contact number when further information or action is needed.',
+                ],
+                'Not Qualified' => [
+                    'heading' => 'Your inquiry was reviewed',
+                    'body' => 'Thank you for submitting your inquiry to Edge Automation.<br><br>After reviewing your request, we are unable to proceed with the inquiry at this time.<br><br>If you need clarification or would like to submit a new request with updated information, you may contact Edge Automation.',
+                    'plain' => 'Thank you for submitting your inquiry to Edge Automation. After reviewing your request, we are unable to proceed with the inquiry at this time. If you need clarification or would like to submit a new request with updated information, you may contact Edge Automation.',
+                ],
+            ];
+
+            if (!isset($messages[$status])) {
+                return false;
+            }
+
+            $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $content = $messages[$status];
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+            $logoPath = __DIR__ . '/../IMAGES/edge.jpg';
+            $logoHtml = '';
+            if (is_file($logoPath)) {
+                $this->mailer->addEmbeddedImage($logoPath, 'edgeLogo');
+                $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
+            }
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Inquiry Status Update - ' . $this->config->get('APP_NAME');
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#0f766e;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        {$logoHtml}
+                        <h2 style='margin:0'>{$content['heading']}</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px;color:#0f172a;line-height:1.55'>
+                        <p>Hello {$safeName},</p>
+                        <p>{$content['body']}</p>
+                        <p>Thank you,<br>Edge Automation</p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = 'Hello ' . ($recipientName !== '' ? $recipientName : 'Client')
+                . ".\n\n" . $content['plain'] . "\n\nThank you,\nEdge Automation";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $exception) {
+            error_log('Inquiry status email failed: ' . $exception->getMessage());
+            $this->error = 'Email service cannot send right now.';
+            return false;
+        }
+    }
+
     public function sendEngineerPasswordOtp(string $recipientEmail, string $recipientName, string $otp, int $expiryMinutes = 10): bool {
         try {
             if ($this->error !== '') {

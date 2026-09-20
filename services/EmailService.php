@@ -187,7 +187,7 @@ class EmailService {
         }
     }
 
-    public function sendInquiryOtp(string $recipientEmail, string $recipientName, string $otp, int $expiryMinutes = 10): bool {
+    public function sendInquiryOtp(string $recipientEmail, string $recipientName, string $otp, DateTimeInterface $expiresAt): bool {
         try {
             if ($this->error !== '') {
                 return false;
@@ -195,6 +195,10 @@ class EmailService {
 
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
             $safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
+            $expiryInPhilippineTime = $expiresAt
+                ->setTimezone(new DateTimeZone('Asia/Manila'))
+                ->format('g:i A, F j, Y') . ' (PHT)';
+            $safeExpiry = htmlspecialchars($expiryInPhilippineTime, ENT_QUOTES, 'UTF-8');
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
@@ -216,10 +220,10 @@ class EmailService {
                         <p>Hello {$safeName},</p>
                         <p>Use this code to confirm your inquiry request:</p>
                         <p style='font-size:30px;font-weight:800;letter-spacing:6px;color:#0f172a'>{$safeOtp}</p>
-                        <p>This code expires in {$expiryMinutes} minutes.</p>
+                        <p>This verification code expires at {$safeExpiry}.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Your inquiry verification code is {$otp}. It expires in {$expiryMinutes} minutes.";
+            $this->mailer->AltBody = "Your inquiry verification code is {$otp}. It expires at {$expiryInPhilippineTime}.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

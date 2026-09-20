@@ -36,7 +36,16 @@ if (!empty($pending['verified_at'])) {
     verify_inquiry_redirect_home('success');
 }
 
-if (strtotime((string)$pending['expires_at']) < time()) {
+$otpExpiresAt = DateTimeImmutable::createFromFormat(
+    'Y-m-d H:i:s',
+    (string)($pending['expires_at'] ?? ''),
+    new DateTimeZone('Asia/Manila')
+);
+if (!$otpExpiresAt) {
+    verify_inquiry_redirect_home('invalid');
+}
+
+if ($otpExpiresAt->getTimestamp() < time()) {
     verify_inquiry_redirect_home('expired');
 }
 
@@ -124,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Verify Inquiry - Edge Automation</title>
     <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
     <link rel="stylesheet" href="../css/auth-shared.css">
+    <link rel="stylesheet" href="../css/verify_inquiry.css">
 </head>
 <body>
     <?php if (($_GET['sent'] ?? '') === '1'): ?>
@@ -141,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="right-panel">
             <div class="form active verify-inquiry-card">
-                <form method="POST" id="verifyInquiryForm">
+                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
                     <div class="verify-next-step" aria-label="What happens next">
@@ -155,6 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input class="js-otp-code" type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " autocomplete="one-time-code" required autofocus>
                         <span>6-digit code</span>
                     </label>
+                    <p class="verify-otp-countdown" data-otp-countdown aria-live="polite">Code expires in: --:--</p>
                     <button type="submit" id="verifyInquiryButton">Verify and Submit</button>
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/index.php" id="backToHomeLink">Back to Home</a>
@@ -163,47 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
-    <script>
-        const verifyInquiryForm = document.getElementById('verifyInquiryForm');
-        const verifyInquiryButton = document.getElementById('verifyInquiryButton');
-        const backToHomeLink = document.getElementById('backToHomeLink');
-        const otpCodeInput = document.querySelector('.js-otp-code');
-        const verifySentToast = document.getElementById('verifySentToast');
-        let isVerifyingInquiry = false;
-
-        if (verifySentToast) {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('sent');
-            window.history.replaceState({}, document.title, url.toString());
-
-            window.setTimeout(() => {
-                verifySentToast.classList.add('is-closing');
-                window.setTimeout(() => verifySentToast.remove(), 250);
-            }, 4200);
-        }
-
-        otpCodeInput?.addEventListener('input', () => {
-            otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
-        });
-
-        verifyInquiryForm?.addEventListener('submit', (event) => {
-            if (isVerifyingInquiry) {
-                event.preventDefault();
-                return;
-            }
-
-            isVerifyingInquiry = true;
-            if (verifyInquiryButton) {
-                verifyInquiryButton.disabled = true;
-                verifyInquiryButton.textContent = 'Verifying...';
-            }
-        });
-
-        backToHomeLink?.addEventListener('click', (event) => {
-            if (!window.confirm('Leave verification? Your inquiry is not submitted yet.')) {
-                event.preventDefault();
-            }
-        });
-    </script>
+    <script src="../js/verify_inquiry.js" defer></script>
 </body>
 </html>

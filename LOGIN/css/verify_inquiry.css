@@ -1,0 +1,24 @@
+/* Verify Inquiry countdown only. */
+.verify-otp-countdown {
+    margin: -8px 0 14px;
+    color: #475569;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.verify-otp-countdown.is-warning {
+    color: #b45309;
+}
+
+.verify-otp-countdown.is-expired {
+    color: #b91c1c;
+    font-weight: 800;
+}
+
+@media (max-width: 520px) {
+    .verify-otp-countdown {
+        margin-bottom: 12px;
+        font-size: 0.82rem;
+    }
+}

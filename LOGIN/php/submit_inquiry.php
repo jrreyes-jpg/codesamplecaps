@@ -198,8 +198,30 @@ if (!$stmt->execute()) {
     redirect_to_form('server_error');
 }
 
+$expiryStmt = $conn->prepare(
+    'SELECT expires_at FROM pending_service_inquiries WHERE token = ? LIMIT 1'
+);
+if (!$expiryStmt) {
+    redirect_to_form('server_error');
+}
+
+$expiryStmt->bind_param('s', $token);
+if (!$expiryStmt->execute()) {
+    redirect_to_form('server_error');
+}
+
+$expiryRow = $expiryStmt->get_result()->fetch_assoc();
+$otpExpiresAt = DateTimeImmutable::createFromFormat(
+    'Y-m-d H:i:s',
+    (string)($expiryRow['expires_at'] ?? ''),
+    new DateTimeZone('Asia/Manila')
+);
+if (!$otpExpiresAt) {
+    redirect_to_form('server_error');
+}
+
 $emailService = new EmailService();
-if (!$emailService->sendInquiryOtp($email, $clientName, $otp, 10)) {
+if (!$emailService->sendInquiryOtp($email, $clientName, $otp, $otpExpiresAt)) {
     redirect_to_form('email_error');
 }
 

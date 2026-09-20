@@ -1074,7 +1074,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             if ($shouldNotifyClient && !$notificationFailed) {
-                                $successMessage = 'Review saved and client notified.';
+                                $successMessage = 'Review saved. Client notified by email.';
                             } elseif ($shouldNotifyClient) {
                                 $successMessage = 'Review saved, but the client email notification could not be sent.';
                             } elseif ($previousStatus === $newStatus) {

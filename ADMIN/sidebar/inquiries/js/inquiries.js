@@ -617,13 +617,31 @@ document.addEventListener('DOMContentLoaded', function () {
             return status === 'Verified Lead' ? 'Qualified' : status;
         };
 
+        const actionLabel = function (statusChanged, notesChanged) {
+            if (statusChanged && ['Verified Lead', 'Not Qualified'].includes(statusField.value)) {
+                return 'Save & Notify Client';
+            }
+
+            if (!statusSelect && notesChanged) {
+                return 'Save Notes';
+            }
+
+            return 'Save Review';
+        };
+
         const syncReviewState = function () {
             const status = statusField.value;
-            const isDirty = status !== originalStatus || (notesField ? notesField.value !== originalNotes : false);
+            const statusChanged = status !== originalStatus;
+            const notesChanged = notesField ? notesField.value !== originalNotes : false;
+            const isDirty = statusChanged || notesChanged;
 
             if (submitButton) {
                 submitButton.disabled = !isDirty || form.dataset.submitting === '1';
                 submitButton.setAttribute('aria-disabled', String(!isDirty || form.dataset.submitting === '1'));
+                if (form.dataset.submitting !== '1') {
+                    submitButton.classList.remove('inquiry-send-button--loading');
+                    submitButton.textContent = actionLabel(statusChanged, notesChanged);
+                }
             }
 
             if (!statusSelect) {
@@ -683,7 +701,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
             delete form.dataset.confirmed;
             form.dataset.submitting = '1';
-            if (submitButton) submitButton.disabled = true;
+            const willNotifyClient = statusChanged
+                && ['Verified Lead', 'Not Qualified'].includes(statusField.value);
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.setAttribute('aria-disabled', 'true');
+
+                if (willNotifyClient) {
+                    const spinner = document.createElement('span');
+                    const label = document.createElement('span');
+                    spinner.className = 'inquiry-send-spinner';
+                    spinner.setAttribute('aria-hidden', 'true');
+                    label.textContent = 'Saving & notifying client...';
+                    submitButton.classList.add('inquiry-send-button--loading');
+                    submitButton.replaceChildren(spinner, label);
+                }
+            }
 
             fetch(form.getAttribute('action') || window.location.href, {
                 method: 'POST',

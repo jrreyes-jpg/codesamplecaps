@@ -62,6 +62,12 @@ function inquiry_center_format_money(float $amount): string
     return 'PHP ' . number_format($amount, 2);
 }
 
+function inquiry_center_status_label(string $status): string
+{
+    // Pang Admin UI lang ito. Hindi binabago ang value sa database.
+    return $status === 'Verified Lead' ? 'Qualified' : $status;
+}
+
 function inquiry_center_filter_url(array $params = []): string
 {
     $query = http_build_query(array_filter($params, static fn($value): bool => $value !== '' && $value !== null));
@@ -73,9 +79,10 @@ function inquiry_center_allowed_next_statuses(string $currentStatus): array
     // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
     $rules = [
         'Pending Review' => ['Pending Review', 'Verified Lead', 'Not Qualified'],
-        'Verified Lead' => ['Verified Lead', 'Not Qualified'],
+        // Final na ang review decision. Notes lang ang puwedeng i-save dito.
+        'Verified Lead' => ['Verified Lead'],
         'For Inspection' => ['For Inspection', 'Verified Lead'],
-        'Not Qualified' => ['Not Qualified', 'Pending Review'],
+        'Not Qualified' => ['Not Qualified'],
     ];
 
     return $rules[$currentStatus] ?? ['Pending Review'];
@@ -988,8 +995,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($inquiryId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
             $error = 'Invalid inquiry update request.';
-        } elseif ($newStatus === 'Pending Review') {
-            $error = 'Please update the status before saving.';
         } else {
             $stmt = $conn->prepare('SELECT status, admin_notes, client_name, email FROM service_inquiries WHERE id = ? LIMIT 1');
             if (!$stmt) {
@@ -1057,8 +1062,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $successMessage = 'Review saved and client notified.';
                             } elseif ($shouldNotifyClient) {
                                 $successMessage = 'Review saved, but the client email notification could not be sent.';
+                            } elseif ($previousStatus === $newStatus) {
+                                $successMessage = 'Review saved.';
                             } elseif ($newStatus === 'Verified Lead') {
-                                $successMessage = 'Inquiry marked as verified.';
+                                $successMessage = 'Inquiry marked as qualified.';
                             } else {
                                 $successMessage = 'Inquiry updated successfully.';
                             }
@@ -1525,7 +1532,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <nav class="inquiry-status-strip inquiry-status-strip--primary" aria-label="Inquiry lifecycle filters">
             <a class="inquiry-view-link <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url($search !== '' ? ['search' => $search] : []), ENT_QUOTES, 'UTF-8'); ?>">All</a>
             <?php foreach (['Pending Review', 'Verified Lead', 'For Inspection', 'Not Qualified'] as $status): ?>
-                <a class="inquiry-status inquiry-status-link <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?></a>
+                <a class="inquiry-status inquiry-status-link <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></a>
             <?php endforeach; ?>
             <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">Archived</a>
         </nav>
@@ -1562,6 +1569,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $quotationListStatus = $quotationDraft ? inquiry_quote_normalize_status((string)$quotationDraft['status']) : ''; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
                     <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus); ?>
+                    <?php $displayStatusLabel = inquiry_center_status_label($displayStatus); ?>
                     <?php
                         $addressParts = array_filter([
                             trim((string)($inquiry['site_address'] ?? '')),
@@ -1611,7 +1619,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         } elseif ($currentStatus === 'Not Qualified') {
                             $nextActionLabel = 'View Review';
                         }
-                        $nextActionClass = $nextActionLabel === 'Review Initial Quotation'
+                        $nextActionClass = in_array($nextActionLabel, ['Review Inquiry', 'Review Initial Quotation'], true)
                             ? ' inquiry-next-action--review'
                             : '';
                     ?>
@@ -1626,7 +1634,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <span class="inquiry-card__eyebrow">Contact Person</span>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             </div>
-                            <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
                         <div class="inquiry-card__summary">
@@ -1672,7 +1680,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-modal__meta">
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>
+                                                <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </span>
                                         </div>
                                     </div>
@@ -1754,22 +1762,28 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <form method="POST" class="inquiry-review-form">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                            <?php $isFinalReviewDecision = in_array($currentStatus, ['Verified Lead', 'Not Qualified'], true); ?>
                                             <label class="inquiry-review-form__status">
                                                 <span>Status</span>
-                                                <select name="status" required>
-                                                    <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
-                                                        <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentStatus === $status ? 'selected' : ''; ?>>
-                                                            <?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
+                                                <?php if ($isFinalReviewDecision): ?>
+                                                    <input type="hidden" name="status" value="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <output class="inquiry-review-form__status-value inquiry-status" data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(inquiry_center_status_label($currentStatus), ENT_QUOTES, 'UTF-8'); ?></output>
+                                                <?php else: ?>
+                                                    <select name="status" required>
+                                                        <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
+                                                            <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentStatus === $status ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                <?php endif; ?>
                                             </label>
                                             <label class="inquiry-review-form__notes">
                                                 <span>Admin Notes</span>
                                                 <textarea name="admin_notes" rows="5" placeholder="Call result, scope clarification, or validation notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions inquiry-review-form__actions">
-                                                <button type="submit" class="btn-primary" aria-disabled="<?php echo $currentStatus === 'Pending Review' ? 'true' : 'false'; ?>">Save Review</button>
+                                                <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Review</button>
                                             </div>
                                         </form>
                                     <?php endif; ?>

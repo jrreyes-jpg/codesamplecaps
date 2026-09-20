@@ -953,6 +953,10 @@
     grid-area: status;
 }
 
+.inquiry-review-form__status-value {
+    margin-top: 7px;
+}
+
 .inquiry-review-form__notes {
     grid-area: notes;
 }

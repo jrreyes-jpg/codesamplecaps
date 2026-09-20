@@ -595,12 +595,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.inquiry-review-form').forEach(function (form) {
         const statusSelect = form.querySelector('select[name="status"]');
+        const statusField = form.querySelector('[name="status"]');
+        const notesField = form.querySelector('textarea[name="admin_notes"]');
         const submitButton = form.querySelector('button[type="submit"]');
-        if (!statusSelect) {
+        if (!statusField) {
             return;
         }
 
-        let originalStatus = statusSelect.value;
+        let originalStatus = statusField.value;
+        let originalNotes = notesField ? notesField.value : '';
         const modal = form.closest('.inquiry-modal');
         const statusChip = modal?.querySelector('[data-modal-status-chip]');
         const statusClasses = [
@@ -610,41 +613,62 @@ document.addEventListener('DOMContentLoaded', function () {
             'status-select--not-qualified',
         ];
 
-        const syncStatusChip = function () {
-            const isPendingReview = statusSelect.value === 'Pending Review';
-            statusSelect.dataset.status = statusSelect.value;
-            statusSelect.classList.remove(...statusClasses);
-            submitButton?.setAttribute('aria-disabled', String(isPendingReview));
+        const statusLabel = function (status) {
+            return status === 'Verified Lead' ? 'Qualified' : status;
+        };
 
-            if (statusSelect.value === 'Pending Review') {
+        const syncReviewState = function () {
+            const status = statusField.value;
+            const isDirty = status !== originalStatus || (notesField ? notesField.value !== originalNotes : false);
+
+            if (submitButton) {
+                submitButton.disabled = !isDirty || form.dataset.submitting === '1';
+                submitButton.setAttribute('aria-disabled', String(!isDirty || form.dataset.submitting === '1'));
+            }
+
+            if (!statusSelect) {
+                return;
+            }
+
+            statusSelect.dataset.status = status;
+            statusSelect.classList.remove(...statusClasses);
+
+            if (status === 'Pending Review') {
                 statusSelect.classList.add('status-select--pending');
-            } else if (statusSelect.value === 'Verified Lead') {
+            } else if (status === 'Verified Lead') {
                 statusSelect.classList.add('status-select--verified');
-            } else if (statusSelect.value === 'For Inspection') {
+            } else if (status === 'For Inspection') {
                 statusSelect.classList.add('status-select--inspection');
-            } else if (statusSelect.value === 'Not Qualified') {
+            } else if (status === 'Not Qualified') {
                 statusSelect.classList.add('status-select--not-qualified');
             }
 
             if (statusChip) {
-                statusChip.textContent = statusSelect.value;
-                statusChip.dataset.status = statusSelect.value;
+                statusChip.textContent = statusLabel(status);
+                statusChip.dataset.status = status;
             }
         };
 
-        statusSelect.addEventListener('change', syncStatusChip);
-        syncStatusChip();
+        statusSelect?.addEventListener('change', syncReviewState);
+        notesField?.addEventListener('input', syncReviewState);
+        syncReviewState();
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
 
-            if (statusSelect.value === 'Pending Review') {
+            const statusChanged = statusField.value !== originalStatus;
+            const notesChanged = notesField ? notesField.value !== originalNotes : false;
+            if (!statusChanged && !notesChanged) {
+                return;
+            }
+
+            if (statusChanged && statusField.value === 'Pending Review') {
                 if (typeof window.showToast === 'function') {
                     window.showToast('Please update the status before saving.', 'warning', { duration: 3000 });
                 } else {
                     window.alert('Please update the status before saving.');
                 }
-                statusSelect.focus();
+                statusSelect?.focus();
                 return;
             }
 
@@ -652,8 +676,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (form.dataset.confirmed !== '1' && statusSelect.value !== originalStatus) {
-                showConfirm(form, 'Change inquiry status from ' + originalStatus + ' to ' + statusSelect.value + '?');
+            if (form.dataset.confirmed !== '1' && statusChanged) {
+                showConfirm(form, 'Change inquiry status from ' + statusLabel(originalStatus) + ' to ' + statusLabel(statusField.value) + '?');
                 return;
             }
 
@@ -679,15 +703,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         throw new Error(result.data.message || 'Unable to save inquiry review.');
                     }
 
-                    originalStatus = result.data.status || statusSelect.value;
+                    originalStatus = result.data.status || statusField.value;
+                    originalNotes = notesField ? notesField.value : '';
                     window.location.assign(result.data.redirect || window.location.href);
                 })
                 .catch(function (error) {
                     form.dataset.submitting = '0';
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        submitButton.setAttribute('aria-disabled', String(statusSelect.value === 'Pending Review'));
-                    }
+                    syncReviewState();
                     if (typeof window.showToast === 'function') {
                         window.showToast(error.message || 'Unable to save inquiry review.', 'error');
                     } else {
@@ -774,7 +796,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (tab.classList.contains('chip-disabled')) {
                     if (target === 'quotation') {
-                        showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and update the status selection to 'Verified Lead' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
+                        showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and set the status to 'Qualified' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
                     } else if (target === 'inspection') {
                         const prerequisite = modal.querySelector('[data-prerequisite-check="client-quotation-approval"]');
                         showPrerequisiteNotice(

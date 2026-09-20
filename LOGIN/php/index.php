@@ -525,7 +525,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
         <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate>
             <input type="hidden" name="inquiry_form_token" value="<?php echo htmlspecialchars($_SESSION['inquiry_form_token'], ENT_QUOTES, 'UTF-8'); ?>">
 
-            <div class="inquiry-grid">
+            <div class="inquiry-grid inquiry-grid--contact-details" data-inquiry-contact-details>
                 <label>
                     <span>Contact Person <b class="required-mark">*</b></span>
                     <input type="text" name="client_name" data-label="Contact Person" required autocomplete="name">
@@ -550,6 +550,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     <small class="field-error"></small>
                 </label>
             </div>
+            <p class="inquiry-contact-feedback" data-inquiry-contact-feedback aria-live="polite"></p>
 
             <div class="inquiry-grid">
                 <label>

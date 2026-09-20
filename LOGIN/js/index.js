@@ -470,6 +470,12 @@ const initInquiryForm = () => {
         const message = inquiryForm.querySelector('.js-inquiry-message');
         const clearDraftButton = inquiryForm.querySelector('.js-clear-inquiry-draft');
         const submitButton = inquiryForm.querySelector('.inquiry-submit');
+        const contactIdentityFields = [
+            clientNameInput,
+            inquiryForm.querySelector('input[name="email"]'),
+            contactInput,
+        ].filter(Boolean);
+        const contactFeedback = inquiryForm.querySelector('[data-inquiry-contact-feedback]');
         const draftKey = 'edgeInquiryFormDraft';
         let isSubmittingInquiry = false;
 
@@ -501,6 +507,39 @@ const initInquiryForm = () => {
                 message.textContent = '';
                 message.classList.remove('is-error');
             }
+        };
+
+        const clearContactMismatchFeedback = (field = null) => {
+            const fieldsToClear = field ? [field] : contactIdentityFields;
+            fieldsToClear.forEach((contactField) => {
+                if (contactField.dataset.contactMismatch !== '1') {
+                    return;
+                }
+
+                contactField.classList.remove('is-invalid');
+                contactField.removeAttribute('aria-invalid');
+                delete contactField.dataset.contactMismatch;
+            });
+
+            if (!contactIdentityFields.some((contactField) => contactField.dataset.contactMismatch === '1')) {
+                contactFeedback.textContent = '';
+                contactFeedback.classList.remove('is-visible');
+            }
+        };
+
+        const showContactMismatchFeedback = () => {
+            contactIdentityFields.forEach((contactField) => {
+                contactField.dataset.contactMismatch = '1';
+                contactField.classList.add('is-invalid');
+                contactField.setAttribute('aria-invalid', 'true');
+            });
+
+            contactFeedback.textContent = 'Please review the contact person, email address, and contact number.';
+            contactFeedback.classList.add('is-visible');
+            window.requestAnimationFrame(() => {
+                gentlyRevealField(clientNameInput, true);
+                clientNameInput?.focus();
+            });
         };
 
         normalizeContactNumber(contactInput);
@@ -1001,14 +1040,20 @@ const restoreInquiryDraft = () => {
 
         contactInput.addEventListener('input', () => {
             normalizeContactNumber(contactInput);
+            clearContactMismatchFeedback(contactInput);
             clearFieldError(contactInput);
             clearFormMessageIfReady();
         });
 
         clientNameInput?.addEventListener('input', () => {
+            clearContactMismatchFeedback(clientNameInput);
             validateFullNameText(clientNameInput);
             clearFormMessageIfReady();
             saveInquiryDraft();
+        });
+
+        inquiryForm.querySelector('input[name="email"]')?.addEventListener('input', (event) => {
+            clearContactMismatchFeedback(event.currentTarget);
         });
 
         otherServiceInput?.addEventListener('input', () => {
@@ -1049,6 +1094,7 @@ const restoreInquiryDraft = () => {
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
             contactInput.value = '09';
+            clearContactMismatchFeedback();
             syncAreaOptions();
             syncOtherServiceField();
             inquiryForm.querySelectorAll('.is-invalid').forEach((field) => clearFieldError(field));
@@ -1057,6 +1103,10 @@ const restoreInquiryDraft = () => {
         });
 
         restoreInquiryDraft();
+
+        if (window.edgeInquiryStatus === 'contact_mismatch') {
+            showContactMismatchFeedback();
+        }
 
         inquiryForm.addEventListener('submit', (event) => {
             if (isSubmittingInquiry) {

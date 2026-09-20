@@ -710,6 +710,20 @@ h4 {
     visibility: visible;
 }
 
+.inquiry-contact-feedback {
+    min-height: 18px;
+    margin: -7px 0 0;
+    color: #b91c1c;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
+    visibility: hidden;
+}
+
+.inquiry-contact-feedback.is-visible {
+    visibility: visible;
+}
+
 .field-help {
     color: #64748b;
     font-weight: 500;

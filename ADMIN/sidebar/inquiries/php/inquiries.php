@@ -57,6 +57,21 @@ function inquiry_center_format_date(?string $date): string
     return date('M j, Y', $timestamp);
 }
 
+function inquiry_center_format_submitted_datetime(?string $dateTime): string
+{
+    if (!$dateTime) {
+        return 'Not set';
+    }
+
+    try {
+        $manila = new DateTimeZone('Asia/Manila');
+        $submittedAt = new DateTimeImmutable($dateTime, $manila);
+        return $submittedAt->setTimezone($manila)->format('D, M j, Y • g:i A');
+    } catch (Exception $exception) {
+        return 'Not set';
+    }
+}
+
 function inquiry_center_format_money(float $amount): string
 {
     return 'PHP ' . number_format($amount, 2);
@@ -1652,7 +1667,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </div>
                             <div class="inquiry-card__info">
                                 <span>Submitted</span>
-                                <strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <strong><?php echo htmlspecialchars(inquiry_center_format_submitted_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                         </div>
 

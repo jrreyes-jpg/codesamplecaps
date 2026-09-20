@@ -57,7 +57,7 @@ function inquiry_center_format_date(?string $date): string
     return date('M j, Y', $timestamp);
 }
 
-function inquiry_center_format_submitted_datetime(?string $dateTime): string
+function inquiry_center_format_compact_datetime(?string $dateTime): string
 {
     if (!$dateTime) {
         return 'Not set';
@@ -1667,7 +1667,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </div>
                             <div class="inquiry-card__info">
                                 <span>Submitted</span>
-                                <strong><?php echo htmlspecialchars(inquiry_center_format_submitted_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                         </div>
 
@@ -1750,11 +1750,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-detail"><span>Contact Person</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail inquiry-detail--wide"><span>Complete Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Reviewed</span><strong><?php echo htmlspecialchars(!empty($inquiry['reviewed_at']) ? inquiry_center_format_datetime($inquiry['reviewed_at']) : 'Not yet', ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     </div>
 
                                     <div class="inquiry-description">
@@ -1764,6 +1763,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                     <hr class="inquiry-review-divider">
                                     <div class="inquiry-section-title inquiry-review-section-title">Admin Review &amp; Actions</div>
+                                    <?php $showReviewMetadata = in_array($currentStatus, ['Verified Lead', 'Not Qualified'], true) && !empty($inquiry['reviewed_at']); ?>
+                                    <?php if ($showReviewMetadata): ?>
+                                        <div class="inquiry-review-metadata">
+                                            <span>Reviewed</span>
+                                            <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['reviewed_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php if ($isConvertedToProject): ?>
                                         <div class="inquiry-readonly-notice">
                                             This inquiry is already converted to a Project.

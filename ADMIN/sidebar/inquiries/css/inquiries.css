@@ -949,6 +949,26 @@
     margin-bottom: 0;
 }
 
+.inquiry-review-metadata {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 8px 0 10px;
+    color: #475569;
+    font-size: 0.82rem;
+}
+
+.inquiry-review-metadata span {
+    color: #64748b;
+    font-weight: 700;
+}
+
+.inquiry-review-metadata strong {
+    color: #0f172a;
+    font-weight: 800;
+}
+
 .inquiry-review-form__status {
     grid-area: status;
 }

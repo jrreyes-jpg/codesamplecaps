@@ -75,6 +75,11 @@ $isInitialQuotation = $quotation
     && empty($quotation['parent_draft_id'])
     && (int)($quotation['revision_no'] ?? 0) === 0;
 $preparerName = trim((string)($quotation['preparer_name'] ?? '')) ?: 'Admin';
+$preparerRole = 'Admin';
+$showPreparerRole = strcasecmp(
+    preg_replace('/\s+/', ' ', trim($preparerName)),
+    preg_replace('/\s+/', ' ', trim($preparerRole))
+) !== 0;
 $quotationTimestamp = $quotation ? (strtotime((string)($quotation['created_at'] ?? '')) ?: time()) : time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -150,7 +155,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                             <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                             <span>Prepared By</span>
                             <strong><?php echo htmlspecialchars($preparerName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                            <small>Admin</small>
+                            <?php if ($showPreparerRole): ?>
+                                <small><?php echo htmlspecialchars($preparerRole, ENT_QUOTES, 'UTF-8'); ?></small>
+                            <?php endif; ?>
                         </div>
                     </section>
 

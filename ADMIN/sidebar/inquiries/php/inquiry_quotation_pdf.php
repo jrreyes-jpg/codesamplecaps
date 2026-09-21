@@ -26,6 +26,11 @@ $statusLabel = $isFinalized
     : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
 $isInitialQuotation = empty($quotation['parent_draft_id']) && (int)($quotation['revision_no'] ?? 0) === 0;
 $preparedByName = trim((string)($_SESSION['name'] ?? '')) ?: 'Admin';
+$preparedByRole = 'Admin';
+$showPreparedByRole = strcasecmp(
+    preg_replace('/\s+/', ' ', trim($preparedByName)),
+    preg_replace('/\s+/', ' ', trim($preparedByRole))
+) !== 0;
 $quotationTimestamp = strtotime((string)($quotation['created_at'] ?? '')) ?: time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -83,7 +88,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <span>Prepared By</span>
                 <strong><?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                <small>Admin</small>
+                <?php if ($showPreparedByRole): ?>
+                    <small><?php echo htmlspecialchars($preparedByRole, ENT_QUOTES, 'UTF-8'); ?></small>
+                <?php endif; ?>
             </div>
         </section>
 

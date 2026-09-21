@@ -139,8 +139,15 @@ require_once __DIR__ . '/../layout/header.php';
                             <div class="quotation-meta-card">
                                 <span>Prepared by</span>
                                 <?php $inquiryPreparerName = trim((string)($selectedQuotation['preparer_name'] ?? '')) ?: 'Admin'; ?>
+                                <?php $inquiryPreparerRole = 'Admin'; ?>
+                                <?php $showInquiryPreparerRole = strcasecmp(
+                                    preg_replace('/\s+/', ' ', trim($inquiryPreparerName)),
+                                    preg_replace('/\s+/', ' ', trim($inquiryPreparerRole))
+                                ) !== 0; ?>
                                 <strong><?php echo htmlspecialchars($selectedQuotationSource === 'inquiry' ? $inquiryPreparerName : (string)$selectedQuotation['engineer_name']); ?></strong>
-                                <?php if ($selectedQuotationSource === 'inquiry'): ?><small>Admin</small><?php endif; ?>
+                                <?php if ($selectedQuotationSource === 'inquiry' && $showInquiryPreparerRole): ?>
+                                    <small><?php echo htmlspecialchars($inquiryPreparerRole, ENT_QUOTES, 'UTF-8'); ?></small>
+                                <?php endif; ?>
                             </div>
                             <div class="quotation-meta-card">
                                 <span>Selling price</span>

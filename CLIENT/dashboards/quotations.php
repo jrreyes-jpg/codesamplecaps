@@ -138,7 +138,9 @@ require_once __DIR__ . '/../layout/header.php';
                         <div class="quotation-meta-grid">
                             <div class="quotation-meta-card">
                                 <span>Prepared by</span>
-                                <strong><?php echo htmlspecialchars((string)$selectedQuotation['engineer_name']); ?></strong>
+                                <?php $inquiryPreparerName = trim((string)($selectedQuotation['preparer_name'] ?? '')) ?: 'Admin'; ?>
+                                <strong><?php echo htmlspecialchars($selectedQuotationSource === 'inquiry' ? $inquiryPreparerName : (string)$selectedQuotation['engineer_name']); ?></strong>
+                                <?php if ($selectedQuotationSource === 'inquiry'): ?><small>Admin</small><?php endif; ?>
                             </div>
                             <div class="quotation-meta-card">
                                 <span>Selling price</span>

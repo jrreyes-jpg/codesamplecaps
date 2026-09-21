@@ -196,6 +196,7 @@ function inquiry_quote_fetch_full(mysqli $conn, int $draftId): ?array
             si.risk_notes,
             si.client_requests,
             COALESCE(e.full_name, creator.full_name) AS engineer_name,
+            creator.full_name AS preparer_name,
             a.full_name AS approved_by_name,
             inquiry.client_name,
             inquiry.company_name,

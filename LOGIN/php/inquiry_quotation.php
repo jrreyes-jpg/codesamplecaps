@@ -71,6 +71,10 @@ $hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !em
 $statusIndicator = $quotation ? inquiry_quote_status_indicator($status, !empty($quotation['engineer_name'])) : null;
 $isApprovedAwaitingSchedule = $status === 'accepted' && !$hasInspectionSchedule;
 $isFinalized = $status === 'accepted' && $hasInspectionSchedule;
+$isInitialQuotation = $quotation
+    && empty($quotation['parent_draft_id'])
+    && (int)($quotation['revision_no'] ?? 0) === 0;
+$preparerName = trim((string)($quotation['preparer_name'] ?? '')) ?: 'Admin';
 $quotationTimestamp = $quotation ? (strtotime((string)($quotation['created_at'] ?? '')) ?: time()) : time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -145,8 +149,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                             <span>Date</span>
                             <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                             <span>Prepared By</span>
-                            <strong>Engr. Erika Jeanne P. Jimenez</strong>
-                            <small>CEO / General Manager</small>
+                            <strong><?php echo htmlspecialchars($preparerName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <small>Admin</small>
                         </div>
                     </section>
 
@@ -223,7 +227,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                     <footer class="public-quote-footer">
                         <div>
                             <strong>Notes</strong>
-                            <p>This quotation is based on the listed scope and costs. Any approved changes may require a revised quotation.</p>
+                            <p><?php echo $isInitialQuotation
+                                ? 'This initial quotation is based on the information provided in the inquiry. Final scope and costs may be revised after site inspection or further technical assessment.'
+                                : 'This quotation is based on the listed scope and costs. Any approved changes may require a revised quotation.'; ?></p>
                         </div>
                         <div>
                             <strong>Client Status</strong>

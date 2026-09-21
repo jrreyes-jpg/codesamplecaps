@@ -187,6 +187,88 @@ function inquiry_center_validate_quotation_before_send(mysqli $conn, int $draftI
     return count($items);
 }
 
+function inquiry_center_latest_rejected_quotation_exclusion(): string
+{
+    return "NOT EXISTS (
+        SELECT 1 FROM inquiry_quotation_drafts rejected_quote
+        WHERE rejected_quote.inquiry_id = service_inquiries.id
+        AND rejected_quote.status = 'rejected'
+        AND NOT EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts newer_quote
+            WHERE newer_quote.inquiry_id = rejected_quote.inquiry_id
+            AND (
+                newer_quote.updated_at > rejected_quote.updated_at
+                OR (newer_quote.updated_at = rejected_quote.updated_at AND newer_quote.id > rejected_quote.id)
+            )
+        )
+    )";
+}
+
+function inquiry_center_quotation_filter_condition(string $quotationFilter): string
+{
+    $initialQuoteWhere = 'initial_quote.inquiry_id = service_inquiries.id
+        AND initial_quote.revision_no = 0
+        AND initial_quote.parent_draft_id IS NULL';
+
+    return match ($quotationFilter) {
+        'needs_quotation' => "status = 'Verified Lead' AND NOT EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts initial_quote
+            WHERE $initialQuoteWhere
+        )",
+        'draft' => "EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts initial_quote
+            WHERE $initialQuoteWhere
+            AND LOWER(initial_quote.status) IN ('draft', 'approved')
+        )",
+        'awaiting_client' => "EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts initial_quote
+            WHERE $initialQuoteWhere
+            AND LOWER(initial_quote.status) = 'sent'
+        )",
+        'accepted' => "EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts initial_quote
+            WHERE $initialQuoteWhere
+            AND LOWER(initial_quote.status) = 'accepted'
+        )",
+        'needs_revision' => "EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts initial_quote
+            WHERE $initialQuoteWhere
+            AND LOWER(initial_quote.status) IN ('revision_requested', 'for_revision')
+        )",
+        'rejected' => "EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts initial_quote
+            WHERE $initialQuoteWhere
+            AND LOWER(initial_quote.status) = 'rejected'
+        )",
+        default => '',
+    };
+}
+
+function inquiry_center_quotation_filter_counts(mysqli $conn, array $scopeWhere, string $scopeTypes, array $scopeParams): array
+{
+    $counts = array_fill_keys(['needs_quotation', 'draft', 'awaiting_client', 'accepted', 'needs_revision', 'rejected'], 0);
+
+    foreach (array_keys($counts) as $filter) {
+        $where = $scopeWhere;
+        if ($filter !== 'rejected') {
+            $where[] = inquiry_center_latest_rejected_quotation_exclusion();
+        }
+        $where[] = inquiry_center_quotation_filter_condition($filter);
+        $sql = 'SELECT COUNT(*) AS total FROM service_inquiries WHERE ' . implode(' AND ', $where);
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            continue;
+        }
+        if ($scopeTypes !== '') {
+            $stmt->bind_param($scopeTypes, ...$scopeParams);
+        }
+        $stmt->execute();
+        $counts[$filter] = (int)(($stmt->get_result()->fetch_assoc() ?: [])['total'] ?? 0);
+    }
+
+    return $counts;
+}
+
 function inquiry_center_redirect(string $view, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
@@ -1195,6 +1277,7 @@ $hasInquiryQuotationTable = inquiry_quote_table_exists($conn, 'inquiry_quotation
 $hasQuotationProjectLink = $hasInquiryQuotationTable
     && inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id');
 $inquiryRows = [];
+$quotationFilterCounts = array_fill_keys($quotationFilterOptions, 0);
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     $where = [];
     $types = '';
@@ -1236,71 +1319,24 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
         }
     }
 
-    if ($view === 'active' && $statusFilter !== 'Rejected' && $quotationFilter !== 'rejected' && $hasInquiryQuotationTable) {
-        $where[] = "NOT EXISTS (
-            SELECT 1 FROM inquiry_quotation_drafts rejected_quote
-            WHERE rejected_quote.inquiry_id = service_inquiries.id
-            AND rejected_quote.status = 'rejected'
-            AND NOT EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts newer_quote
-                WHERE newer_quote.inquiry_id = rejected_quote.inquiry_id
-                AND (
-                    newer_quote.updated_at > rejected_quote.updated_at
-                    OR (newer_quote.updated_at = rejected_quote.updated_at AND newer_quote.id > rejected_quote.id)
-                )
-            )
-        )";
-    }
-
-    if ($view === 'active' && $quotationFilter !== '' && $hasInquiryQuotationTable) {
-        $initialQuoteWhere = 'initial_quote.inquiry_id = service_inquiries.id
-            AND initial_quote.revision_no = 0
-            AND initial_quote.parent_draft_id IS NULL';
-
-        if ($quotationFilter === 'needs_quotation') {
-            $where[] = "status = 'Verified Lead' AND NOT EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts initial_quote
-                WHERE $initialQuoteWhere
-            )";
-        } elseif ($quotationFilter === 'draft') {
-            $where[] = "EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts initial_quote
-                WHERE $initialQuoteWhere
-                AND LOWER(initial_quote.status) IN ('draft', 'approved')
-            )";
-        } elseif ($quotationFilter === 'awaiting_client') {
-            $where[] = "EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts initial_quote
-                WHERE $initialQuoteWhere
-                AND LOWER(initial_quote.status) = 'sent'
-            )";
-        } elseif ($quotationFilter === 'accepted') {
-            $where[] = "EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts initial_quote
-                WHERE $initialQuoteWhere
-                AND LOWER(initial_quote.status) = 'accepted'
-            )";
-        } elseif ($quotationFilter === 'needs_revision') {
-            $where[] = "EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts initial_quote
-                WHERE $initialQuoteWhere
-                AND LOWER(initial_quote.status) IN ('revision_requested', 'for_revision')
-            )";
-        } elseif ($quotationFilter === 'rejected') {
-            $where[] = "EXISTS (
-                SELECT 1 FROM inquiry_quotation_drafts initial_quote
-                WHERE $initialQuoteWhere
-                AND LOWER(initial_quote.status) = 'rejected'
-            )";
-        }
-    }
-
     if ($search !== '') {
         // Smart search: hanapin sa important fields para mas mabilis ang lead filtering.
         $where[] = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ? OR status LIKE ? OR description LIKE ? OR admin_notes LIKE ? OR archive_reason LIKE ?)';
         $keyword = '%' . $search . '%';
         $types .= 'sssssssssssss';
         array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
+    }
+
+    $quotationFilterScopeWhere = $where;
+    $quotationFilterScopeTypes = $types;
+    $quotationFilterScopeParams = $params;
+
+    if ($view === 'active' && $statusFilter !== 'Rejected' && $quotationFilter !== 'rejected' && $hasInquiryQuotationTable) {
+        $where[] = inquiry_center_latest_rejected_quotation_exclusion();
+    }
+
+    if ($view === 'active' && $quotationFilter !== '' && $hasInquiryQuotationTable) {
+        $where[] = inquiry_center_quotation_filter_condition($quotationFilter);
     }
 
     $sql = 'SELECT id, client_name, company_name, email, contact_no, site_address,
@@ -1322,6 +1358,15 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
         while ($row = $result->fetch_assoc()) {
             $inquiryRows[] = $row;
         }
+    }
+
+    if ($view === 'active' && $hasInquiryQuotationTable) {
+        $quotationFilterCounts = inquiry_center_quotation_filter_counts(
+            $conn,
+            $quotationFilterScopeWhere,
+            $quotationFilterScopeTypes,
+            $quotationFilterScopeParams
+        );
     }
 }
 
@@ -1600,7 +1645,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Accepted', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
                 <?php if ($statusFilter === 'For Inspection'): unset($quotationFilterChips['needs_quotation']); endif; ?>
                 <?php foreach ($quotationFilterChips as $filterKey => $filterLabel): ?>
-                    <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey]), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($filterLabel, ENT_QUOTES, 'UTF-8'); ?></a>
+                    <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey]), ENT_QUOTES, 'UTF-8'); ?>">
+                        <span><?php echo htmlspecialchars($filterLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="inquiry-quotation-filter__count"><?php echo (int)($quotationFilterCounts[$filterKey] ?? 0); ?></span>
+                    </a>
                 <?php endforeach; ?>
             </nav>
         <?php endif; ?>

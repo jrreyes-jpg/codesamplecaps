@@ -1086,6 +1086,24 @@
     white-space: nowrap;
 }
 
+.inquiry-quotation-filter__count {
+    display: inline-grid;
+    min-width: 16px;
+    min-height: 16px;
+    place-items: center;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: .66rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.inquiry-quotation-filter.is-active .inquiry-quotation-filter__count {
+    background: rgba(255, 255, 255, 0.22);
+    color: inherit;
+}
+
 .inquiry-quotation-filter:hover,
 .inquiry-quotation-filter:focus-visible {
     border-color: #64748b;

@@ -1072,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     modal.querySelector('[data-quotation-approved-banner]')?.removeAttribute('hidden');
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
-                        statusLabel.textContent = quotation.label || 'Accepted';
+                        statusLabel.textContent = 'Client Accepted';
                         statusLabel.classList.remove('status-draft', 'status-sent', 'status-revision');
                         statusLabel.classList.add('status-accepted');
                     }

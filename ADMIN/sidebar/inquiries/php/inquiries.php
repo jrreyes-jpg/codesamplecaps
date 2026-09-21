@@ -244,16 +244,52 @@ function inquiry_center_quotation_filter_condition(string $quotationFilter): str
     };
 }
 
+function inquiry_center_current_initial_quotation_filter_condition(string $quotationFilter): string
+{
+    if ($quotationFilter === 'needs_quotation') {
+        return inquiry_center_quotation_filter_condition($quotationFilter);
+    }
+
+    $statuses = match ($quotationFilter) {
+        'draft' => "'draft', 'approved'",
+        'awaiting_client' => "'sent'",
+        'accepted' => "'accepted'",
+        'needs_revision' => "'revision_requested', 'for_revision'",
+        'rejected' => "'rejected'",
+        default => '',
+    };
+
+    if ($statuses === '') {
+        return '';
+    }
+
+    return "EXISTS (
+        SELECT 1 FROM inquiry_quotation_drafts current_initial_quote
+        WHERE current_initial_quote.inquiry_id = service_inquiries.id
+        AND current_initial_quote.revision_no = 0
+        AND current_initial_quote.parent_draft_id IS NULL
+        AND LOWER(current_initial_quote.status) IN ($statuses)
+        AND NOT EXISTS (
+            SELECT 1 FROM inquiry_quotation_drafts newer_initial_quote
+            WHERE newer_initial_quote.inquiry_id = current_initial_quote.inquiry_id
+            AND newer_initial_quote.revision_no = 0
+            AND newer_initial_quote.parent_draft_id IS NULL
+            AND (
+                newer_initial_quote.updated_at > current_initial_quote.updated_at
+                OR (newer_initial_quote.updated_at = current_initial_quote.updated_at
+                    AND newer_initial_quote.id > current_initial_quote.id)
+            )
+        )
+    )";
+}
+
 function inquiry_center_quotation_filter_counts(mysqli $conn, array $scopeWhere, string $scopeTypes, array $scopeParams): array
 {
     $counts = array_fill_keys(['needs_quotation', 'draft', 'awaiting_client', 'accepted', 'needs_revision', 'rejected'], 0);
 
     foreach (array_keys($counts) as $filter) {
         $where = $scopeWhere;
-        if ($filter !== 'rejected') {
-            $where[] = inquiry_center_latest_rejected_quotation_exclusion();
-        }
-        $where[] = inquiry_center_quotation_filter_condition($filter);
+        $where[] = inquiry_center_current_initial_quotation_filter_condition($filter);
         $sql = 'SELECT COUNT(*) AS total FROM service_inquiries WHERE ' . implode(' AND ', $where);
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
@@ -267,6 +303,13 @@ function inquiry_center_quotation_filter_counts(mysqli $conn, array $scopeWhere,
     }
 
     return $counts;
+}
+
+function inquiry_center_quotation_status_label(string $status): string
+{
+    return inquiry_quote_normalize_status($status) === 'accepted'
+        ? 'Client Accepted'
+        : inquiry_quote_status_label($status);
 }
 
 function inquiry_center_redirect(string $view, string $message): void
@@ -1642,7 +1685,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['', 'Verified Lead', 'For Inspection'], true); ?>
         <?php if ($showQuotationFilters): ?>
             <nav class="inquiry-status-strip inquiry-status-strip--quotation" aria-label="Initial quotation filters">
-                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Accepted', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
+                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Client Accepted', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
                 <?php if ($statusFilter === 'For Inspection'): unset($quotationFilterChips['needs_quotation']); endif; ?>
                 <?php foreach ($quotationFilterChips as $filterKey => $filterLabel): ?>
                     <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey]), ENT_QUOTES, 'UTF-8'); ?>">
@@ -2141,7 +2184,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </div>
                                             <div>
                                                 <span>Status</span>
-                                                <strong class="status-badge <?php echo $quotationStatusClass; ?>" data-quotation-status-label><?php echo htmlspecialchars(inquiry_quote_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <strong class="status-badge <?php echo $quotationStatusClass; ?>" data-quotation-status-label><?php echo htmlspecialchars(inquiry_center_quotation_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
                                                 <span>Total</span>

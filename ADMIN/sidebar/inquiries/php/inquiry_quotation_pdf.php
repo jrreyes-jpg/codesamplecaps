@@ -24,6 +24,8 @@ $statusClass = in_array($quoteStatus, ['accepted', 'approved', 'sent', 'revision
 $statusLabel = $isFinalized
     ? 'Approved / Finalized'
     : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
+$isInitialQuotation = empty($quotation['parent_draft_id']) && (int)($quotation['revision_no'] ?? 0) === 0;
+$preparedByName = trim((string)($_SESSION['name'] ?? '')) ?: 'Admin';
 $quotationTimestamp = strtotime((string)($quotation['created_at'] ?? '')) ?: time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -80,8 +82,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 <span>Date</span>
                 <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <span>Prepared By</span>
-                <strong>Engr. Erika Jeanne P. Jimenez</strong>
-                <small>CEO / General Manager</small>
+                <strong><?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                <small>Admin</small>
             </div>
         </section>
 
@@ -163,7 +165,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 
         <section class="public-quote-totals">
             <div><span>Subtotal</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['subtotal']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-            <div><span>Margin</span><strong><?php echo htmlspecialchars(number_format((float)$quotation['profit_margin_percent'], 2), ENT_QUOTES, 'UTF-8'); ?>%</strong></div>
+            <div><span>MARKUP</span><strong><?php echo htmlspecialchars(number_format((float)$quotation['profit_margin_percent'], 2), ENT_QUOTES, 'UTF-8'); ?>%</strong></div>
             <div><span>Profit Amount</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['profit_amount']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
             <div class="public-quote-grand-total"><span>Grand Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
         </section>
@@ -171,7 +173,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
         <footer class="public-quote-footer">
             <div>
                 <strong>Notes</strong>
-                <p>This quotation uses the validated scope and itemized costs. New findings during site inspection may require a revised quotation. The payment schedule will be confirmed in the written agreement.</p>
+                <p><?php echo $isInitialQuotation
+                    ? 'This initial quotation is based on the information provided in the inquiry. Final scope and costs may be revised after site inspection or further technical assessment.'
+                    : 'This quotation uses the validated scope and itemized costs. New findings during site inspection may require a revised quotation. The payment schedule will be confirmed in the written agreement.'; ?></p>
             </div>
             <div>
                 <strong>Approval</strong>

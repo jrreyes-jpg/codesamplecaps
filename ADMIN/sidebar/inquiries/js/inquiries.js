@@ -147,10 +147,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const showConfirm = function (form, message, details, labels = {}) {
         pendingConfirmForm = form;
+        form.dataset.confirmationMode = labels.mode || 'submit';
+        const titleBox = confirmBox.querySelector('#inquiryConfirmTitle');
         const messageBox = confirmBox.querySelector('[data-inquiry-confirm-message]');
         const detailsBox = confirmBox.querySelector('[data-inquiry-confirm-details]');
         const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
         const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
+        if (titleBox) {
+            titleBox.textContent = labels.title || 'Are you sure?';
+        }
+
         if (messageBox) {
             messageBox.textContent = message;
         }
@@ -184,6 +190,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const closeConfirm = function () {
+        if (pendingConfirmForm) {
+            delete pendingConfirmForm.dataset.confirmationMode;
+        }
         pendingConfirmForm = null;
         confirmBox.hidden = true;
     };
@@ -1148,6 +1157,23 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (event) {
             event.preventDefault();
 
+            const isInitialQuotation = form.dataset.quoteKind === 'initial';
+            const itemCount = Number.parseInt(form.dataset.quotationItemCount || '0', 10);
+            if (isInitialQuotation && itemCount === 1 && form.dataset.completenessConfirmed !== '1') {
+                showConfirm(
+                    form,
+                    'This quotation contains only 1 cost item. Please confirm that the quotation is complete before sending it to the client.',
+                    null,
+                    {
+                        title: 'Confirm quotation completeness',
+                        cancel: 'Review Quotation',
+                        confirm: 'Send Anyway',
+                        mode: 'quotation-completeness',
+                    }
+                );
+                return;
+            }
+
             if (form.dataset.confirmed !== '1') {
                 showConfirm(form, form.dataset.quoteKind === 'initial'
                     ? 'Send this initial quotation to the client by email?'
@@ -1207,6 +1233,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(function (error) {
                     form.dataset.submitting = '0';
+                    delete form.dataset.completenessConfirmed;
                     if (sendingModal) {
                         sendingModal.inert = false;
                         sendingModal.classList.remove('is-send-complete');
@@ -1828,8 +1855,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const form = pendingConfirmForm;
-        form.dataset.confirmed = '1';
+        const confirmationMode = form.dataset.confirmationMode || 'submit';
         closeConfirm();
+
+        if (confirmationMode === 'quotation-completeness') {
+            form.dataset.completenessConfirmed = '1';
+            form.requestSubmit();
+            return;
+        }
+
+        form.dataset.confirmed = '1';
         form.requestSubmit();
     });
 

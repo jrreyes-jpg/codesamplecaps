@@ -146,6 +146,47 @@ function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): 
     return 'Send the ' . $quotationName . ' to the client and wait for approval before assigning Engineer.';
 }
 
+function inquiry_center_validate_quotation_before_send(mysqli $conn, int $draftId, array $quotation): int
+{
+    $items = inquiry_quote_fetch_items($conn, $draftId);
+    if (count($items) === 0) {
+        throw new RuntimeException('Add at least one valid cost item before sending the quotation.');
+    }
+
+    $subtotal = 0.0;
+    foreach ($items as $item) {
+        $itemType = strtolower(trim((string)($item['item_type'] ?? '')));
+        $name = trim((string)($item['item_name'] ?? ''));
+        $unit = trim((string)($item['unit'] ?? ''));
+        $quantity = (float)($item['quantity'] ?? 0);
+        $unitCost = (float)($item['unit_cost'] ?? 0);
+        $lineTotal = (float)($item['line_total'] ?? 0);
+
+        if (!in_array($itemType, ['material', 'labor', 'equipment', 'service', 'other'], true)
+            || $name === '' || $unit === '' || !is_finite($quantity) || !is_finite($unitCost) || !is_finite($lineTotal)
+            || $quantity <= 0 || $unitCost <= 0 || $lineTotal <= 0
+            || abs($lineTotal - round($quantity * $unitCost, 2)) > 0.01) {
+            throw new RuntimeException('Quotation has an invalid cost item. Edit and save the quotation before sending.');
+        }
+
+        $subtotal += $lineTotal;
+    }
+
+    $subtotal = round($subtotal, 2);
+    $markup = (float)($quotation['profit_margin_percent'] ?? -1);
+    $profit = round($subtotal * ($markup / 100), 2);
+    $grandTotal = round($subtotal + $profit, 2);
+
+    if (!is_finite($markup) || $markup < 0 || $markup > 100
+        || abs((float)($quotation['subtotal'] ?? 0) - $subtotal) > 0.01
+        || abs((float)($quotation['profit_amount'] ?? 0) - $profit) > 0.01
+        || abs((float)($quotation['grand_total'] ?? 0) - $grandTotal) > 0.01) {
+        throw new RuntimeException('Quotation totals are invalid. Edit and save the quotation before sending.');
+    }
+
+    return count($items);
+}
+
 function inquiry_center_redirect(string $view, string $message): void
 {
     $_SESSION['inquiry_center_flash'] = $message;
@@ -616,6 +657,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Quotation does not match this inquiry.');
                 }
                 $statusBeforeSend = inquiry_quote_normalize_status((string)($quotationBeforeSend['status'] ?? ''));
+                inquiry_center_validate_quotation_before_send($conn, $draftId, $quotationBeforeSend);
                 inquiry_quote_send_to_client($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
                 audit_log_event(
                     $conn,
@@ -2170,6 +2212,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 data-quote-recipient-contact="<?php echo htmlspecialchars((string)$quotationRecipient['contact'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-quote-recipient-source="<?php echo htmlspecialchars((string)$quotationRecipient['source_label'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-quote-kind="<?php echo $isInitialQuotationDraft ? 'initial' : 'revised'; ?>"
+                                                data-quotation-item-count="<?php echo $isInitialQuotationDraft ? count(inquiry_quote_fetch_items($conn, (int)$quotationDraft['id'])) : 0; ?>"
                                             >
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="action" value="send_quotation_to_client">

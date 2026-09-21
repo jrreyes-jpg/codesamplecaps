@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let latestRejectedAt = inquiryShell?.dataset.latestRejectedAt || '';
     let lastOpenButton = null;
     let pendingConfirmForm = null;
+    let pendingDiscardModal = null;
+    let pendingDiscardAction = null;
+    let pendingDiscardKeepAction = null;
 
     const showPageLoading = function () {
         if (!inquiryShell) {
@@ -113,6 +116,21 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(confirmBox);
 
+    const discardConfirmBox = document.createElement('div');
+    discardConfirmBox.className = 'inquiry-confirm';
+    discardConfirmBox.hidden = true;
+    discardConfirmBox.innerHTML = [
+        '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryDiscardTitle">',
+        '<h3 id="inquiryDiscardTitle">Unsaved changes</h3>',
+        '<p>You have unsaved changes. Discard them?</p>',
+        '<div class="inquiry-confirm__actions">',
+        '<button type="button" class="btn-secondary" data-inquiry-discard-keep>Keep Editing</button>',
+        '<button type="button" class="btn-primary" data-inquiry-discard-yes>Discard Changes</button>',
+        '</div>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(discardConfirmBox);
+
     const prerequisiteNotice = document.createElement('div');
     prerequisiteNotice.className = 'inquiry-confirm inquiry-prerequisite-modal';
     prerequisiteNotice.hidden = true;
@@ -168,6 +186,38 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeConfirm = function () {
         pendingConfirmForm = null;
         confirmBox.hidden = true;
+    };
+
+    const inquiryReviewHasChanges = function (modal) {
+        const reviewForm = modal?.querySelector('.inquiry-review-form');
+        return reviewForm?.dataset.reviewDirty === '1';
+    };
+
+    const discardInquiryReviewChanges = function (modal) {
+        const reviewForm = modal?.querySelector('.inquiry-review-form');
+        reviewForm?.dispatchEvent(new CustomEvent('edge:review-discard'));
+    };
+
+    const closeDiscardConfirm = function (keepEditing = false) {
+        const modal = pendingDiscardModal;
+        const keepAction = pendingDiscardKeepAction;
+        pendingDiscardModal = null;
+        pendingDiscardAction = null;
+        pendingDiscardKeepAction = null;
+        discardConfirmBox.hidden = true;
+
+        if (keepEditing && modal) {
+            keepAction?.();
+            modal.querySelector('textarea[name="admin_notes"], select[name="status"]')?.focus();
+        }
+    };
+
+    const showDiscardConfirm = function (modal, onDiscard, onKeepEditing) {
+        pendingDiscardModal = modal;
+        pendingDiscardAction = onDiscard;
+        pendingDiscardKeepAction = onKeepEditing;
+        discardConfirmBox.hidden = false;
+        discardConfirmBox.querySelector('[data-inquiry-discard-keep]')?.focus();
     };
 
     const closePrerequisiteNotice = function () {
@@ -260,6 +310,20 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const requestCloseModal = function (modal) {
+        const reviewForm = modal?.querySelector('.inquiry-review-form');
+        if (reviewForm?.dataset.submitting === '1') {
+            return;
+        }
+
+        if (inquiryReviewHasChanges(modal)) {
+            showDiscardConfirm(modal, function () {
+                discardInquiryReviewChanges(modal);
+                closeModal(modal);
+                window.history.replaceState({}, document.title, 'inquiries.php');
+            });
+            return;
+        }
+
         closeModal(modal);
         window.history.replaceState({}, document.title, 'inquiries.php');
     };
@@ -634,6 +698,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const statusChanged = status !== originalStatus;
             const notesChanged = notesField ? notesField.value !== originalNotes : false;
             const isDirty = statusChanged || notesChanged;
+            form.dataset.reviewDirty = isDirty ? '1' : '0';
 
             if (submitButton) {
                 submitButton.disabled = !isDirty || form.dataset.submitting === '1';
@@ -669,6 +734,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         statusSelect?.addEventListener('change', syncReviewState);
         notesField?.addEventListener('input', syncReviewState);
+        form.addEventListener('edge:review-discard', function () {
+            form.reset();
+            delete form.dataset.confirmed;
+            delete form.dataset.submitting;
+            syncReviewState();
+        });
         syncReviewState();
 
         form.addEventListener('submit', function (event) {
@@ -1718,6 +1789,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const modalId = event.state?.inquiryModalId || new URLSearchParams(window.location.search).get('open');
         const targetTab = event.state?.inquiryTab || new URLSearchParams(window.location.search).get('tab') || 'client';
         const targetModal = modalId ? document.getElementById(modalId) : null;
+        const openModalBeforeHistoryChange = document.querySelector('.inquiry-modal:not([hidden])');
+
+        if (!targetModal && openModalBeforeHistoryChange && inquiryReviewHasChanges(openModalBeforeHistoryChange)) {
+            showDiscardConfirm(
+                openModalBeforeHistoryChange,
+                function () {
+                    discardInquiryReviewChanges(openModalBeforeHistoryChange);
+                    closeModal(openModalBeforeHistoryChange);
+                },
+                function () {
+                    const activeTab = openModalBeforeHistoryChange.querySelector('.inquiry-modal-tab.is-active')?.getAttribute('data-inquiry-tab') || 'client';
+                    pushModalHistory(openModalBeforeHistoryChange, activeTab);
+                }
+            );
+            return;
+        }
 
         document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(function (modal) {
             if (modal !== targetModal) {
@@ -1752,6 +1839,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    discardConfirmBox.querySelector('[data-inquiry-discard-keep]')?.addEventListener('click', function () {
+        closeDiscardConfirm(true);
+    });
+    discardConfirmBox.querySelector('[data-inquiry-discard-yes]')?.addEventListener('click', function () {
+        const discardAction = pendingDiscardAction;
+        closeDiscardConfirm();
+        discardAction?.();
+    });
+    discardConfirmBox.addEventListener('click', function (event) {
+        if (event.target === discardConfirmBox) {
+            closeDiscardConfirm(true);
+        }
+    });
+
     prerequisiteNotice.querySelector('[data-prerequisite-notice-ok]')?.addEventListener('click', closePrerequisiteNotice);
     prerequisiteNotice.addEventListener('click', function (event) {
         if (event.target === prerequisiteNotice) {
@@ -1766,6 +1867,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!confirmBox.hidden) {
             closeConfirm();
+            return;
+        }
+
+        if (!discardConfirmBox.hidden) {
+            closeDiscardConfirm(true);
             return;
         }
 

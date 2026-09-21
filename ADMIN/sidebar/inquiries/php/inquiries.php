@@ -1634,7 +1634,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         } elseif ($currentStatus === 'Not Qualified') {
                             $nextActionLabel = 'View Review';
                         }
-                        $nextActionClass = in_array($nextActionLabel, ['Review Inquiry', 'Review Initial Quotation'], true)
+                        $nextActionClass = in_array($nextActionLabel, ['Review Inquiry', 'Review Initial Quotation', 'View Review'], true)
                             ? ' inquiry-next-action--review'
                             : '';
                     ?>

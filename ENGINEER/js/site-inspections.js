@@ -271,6 +271,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const clearCostingErrorWhenResolved = function (form) {
+        if (!form.querySelector('.is-invalid')) {
+            clearCostingError(form);
+        }
+    };
+
     const normalizeDecimalField = function (field) {
         if (!field) {
             return;
@@ -288,10 +294,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const costErrorMessage = function (value) {
         const number = Number(value);
+        if (/^(?:0|[1-9]\d*)\.\d{3,}$/.test(value)) {
+            return 'Maximum 2 decimal places.';
+        }
         if (value !== '' && Number.isFinite(number) && number <= 0) {
             return 'Enter a cost greater than 0.';
         }
-        return 'Use a valid cost with up to 2 decimals.';
+        return 'Enter a valid amount.';
     };
 
     const isWholeCountUnit = function (unit) {
@@ -437,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (firstInvalid) {
-            showCostingError(form, errorMessage || 'Please fix the highlighted field.');
+            showCostingError(form, 'Please fix the highlighted fields below.');
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof firstInvalid.focus === 'function') {
                 firstInvalid.focus();
@@ -471,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelectorAll('[data-costing-decimal]').forEach(function (field) {
             field.addEventListener('input', function () {
                 clearFieldError(field);
-                clearCostingError(form);
+                clearCostingErrorWhenResolved(form);
                 syncTotal(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
@@ -528,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelectorAll('input, select').forEach(function (field) {
             field.addEventListener('input', function () {
                 clearFieldError(field);
-                clearCostingError(form);
+                clearCostingErrorWhenResolved(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
@@ -539,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     field.value = option?.getAttribute('data-unit') || field.value;
                 }
                 clearFieldError(field);
-                clearCostingError(form);
+                clearCostingErrorWhenResolved(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
@@ -592,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('textarea').forEach(function (field) {
             field.addEventListener('input', function () {
                 clearFieldError(field);
-                clearCostingError(form);
+                clearCostingErrorWhenResolved(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });

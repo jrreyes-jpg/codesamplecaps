@@ -373,7 +373,7 @@ body.inspection-modal-open {
     gap: 5px;
     min-width: 0;
     position: relative;
-    padding-bottom: 19px;
+    padding-bottom: 34px;
 }
 
 .costing-row label span {
@@ -424,9 +424,9 @@ body.inspection-modal-open {
     right: 0;
     bottom: 0;
     left: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-height: 28px;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
     color: #b91c1c;
     font-size: 0.72rem;
     font-weight: 900;

@@ -917,6 +917,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <label>
                                                     <span>Qty Needed</span>
                                                     <input type="text" name="asset_requirement_quantity[]" inputmode="numeric" autocomplete="off" value="<?php echo htmlspecialchars((string)$assetRequirement['quantity_required'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                    <small class="asset-requirement-shortage" data-asset-requirement-shortage hidden></small>
                                                 </label>
                                                 <label>
                                                     <span>Notes</span>
@@ -944,7 +945,7 @@ require __DIR__ . '/../layout/header.php';
                                                     </select>
                                                 </label>
                                                 <label><span>Available</span><output data-asset-requirement-available>Select an asset</output></label>
-                                                <label><span>Qty Needed</span><input type="text" name="asset_requirement_quantity[]" inputmode="numeric" autocomplete="off" value="1"></label>
+                                                <label><span>Qty Needed</span><input type="text" name="asset_requirement_quantity[]" inputmode="numeric" autocomplete="off" value="1"><small class="asset-requirement-shortage" data-asset-requirement-shortage hidden></small></label>
                                                 <label><span>Notes</span><input type="text" name="asset_requirement_notes[]" placeholder="Optional notes"></label>
                                                 <button type="button" class="btn-remove-row" data-remove-asset-requirement>Remove</button>
                                             </div>

@@ -143,12 +143,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateAssetRequirementAvailability = function (row) {
         const picker = row.querySelector('[data-asset-requirement-picker]');
         const output = row.querySelector('[data-asset-requirement-available]');
+        const shortage = row.querySelector('[data-asset-requirement-shortage]');
+        const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]');
         const selected = picker?.selectedOptions[0];
         const available = selected?.getAttribute('data-available');
         if (output) {
             output.textContent = available === null || available === undefined || available === ''
                 ? 'Select an asset'
                 : `${available} available`;
+        }
+
+        const quantityNeeded = Number(quantity?.value.trim() || 0);
+        const availableCount = Number(available || 0);
+        const hasShortage = picker?.value !== ''
+            && /^[1-9]\d*$/.test(quantity?.value.trim() || '')
+            && quantityNeeded > availableCount;
+        if (shortage) {
+            shortage.hidden = !hasShortage;
+            shortage.textContent = hasShortage ? `Short by ${quantityNeeded - availableCount}` : '';
         }
     };
 
@@ -185,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
             field?.addEventListener('input', function () {
                 clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
+                updateAssetRequirementAvailability(row);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
@@ -192,9 +205,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         quantity?.addEventListener('blur', function () {
             const value = quantity.value.trim();
-            if (value !== '' && !/^[1-9]\d*$/.test(value)) {
-                setFieldError(quantity, 'Enter a whole number greater than 0.');
+            if (!/^[1-9]\d*$/.test(value)) {
+                setFieldError(quantity, 'Enter a whole number of 1 or more.');
+            } else {
+                clearFieldError(quantity);
+                clearCostingErrorWhenResolved(form);
             }
+            updateAssetRequirementAvailability(row);
         });
 
         row.querySelector('[data-remove-asset-requirement]')?.addEventListener('click', function () {
@@ -545,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (!/^[1-9]\d*$/.test(quantityText)) {
-                setFieldError(quantity, 'Enter a whole number greater than 0.');
+                setFieldError(quantity, 'Enter a whole number of 1 or more.');
                 firstInvalid = firstInvalid || quantity;
             }
         });

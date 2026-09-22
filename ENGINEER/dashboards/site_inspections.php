@@ -26,6 +26,23 @@ function engineer_format_money(float $amount): string
     return 'PHP ' . number_format($amount, 2);
 }
 
+function engineer_inspection_complete_site_address(array $inspection): string
+{
+    $parts = [];
+    $seen = [];
+
+    foreach (['site_address', 'barangay', 'city_municipality', 'province'] as $field) {
+        $value = trim((string)($inspection[$field] ?? ''));
+        $key = mb_strtolower($value, 'UTF-8');
+        if ($value !== '' && !isset($seen[$key])) {
+            $parts[] = $value;
+            $seen[$key] = true;
+        }
+    }
+
+    return implode(', ', $parts);
+}
+
 function engineer_owns_inspection(mysqli $conn, int $inspectionId, int $engineerId): bool
 {
     $stmt = $conn->prepare('SELECT id FROM site_inspections WHERE id = ? AND engineer_id = ? LIMIT 1');
@@ -333,6 +350,9 @@ $stmt = $conn->prepare(
         s.email,
         s.contact_no,
         s.site_address,
+        s.barangay,
+        s.city_municipality,
+        s.province,
         s.service_category,
         s.description
      FROM site_inspections si
@@ -345,6 +365,7 @@ if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
+        $row['complete_site_address'] = engineer_inspection_complete_site_address($row);
         $inspections[] = $row;
     }
 }
@@ -455,7 +476,7 @@ require __DIR__ . '/../layout/header.php';
                                     <div class="inspection-detail"><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail inspection-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)$inspection['site_address'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail inspection-detail--wide"><span>Admin Notes</span><strong><?php echo htmlspecialchars((string)($inspection['site_notes'] ?: 'None'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                 </div>
 

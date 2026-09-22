@@ -741,9 +741,4 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    document.querySelectorAll('[data-inspection-toast]').forEach(function (toast) {
-        window.setTimeout(function () {
-            toast.remove();
-        }, 4000);
-    });
 });

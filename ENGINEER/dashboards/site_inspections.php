@@ -468,7 +468,10 @@ if ($costResult) {
 
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
-$engineerCssFiles = ['/codesamplecaps/ENGINEER/css/site-inspections.css'];
+$engineerCssFiles = [
+    '/codesamplecaps/ENGINEER/css/site-inspections.css',
+    '/codesamplecaps/SHARED/toast/css/toast.css',
+];
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
@@ -478,7 +481,15 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
-        <?php if ($message): ?><div class="inspection-flash success<?php echo $message === 'Inspection draft saved.' ? ' inspection-toast' : ''; ?>"<?php echo $message === 'Inspection draft saved.' ? ' data-inspection-toast' : ''; ?>><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+        <?php if ($message === 'Inspection draft saved.'): ?>
+            <div class="shared-toast shared-toast--success" data-shared-toast role="status">
+                <span>Inspection draft saved.</span>
+                <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+                <span class="shared-toast__progress" aria-hidden="true"></span>
+            </div>
+        <?php elseif ($message): ?>
+            <div class="inspection-flash success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
+        <?php endif; ?>
         <?php if ($error): ?><div class="inspection-flash error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
 
         <section class="inspection-panel">
@@ -715,6 +726,9 @@ require __DIR__ . '/../layout/header.php';
     </div>
 </main>
 <?php
-$engineerJsFiles = ['/codesamplecaps/ENGINEER/js/site-inspections.js'];
+$engineerJsFiles = [
+    '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js',
+];
 require __DIR__ . '/../layout/footer.php';
 ?>

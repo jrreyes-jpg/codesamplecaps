@@ -535,15 +535,6 @@ body.inspection-modal-open {
     color: #991b1b;
 }
 
-.inspection-toast {
-    position: fixed;
-    top: 82px;
-    right: 20px;
-    z-index: 1200;
-    max-width: min(340px, calc(100vw - 32px));
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
-}
-
 .inspection-button-spinner {
     display: inline-block;
     width: 12px;

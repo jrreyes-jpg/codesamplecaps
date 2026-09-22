@@ -651,7 +651,7 @@ require __DIR__ . '/../layout/header.php';
                                             <select name="item_type[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
                                                 <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
-                                                <option value="equipment" <?php echo ($item['item_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment</option>
+                                                <option value="equipment" <?php echo ($item['item_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment (Billable / Rental)</option>
                                                 <option value="service" <?php echo ($item['item_type'] ?? '') === 'service' ? 'selected' : ''; ?>>Service</option>
                                                 <option value="other" <?php echo ($item['item_type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
                                             </select>

@@ -2212,7 +2212,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         Edit Details
                                                     </a>
                                                 <?php endif; ?>
-                                                <a class="inquiry-quote-pdf-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo (int)$quotationDraft['id']; ?>">
+                                                <?php
+                                                    $quotationPdfParams = ['id' => (int)$quotationDraft['id']];
+                                                    if ($search !== '') {
+                                                        $quotationPdfParams['return_search'] = $search;
+                                                    }
+                                                    if ($statusFilter !== '') {
+                                                        $quotationPdfParams['return_status'] = $statusFilter;
+                                                    }
+                                                    if ($view !== 'active') {
+                                                        $quotationPdfParams['return_view'] = $view;
+                                                    }
+                                                    if ($quotationFilter !== '') {
+                                                        $quotationPdfParams['return_quotation_filter'] = $quotationFilter;
+                                                    }
+                                                    $quotationPdfUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?' . http_build_query($quotationPdfParams);
+                                                ?>
+                                                <a class="inquiry-quote-pdf-link" href="<?php echo htmlspecialchars($quotationPdfUrl, ENT_QUOTES, 'UTF-8'); ?>">
                                                     View / Print PDF
                                                 </a>
                                             </div>

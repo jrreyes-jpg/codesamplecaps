@@ -25,6 +25,18 @@ $statusLabel = $isFinalized
     ? 'Approved / Finalized'
     : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
 $isInitialQuotation = empty($quotation['parent_draft_id']) && (int)($quotation['revision_no'] ?? 0) === 0;
+$inquiryId = (int)($quotation['inquiry_id'] ?? 0);
+$backToInquiriesParams = [
+    'open' => 'inquiryModal' . $inquiryId,
+    'tab' => 'quotation',
+];
+foreach (['return_search' => 'search', 'return_status' => 'status', 'return_view' => 'view', 'return_quotation_filter' => 'quotation_filter'] as $returnKey => $targetKey) {
+    $returnValue = trim((string)($_GET[$returnKey] ?? ''));
+    if ($returnValue !== '') {
+        $backToInquiriesParams[$targetKey] = $returnValue;
+    }
+}
+$backToInquiriesUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query($backToInquiriesParams);
 $preparedByName = trim((string)($_SESSION['name'] ?? '')) ?: 'Admin';
 $preparedByRole = 'Admin';
 $showPreparedByRole = strcasecmp(
@@ -47,7 +59,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 </head>
 <body>
     <div class="quote-actions">
-        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php">Back to Inquiries</a>
+        <a href="<?php echo htmlspecialchars($backToInquiriesUrl, ENT_QUOTES, 'UTF-8'); ?>">Back to Inquiries</a>
         <?php if ($quoteStatus === 'draft'): ?>
             <a class="quote-edit-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $draftId; ?>">Edit Details</a>
         <?php endif; ?>

@@ -999,16 +999,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $scheduledAt = ($scheduleDate !== '' && $scheduleTime !== '') ? $scheduleDate . ' ' . $scheduleTime : '';
         }
         $siteNotes = trim((string)($_POST['site_notes'] ?? ''));
-        $scheduleTimestamp = $scheduledAt !== '' ? strtotime($scheduledAt) : false;
-        $scheduleTime = $scheduleTimestamp !== false ? date('H:i', $scheduleTimestamp) : '';
-        $allowedInspectionTimes = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
+        $manilaTimezone = new DateTimeZone('Asia/Manila');
+        $scheduleDateTime = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $scheduledAt, $manilaTimezone);
+        $scheduleParseErrors = DateTimeImmutable::getLastErrors();
+        $isValidScheduleDateTime = $scheduleDateTime instanceof DateTimeImmutable
+            && $scheduleDateTime->format('Y-m-d H:i') === $scheduledAt
+            && ($scheduleParseErrors === false || ($scheduleParseErrors['warning_count'] === 0 && $scheduleParseErrors['error_count'] === 0));
+        $scheduleTimestamp = $isValidScheduleDateTime ? $scheduleDateTime->getTimestamp() : false;
+        $scheduleTime = $isValidScheduleDateTime ? $scheduleDateTime->format('H:i') : '';
+        $allowedInspectionTimes = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+        $earliestSameDaySchedule = new DateTimeImmutable('now', $manilaTimezone);
+        $earliestSameDaySchedule = $earliestSameDaySchedule->modify('+1 hour');
 
         if ($inquiryId <= 0 || $engineerId <= 0 || $scheduleTimestamp === false) {
             $error = 'Please select engineer and valid inspection schedule.';
         } elseif (!in_array($scheduleTime, $allowedInspectionTimes, true)) {
-            $error = 'Please select a valid working-hour inspection time.';
-        } elseif ($scheduleTimestamp < (time() + (30 * 60))) {
-            $error = 'Please select an inspection time at least 30 minutes from now.';
+            $error = 'The selected inspection schedule is no longer available. Please choose a later date or time.';
+        } elseif ($scheduleDateTime < $earliestSameDaySchedule) {
+            $error = 'The selected inspection schedule is no longer available. Please choose a later date or time.';
         } else {
             $currentInquiryStatus = '';
             $statusStmt = $conn->prepare('SELECT status FROM service_inquiries WHERE id = ? LIMIT 1');
@@ -1046,7 +1054,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '') {
-            $scheduleValue = date('Y-m-d H:i:s', $scheduleTimestamp);
+            $scheduleValue = $scheduleDateTime->format('Y-m-d H:i:s');
             $existingInspectionId = 0;
             $existingInspectionStatus = '';
             $existingStmt = $conn->prepare(
@@ -2148,7 +2156,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span>Inspection Time</span>
                                                     <select class="js-admin-inspection-time" name="inspection_time" required>
                                                         <option value="">Select time</option>
-                                                        <?php foreach (['08:00' => '8:00 AM', '09:00' => '9:00 AM', '10:00' => '10:00 AM', '11:00' => '11:00 AM', '13:00' => '1:00 PM', '14:00' => '2:00 PM', '15:00' => '3:00 PM', '16:00' => '4:00 PM'] as $timeValue => $timeLabel): ?>
+                                                        <?php foreach (['08:00' => '8:00 AM', '09:00' => '9:00 AM', '10:00' => '10:00 AM', '11:00' => '11:00 AM', '13:00' => '1:00 PM', '14:00' => '2:00 PM', '15:00' => '3:00 PM', '16:00' => '4:00 PM', '17:00' => '5:00 PM'] as $timeValue => $timeLabel): ?>
                                                             <option value="<?php echo $timeValue; ?>" <?php echo $inspectionTimestamp && date('H:i', $inspectionTimestamp) === $timeValue ? 'selected' : ''; ?>><?php echo $timeLabel; ?></option>
                                                         <?php endforeach; ?>
                                                     </select>

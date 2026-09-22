@@ -497,46 +497,72 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        const formatLocalDate = function (date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return year + '-' + month + '-' + day;
-        };
-
-        const today = new Date();
-        const todayDate = formatLocalDate(today);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const lastWorkingTimeToday = new Date(todayDate + 'T16:00:00');
+        const manilaDateFormatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+        });
+        const inspectionDayEndMinutes = 17 * 60;
+        const inspectionLeadMinutes = 60;
         let dateNoteTimer = null;
 
-        const minimumScheduleBufferMs = 30 * 60 * 1000;
+        const getManilaNow = function () {
+            const parts = manilaDateFormatter.formatToParts(new Date()).reduce(function (values, part) {
+                if (part.type !== 'literal') {
+                    values[part.type] = part.value;
+                }
+                return values;
+            }, {});
 
-        const getMinimumScheduleTime = function () {
-            return Date.now() + minimumScheduleBufferMs;
+            return {
+                date: parts.year + '-' + parts.month + '-' + parts.day,
+                minutes: (Number.parseInt(parts.hour || '0', 10) * 60) + Number.parseInt(parts.minute || '0', 10),
+            };
         };
 
-        const hasWorkingTimeToday = function () {
-            return getMinimumScheduleTime() <= lastWorkingTimeToday.getTime();
+        const addDaysToDate = function (dateValue, days) {
+            const parts = dateValue.split('-').map(Number);
+            const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+            return date.toISOString().slice(0, 10);
         };
 
-        dateInput.min = hasWorkingTimeToday() ? todayDate : formatLocalDate(tomorrow);
-        if (dateInput.value === todayDate && !hasWorkingTimeToday()) {
-            dateInput.value = '';
-            timeInput.value = '';
-        }
+        const timeValueToMinutes = function (value) {
+            const parts = value.split(':').map(Number);
+            return (parts[0] * 60) + parts[1];
+        };
+
+        const getEarliestScheduleDate = function () {
+            const now = getManilaNow();
+            return now.minutes + inspectionLeadMinutes <= inspectionDayEndMinutes
+                ? now.date
+                : addDaysToDate(now.date, 1);
+        };
+
+        const syncDateAvailability = function () {
+            const earliestDate = getEarliestScheduleDate();
+            dateInput.min = earliestDate;
+
+            if (dateInput.value && dateInput.value < earliestDate) {
+                dateInput.value = '';
+                timeInput.value = '';
+            }
+        };
 
         const syncTimeOptions = function () {
-            const minimumTime = getMinimumScheduleTime();
+            const now = getManilaNow();
+            const minimumTodayTime = now.minutes + inspectionLeadMinutes;
 
             Array.from(timeInput.options).forEach(function (option) {
                 if (!option.value) {
                     return;
                 }
 
-                const optionDate = new Date(dateInput.value + 'T' + option.value + ':00');
-                const isUnavailable = dateInput.value === todayDate && optionDate.getTime() < minimumTime;
+                const isUnavailable = dateInput.value === now.date
+                    && timeValueToMinutes(option.value) < minimumTodayTime;
                 option.disabled = isUnavailable;
                 option.hidden = isUnavailable;
             });
@@ -547,18 +573,20 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const isInvalidSelectedTime = function () {
-            if (dateInput.value !== todayDate || !timeInput.value) {
+            if (!dateInput.value || !timeInput.value) {
                 return false;
             }
 
-            const selectedTime = new Date(dateInput.value + 'T' + timeInput.value + ':00');
-            return selectedTime.getTime() < getMinimumScheduleTime();
+            const now = getManilaNow();
+            return dateInput.value < getEarliestScheduleDate()
+                || (dateInput.value === now.date && timeValueToMinutes(timeInput.value) < now.minutes + inspectionLeadMinutes);
         };
 
         const validateScheduleTime = function () {
+            syncDateAvailability();
             syncTimeOptions();
             if (isInvalidSelectedTime()) {
-                timeInput.setCustomValidity('Select a time at least 30 minutes from now.');
+                timeInput.setCustomValidity('Select a time at least 1 hour from now.');
             } else {
                 timeInput.setCustomValidity('');
             }
@@ -603,6 +631,7 @@ document.addEventListener('DOMContentLoaded', function () {
         dateInput.addEventListener('change', function () {
             hideDatePickerState();
             showDateNoteBriefly();
+            syncDateAvailability();
             syncTimeOptions();
             validateScheduleTime();
         });
@@ -611,6 +640,7 @@ document.addEventListener('DOMContentLoaded', function () {
             dateButton?.classList.remove('is-active');
         });
         timeInput.addEventListener('change', validateScheduleTime);
+        syncDateAvailability();
         syncTimeOptions();
 
         const saveDraft = function () {

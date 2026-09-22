@@ -1871,10 +1871,26 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry review">&times;</button>
                                     </div>
                                 </div>
-                                <div class="inquiry-modal-tabs" role="tablist" aria-label="Inquiry review sections">
-                                    <button type="button" class="inquiry-modal-tab is-active" data-inquiry-tab="client">Contact &amp; Review</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo !$showQuotation ? ' chip-disabled' : ''; ?>" data-inquiry-tab="quotation" aria-disabled="<?php echo !$showQuotation ? 'true' : 'false'; ?>">Quotation</button>
-                                    <button type="button" class="inquiry-modal-tab<?php echo $latestInspection ? ' has-data' : ''; ?><?php echo !$showInspection ? ' chip-disabled' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-disabled="<?php echo !$showInspection ? 'true' : 'false'; ?>">Inspection</button>
+                                <?php
+                                    $workflowReviewCompleted = in_array($currentStatus, ['Verified Lead', 'For Inspection', 'Not Qualified'], true);
+                                    $workflowInitialQuoteAccepted = $originalQuotation
+                                        && inquiry_quote_normalize_status((string)($originalQuotation['status'] ?? '')) === 'accepted';
+                                    $workflowQuotationLocked = $currentStatus === 'Not Qualified' || !$showQuotation;
+                                    $workflowInspectionLocked = !$showInspection;
+                                ?>
+                                <div class="inquiry-modal-tabs inquiry-workflow" role="tablist" aria-label="Inquiry review workflow">
+                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step<?php echo $workflowReviewCompleted ? ' is-completed' : ' is-current is-active'; ?>" data-inquiry-tab="client" aria-current="<?php echo !$workflowReviewCompleted ? 'step' : 'false'; ?>">
+                                        <span class="inquiry-workflow__marker" aria-hidden="true"><span>1</span><b>&#10003;</b></span>
+                                        <span class="inquiry-workflow__label">Contact &amp; Review</span>
+                                    </button>
+                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step<?php echo $workflowQuotationLocked ? ' chip-disabled is-locked' : ($workflowInitialQuoteAccepted ? ' is-completed' : ' is-current'); ?>" data-inquiry-tab="quotation" aria-disabled="<?php echo $workflowQuotationLocked ? 'true' : 'false'; ?>" aria-current="<?php echo !$workflowQuotationLocked && !$workflowInitialQuoteAccepted ? 'step' : 'false'; ?>">
+                                        <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
+                                        <span class="inquiry-workflow__label">Quotation</span>
+                                    </button>
+                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step<?php echo $workflowInspectionLocked ? ' chip-disabled is-locked' : ' is-current'; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-disabled="<?php echo $workflowInspectionLocked ? 'true' : 'false'; ?>" aria-current="<?php echo !$workflowInspectionLocked ? 'step' : 'false'; ?>">
+                                        <span class="inquiry-workflow__marker" aria-hidden="true"><span>3</span><b>&#10003;</b></span>
+                                        <span class="inquiry-workflow__label">Inspection</span>
+                                    </button>
                                 </div>
                             <div class="inquiry-modal-panels">
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">

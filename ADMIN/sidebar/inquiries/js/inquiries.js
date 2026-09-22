@@ -1060,7 +1060,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (inspectionTab) {
                         inspectionTab.disabled = false;
                         inspectionTab.setAttribute('aria-disabled', 'false');
+                        inspectionTab.setAttribute('aria-current', 'step');
                         inspectionTab.classList.remove('chip-disabled');
+                        inspectionTab.classList.remove('is-locked');
+                        inspectionTab.classList.add('is-current');
+                    }
+
+                    const quotationTab = modal.querySelector('[data-inquiry-tab="quotation"]');
+                    if (quotationTab) {
+                        quotationTab.setAttribute('aria-current', 'false');
+                        quotationTab.classList.remove('is-current');
+                        quotationTab.classList.add('is-completed');
                     }
 
                     modal.querySelector('[data-inquiry-inspection-form]')?.removeAttribute('hidden');

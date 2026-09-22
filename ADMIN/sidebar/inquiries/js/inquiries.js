@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const closeModal = function (modal) {
-        if (!modal || modal.dataset.quotationSending === '1') {
+        if (!modal || modal.dataset.quotationSending === '1' || modal.dataset.reviewSaving === '1') {
             return;
         }
 
@@ -312,6 +312,46 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const setReviewSavingState = function (modal, isSaving) {
+        if (!modal) {
+            return;
+        }
+
+        if (isSaving) {
+            modal.dataset.reviewSaving = '1';
+            modal.classList.add('is-review-saving');
+            modal.setAttribute('aria-busy', 'true');
+            modal.querySelectorAll('button, select, textarea, input:not([type="hidden"])').forEach(function (control) {
+                control.dataset.reviewLockWasDisabled = control.disabled ? '1' : '0';
+                control.disabled = true;
+            });
+            modal.querySelectorAll('a').forEach(function (link) {
+                link.dataset.reviewLockTabindex = link.getAttribute('tabindex') ?? '__none__';
+                link.setAttribute('tabindex', '-1');
+                link.setAttribute('aria-disabled', 'true');
+            });
+            return;
+        }
+
+        delete modal.dataset.reviewSaving;
+        modal.classList.remove('is-review-saving');
+        modal.removeAttribute('aria-busy');
+        modal.querySelectorAll('[data-review-lock-was-disabled]').forEach(function (control) {
+            control.disabled = control.dataset.reviewLockWasDisabled === '1';
+            delete control.dataset.reviewLockWasDisabled;
+        });
+        modal.querySelectorAll('[data-review-lock-tabindex]').forEach(function (link) {
+            const previousTabindex = link.dataset.reviewLockTabindex;
+            if (previousTabindex === '__none__') {
+                link.removeAttribute('tabindex');
+            } else {
+                link.setAttribute('tabindex', previousTabindex);
+            }
+            link.removeAttribute('aria-disabled');
+            delete link.dataset.reviewLockTabindex;
+        });
+    };
+
     const openModal = function (modal) {
         if (!modal) {
             return;
@@ -335,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const activateModalTab = function (modal, target) {
-        if (!modal || !target || modal.dataset.quotationSending === '1') {
+        if (!modal || !target || modal.dataset.quotationSending === '1' || modal.dataset.reviewSaving === '1') {
             return false;
         }
 
@@ -373,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const requestCloseModal = function (modal) {
-        if (modal?.dataset.quotationSending === '1') {
+        if (modal?.dataset.quotationSending === '1' || modal?.dataset.reviewSaving === '1') {
             return;
         }
 
@@ -443,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.addEventListener('click', function (event) {
-        if (!event.target.closest('.inquiry-modal.is-quotation-sending')) {
+        if (!event.target.closest('.inquiry-modal.is-quotation-sending, .inquiry-modal.is-review-saving')) {
             return;
         }
 
@@ -883,6 +923,7 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.submitting = '1';
             const willNotifyClient = statusChanged
                 && ['Verified Lead', 'Not Qualified'].includes(statusField.value);
+            const reviewRequestData = new FormData(form);
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.setAttribute('aria-disabled', 'true');
@@ -897,10 +938,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     submitButton.replaceChildren(spinner, label);
                 }
             }
+            if (willNotifyClient) {
+                setReviewSavingState(modal, true);
+            }
 
             fetch(form.getAttribute('action') || window.location.href, {
                 method: 'POST',
-                body: new FormData(form),
+                body: reviewRequestData,
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -918,10 +962,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     originalStatus = result.data.status || statusField.value;
                     originalNotes = notesField ? notesField.value : '';
+                    if (willNotifyClient) {
+                        setReviewSavingState(modal, false);
+                    }
                     window.location.assign(result.data.redirect || window.location.href);
                 })
                 .catch(function (error) {
                     form.dataset.submitting = '0';
+                    if (willNotifyClient) {
+                        setReviewSavingState(modal, false);
+                    }
                     syncReviewState();
                     if (typeof window.showToast === 'function') {
                         window.showToast(error.message || 'Unable to save inquiry review.', 'error');
@@ -1948,6 +1998,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (openModalBeforeHistoryChange?.dataset.reviewSaving === '1') {
+            const activeTab = openModalBeforeHistoryChange.querySelector('.inquiry-modal-tab.is-active')?.getAttribute('data-inquiry-tab') || 'client';
+            pushModalHistory(openModalBeforeHistoryChange, activeTab);
+            return;
+        }
+
         if (!targetModal && openModalBeforeHistoryChange && inquiryReviewHasChanges(openModalBeforeHistoryChange)) {
             showDiscardConfirm(
                 openModalBeforeHistoryChange,
@@ -2047,5 +2103,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll('.inquiry-archive-modal:not([hidden])').forEach(closeArchiveModal);
         document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(requestCloseModal);
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+        if (!document.querySelector('.inquiry-modal[data-review-saving="1"]')) {
+            return;
+        }
+        event.preventDefault();
+        event.returnValue = '';
     });
 });

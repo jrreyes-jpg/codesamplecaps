@@ -55,21 +55,35 @@ document.addEventListener('DOMContentLoaded', function () {
         window.localStorage.setItem(storageKeyForForm(form), JSON.stringify(payload));
     };
 
+    const normalizeText = function (value) {
+        return String(value ?? '').trim();
+    };
+
+    const normalizeNumber = function (value) {
+        const text = normalizeText(value);
+        if (text === '') {
+            return '';
+        }
+
+        const normalizedText = text.startsWith('.') ? `0${text}` : text;
+        const number = Number(normalizedText);
+        return Number.isFinite(number) ? String(number) : normalizedText;
+    };
+
     const formSnapshot = function (form) {
         return JSON.stringify({
-            findings: form.querySelector('textarea[name="engineer_findings"]')?.value || '',
-            riskNotes: form.querySelector('textarea[name="risk_notes"]')?.value || '',
-            clientRequests: form.querySelector('textarea[name="client_requests"]')?.value || '',
+            findings: normalizeText(form.querySelector('textarea[name="engineer_findings"]')?.value),
+            riskNotes: normalizeText(form.querySelector('textarea[name="risk_notes"]')?.value),
+            clientRequests: normalizeText(form.querySelector('textarea[name="client_requests"]')?.value),
             rows: Array.from(form.querySelectorAll('.costing-row')).map(function (row) {
                 return {
-                    type: row.querySelector('select[name="item_type[]"]')?.value || '',
-                    materialId: row.querySelector('select[name="material_id[]"]')?.value || '',
-                    inventoryId: row.querySelector('input[name="inventory_id[]"]')?.value || '',
-                    itemName: row.querySelector('input[name="item_name[]"]')?.value || '',
-                    quantity: row.querySelector('input[name="quantity[]"]')?.value || '',
-                    unit: row.querySelector('select[name="unit[]"]')?.value || '',
-                    unitCost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
-                    notes: row.querySelector('input[name="notes[]"]')?.value || '',
+                    type: normalizeText(row.querySelector('select[name="item_type[]"]')?.value).toLowerCase(),
+                    materialId: normalizeText(row.querySelector('select[name="material_id[]"]')?.value) || '',
+                    itemName: normalizeText(row.querySelector('input[name="item_name[]"]')?.value),
+                    quantity: normalizeNumber(row.querySelector('input[name="quantity[]"]')?.value),
+                    unit: normalizeText(row.querySelector('select[name="unit[]"]')?.value).toLowerCase(),
+                    unitCost: normalizeNumber(row.querySelector('input[name="unit_cost[]"]')?.value),
+                    notes: normalizeText(row.querySelector('input[name="notes[]"]')?.value),
                 };
             }),
         });
@@ -81,7 +95,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        saveButton.disabled = formSnapshot(form) === (form.dataset.savedSnapshot || '');
+        saveButton.disabled = !isFormDirty(form);
+
+        if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
+            console.debug('Inspection draft snapshots', {
+                baseline: form.dataset.savedSnapshot || '',
+                current: formSnapshot(form),
+            });
+        }
+    };
+
+    const isFormDirty = function (form) {
+        return formSnapshot(form) !== (form.dataset.savedSnapshot || '');
     };
 
     const fillRow = function (row, data) {
@@ -518,6 +543,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelector('[data-remove-costing-row]')?.addEventListener('click', function () {
+            if (rowHasMeaningfulData(row)
+                && !window.confirm('Remove costing item?\n\nThis will remove the current costing row and its entered details.')) {
+                return;
+            }
+
             const rows = form.querySelectorAll('.costing-row');
             if (rows.length <= 1) {
                 row.querySelectorAll('input').forEach(function (field) {
@@ -541,8 +571,9 @@ document.addEventListener('DOMContentLoaded', function () {
             bindRow(form, row);
         });
 
-        restoreFormDraft(form);
+        // Kunin muna ang saved server values bago mag-restore ng unsaved browser draft.
         form.dataset.savedSnapshot = formSnapshot(form);
+        restoreFormDraft(form);
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
             addCostingRow(form);
@@ -598,6 +629,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const action = event.submitter?.value || 'save_draft';
             const isFinalSubmit = action === 'submit_to_admin';
+
+            if (!isFinalSubmit && !isFormDirty(form)) {
+                event.preventDefault();
+                updateSaveDraftState(form);
+                return;
+            }
+
             form.querySelectorAll('[data-costing-decimal]').forEach(normalizeDecimalField);
 
             if (!validateCosting(form, isFinalSubmit)) {

@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const closeModal = function (modal) {
-        if (!modal) {
+        if (!modal || modal.dataset.quotationSending === '1') {
             return;
         }
 
@@ -256,6 +256,48 @@ document.addEventListener('DOMContentLoaded', function () {
             lastOpenButton.focus();
             lastOpenButton = null;
         }
+    };
+
+    const setQuotationSendingState = function (modal, isSending) {
+        if (!modal) {
+            return;
+        }
+
+        if (isSending) {
+            modal.dataset.quotationSending = '1';
+            modal.classList.add('is-quotation-sending');
+            modal.setAttribute('aria-busy', 'true');
+            modal.inert = true;
+            modal.querySelectorAll('button').forEach(function (button) {
+                button.dataset.sendLockWasDisabled = button.disabled ? '1' : '0';
+                button.disabled = true;
+            });
+            modal.querySelectorAll('.inquiry-quote-edit-link, .inquiry-quote-pdf-link').forEach(function (link) {
+                link.dataset.sendLockTabindex = link.getAttribute('tabindex') ?? '__none__';
+                link.setAttribute('tabindex', '-1');
+                link.setAttribute('aria-disabled', 'true');
+            });
+            return;
+        }
+
+        delete modal.dataset.quotationSending;
+        modal.classList.remove('is-quotation-sending');
+        modal.removeAttribute('aria-busy');
+        modal.inert = false;
+        modal.querySelectorAll('[data-send-lock-was-disabled]').forEach(function (button) {
+            button.disabled = button.dataset.sendLockWasDisabled === '1';
+            delete button.dataset.sendLockWasDisabled;
+        });
+        modal.querySelectorAll('[data-send-lock-tabindex]').forEach(function (link) {
+            const previousTabindex = link.dataset.sendLockTabindex;
+            if (previousTabindex === '__none__') {
+                link.removeAttribute('tabindex');
+            } else {
+                link.setAttribute('tabindex', previousTabindex);
+            }
+            link.removeAttribute('aria-disabled');
+            delete link.dataset.sendLockTabindex;
+        });
     };
 
     const openModal = function (modal) {
@@ -281,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const activateModalTab = function (modal, target) {
-        if (!modal || !target) {
+        if (!modal || !target || modal.dataset.quotationSending === '1') {
             return false;
         }
 
@@ -319,6 +361,10 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const requestCloseModal = function (modal) {
+        if (modal?.dataset.quotationSending === '1') {
+            return;
+        }
+
         const reviewForm = modal?.querySelector('.inquiry-review-form');
         if (reviewForm?.dataset.submitting === '1') {
             return;
@@ -380,6 +426,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.inquiry-modal.is-quotation-sending')) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, true);
 
     const closeArchiveModal = function (modal) {
         if (modal) {
@@ -1215,12 +1270,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const label = document.createElement('span');
                 spinner.className = 'inquiry-send-spinner';
                 spinner.setAttribute('aria-hidden', 'true');
-                label.textContent = 'Sending...';
+                label.textContent = 'Sending quotation...';
                 submitButton.classList.add('inquiry-send-button--loading');
                 submitButton.replaceChildren(spinner, label);
             }
             if (sendingModal) {
-                sendingModal.inert = true;
+                setQuotationSendingState(sendingModal, true);
             }
 
             fetch(form.getAttribute('action') || window.location.href, {
@@ -1249,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     form.dataset.submitting = '0';
                     delete form.dataset.completenessConfirmed;
                     if (sendingModal) {
-                        sendingModal.inert = false;
+                        setQuotationSendingState(sendingModal, false);
                         sendingModal.classList.remove('is-send-complete');
                     }
                     if (submitButton) {
@@ -1831,6 +1886,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const targetTab = event.state?.inquiryTab || new URLSearchParams(window.location.search).get('tab') || 'client';
         const targetModal = modalId ? document.getElementById(modalId) : null;
         const openModalBeforeHistoryChange = document.querySelector('.inquiry-modal:not([hidden])');
+
+        if (openModalBeforeHistoryChange?.dataset.quotationSending === '1') {
+            const activeTab = openModalBeforeHistoryChange.querySelector('.inquiry-modal-tab.is-active')?.getAttribute('data-inquiry-tab') || 'quotation';
+            if (targetModal !== openModalBeforeHistoryChange || targetTab !== activeTab) {
+                pushModalHistory(openModalBeforeHistoryChange, activeTab);
+            }
+            return;
+        }
 
         if (!targetModal && openModalBeforeHistoryChange && inquiryReviewHasChanges(openModalBeforeHistoryChange)) {
             showDiscardConfirm(

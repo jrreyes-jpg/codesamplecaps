@@ -2196,6 +2196,20 @@ body.inquiry-modal-open {
     gap: 8px;
 }
 
+.inquiry-modal.is-quotation-sending .inquiry-modal-tabs,
+.inquiry-modal.is-quotation-sending .inquiry-quote-draft__action,
+.inquiry-modal.is-quotation-sending .inquiry-quote-send-form {
+    opacity: 0.58;
+    cursor: wait;
+}
+
+.inquiry-modal.is-quotation-sending .inquiry-modal__close,
+.inquiry-modal.is-quotation-sending .inquiry-modal-tab,
+.inquiry-modal.is-quotation-sending .inquiry-quote-edit-link,
+.inquiry-modal.is-quotation-sending .inquiry-quote-pdf-link {
+    cursor: wait;
+}
+
 .inquiry-modal.is-send-complete .inquiry-modal__dialog {
     opacity: 0;
     transform: translateY(-4px);

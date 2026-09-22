@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const openButtons = document.querySelectorAll('[data-inquiry-modal-open]');
     const archiveOpenButtons = document.querySelectorAll('[data-archive-modal-open]');
     const inquiryShell = document.querySelector('.inquiries-shell');
+    const listStartAtTopKey = 'edgeInquiryListStartAtTop';
     let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);
     let latestRevisionUpdatedAt = inquiryShell?.dataset.latestRevisionUpdatedAt || '';
     let latestRejectedId = Number.parseInt(inquiryShell?.dataset.latestRejectedId || '0', 10);
@@ -12,6 +13,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingDiscardModal = null;
     let pendingDiscardAction = null;
     let pendingDiscardKeepAction = null;
+
+    if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+    }
+
+    const startInquiryListAtTop = function () {
+        window.scrollTo(0, 0);
+        window.requestAnimationFrame(function () {
+            window.scrollTo(0, 0);
+        });
+    };
 
     const showPageLoading = function () {
         if (!inquiryShell) {
@@ -405,6 +417,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.inquiry-status-link, .inquiry-view-link').forEach(function (link) {
         link.addEventListener('click', function (event) {
+            // Bagong filter view ito, kaya mula sa taas magsisimula ang listahan.
+            sessionStorage.removeItem('edgeLastInquiryModal');
+            sessionStorage.setItem(listStartAtTopKey, '1');
             showPageLoading();
             event.preventDefault();
 
@@ -1897,17 +1912,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlOpenModalId = queryParams.get('open') || (inquiryIdFromUrl > 0 ? 'inquiryModal' + inquiryIdFromUrl : '');
     const urlOpenTab = queryParams.get('tab') || 'client';
     if (urlOpenModalId) {
+        sessionStorage.removeItem(listStartAtTopKey);
         const modal = document.getElementById(urlOpenModalId);
         if (modal) {
             openModal(modal);
             activateModalTab(modal, urlOpenTab);
         }
     } else {
-        const lastOpenModalId = sessionStorage.getItem('edgeLastInquiryModal');
-        const lastModal = lastOpenModalId ? document.getElementById(lastOpenModalId) : null;
-        const lastCard = lastModal?.closest('.inquiry-card');
-        if (lastCard) {
-            lastCard.scrollIntoView({ behavior: 'instant', block: 'center' });
+        const shouldStartAtTop = sessionStorage.getItem(listStartAtTopKey) === '1';
+        if (shouldStartAtTop) {
+            sessionStorage.removeItem(listStartAtTopKey);
+            sessionStorage.removeItem('edgeLastInquiryModal');
+            startInquiryListAtTop();
+        } else {
+            const lastOpenModalId = sessionStorage.getItem('edgeLastInquiryModal');
+            const lastModal = lastOpenModalId ? document.getElementById(lastOpenModalId) : null;
+            const lastCard = lastModal?.closest('.inquiry-card');
+            if (lastCard) {
+                lastCard.scrollIntoView({ behavior: 'instant', block: 'center' });
+            }
         }
     }
 

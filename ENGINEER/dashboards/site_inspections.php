@@ -26,6 +26,25 @@ function engineer_format_money(float $amount): string
     return 'PHP ' . number_format($amount, 2);
 }
 
+function engineer_inspection_is_whole_count_unit(string $unit): bool
+{
+    return in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'trip'], true);
+}
+
+function engineer_inspection_valid_quantity(string $value, string $unit): bool
+{
+    if (engineer_inspection_is_whole_count_unit($unit)) {
+        return preg_match('/^[1-9]\d*$/', $value) === 1;
+    }
+
+    return preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $value) === 1 && (float)$value > 0;
+}
+
+function engineer_inspection_valid_unit_cost(string $value): bool
+{
+    return preg_match('/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/', $value) === 1 && (float)$value > 0;
+}
+
 function engineer_inspection_complete_site_address(array $inspection): string
 {
     $parts = [];
@@ -134,38 +153,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $itemName = trim((string)$rawName);
             $rawQuantityText = trim((string)($quantities[$index] ?? ''));
             $rawUnitCostText = trim((string)($unitCosts[$index] ?? ''));
-            $rawQuantity = (float)($quantities[$index] ?? 0);
             $unit = trim((string)($units[$index] ?? 'unit'));
-            $rawUnitCost = (float)($unitCosts[$index] ?? 0);
-            $quantity = max(0, $rawQuantity);
-            $unitCost = max(0, $rawUnitCost);
+            $quantity = (float)($quantities[$index] ?? 0);
+            $unitCost = (float)($unitCosts[$index] ?? 0);
             $itemType = in_array(($itemTypes[$index] ?? 'material'), ['material', 'labor', 'other'], true)
                 ? (string)$itemTypes[$index]
                 : 'material';
             $inventoryId = (int)($inventoryIds[$index] ?? 0);
             $materialId = (int)($materialIds[$index] ?? 0);
 
-            if ($itemName === '' && $quantity <= 0 && $unitCost <= 0) {
+            if ($itemName === '' && $rawQuantityText === '' && $rawUnitCostText === '') {
                 continue;
             }
 
-            if ($rawQuantity < 0 || $rawUnitCost < 0) {
-                $error = 'Quantity and price cannot be negative.';
+            if (!in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter', 'hour', 'day', 'trip'], true)) {
+                $error = 'Please select a valid quantity unit.';
                 break;
             }
 
-            // Backend guard: bawal fake/invalid PHP amount kahit ma-bypass ang browser.
-            if ($rawQuantityText !== '' && !preg_match('/^[1-9]\d*(\.\d{1,2})?$/', $rawQuantityText)) {
-                $error = 'Quantity must be valid and must not start with 0.';
+            if (!engineer_inspection_valid_quantity($rawQuantityText, $unit)) {
+                $error = engineer_inspection_is_whole_count_unit($unit)
+                    ? 'Quantity must be a whole number greater than 0 for ' . $unit . '.'
+                    : 'Quantity must be greater than 0.';
                 break;
             }
 
-            if ($rawUnitCostText !== '' && !preg_match('/^[1-9]\d*(\.\d{1,2})?$/', $rawUnitCostText)) {
-                $error = 'Unit cost must be a valid PHP amount and must not start with 0.';
+            if (!engineer_inspection_valid_unit_cost($rawUnitCostText)) {
+                $error = 'Unit cost must be greater than 0.';
                 break;
             }
 
-            if ($itemName === '' || $quantity <= 0) {
+            if ($itemName === '') {
                 $error = 'Please complete item name and quantity.';
                 break;
             }
@@ -177,11 +195,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($materialId > 0 && !material_stock_material_exists($conn, $materialId)) {
                 $error = 'Selected material is no longer available. Please choose again.';
-                break;
-            }
-
-            if ($costingAction === 'submit_to_admin' && $unitCost <= 0) {
-                $error = 'Unit cost must be greater than 0 before submitting to Admin.';
                 break;
             }
 
@@ -316,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->commit();
                 $message = $costingAction === 'submit_to_admin'
                     ? 'Costing submitted to Admin.'
-                    : 'Inspection costing saved.';
+                    : 'Inspection draft saved.';
             } catch (Throwable $exception) {
                 $conn->rollback();
                 $error = 'Failed to save costing.';
@@ -390,7 +403,7 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
-        <?php if ($message): ?><div class="inspection-flash success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+        <?php if ($message): ?><div class="inspection-flash success<?php echo $message === 'Inspection draft saved.' ? ' inspection-toast' : ''; ?>"<?php echo $message === 'Inspection draft saved.' ? ' data-inspection-toast' : ''; ?>><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         <?php if ($error): ?><div class="inspection-flash error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
 
         <section class="inspection-panel">
@@ -583,7 +596,7 @@ require __DIR__ . '/../layout/header.php';
                                         <label>
                                             <span>Unit</span>
                                             <select name="unit[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <?php foreach (['unit', 'pc', 'pcs', 'set', 'lot', 'meter', 'roll', 'box', 'kg', 'hour', 'day', 'trip'] as $unitOption): ?>
+                                                <?php foreach (['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter', 'hour', 'day', 'trip'] as $unitOption): ?>
                                                     <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? 'unit') === $unitOption ? 'selected' : ''; ?>>
                                                         <?php echo htmlspecialchars(ucfirst($unitOption), ENT_QUOTES, 'UTF-8'); ?>
                                                     </option>
@@ -609,7 +622,7 @@ require __DIR__ . '/../layout/header.php';
                                 <div class="inspection-actions">
                                     <button type="button" class="btn-secondary" data-add-costing-row>Add item</button>
                                     <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
-                                    <button type="submit" name="costing_action" value="save_draft" class="btn-secondary">Save Draft</button>
+                                    <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
                                     <?php if ($canSubmitToAdmin): ?>
                                         <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing>Submit to Admin</button>
                                     <?php endif; ?>

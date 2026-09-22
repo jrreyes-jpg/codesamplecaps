@@ -11,9 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const syncTotal = function (form) {
         let total = 0;
         form.querySelectorAll('.costing-row').forEach(function (row) {
-            const quantity = Math.max(0, Number(row.querySelector('input[name="quantity[]"]')?.value || 0));
-            const unitCost = Math.max(0, Number(row.querySelector('input[name="unit_cost[]"]')?.value || 0));
-            total += quantity * unitCost;
+            const quantityField = row.querySelector('input[name="quantity[]"]');
+            const unitField = row.querySelector('select[name="unit[]"]');
+            const costField = row.querySelector('input[name="unit_cost[]"]');
+            if (isValidQuantityText(quantityField?.value.trim() || '', unitField?.value || '')
+                && isValidCostText(costField?.value.trim() || '')) {
+                total += Number(quantityField.value) * Number(costField.value);
+            }
         });
 
         const totalBox = form.querySelector('[data-costing-total]');
@@ -49,6 +53,22 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         window.localStorage.setItem(storageKeyForForm(form), JSON.stringify(payload));
+    };
+
+    const formSnapshot = function (form) {
+        const fields = Array.from(form.querySelectorAll('textarea, .costing-row input, .costing-row select'))
+            .filter((field) => field.type !== 'hidden')
+            .map((field) => [field.name, field.value]);
+        return JSON.stringify(fields);
+    };
+
+    const updateSaveDraftState = function (form) {
+        const saveButton = form.querySelector('[data-save-draft]');
+        if (!saveButton || form.dataset.isSaving === 'true') {
+            return;
+        }
+
+        saveButton.disabled = formSnapshot(form) === (form.dataset.savedSnapshot || '');
     };
 
     const fillRow = function (row, data) {
@@ -166,15 +186,23 @@ document.addEventListener('DOMContentLoaded', function () {
             field.value = field.value.slice(0, firstDot + 1) + field.value.slice(firstDot + 1).replace(/\./g, '');
         }
 
-        if (field.value.startsWith('0')) {
-            field.value = field.value.replace(/^0+/, '');
-        }
-
         field.setCustomValidity('');
     };
 
     const isValidCostText = function (value) {
-        return /^[1-9]\d*(\.\d{1,2})?$/.test(value);
+        return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) > 0;
+    };
+
+    const isWholeCountUnit = function (unit) {
+        return ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'trip'].includes(unit);
+    };
+
+    const isValidQuantityText = function (value, unit) {
+        if (isWholeCountUnit(unit)) {
+            return /^[1-9]\d*$/.test(value);
+        }
+
+        return /^(?:0|[1-9]\d*)(\.\d+)?$/.test(value) && Number(value) > 0;
     };
 
     const addCostingRow = function (form, type = 'material') {
@@ -203,6 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
         bindRow(form, row);
         syncTotal(form);
         saveFormDraft(form);
+        updateSaveDraftState(form);
 
         return row;
     };
@@ -234,11 +263,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const unit = row.querySelector('select[name="unit[]"]');
             const unitCost = row.querySelector('input[name="unit_cost[]"]');
             const nameValue = name?.value.trim() || '';
-            const quantityValue = Number(quantity?.value || 0);
+            const quantityText = quantity?.value.trim() || '';
+            const quantityValue = Number(quantityText || 0);
             const unitValue = unit?.value.trim() || '';
-            const unitCostValue = Number(unitCost?.value || 0);
             const unitCostText = unitCost?.value.trim() || '';
-            const rowHasValue = nameValue !== '' || quantityValue > 0 || unitCostValue > 0;
+            const rowHasValue = nameValue !== '' || quantityText !== '' || unitCostText !== '';
 
             if (!rowHasValue) {
                 return;
@@ -247,20 +276,24 @@ document.addEventListener('DOMContentLoaded', function () {
             hasAnyRow = true;
             hasMaterial = hasMaterial || type?.value === 'material';
             hasLabor = hasLabor || type?.value === 'labor';
-            total += quantityValue * unitCostValue;
+            if (isValidQuantityText(quantityText, unitValue) && isValidCostText(unitCostText)) {
+                total += quantityValue * Number(unitCostText);
+            }
 
             if (nameValue === '') {
                 setFieldError(name, 'Item / Labor name is required.');
                 firstInvalid = firstInvalid || name;
             }
 
-            if (quantityValue <= 0) {
-                setFieldError(quantity, 'Qty must be greater than 0.');
+            if (!isValidQuantityText(quantityText, unitValue)) {
+                setFieldError(quantity, isWholeCountUnit(unitValue)
+                    ? `Enter a whole number for ${unitValue || 'this unit'}.`
+                    : 'Qty must be greater than 0.');
                 firstInvalid = firstInvalid || quantity;
             }
 
-            if (unitCostText !== '' && !isValidCostText(unitCostText)) {
-                setFieldError(unitCost, 'Unit cost must be a valid PHP amount. Example: 1500 or 1500.50.');
+            if (!isValidCostText(unitCostText)) {
+                setFieldError(unitCost, 'Unit cost must be greater than 0.');
                 firstInvalid = firstInvalid || unitCost;
             }
 
@@ -269,10 +302,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 firstInvalid = firstInvalid || unit;
             }
 
-            if (requireFinal && unitCostValue <= 0) {
-                setFieldError(unitCost, 'Unit cost is required and must be greater than 0.');
-                firstInvalid = firstInvalid || unitCost;
-            }
         });
 
         if (!hasAnyRow) {
@@ -332,6 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearCostingError(form);
                 syncTotal(form);
                 saveFormDraft(form);
+                updateSaveDraftState(form);
             });
 
             field.addEventListener('paste', function () {
@@ -339,6 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     sanitizePositiveNumber(field);
                     syncTotal(form);
                     saveFormDraft(form);
+                    updateSaveDraftState(form);
                 }, 0);
             });
         });
@@ -356,6 +387,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 unitField.value = unit;
             }
             saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+
+        row.querySelector('select[name="unit[]"]')?.addEventListener('change', function (event) {
+            const quantity = row.querySelector('input[name="quantity[]"]');
+            const value = quantity?.value.trim() || '';
+            if (value !== '' && !isValidQuantityText(value, event.target.value)) {
+                setFieldError(quantity, isWholeCountUnit(event.target.value)
+                    ? `Enter a whole number for ${event.target.value}.`
+                    : 'Qty must be greater than 0.');
+            }
+            syncTotal(form);
         });
 
         row.querySelectorAll('input, select').forEach(function (field) {
@@ -363,12 +406,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearFieldError(field);
                 clearCostingError(form);
                 saveFormDraft(form);
+                updateSaveDraftState(form);
             });
 
             field.addEventListener('change', function () {
                 clearFieldError(field);
                 clearCostingError(form);
                 saveFormDraft(form);
+                updateSaveDraftState(form);
             });
         });
 
@@ -387,6 +432,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             syncTotal(form);
             saveFormDraft(form);
+            updateSaveDraftState(form);
         });
     };
 
@@ -395,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function () {
             bindRow(form, row);
         });
 
+        form.dataset.savedSnapshot = formSnapshot(form);
         restoreFormDraft(form);
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
@@ -406,6 +453,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearFieldError(field);
                 clearCostingError(form);
                 saveFormDraft(form);
+                updateSaveDraftState(form);
             });
         });
 
@@ -439,9 +487,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
             syncTotal(form);
+            updateSaveDraftState(form);
         });
 
         form.addEventListener('submit', function (event) {
+            if (form.dataset.isSaving === 'true') {
+                event.preventDefault();
+                return;
+            }
+
             const action = event.submitter?.value || 'save_draft';
             const isFinalSubmit = action === 'submit_to_admin';
 
@@ -452,10 +506,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (isFinalSubmit && !window.confirm('Submit this costing to Admin for review?')) {
                 event.preventDefault();
+                return;
+            }
+
+            if (!isFinalSubmit) {
+                const saveButton = form.querySelector('[data-save-draft]');
+                if (saveButton) {
+                    form.dataset.isSaving = 'true';
+                    saveButton.disabled = true;
+                    saveButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Saving...';
+                }
             }
         });
 
         syncTotal(form);
+        updateSaveDraftState(form);
     });
 
     document.querySelectorAll('[data-confirm-inspection-transition]').forEach(function (button) {
@@ -524,4 +589,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 0);
         }
     }
+
+    document.querySelectorAll('[data-inspection-toast]').forEach(function (toast) {
+        window.setTimeout(function () {
+            toast.remove();
+        }, 4000);
+    });
 });

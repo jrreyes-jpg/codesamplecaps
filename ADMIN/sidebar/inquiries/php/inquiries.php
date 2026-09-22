@@ -1084,7 +1084,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 || (string)($existingInspection['scheduled_at'] ?? '') !== $scheduleValue
                 || trim((string)($existingInspection['site_notes'] ?? '')) !== $siteNotes;
             $storedNotificationHash = trim((string)($existingInspection['schedule_notification_hash'] ?? ''));
-            $needsClientNotification = $existingInspectionId <= 0
+            $needsScheduleNotification = $existingInspectionId <= 0
                 || $storedNotificationHash === ''
                 || !hash_equals($storedNotificationHash, $notificationHash);
 
@@ -1118,7 +1118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            if ($error === '' && !$hasScheduleChanges && !$needsClientNotification) {
+            if ($error === '' && !$hasScheduleChanges && !$needsScheduleNotification) {
                 $message = 'Schedule Confirmed.';
             }
 
@@ -1156,25 +1156,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                if ($needsClientNotification) {
-                    try {
-                        inquiry_quote_send_final_confirmation($conn, $acceptedQuotationId);
-                        $markNotified = $conn->prepare(
-                            'UPDATE site_inspections
-                             SET schedule_notified_at = NOW(), schedule_notification_hash = ?
-                             WHERE id = ?'
-                        );
-                        if (!$markNotified) {
-                            throw new RuntimeException('Inspection schedule was saved, but notification status was not saved.');
-                        }
-                        $markNotified->bind_param('si', $notificationHash, $savedInspectionId);
-                        if (!$markNotified->execute() || $markNotified->affected_rows <= 0) {
-                            throw new RuntimeException('Inspection schedule was saved, but notification status was not saved.');
-                        }
-                        $message = 'Inspection schedule confirmed and client notified.';
-                    } catch (Throwable $mailThrowable) {
-                        $error = $mailThrowable->getMessage();
+                if ($needsScheduleNotification) {
+                    $notificationInquiry = null;
+                    $notificationEngineer = null;
+                    $inquiryNotificationStmt = $conn->prepare(
+                        'SELECT client_name, email, contact_no, site_address, province, city_municipality, barangay, service_category
+                         FROM service_inquiries
+                         WHERE id = ?
+                         LIMIT 1'
+                    );
+                    $engineerNotificationStmt = $conn->prepare(
+                        "SELECT full_name, email FROM users WHERE id = ? AND role = 'engineer' LIMIT 1"
+                    );
+
+                    if ($inquiryNotificationStmt) {
+                        $inquiryNotificationStmt->bind_param('i', $inquiryId);
+                        $inquiryNotificationStmt->execute();
+                        $notificationInquiry = $inquiryNotificationStmt->get_result()->fetch_assoc() ?: null;
                     }
+                    if ($engineerNotificationStmt) {
+                        $engineerNotificationStmt->bind_param('i', $engineerId);
+                        $engineerNotificationStmt->execute();
+                        $notificationEngineer = $engineerNotificationStmt->get_result()->fetch_assoc() ?: null;
+                    }
+
+                    $clientEmail = trim((string)($notificationInquiry['email'] ?? ''));
+                    $clientName = trim((string)($notificationInquiry['client_name'] ?? ''));
+                    $engineerEmail = trim((string)($notificationEngineer['email'] ?? ''));
+                    $engineerName = trim((string)($notificationEngineer['full_name'] ?? ''));
+                    $siteAddressParts = array_filter([
+                        trim((string)($notificationInquiry['site_address'] ?? '')),
+                        trim((string)($notificationInquiry['barangay'] ?? '')),
+                        trim((string)($notificationInquiry['city_municipality'] ?? '')),
+                        trim((string)($notificationInquiry['province'] ?? '')),
+                    ], static fn(string $value): bool => $value !== '');
+                    $siteAddress = implode(', ', $siteAddressParts);
+                    $scheduleForEmail = $scheduleDateTime->format('l, F j, Y, g:i A') . ' (PHT)';
+
+                    $clientEmailSent = false;
+                    $engineerEmailSent = false;
+
+                    if (filter_var($clientEmail, FILTER_VALIDATE_EMAIL) && $notificationInquiry) {
+                        $clientMailer = new EmailService();
+                        $clientEmailSent = $clientMailer->sendInspectionScheduleClientNotification(
+                            $clientEmail,
+                            $clientName,
+                            trim((string)($notificationInquiry['service_category'] ?? '')),
+                            $scheduleForEmail,
+                            $engineerName,
+                            $siteAddress !== '' ? $siteAddress : 'Site address not set',
+                            $siteNotes
+                        );
+                    }
+
+                    if (filter_var($engineerEmail, FILTER_VALIDATE_EMAIL) && $notificationEngineer && $notificationInquiry) {
+                        $engineerMailer = new EmailService();
+                        $engineerEmailSent = $engineerMailer->sendInspectionScheduleEngineerAssignment(
+                            $engineerEmail,
+                            $engineerName,
+                            $clientName,
+                            trim((string)($notificationInquiry['service_category'] ?? '')),
+                            $scheduleForEmail,
+                            $siteAddress !== '' ? $siteAddress : 'Site address not set',
+                            trim((string)($notificationInquiry['contact_no'] ?? '')),
+                            $clientEmail,
+                            $siteNotes
+                        );
+                    }
+
+                    // Markahan ang schedule para hindi maulit ang email sa parehong confirmation.
+                    $notificationMarked = false;
+                    $markNotified = $conn->prepare(
+                        'UPDATE site_inspections
+                         SET schedule_notified_at = NOW(), schedule_notification_hash = ?
+                         WHERE id = ?'
+                    );
+                    if ($markNotified) {
+                        $markNotified->bind_param('si', $notificationHash, $savedInspectionId);
+                        $notificationMarked = $markNotified->execute();
+                    } else {
+                        error_log('Inspection notification marker could not be prepared for inspection ' . $savedInspectionId);
+                    }
+
+                    $message = $clientEmailSent && $engineerEmailSent && $notificationMarked
+                        ? 'Inspection schedule confirmed. Client and Engineer notified by email.'
+                        : 'Inspection schedule was saved, but one or more email notifications could not be sent.';
                 }
             }
         }

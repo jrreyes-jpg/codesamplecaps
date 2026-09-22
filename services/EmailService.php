@@ -427,6 +427,120 @@ class EmailService {
         }
     }
 
+    public function sendInspectionScheduleClientNotification(
+        string $recipientEmail,
+        string $recipientName,
+        string $service,
+        string $inspectionSchedule,
+        string $engineerName,
+        string $siteAddress,
+        string $siteNotes = ''
+    ): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $safeService = htmlspecialchars($service, ENT_QUOTES, 'UTF-8');
+            $safeSchedule = htmlspecialchars($inspectionSchedule, ENT_QUOTES, 'UTF-8');
+            $safeEngineer = htmlspecialchars($engineerName, ENT_QUOTES, 'UTF-8');
+            $safeAddress = htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8');
+            $siteNotesHtml = $siteNotes !== ''
+                ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
+                : '';
+            $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
+
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Inspection Schedule Confirmed - Edge Automation';
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        <h2 style='margin:0'>Your site inspection is scheduled</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeName},</p>
+                        <p>Your site inspection has been scheduled by Edge Automation.</p>
+                        <p><strong>Service:</strong> {$safeService}</p>
+                        <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
+                        <p><strong>Assigned Engineer:</strong> {$safeEngineer}</p>
+                        <p><strong>Site Address:</strong><br>{$safeAddress}</p>
+                        {$siteNotesHtml}
+                        <p>Our team will contact you if more details are needed.</p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\nYour site inspection has been scheduled by Edge Automation.\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$siteNotesText}";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Inspection client notification email failed: ' . $e->getMessage());
+            $this->error = 'Email service cannot send right now.';
+            return false;
+        }
+    }
+
+    public function sendInspectionScheduleEngineerAssignment(
+        string $recipientEmail,
+        string $engineerName,
+        string $clientName,
+        string $service,
+        string $inspectionSchedule,
+        string $siteAddress,
+        string $contactNumber,
+        string $clientEmail,
+        string $siteNotes = ''
+    ): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeEngineer = htmlspecialchars($engineerName !== '' ? $engineerName : 'Engineer', ENT_QUOTES, 'UTF-8');
+            $safeClient = htmlspecialchars($clientName, ENT_QUOTES, 'UTF-8');
+            $safeService = htmlspecialchars($service, ENT_QUOTES, 'UTF-8');
+            $safeSchedule = htmlspecialchars($inspectionSchedule, ENT_QUOTES, 'UTF-8');
+            $safeAddress = htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8');
+            $safeContact = htmlspecialchars($contactNumber, ENT_QUOTES, 'UTF-8');
+            $safeClientEmail = htmlspecialchars($clientEmail, ENT_QUOTES, 'UTF-8');
+            $siteNotesHtml = $siteNotes !== ''
+                ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
+                : '';
+            $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
+
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'New Site Inspection Assignment - Edge Automation';
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#1d4ed8;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        <h2 style='margin:0'>New site inspection assignment</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeEngineer},</p>
+                        <p>You have a new site inspection assignment. Please check your Engineer dashboard for the full details.</p>
+                        <p><strong>Client:</strong> {$safeClient}</p>
+                        <p><strong>Service:</strong> {$safeService}</p>
+                        <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
+                        <p><strong>Site Address:</strong><br>{$safeAddress}</p>
+                        <p><strong>Contact Number:</strong> {$safeContact}<br><strong>Client Email:</strong> {$safeClientEmail}</p>
+                        {$siteNotesHtml}
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Hello {$engineerName},\n\nYou have a new site inspection assignment. Please check your Engineer dashboard for the full details.\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nContact Number: {$contactNumber}\nClient Email: {$clientEmail}{$siteNotesText}";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Inspection engineer assignment email failed: ' . $e->getMessage());
+            $this->error = 'Email service cannot send right now.';
+            return false;
+        }
+    }
+
     /**
      * Get password reset email HTML template
      */

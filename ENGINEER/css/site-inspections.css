@@ -304,6 +304,53 @@
     cursor: pointer;
 }
 
+.inspection-confirm-modal[hidden] {
+    display: none;
+}
+
+.inspection-confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3100;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.inspection-confirm-modal__panel {
+    width: min(440px, calc(100vw - 40px));
+    padding: 22px;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.inspection-confirm-modal__panel h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.16rem;
+}
+
+.inspection-confirm-modal__panel p {
+    margin: 10px 0 0;
+    color: #475569;
+    line-height: 1.55;
+}
+
+.inspection-confirm-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.inspection-confirm-modal__actions button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
 body.inspection-modal-open {
     overflow: hidden;
 }

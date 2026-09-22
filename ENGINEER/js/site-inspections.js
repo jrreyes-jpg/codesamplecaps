@@ -846,8 +846,65 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSaveDraftState(form);
     });
 
+    const completionModal = document.querySelector('[data-complete-inspection-modal]');
+    const completionCancelButton = completionModal?.querySelector('[data-complete-inspection-cancel]');
+    const completionConfirmButton = completionModal?.querySelector('[data-complete-inspection-confirm]');
+    let pendingCompletionForm = null;
+    let pendingCompletionButton = null;
+
+    const closeCompletionModal = function () {
+        if (!completionModal || completionModal.dataset.isCompleting === 'true') {
+            return;
+        }
+        completionModal.hidden = true;
+        pendingCompletionForm = null;
+        pendingCompletionButton = null;
+    };
+
+    const openCompletionModal = function (form, button) {
+        if (!completionModal || completionModal.dataset.isCompleting === 'true') {
+            return;
+        }
+        pendingCompletionForm = form;
+        pendingCompletionButton = button;
+        completionModal.hidden = false;
+        completionCancelButton?.focus();
+    };
+
+    completionCancelButton?.addEventListener('click', closeCompletionModal);
+    completionModal?.addEventListener('click', function (event) {
+        if (event.target === completionModal) {
+            closeCompletionModal();
+        }
+    });
+
+    completionConfirmButton?.addEventListener('click', function () {
+        if (!pendingCompletionForm || completionModal?.dataset.isCompleting === 'true') {
+            return;
+        }
+
+        completionModal.dataset.isCompleting = 'true';
+        completionCancelButton.disabled = true;
+        completionConfirmButton.disabled = true;
+        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Marking as completed...';
+        pendingCompletionButton.disabled = true;
+        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Marking as completed...';
+        pendingCompletionForm.dataset.completeConfirmed = 'true';
+        pendingCompletionForm.requestSubmit();
+    });
+
     document.querySelectorAll('[data-confirm-inspection-transition]').forEach(function (button) {
         button.closest('form')?.addEventListener('submit', function (event) {
+            const form = event.currentTarget;
+            if (button.hasAttribute('data-complete-inspection')) {
+                if (form.dataset.completeConfirmed === 'true') {
+                    return;
+                }
+                event.preventDefault();
+                openCompletionModal(form, button);
+                return;
+            }
+
             const actionLabel = button.getAttribute('data-confirm-inspection-transition') || 'update this inspection';
             if (!window.confirm(`${actionLabel}?`)) {
                 event.preventDefault();
@@ -894,6 +951,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
+            if (completionModal && !completionModal.hidden) {
+                event.preventDefault();
+                closeCompletionModal();
+                return;
+            }
             document.querySelectorAll('.inspection-modal:not([hidden])').forEach(closeInspectionModal);
         }
     });

@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = match ($targetStatus) {
                 'Acknowledged' => 'Assignment acknowledged.',
                 'Ongoing' => 'Site inspection started.',
-                'Completed' => 'Site inspection marked completed. You may now submit the final findings.',
+                'Completed' => 'Inspection marked as completed.',
                 default => 'Inspection status updated.',
             };
         } else {
@@ -659,9 +659,9 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
-        <?php if ($message === 'Inspection draft saved.'): ?>
+        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection marked as completed.'], true)): ?>
             <div class="shared-toast shared-toast--success" data-shared-toast role="status">
-                <span>Inspection draft saved.</span>
+                <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                 <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
                 <span class="shared-toast__progress" aria-hidden="true"></span>
             </div>
@@ -787,7 +787,7 @@ require __DIR__ . '/../layout/header.php';
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                         <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                                         <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?>>
                                             <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                         </button>
                                     </form>
@@ -974,6 +974,17 @@ require __DIR__ . '/../layout/header.php';
                 <?php endforeach; ?>
             <?php endif; ?>
         </section>
+
+        <div class="inspection-confirm-modal" data-complete-inspection-modal hidden>
+            <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="completeInspectionTitle">
+                <h2 id="completeInspectionTitle">Mark inspection as completed?</h2>
+                <p>This confirms that the site inspection is complete. You can still review and edit the inspection before submitting it to the Admin.</p>
+                <div class="inspection-confirm-modal__actions">
+                    <button type="button" class="btn-secondary" data-complete-inspection-cancel>Cancel</button>
+                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Mark as Completed</button>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 <?php

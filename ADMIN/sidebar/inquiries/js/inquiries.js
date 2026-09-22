@@ -1177,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         title: 'Confirm quotation completeness',
                         cancel: 'Review Quotation',
-                        confirm: 'Send Anyway',
+                        confirm: 'Continue to Send',
                         mode: 'quotation-completeness',
                     }
                 );
@@ -1185,14 +1185,18 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (form.dataset.confirmed !== '1') {
-                showConfirm(form, form.dataset.quoteKind === 'initial'
-                    ? 'Send this initial quotation to the client by email?'
+                showConfirm(form, isInitialQuotation
+                    ? 'Please confirm the client details before sending this initial quotation.'
                     : 'Send this revised quotation to the client by email?', [
                     { label: 'Client', value: form.dataset.quoteRecipientName || '' },
                     { label: 'Email', value: form.dataset.quoteRecipientEmail || '' },
                     { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
                     { label: 'Source', value: form.dataset.quoteRecipientSource || '' },
-                ]);
+                ], isInitialQuotation ? {
+                    title: 'Confirm Recipient',
+                    cancel: 'Cancel',
+                    confirm: 'Send Quotation',
+                } : {});
                 return;
             }
 

@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quantity?.addEventListener('blur', function () {
             const value = quantity.value.trim();
             if (!/^[1-9]\d*$/.test(value)) {
-                setFieldError(quantity, 'Enter a whole number of 1 or more.');
+                setFieldError(quantity, 'Enter 1 or more.');
             } else {
                 clearFieldError(quantity);
                 clearCostingErrorWhenResolved(form);
@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (!/^[1-9]\d*$/.test(quantityText)) {
-                setFieldError(quantity, 'Enter a whole number of 1 or more.');
+                setFieldError(quantity, 'Enter 1 or more.');
                 firstInvalid = firstInvalid || quantity;
             }
         });

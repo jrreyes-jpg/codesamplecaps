@@ -57,7 +57,43 @@ function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId
     return $stmt->get_result()->fetch_assoc() ?: null;
 }
 
-function engineer_inspection_draft_is_unchanged(mysqli $conn, int $inspectionId, array $rows, string $findings, string $riskNotes, string $clientRequests): bool
+function engineer_inspection_asset_requirements_table_exists(mysqli $conn): bool
+{
+    $result = $conn->query("SHOW TABLES LIKE 'site_inspection_asset_requirements'");
+    return $result instanceof mysqli_result && $result->num_rows > 0;
+}
+
+function engineer_inspection_fetch_active_asset(mysqli $conn, int $assetId): ?array
+{
+    $stmt = $conn->prepare(
+        "SELECT a.id, a.asset_name,
+                CASE
+                    WHEN COALESCE(unit_totals.total_units, 0) > 0 THEN COALESCE(unit_totals.available_units, 0)
+                    ELSE COALESCE(i.quantity, 0)
+                END AS available_quantity
+         FROM assets a
+         INNER JOIN inventory i ON i.asset_id = a.id
+         LEFT JOIN (
+            SELECT inventory_id,
+                   COUNT(*) AS total_units,
+                   SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_units
+            FROM asset_units
+            WHERE status <> 'archived'
+            GROUP BY inventory_id
+         ) unit_totals ON unit_totals.inventory_id = i.id
+         WHERE a.id = ? AND a.deleted_at IS NULL
+         LIMIT 1"
+    );
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('i', $assetId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+function engineer_inspection_draft_is_unchanged(mysqli $conn, int $inspectionId, array $rows, array $assetRequirements, string $findings, string $riskNotes, string $clientRequests): bool
 {
     $notesStmt = $conn->prepare('SELECT engineer_findings, risk_notes, client_requests FROM site_inspections WHERE id = ? LIMIT 1');
     $itemsStmt = $conn->prepare('SELECT item_type, inventory_id, material_id, item_name, quantity, unit, unit_cost, notes FROM site_inspection_cost_items WHERE inspection_id = ? ORDER BY id ASC');
@@ -91,6 +127,32 @@ function engineer_inspection_draft_is_unchanged(mysqli $conn, int $inspectionId,
             || trim((string)($saved['notes'] ?? '')) !== $row['notes']
             || abs((float)$saved['quantity'] - (float)$row['quantity']) > 0.000001
             || abs((float)$saved['unit_cost'] - (float)$row['unit_cost']) > 0.000001) {
+            return false;
+        }
+    }
+
+    $requirementsStmt = $conn->prepare(
+        'SELECT asset_id, quantity_required, notes
+         FROM site_inspection_asset_requirements
+         WHERE inspection_id = ?
+         ORDER BY id ASC'
+    );
+    if (!$requirementsStmt) {
+        return false;
+    }
+
+    $requirementsStmt->bind_param('i', $inspectionId);
+    $requirementsStmt->execute();
+    $savedRequirements = $requirementsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    if (count($savedRequirements) !== count($assetRequirements)) {
+        return false;
+    }
+
+    foreach ($assetRequirements as $index => $requirement) {
+        $savedRequirement = $savedRequirements[$index];
+        if ((int)$savedRequirement['asset_id'] !== (int)$requirement['asset_id']
+            || (int)$savedRequirement['quantity_required'] !== (int)$requirement['quantity_required']
+            || trim((string)($savedRequirement['notes'] ?? '')) !== $requirement['notes']) {
             return false;
         }
     }
@@ -194,6 +256,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $units = $_POST['unit'] ?? [];
         $unitCosts = $_POST['unit_cost'] ?? [];
         $notes = $_POST['notes'] ?? [];
+        $assetRequirementIds = $_POST['asset_requirement_asset_id'] ?? [];
+        $assetRequirementQuantities = $_POST['asset_requirement_quantity'] ?? [];
+        $assetRequirementNotes = $_POST['asset_requirement_notes'] ?? [];
         $engineerFindings = trim((string)($_POST['engineer_findings'] ?? ''));
         $riskNotes = trim((string)($_POST['risk_notes'] ?? ''));
         $clientRequests = trim((string)($_POST['client_requests'] ?? ''));
@@ -201,6 +266,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hasMaterial = false;
         $hasLabor = false;
         $grandTotal = 0.0;
+        $assetRequirements = [];
+        $selectedAssetIds = [];
 
         foreach ($itemNames as $index => $rawName) {
             $itemName = trim((string)$rawName);
@@ -286,8 +353,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
 
+        foreach ($assetRequirementIds as $index => $rawAssetId) {
+            $assetId = (int)$rawAssetId;
+            $quantityText = trim((string)($assetRequirementQuantities[$index] ?? ''));
+            $requirementNotes = trim((string)($assetRequirementNotes[$index] ?? ''));
+
+            if ($assetId <= 0 && $quantityText === '' && $requirementNotes === '') {
+                continue;
+            }
+
+            if ($assetId <= 0) {
+                $error = 'Please select an asset requirement.';
+                break;
+            }
+
+            if (isset($selectedAssetIds[$assetId])) {
+                $error = 'Each asset can be added only once. Update its quantity instead.';
+                break;
+            }
+
+            if (preg_match('/^[1-9]\d*$/', $quantityText) !== 1) {
+                $error = 'Asset requirement quantity must be a whole number greater than 0.';
+                break;
+            }
+
+            $asset = engineer_inspection_fetch_active_asset($conn, $assetId);
+            if (!$asset) {
+                $error = 'Selected asset is no longer available. Please choose again.';
+                break;
+            }
+
+            $selectedAssetIds[$assetId] = true;
+            $assetRequirements[] = [
+                'asset_id' => $assetId,
+                'quantity_required' => (int)$quantityText,
+                'notes' => $requirementNotes,
+            ];
+        }
+
         if ($error === '' && empty($rows)) {
             $error = 'Please add at least one costing item.';
+        }
+
+        if ($error === '' && !engineer_inspection_asset_requirements_table_exists($conn)) {
+            $error = 'Asset Requirements setup is not ready yet. Please apply the required database migration.';
         }
 
         if ($error === '' && $costingAction === 'submit_to_admin') {
@@ -303,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '' && $costingAction === 'save_draft'
-            && engineer_inspection_draft_is_unchanged($conn, $inspectionId, $rows, $engineerFindings, $riskNotes, $clientRequests)) {
+            && engineer_inspection_draft_is_unchanged($conn, $inspectionId, $rows, $assetRequirements, $engineerFindings, $riskNotes, $clientRequests)) {
             $message = 'No draft changes to save.';
         }
 
@@ -351,6 +460,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $itemNotes
                     );
                     $insertStmt->execute();
+                }
+
+                $deleteAssetRequirementsStmt = $conn->prepare(
+                    'DELETE FROM site_inspection_asset_requirements WHERE inspection_id = ?'
+                );
+                if (!$deleteAssetRequirementsStmt) {
+                    throw new RuntimeException('Failed to prepare old asset requirements cleanup.');
+                }
+                $deleteAssetRequirementsStmt->bind_param('i', $inspectionId);
+                $deleteAssetRequirementsStmt->execute();
+
+                $insertAssetRequirementStmt = $conn->prepare(
+                    'INSERT INTO site_inspection_asset_requirements
+                     (inspection_id, asset_id, quantity_required, notes)
+                     VALUES (?, ?, ?, ?)'
+                );
+                if (!$insertAssetRequirementStmt) {
+                    throw new RuntimeException('Failed to prepare asset requirements save.');
+                }
+
+                foreach ($assetRequirements as $assetRequirement) {
+                    $assetId = $assetRequirement['asset_id'];
+                    $quantityRequired = $assetRequirement['quantity_required'];
+                    $requirementNotes = $assetRequirement['notes'];
+                    $insertAssetRequirementStmt->bind_param(
+                        'iiis',
+                        $inspectionId,
+                        $assetId,
+                        $quantityRequired,
+                        $requirementNotes
+                    );
+                    $insertAssetRequirementStmt->execute();
                 }
 
                 $notesStmt = $conn->prepare(
@@ -414,6 +555,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $materialOptions = material_stock_fetch_active_materials($conn);
+$assetRequirementOptions = [];
+$assetRequirementsByInspection = [];
+$assetRequirementsReady = engineer_inspection_asset_requirements_table_exists($conn);
+
+if ($assetRequirementsReady) {
+    $assetOptionsResult = $conn->query(
+        "SELECT a.id, a.asset_name,
+                CASE
+                    WHEN COALESCE(unit_totals.total_units, 0) > 0 THEN COALESCE(unit_totals.available_units, 0)
+                    ELSE COALESCE(i.quantity, 0)
+                END AS available_quantity
+         FROM assets a
+         INNER JOIN inventory i ON i.asset_id = a.id
+         LEFT JOIN (
+            SELECT inventory_id,
+                   COUNT(*) AS total_units,
+                   SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_units
+            FROM asset_units
+            WHERE status <> 'archived'
+            GROUP BY inventory_id
+         ) unit_totals ON unit_totals.inventory_id = i.id
+         WHERE a.deleted_at IS NULL
+         ORDER BY a.asset_name ASC, a.id ASC"
+    );
+    $assetRequirementOptions = $assetOptionsResult instanceof mysqli_result
+        ? $assetOptionsResult->fetch_all(MYSQLI_ASSOC)
+        : [];
+
+    $assetRequirementsResult = $conn->query(
+        'SELECT inspection_id, asset_id, quantity_required, notes
+         FROM site_inspection_asset_requirements
+         ORDER BY id ASC'
+    );
+    foreach ($assetRequirementsResult?->fetch_all(MYSQLI_ASSOC) ?: [] as $assetRequirement) {
+        $assetRequirementsByInspection[(int)$assetRequirement['inspection_id']][] = $assetRequirement;
+    }
+}
 
 $inspections = [];
 $stmt = $conn->prepare(
@@ -500,6 +678,7 @@ require __DIR__ . '/../layout/header.php';
                     <?php
                     $inspectionId = (int)$inspection['id'];
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
+                    $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
                     $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
                     $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
@@ -706,9 +885,80 @@ require __DIR__ . '/../layout/header.php';
                                 <?php endforeach; ?>
                             </div>
 
+                            <section class="asset-requirements" data-asset-requirements>
+                                <div class="asset-requirements__head">
+                                    <div>
+                                        <strong>Asset Requirements</strong>
+                                        <p>Reusable company assets needed for the future project. Not included in costing.</p>
+                                    </div>
+                                </div>
+
+                                <?php if (!$assetRequirementsReady): ?>
+                                    <p class="inspection-submit-note inspection-submit-note--waiting">Asset Requirements setup is not ready yet. Please apply the required database migration.</p>
+                                <?php else: ?>
+                                    <div class="asset-requirement-rows" data-asset-requirement-rows>
+                                        <?php foreach ($assetRequirements as $assetRequirement): ?>
+                                            <div class="asset-requirement-row" data-asset-requirement-row>
+                                                <label>
+                                                    <span>Asset</span>
+                                                    <select name="asset_requirement_asset_id[]" data-asset-requirement-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                        <option value="">Select asset</option>
+                                                        <?php foreach ($assetRequirementOptions as $asset): ?>
+                                                            <option value="<?php echo (int)$asset['id']; ?>" data-available="<?php echo (int)$asset['available_quantity']; ?>" <?php echo (int)$assetRequirement['asset_id'] === (int)$asset['id'] ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo (int)$asset['available_quantity']; ?> available
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </label>
+                                                <label>
+                                                    <span>Available</span>
+                                                    <output data-asset-requirement-available>0 available</output>
+                                                </label>
+                                                <label>
+                                                    <span>Qty Needed</span>
+                                                    <input type="text" name="asset_requirement_quantity[]" inputmode="numeric" autocomplete="off" value="<?php echo htmlspecialchars((string)$assetRequirement['quantity_required'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                </label>
+                                                <label>
+                                                    <span>Notes</span>
+                                                    <input type="text" name="asset_requirement_notes[]" placeholder="Optional notes" value="<?php echo htmlspecialchars((string)($assetRequirement['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                </label>
+                                                <?php if ($canEditCosting): ?>
+                                                    <button type="button" class="btn-remove-row" data-remove-asset-requirement>Remove</button>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+
+                                    <?php if ($canEditCosting): ?>
+                                        <template data-asset-requirement-template>
+                                            <div class="asset-requirement-row" data-asset-requirement-row>
+                                                <label>
+                                                    <span>Asset</span>
+                                                    <select name="asset_requirement_asset_id[]" data-asset-requirement-picker>
+                                                        <option value="">Select asset</option>
+                                                        <?php foreach ($assetRequirementOptions as $asset): ?>
+                                                            <option value="<?php echo (int)$asset['id']; ?>" data-available="<?php echo (int)$asset['available_quantity']; ?>">
+                                                                <?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo (int)$asset['available_quantity']; ?> available
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </label>
+                                                <label><span>Available</span><output data-asset-requirement-available>Select an asset</output></label>
+                                                <label><span>Qty Needed</span><input type="text" name="asset_requirement_quantity[]" inputmode="numeric" autocomplete="off" value="1"></label>
+                                                <label><span>Notes</span><input type="text" name="asset_requirement_notes[]" placeholder="Optional notes"></label>
+                                                <button type="button" class="btn-remove-row" data-remove-asset-requirement>Remove</button>
+                                            </div>
+                                        </template>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </section>
+
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
                                     <button type="button" class="btn-secondary" data-add-costing-row>Add item</button>
+                                    <?php if ($assetRequirementsReady): ?>
+                                        <button type="button" class="btn-secondary" data-add-asset-requirement>+ Add Asset Requirement</button>
+                                    <?php endif; ?>
                                     <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
                                     <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
                                     <?php if ($canSubmitToAdmin): ?>

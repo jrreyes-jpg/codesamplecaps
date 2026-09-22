@@ -318,6 +318,90 @@ body.inspection-modal-open {
     gap: 8px;
 }
 
+.asset-requirements {
+    display: grid;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(22, 101, 52, 0.18);
+}
+
+.asset-requirements__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.asset-requirements__head strong {
+    color: #0f172a;
+}
+
+.asset-requirements__head p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.asset-requirement-rows {
+    display: grid;
+    gap: 8px;
+}
+
+.asset-requirement-row {
+    display: grid;
+    grid-template-columns: minmax(190px, 1.7fr) minmax(110px, 0.7fr) 108px minmax(160px, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+    padding: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.asset-requirement-row label {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    position: relative;
+    padding-bottom: 30px;
+}
+
+.asset-requirement-row label span {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.asset-requirement-row select,
+.asset-requirement-row input,
+.asset-requirement-row output {
+    width: 100%;
+    min-height: 42px;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 9px 10px;
+    font: inherit;
+    background: #ffffff;
+}
+
+.asset-requirement-row output {
+    display: flex;
+    align-items: center;
+    color: #166534;
+    background: #f0fdf4;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.asset-requirement-row select:disabled,
+.asset-requirement-row input:disabled {
+    background: #f1f5f9;
+    color: #475569;
+    cursor: not-allowed;
+}
+
 .inspection-costing-notes {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -560,6 +644,10 @@ body.inspection-modal-open {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .asset-requirement-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .inspection-costing-notes {
         grid-template-columns: 1fr;
     }
@@ -567,7 +655,8 @@ body.inspection-modal-open {
 
 @media (max-width: 800px) {
     .inspection-grid,
-    .costing-row {
+    .costing-row,
+    .asset-requirement-row {
         grid-template-columns: 1fr;
     }
 

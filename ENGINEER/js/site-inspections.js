@@ -44,12 +44,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 notes: row.querySelector('input[name="notes[]"]')?.value || '',
             };
         });
+        const assetRequirements = Array.from(form.querySelectorAll('[data-asset-requirement-row]')).map(function (row) {
+            return {
+                asset_id: row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value || '',
+                quantity: row.querySelector('input[name="asset_requirement_quantity[]"]')?.value || '',
+                notes: row.querySelector('input[name="asset_requirement_notes[]"]')?.value || '',
+            };
+        });
 
         const payload = {
             engineer_findings: form.querySelector('textarea[name="engineer_findings"]')?.value || '',
             risk_notes: form.querySelector('textarea[name="risk_notes"]')?.value || '',
             client_requests: form.querySelector('textarea[name="client_requests"]')?.value || '',
             rows,
+            asset_requirements: assetRequirements,
         };
 
         window.localStorage.setItem(storageKeyForForm(form), JSON.stringify(payload));
@@ -84,6 +92,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     unit: normalizeText(row.querySelector('select[name="unit[]"]')?.value).toLowerCase(),
                     unitCost: normalizeNumber(row.querySelector('input[name="unit_cost[]"]')?.value),
                     notes: normalizeText(row.querySelector('input[name="notes[]"]')?.value),
+                };
+            }),
+            assetRequirements: Array.from(form.querySelectorAll('[data-asset-requirement-row]')).map(function (row) {
+                return {
+                    assetId: normalizeText(row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value),
+                    quantity: normalizeNumber(row.querySelector('input[name="asset_requirement_quantity[]"]')?.value),
+                    notes: normalizeText(row.querySelector('input[name="asset_requirement_notes[]"]')?.value),
                 };
             }),
         });
@@ -123,6 +138,92 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelector('select[name="unit[]"]').value = data.unit || 'unit';
         row.querySelector('input[name="unit_cost[]"]').value = data.unit_cost || '';
         row.querySelector('input[name="notes[]"]').value = data.notes || '';
+    };
+
+    const updateAssetRequirementAvailability = function (row) {
+        const picker = row.querySelector('[data-asset-requirement-picker]');
+        const output = row.querySelector('[data-asset-requirement-available]');
+        const selected = picker?.selectedOptions[0];
+        const available = selected?.getAttribute('data-available');
+        if (output) {
+            output.textContent = available === null || available === undefined || available === ''
+                ? 'Select an asset'
+                : `${available} available`;
+        }
+    };
+
+    const assetRequirementHasMeaningfulData = function (row) {
+        const assetId = row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value || '';
+        const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]')?.value.trim() || '';
+        const notes = row.querySelector('input[name="asset_requirement_notes[]"]')?.value.trim() || '';
+        return assetId !== '' || !['', '1'].includes(quantity) || notes !== '';
+    };
+
+    const bindAssetRequirementRow = function (form, row) {
+        const picker = row.querySelector('[data-asset-requirement-picker]');
+        const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]');
+        const notes = row.querySelector('input[name="asset_requirement_notes[]"]');
+
+        updateAssetRequirementAvailability(row);
+
+        picker?.addEventListener('change', function () {
+            const selectedId = picker.value;
+            const duplicate = selectedId !== '' && Array.from(form.querySelectorAll('[data-asset-requirement-picker]'))
+                .some((otherPicker) => otherPicker !== picker && otherPicker.value === selectedId);
+            if (duplicate) {
+                picker.value = '';
+                setFieldError(picker, 'This asset is already added.');
+            } else {
+                clearFieldError(picker);
+            }
+            updateAssetRequirementAvailability(row);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+
+        [quantity, notes].forEach(function (field) {
+            field?.addEventListener('input', function () {
+                clearFieldError(field);
+                clearCostingErrorWhenResolved(form);
+                saveFormDraft(form);
+                updateSaveDraftState(form);
+            });
+        });
+
+        quantity?.addEventListener('blur', function () {
+            const value = quantity.value.trim();
+            if (value !== '' && !/^[1-9]\d*$/.test(value)) {
+                setFieldError(quantity, 'Enter a whole number greater than 0.');
+            }
+        });
+
+        row.querySelector('[data-remove-asset-requirement]')?.addEventListener('click', function () {
+            if (assetRequirementHasMeaningfulData(row)
+                && !window.confirm('Remove asset requirement?\n\nThis will remove the selected asset requirement.')) {
+                return;
+            }
+            row.remove();
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+    };
+
+    const addAssetRequirementRow = function (form, data = null) {
+        const rowsBox = form.querySelector('[data-asset-requirement-rows]');
+        const template = form.querySelector('[data-asset-requirement-template]');
+        if (!rowsBox || !template) {
+            return null;
+        }
+
+        const row = template.content.firstElementChild.cloneNode(true);
+        if (data) {
+            row.querySelector('select[name="asset_requirement_asset_id[]"]').value = data.asset_id || '';
+            row.querySelector('input[name="asset_requirement_quantity[]"]').value = data.quantity || '1';
+            row.querySelector('input[name="asset_requirement_notes[]"]').value = data.notes || '';
+        }
+        rowsBox.appendChild(row);
+        bindAssetRequirementRow(form, row);
+        return row;
     };
 
     const setLinkedMaterialState = function (row) {
@@ -211,6 +312,14 @@ document.addEventListener('DOMContentLoaded', function () {
             rowsBox.appendChild(row);
             bindRow(form, row);
         });
+
+        const assetRowsBox = form.querySelector('[data-asset-requirement-rows]');
+        if (assetRowsBox && Array.isArray(payload.asset_requirements)) {
+            assetRowsBox.innerHTML = '';
+            payload.asset_requirements.forEach(function (assetRequirement) {
+                addAssetRequirementRow(form, assetRequirement);
+            });
+        }
     };
 
     const setFieldState = function (field, isInvalid) {
@@ -414,6 +523,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
         });
 
+        const seenAssets = new Set();
+        form.querySelectorAll('[data-asset-requirement-row]').forEach(function (row) {
+            const asset = row.querySelector('select[name="asset_requirement_asset_id[]"]');
+            const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]');
+            const assetId = asset?.value || '';
+            const quantityText = quantity?.value.trim() || '';
+
+            if (!assetRequirementHasMeaningfulData(row)) {
+                return;
+            }
+
+            if (assetId === '') {
+                setFieldError(asset, 'Select an asset.');
+                firstInvalid = firstInvalid || asset;
+            } else if (seenAssets.has(assetId)) {
+                setFieldError(asset, 'This asset is already added.');
+                firstInvalid = firstInvalid || asset;
+            } else {
+                seenAssets.add(assetId);
+            }
+
+            if (!/^[1-9]\d*$/.test(quantityText)) {
+                setFieldError(quantity, 'Enter a whole number greater than 0.');
+                firstInvalid = firstInvalid || quantity;
+            }
+        });
+
         if (!hasAnyRow) {
             firstInvalid = firstInvalid || form.querySelector('input[name="item_name[]"]');
             setFieldError(firstInvalid, 'Add at least one material or labor row.');
@@ -582,6 +718,9 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('.costing-row').forEach(function (row) {
             bindRow(form, row);
         });
+        form.querySelectorAll('[data-asset-requirement-row]').forEach(function (row) {
+            bindAssetRequirementRow(form, row);
+        });
 
         // Kunin muna ang saved server values bago mag-restore ng unsaved browser draft.
         form.dataset.savedSnapshot = formSnapshot(form);
@@ -589,6 +728,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
             addCostingRow(form);
+        });
+
+        form.querySelector('[data-add-asset-requirement]')?.addEventListener('click', function () {
+            addAssetRequirementRow(form);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
         });
 
         form.querySelector('[data-save-draft]')?.addEventListener('click', function (event) {
@@ -629,6 +774,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     field.selectedIndex = 0;
                 });
             });
+            form.querySelector('[data-asset-requirement-rows]')?.replaceChildren();
             clearCostingError(form);
             form.querySelectorAll('.costing-field-error, .is-invalid').forEach(function (field) {
                 field.classList?.remove('is-invalid');

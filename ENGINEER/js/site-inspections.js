@@ -95,7 +95,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        saveButton.disabled = !isFormDirty(form);
+        const isDirty = isFormDirty(form);
+        saveButton.disabled = !isDirty;
+        saveButton.classList.toggle('is-disabled', !isDirty);
+        saveButton.setAttribute('aria-disabled', isDirty ? 'false' : 'true');
 
         if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
             console.debug('Inspection draft snapshots', {
@@ -579,6 +582,13 @@ document.addEventListener('DOMContentLoaded', function () {
             addCostingRow(form);
         });
 
+        form.querySelector('[data-save-draft]')?.addEventListener('click', function (event) {
+            if (!isFormDirty(form) || form.dataset.isSaving === 'true') {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        });
+
         form.querySelectorAll('textarea').forEach(function (field) {
             field.addEventListener('input', function () {
                 clearFieldError(field);
@@ -653,6 +663,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (saveButton) {
                     form.dataset.isSaving = 'true';
                     saveButton.disabled = true;
+                    saveButton.classList.remove('is-disabled');
+                    saveButton.classList.add('is-loading');
                     saveButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Saving...';
                 }
             }

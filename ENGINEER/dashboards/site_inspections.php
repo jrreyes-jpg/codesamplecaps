@@ -889,7 +889,7 @@ require __DIR__ . '/../layout/header.php';
                                 <div class="asset-requirements__head">
                                     <div>
                                         <strong>Asset Requirements</strong>
-                                        <p>Reusable company assets needed for the future project. Not included in costing.</p>
+                                        <p>Reusable company assets required for the project. Not included in costing.</p>
                                     </div>
                                 </div>
 
@@ -905,7 +905,7 @@ require __DIR__ . '/../layout/header.php';
                                                         <option value="">Select asset</option>
                                                         <?php foreach ($assetRequirementOptions as $asset): ?>
                                                             <option value="<?php echo (int)$asset['id']; ?>" data-available="<?php echo (int)$asset['available_quantity']; ?>" <?php echo (int)$assetRequirement['asset_id'] === (int)$asset['id'] ? 'selected' : ''; ?>>
-                                                                <?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo (int)$asset['available_quantity']; ?> available
+                                                                <?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?>
                                                             </option>
                                                         <?php endforeach; ?>
                                                     </select>
@@ -939,7 +939,7 @@ require __DIR__ . '/../layout/header.php';
                                                         <option value="">Select asset</option>
                                                         <?php foreach ($assetRequirementOptions as $asset): ?>
                                                             <option value="<?php echo (int)$asset['id']; ?>" data-available="<?php echo (int)$asset['available_quantity']; ?>">
-                                                                <?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo (int)$asset['available_quantity']; ?> available
+                                                                <?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?>
                                                             </option>
                                                         <?php endforeach; ?>
                                                     </select>

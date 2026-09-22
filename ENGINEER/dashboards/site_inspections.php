@@ -45,6 +45,59 @@ function engineer_inspection_valid_unit_cost(string $value): bool
     return preg_match('/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/', $value) === 1 && (float)$value > 0;
 }
 
+function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId): ?array
+{
+    $stmt = $conn->prepare('SELECT material_name, unit FROM materials WHERE id = ? AND status = \'active\' LIMIT 1');
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('i', $materialId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+function engineer_inspection_draft_is_unchanged(mysqli $conn, int $inspectionId, array $rows, string $findings, string $riskNotes, string $clientRequests): bool
+{
+    $notesStmt = $conn->prepare('SELECT engineer_findings, risk_notes, client_requests FROM site_inspections WHERE id = ? LIMIT 1');
+    $itemsStmt = $conn->prepare('SELECT item_type, inventory_id, material_id, item_name, quantity, unit, unit_cost, notes FROM site_inspection_cost_items WHERE inspection_id = ? ORDER BY id ASC');
+    if (!$notesStmt || !$itemsStmt) {
+        return false;
+    }
+
+    $notesStmt->bind_param('i', $inspectionId);
+    $notesStmt->execute();
+    $savedNotes = $notesStmt->get_result()->fetch_assoc() ?: [];
+    if (trim((string)($savedNotes['engineer_findings'] ?? '')) !== $findings
+        || trim((string)($savedNotes['risk_notes'] ?? '')) !== $riskNotes
+        || trim((string)($savedNotes['client_requests'] ?? '')) !== $clientRequests) {
+        return false;
+    }
+
+    $itemsStmt->bind_param('i', $inspectionId);
+    $itemsStmt->execute();
+    $savedRows = $itemsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    if (count($savedRows) !== count($rows)) {
+        return false;
+    }
+
+    foreach ($rows as $index => $row) {
+        $saved = $savedRows[$index];
+        if ((string)$saved['item_type'] !== $row['item_type']
+            || (int)($saved['inventory_id'] ?? 0) !== (int)($row['inventory_id'] ?? 0)
+            || (int)($saved['material_id'] ?? 0) !== (int)($row['material_id'] ?? 0)
+            || trim((string)$saved['item_name']) !== $row['item_name']
+            || trim((string)$saved['unit']) !== $row['unit']
+            || trim((string)($saved['notes'] ?? '')) !== $row['notes']
+            || abs((float)$saved['quantity'] - (float)$row['quantity']) > 0.000001
+            || abs((float)$saved['unit_cost'] - (float)$row['unit_cost']) > 0.000001) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function engineer_inspection_complete_site_address(array $inspection): string
 {
     $parts = [];
@@ -153,14 +206,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $itemName = trim((string)$rawName);
             $rawQuantityText = trim((string)($quantities[$index] ?? ''));
             $rawUnitCostText = trim((string)($unitCosts[$index] ?? ''));
+            if (preg_match('/^\.\d+$/', $rawQuantityText)) {
+                $rawQuantityText = '0' . $rawQuantityText;
+            }
+            if (preg_match('/^\.\d+$/', $rawUnitCostText)) {
+                $rawUnitCostText = '0' . $rawUnitCostText;
+            }
             $unit = trim((string)($units[$index] ?? 'unit'));
             $quantity = (float)($quantities[$index] ?? 0);
             $unitCost = (float)($unitCosts[$index] ?? 0);
-            $itemType = in_array(($itemTypes[$index] ?? 'material'), ['material', 'labor', 'other'], true)
+            $itemType = in_array(($itemTypes[$index] ?? 'material'), ['material', 'labor', 'equipment', 'service', 'other'], true)
                 ? (string)$itemTypes[$index]
                 : 'material';
             $inventoryId = (int)($inventoryIds[$index] ?? 0);
             $materialId = (int)($materialIds[$index] ?? 0);
+
+            if ($itemType !== 'material') {
+                $materialId = 0;
+                $inventoryId = 0;
+            }
 
             if ($itemName === '' && $rawQuantityText === '' && $rawUnitCostText === '') {
                 continue;
@@ -193,9 +257,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
-            if ($materialId > 0 && !material_stock_material_exists($conn, $materialId)) {
-                $error = 'Selected material is no longer available. Please choose again.';
-                break;
+            if ($materialId > 0) {
+                $linkedMaterial = engineer_inspection_fetch_active_material($conn, $materialId);
+                if (!$linkedMaterial) {
+                    $error = 'Selected material is no longer available. Please choose again.';
+                    break;
+                }
+
+                $itemName = trim((string)$linkedMaterial['material_name']);
+                $unit = trim((string)$linkedMaterial['unit']);
             }
 
             $lineTotal = $quantity * $unitCost;
@@ -232,7 +302,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if ($error === '') {
+        if ($error === '' && $costingAction === 'save_draft'
+            && engineer_inspection_draft_is_unchanged($conn, $inspectionId, $rows, $engineerFindings, $riskNotes, $clientRequests)) {
+            $message = 'No draft changes to save.';
+        }
+
+        if ($error === '' && $message === '') {
             $conn->begin_transaction();
 
             try {
@@ -532,7 +607,7 @@ require __DIR__ . '/../layout/header.php';
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
-                                <strong>Costing Draft</strong>
+                                <strong>Inspection Findings &amp; Costing</strong>
                                 <span>Total: <b data-costing-total><?php echo engineer_format_money($totalCost); ?></b></span>
                             </div>
                             <p class="costing-error" data-costing-error hidden></p>
@@ -565,10 +640,12 @@ require __DIR__ . '/../layout/header.php';
                                             <select name="item_type[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
                                                 <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
+                                                <option value="equipment" <?php echo ($item['item_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment</option>
+                                                <option value="service" <?php echo ($item['item_type'] ?? '') === 'service' ? 'selected' : ''; ?>>Service</option>
                                                 <option value="other" <?php echo ($item['item_type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
                                             </select>
                                         </label>
-                                        <label>
+                                        <label data-material-field>
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
                                             <select name="material_id[]" data-material-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
@@ -580,7 +657,7 @@ require __DIR__ . '/../layout/header.php';
                                                         data-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         <?php echo (int)($item['material_id'] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>
                                                     >
-                                                        <?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> | Available: <?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>
+                                                        <?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo htmlspecialchars(number_format((float)$material['available_quantity'], 2), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?> available
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -591,7 +668,7 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label>
                                             <span>Qty</span>
-                                            <input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Unit</span>
@@ -604,8 +681,8 @@ require __DIR__ . '/../layout/header.php';
                                             </select>
                                         </label>
                                         <label>
-                                            <span>Unit Cost (PHP)</span>
-                                            <input type="number" name="unit_cost[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-number required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <span>Estimated Unit Cost (PHP)</span>
+                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Notes</span>

@@ -372,6 +372,8 @@ body.inspection-modal-open {
     display: grid;
     gap: 5px;
     min-width: 0;
+    position: relative;
+    padding-bottom: 19px;
 }
 
 .costing-row label span {
@@ -398,6 +400,17 @@ body.inspection-modal-open {
     cursor: not-allowed;
 }
 
+.costing-row input[readonly],
+.costing-row select[data-locked] {
+    background: #f1f5f9;
+    color: #334155;
+    cursor: not-allowed;
+}
+
+.costing-row select[data-locked] {
+    pointer-events: none;
+}
+
 .costing-row input.is-invalid,
 .costing-row select.is-invalid,
 .inspection-costing-notes textarea.is-invalid {
@@ -407,6 +420,13 @@ body.inspection-modal-open {
 }
 
 .costing-field-error {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: #b91c1c;
     font-size: 0.72rem;
     font-weight: 900;

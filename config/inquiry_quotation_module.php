@@ -4,6 +4,7 @@
 require_once __DIR__ . '/project_history.php';
 require_once __DIR__ . '/Config.php';
 require_once __DIR__ . '/site_inspections.php';
+require_once __DIR__ . '/user_notifications.php';
 require_once __DIR__ . '/../services/EmailService.php';
 require_once __DIR__ . '/../services/AuthService.php';
 
@@ -880,6 +881,72 @@ function inquiry_quote_public_respond(mysqli $conn, string $token, string $decis
     }
 
     inquiry_quote_add_history($conn, $draftId, $fromStatus, $decision, $note, 0, 'prospect');
+
+    // Magpadala lang ng notification sa Admin na nag-send ng quotation.
+    $recipientAdminId = (int)($quotation['sent_by'] ?? 0);
+    if ($recipientAdminId <= 0) {
+        $recipientAdminId = (int)($quotation['created_by'] ?? 0);
+    }
+
+    if ($recipientAdminId > 0 && user_notifications_table_exists($conn)) {
+        $adminStmt = $conn->prepare('SELECT id FROM users WHERE id = ? AND role = ? LIMIT 1');
+        if ($adminStmt) {
+            $adminRole = 'admin';
+            $adminStmt->bind_param('is', $recipientAdminId, $adminRole);
+            $adminStmt->execute();
+            $adminRecipient = $adminStmt->get_result()->fetch_assoc();
+
+            $createdById = (int)($quotation['created_by'] ?? 0);
+            if (!$adminRecipient && $createdById > 0 && $createdById !== $recipientAdminId) {
+                $recipientAdminId = $createdById;
+                $adminStmt->bind_param('is', $recipientAdminId, $adminRole);
+                $adminStmt->execute();
+                $adminRecipient = $adminStmt->get_result()->fetch_assoc();
+            }
+
+            if ($adminRecipient) {
+                $clientName = trim((string)($quotation['client_name'] ?? '')) ?: 'Client';
+                $service = trim((string)($quotation['service_category'] ?? '')) ?: 'Service request';
+                $notePreview = trim(preg_replace('/\s+/', ' ', $note) ?? '');
+                if (strlen($notePreview) > 140) {
+                    $notePreview = substr($notePreview, 0, 137) . '...';
+                }
+
+                $titleMap = [
+                    'accepted' => 'Quotation Approved by Client',
+                    'revision_requested' => 'Quotation Revision Requested',
+                    'rejected' => 'Quotation Rejected by Client',
+                ];
+                $responseMap = [
+                    'accepted' => 'approved the quotation.',
+                    'revision_requested' => 'requested a quotation revision.',
+                    'rejected' => 'rejected the quotation.',
+                ];
+
+                $message = $clientName . ' • ' . $service . ': ' . ($responseMap[$decision] ?? 'responded to the quotation.');
+                if ($notePreview !== '' && in_array($decision, ['revision_requested', 'rejected'], true)) {
+                    $message .= ' Note: ' . $notePreview;
+                }
+
+                $inquiryId = (int)($quotation['inquiry_id'] ?? 0);
+                $targetUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
+                    . $inquiryId . '&tab=quotation';
+                $dedupeKey = 'client_quotation_response:' . $draftId . ':' . $decision;
+
+                user_notifications_create_if_missing(
+                    $conn,
+                    $recipientAdminId,
+                    'client_quotation_response',
+                    $draftId,
+                    $titleMap[$decision] ?? 'Client Quotation Response',
+                    $message,
+                    $targetUrl,
+                    $dedupeKey
+                );
+            }
+        }
+    }
+
     if ($decision === 'accepted') {
         inquiry_quote_mark_revision_as_final($conn, $draftId);
     }

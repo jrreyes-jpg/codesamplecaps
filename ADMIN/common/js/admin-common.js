@@ -141,6 +141,23 @@ document.addEventListener('DOMContentLoaded', function () {
             return '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=' + encodeURIComponent(String(inquiryId));
         };
 
+        const notificationUrl = function (item) {
+            if (item?.source === 'user_notification' && item.target_url) {
+                return String(item.target_url);
+            }
+
+            return inquiryUrl(item?.id);
+        };
+
+        const bindUserNotificationLink = function (link, source, notificationId) {
+            if (!link || source !== 'user_notification' || notificationId <= 0) return;
+
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+                markUserNotificationRead(notificationId, link.href);
+            });
+        };
+
         const renderNotificationList = function (items) {
             if (!list) return;
             list.replaceChildren();
@@ -149,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const empty = document.createElement('div');
                 empty.className = 'topbar-notifications__empty';
                 empty.setAttribute('data-inquiry-notification-empty', '');
-                empty.textContent = 'No unread inquiries.';
+                empty.textContent = 'No unread notifications.';
                 list.appendChild(empty);
                 return;
             }
@@ -162,13 +179,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 const details = document.createElement('span');
                 const time = document.createElement('span');
 
-                link.href = inquiryUrl(item.id);
+                const source = String(item.source || 'inquiry');
+                const notificationId = Number.parseInt(item.id || '0', 10);
+
+                link.href = notificationUrl(item);
                 link.className = 'notification-item notification-item--inquiry-unviewed';
-                link.dataset.inquiryNotificationId = String(item.id || '');
+                link.dataset.notificationSource = source;
+                link.dataset.notificationId = String(notificationId || '');
                 dot.className = 'notification-item__dot';
                 copy.className = 'notification-item__copy';
-                name.textContent = String(item.client_name || 'Client inquiry');
+                if (source === 'user_notification') {
+                    name.textContent = String(item.title || 'Notification');
+                    details.textContent = String(item.message || '');
+                    bindUserNotificationLink(link, source, notificationId);
+                } else {
+                    name.textContent = String(item.client_name || 'Client inquiry');
                 details.textContent = String(item.service_category || 'Service request') + ' • New inquiry';
+                }
                 time.className = 'notification-item__time';
                 time.textContent = formatRelativeTime(item.created_at);
                 copy.append(name, details);
@@ -211,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const newItems = Array.isArray(data.new_items) ? data.new_items : [];
             if (data.show_unread_summary) {
-                window.showToast('You have ' + Number.parseInt(data.unread_count || '0', 10) + ' unread inquiries.', 'success');
+                window.showToast('You have ' + Number.parseInt(data.inquiry_unread_count || '0', 10) + ' unread inquiries.', 'success');
                 return;
             }
 
@@ -280,6 +307,50 @@ document.addEventListener('DOMContentLoaded', function () {
                     pendingReads.delete(normalizedId);
                 });
         };
+
+        const markUserNotificationRead = function (notificationId, targetUrl) {
+            const normalizedId = Number.parseInt(notificationId || '0', 10);
+            const pendingKey = 'user_notification:' + normalizedId;
+            if (!endpoint || !csrfToken || normalizedId <= 0 || pendingReads.has(pendingKey)) return;
+            pendingReads.add(pendingKey);
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    source: 'user_notification',
+                    notification_id: normalizedId,
+                    csrf_token: csrfToken,
+                }),
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Unable to mark notification as read.');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.success) {
+                        applyNotificationState(data);
+                    }
+                })
+                .catch(function () {
+                    // Magbubukas pa rin ang inquiry kahit hindi agad naisave ang read state.
+                })
+                .finally(function () {
+                    pendingReads.delete(pendingKey);
+                    window.location.assign(targetUrl);
+                });
+        };
+
+        list?.querySelectorAll('[data-notification-source="user_notification"]').forEach(function (link) {
+            bindUserNotificationLink(
+                link,
+                String(link.dataset.notificationSource || ''),
+                Number.parseInt(link.dataset.notificationId || '0', 10)
+            );
+        });
 
         document.addEventListener('edge:inquiry-opened', function (event) {
             markInquiryRead(event.detail?.inquiryId);

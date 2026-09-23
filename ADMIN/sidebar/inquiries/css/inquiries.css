@@ -1483,6 +1483,19 @@
     display: none;
 }
 
+.inquiry-quotation-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+}
+
+.inquiry-quotation-layout > .inquiry-prerequisite-banner,
+.inquiry-quotation-layout > .inquiry-quote-draft {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
 .inquiry-modal__close:hover {
     background: #e2e8f0;
     color: #0f172a;
@@ -2042,7 +2055,8 @@ body.inquiry-modal-open {
 }
 
 .inquiry-quote-draft {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    grid-template-columns: minmax(190px, 1.35fr) minmax(120px, 0.8fr) minmax(130px, 0.85fr) auto;
+    margin-top: 0;
 }
 
 .inquiry-quotation-approved-banner {
@@ -2100,6 +2114,11 @@ body.inquiry-modal-open {
 .inquiry-quote-draft strong {
     color: #0f172a;
     overflow-wrap: anywhere;
+}
+
+.inquiry-quote-draft > div:first-child strong {
+    overflow-wrap: normal;
+    white-space: nowrap;
 }
 
 .status-badge {
@@ -2262,7 +2281,7 @@ body.inquiry-modal-open {
 
 .inquiry-quote-draft .inquiry-quote-draft__action {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     justify-content: end;
 }

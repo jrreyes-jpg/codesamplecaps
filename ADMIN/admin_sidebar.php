@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/profile_photo_storage.php';
+require_once __DIR__ . '/../config/user_notifications.php';
 
 $currentPath = str_replace('\\', '/', parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
 $currentQuery = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '';
@@ -345,6 +346,40 @@ $superAdminNotificationData = isset($conn) && $conn instanceof mysqli
         'recent_activity' => [],
     ];
 
+$adminUserNotificationState = isset($conn) && $conn instanceof mysqli
+    ? user_notifications_fetch_unread_state($conn, (int)($_SESSION['user_id'] ?? 0))
+    : ['unread_count' => 0, 'items' => []];
+$adminBellUnreadCount = (int)($superAdminNotificationData['inquiry_count'] ?? 0)
+    + (int)($adminUserNotificationState['unread_count'] ?? 0);
+$adminBellItems = [];
+
+foreach ($superAdminNotificationData['inquiry_alerts'] ?? [] as $inquiryAlert) {
+    $adminBellItems[] = [
+        'source' => 'inquiry',
+        'id' => (int)($inquiryAlert['id'] ?? 0),
+        'title' => (string)($inquiryAlert['client_name'] ?? 'Client inquiry'),
+        'message' => (string)($inquiryAlert['service_category'] ?? 'Service request') . ' • New inquiry',
+        'created_at' => (string)($inquiryAlert['created_at'] ?? ''),
+        'target_url' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=' . (int)($inquiryAlert['id'] ?? 0),
+    ];
+}
+
+foreach ($adminUserNotificationState['items'] ?? [] as $notification) {
+    $adminBellItems[] = [
+        'source' => 'user_notification',
+        'id' => (int)($notification['id'] ?? 0),
+        'title' => (string)($notification['title'] ?? 'Notification'),
+        'message' => (string)($notification['message'] ?? ''),
+        'created_at' => (string)($notification['created_at'] ?? ''),
+        'target_url' => (string)($notification['target_url'] ?? ''),
+    ];
+}
+
+usort($adminBellItems, static function (array $left, array $right): int {
+    return strcmp((string)($right['created_at'] ?? ''), (string)($left['created_at'] ?? ''));
+});
+$adminBellItems = array_slice($adminBellItems, 0, 8);
+
 if (
     isset($conn)
     && $conn instanceof mysqli
@@ -436,8 +471,8 @@ include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
                 <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor" />
             </svg>
         </span>
-        <span class="topbar-notifications__badge" data-inquiry-notification-badge<?php echo ($superAdminNotificationData['inquiry_count'] ?? 0) > 0 ? '' : ' hidden'; ?>>
-            <?php echo ($superAdminNotificationData['inquiry_count'] ?? 0) > 99 ? '99+' : (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?>
+        <span class="topbar-notifications__badge" data-inquiry-notification-badge<?php echo $adminBellUnreadCount > 0 ? '' : ' hidden'; ?>>
+            <?php echo $adminBellUnreadCount > 99 ? '99+' : $adminBellUnreadCount; ?>
         </span>
     </button>
 
@@ -445,24 +480,29 @@ include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
         <div class="topbar-notifications__panel-head">
             <div>
                 <strong>Notifications</strong>
-                <span data-inquiry-notification-count><?php echo (int)($superAdminNotificationData['inquiry_count'] ?? 0); ?> unread</span>
+                <span data-inquiry-notification-count><?php echo $adminBellUnreadCount; ?> unread</span>
             </div>
         </div>
 
         <div class="topbar-notifications__section" data-inquiry-notification-list>
-            <?php if (($superAdminNotificationData['inquiry_count'] ?? 0) === 0): ?>
+            <?php if ($adminBellUnreadCount === 0): ?>
                 <div class="topbar-notifications__empty" data-inquiry-notification-empty>
-                    No unread inquiries.
+                    No unread notifications.
                 </div>
             <?php else: ?>
-                <?php foreach ($superAdminNotificationData['inquiry_alerts'] as $inquiryAlert): ?>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=<?php echo (int)($inquiryAlert['id'] ?? 0); ?>" class="notification-item notification-item--inquiry-unviewed" data-inquiry-notification-id="<?php echo (int)($inquiryAlert['id'] ?? 0); ?>">
+                <?php foreach ($adminBellItems as $notification): ?>
+                    <a
+                        href="<?php echo htmlspecialchars((string)($notification['target_url'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        class="notification-item notification-item--inquiry-unviewed"
+                        data-notification-source="<?php echo htmlspecialchars((string)($notification['source'] ?? 'inquiry'), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-notification-id="<?php echo (int)($notification['id'] ?? 0); ?>"
+                    >
                         <span class="notification-item__dot"></span>
                         <div class="notification-item__copy">
-                            <strong><?php echo htmlspecialchars((string)$inquiryAlert['client_name']); ?></strong>
-                            <span><?php echo htmlspecialchars((string)$inquiryAlert['service_category']); ?> &bull; New inquiry</span>
+                            <strong><?php echo htmlspecialchars((string)($notification['title'] ?? 'Notification'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <span><?php echo htmlspecialchars((string)($notification['message'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
-                        <span class="notification-item__time"><?php echo htmlspecialchars(super_admin_notification_relative_time((string)($inquiryAlert['created_at'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="notification-item__time"><?php echo htmlspecialchars(super_admin_notification_relative_time((string)($notification['created_at'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></span>
                     </a>
                 <?php endforeach; ?>
             <?php endif; ?>

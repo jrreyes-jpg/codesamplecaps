@@ -2283,6 +2283,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 </section>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
+                                    <div class="inquiry-quotation-layout">
                                     <?php if ($quotationPrerequisiteMessage !== ''): ?>
                                         <div
                                             class="inquiry-prerequisite-banner"
@@ -2484,6 +2485,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php else: ?>
                                         <div class="inquiry-empty">Quotation is not available for this inquiry.</div>
                                     <?php endif; ?>
+                                    </div>
                                 </section>
 
                             </div>

@@ -922,17 +922,21 @@ document.addEventListener('DOMContentLoaded', function () {
         window.localStorage.removeItem(activeModalKey);
     };
 
+    const openInspectionModal = function (modal) {
+        if (!modal) {
+            return;
+        }
+
+        modal.hidden = false;
+        document.body.classList.add('inspection-modal-open');
+        window.localStorage.setItem(activeModalKey, modal.id);
+        modal.querySelector('[data-inspection-modal-close]')?.focus();
+    };
+
     document.querySelectorAll('[data-inspection-modal-open]').forEach(function (button) {
         button.addEventListener('click', function () {
             const modal = document.getElementById(button.getAttribute('data-inspection-modal-open'));
-            if (!modal) {
-                return;
-            }
-
-            modal.hidden = false;
-            document.body.classList.add('inspection-modal-open');
-            window.localStorage.setItem(activeModalKey, modal.id);
-            modal.querySelector('[data-inspection-modal-close]')?.focus();
+            openInspectionModal(modal);
         });
     });
 
@@ -960,13 +964,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const activeModalId = window.localStorage.getItem(activeModalKey);
-    if (activeModalId) {
-        const modal = document.getElementById(activeModalId);
+    const requestedInspectionId = Number.parseInt(new URLSearchParams(window.location.search).get('inspection_id') || '0', 10);
+    const requestedModal = requestedInspectionId > 0 ? document.getElementById('inspectionModal' + requestedInspectionId) : null;
+    if (requestedModal) {
+        openInspectionModal(requestedModal);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('inspection_id');
+        window.history.replaceState({}, document.title, url);
+    } else {
+        const activeModalId = window.localStorage.getItem(activeModalKey);
+        const modal = activeModalId ? document.getElementById(activeModalId) : null;
         const panel = modal?.querySelector('.inspection-modal__panel');
         if (modal) {
-            modal.hidden = false;
-            document.body.classList.add('inspection-modal-open');
+            openInspectionModal(modal);
             window.setTimeout(function () {
                 if (panel) {
                     panel.scrollTop = Number(window.localStorage.getItem(modalScrollKey) || 0);

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/site_inspections.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../../config/user_notifications.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
@@ -1193,6 +1194,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ], static fn(string $value): bool => $value !== '');
                     $siteAddress = implode(', ', $siteAddressParts);
                     $scheduleForEmail = $scheduleDateTime->format('l, F j, Y, g:i A') . ' (PHT)';
+
+                    // Para lang ito sa unang assignment. Walang reschedule notification dito.
+                    if ($existingInspectionId <= 0 && $savedInspectionId > 0 && $notificationInquiry && $notificationEngineer) {
+                        $assignmentMessage = 'Client: ' . ($clientName !== '' ? $clientName : 'Client')
+                            . ' • Service: ' . (trim((string)($notificationInquiry['service_category'] ?? '')) ?: 'Service request')
+                            . ' • Schedule: ' . $scheduleForEmail;
+                        $assignmentNotification = user_notifications_create_if_missing(
+                            $conn,
+                            $engineerId,
+                            'site_inspection_assignment',
+                            $savedInspectionId,
+                            'New Site Inspection Assignment',
+                            $assignmentMessage,
+                            '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $savedInspectionId,
+                            'site_inspection_assignment:' . $engineerId . ':' . $savedInspectionId
+                        );
+                        if ($assignmentNotification === null) {
+                            error_log('Engineer assignment notification was not saved for inspection ' . $savedInspectionId);
+                        }
+                    }
 
                     $clientEmailSent = false;
                     $engineerEmailSent = false;

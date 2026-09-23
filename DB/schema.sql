@@ -1094,6 +1094,23 @@ CREATE TABLE `users` (
   KEY `idx_users_role_status` (`role`,`status`),
   CONSTRAINT `fk_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `user_notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `type` varchar(80) NOT NULL,
+  `reference_id` int(11) NOT NULL,
+  `title` varchar(180) NOT NULL,
+  `message` text NOT NULL,
+  `target_url` varchar(255) NOT NULL,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `dedupe_key` varchar(191) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_notifications_dedupe` (`dedupe_key`),
+  KEY `idx_user_notifications_unread` (`user_id`,`read_at`,`created_at`),
+  KEY `idx_user_notifications_reference` (`type`,`reference_id`),
+  CONSTRAINT `fk_user_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

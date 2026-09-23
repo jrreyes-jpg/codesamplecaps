@@ -5,6 +5,7 @@ $sharedJsFiles = [
     '/codesamplecaps/assets/js/app-window-guard.js',
     '/codesamplecaps/SHARED/header/core/operations-header.js',
     '/codesamplecaps/ENGINEER/common/js/engineer-common.js',
+    '/codesamplecaps/ENGINEER/common/js/engineer-notifications.js',
 ];
 $allEngineerJsFiles = array_values(array_unique(array_merge($sharedJsFiles, $engineerJsFiles)));
 ?>

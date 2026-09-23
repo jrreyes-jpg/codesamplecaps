@@ -799,9 +799,13 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             showConfirm(
                 form,
-                'Are you sure you want to confirm this inspection schedule and notify the client?',
+                'This will schedule the inspection and notify the client and assigned Engineer.',
                 null,
-                { cancel: 'Cancel', confirm: 'Confirm' }
+                {
+                    title: 'Confirm inspection schedule?',
+                    cancel: 'Cancel',
+                    confirm: 'Confirm Schedule',
+                }
             );
         });
     });

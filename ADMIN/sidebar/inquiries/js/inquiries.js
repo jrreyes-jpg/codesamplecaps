@@ -1335,14 +1335,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (form.dataset.confirmed !== '1') {
+                const recipientDetails = [
+                    { label: 'Client', value: form.dataset.quoteRecipientName || '' },
+                    { label: isInitialQuotation ? 'Verified Email' : 'Email', value: form.dataset.quoteRecipientEmail || '' },
+                    { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
+                ];
+
+                // Para sa revised quotation lang ang source details.
+                if (!isInitialQuotation) {
+                    recipientDetails.push({ label: 'Source', value: form.dataset.quoteRecipientSource || '' });
+                }
+
                 showConfirm(form, isInitialQuotation
                     ? 'Please confirm the client details before sending this initial quotation.'
-                    : 'Send this revised quotation to the client by email?', [
-                    { label: 'Client', value: form.dataset.quoteRecipientName || '' },
-                    { label: 'Email', value: form.dataset.quoteRecipientEmail || '' },
-                    { label: 'Contact', value: form.dataset.quoteRecipientContact || '' },
-                    { label: 'Source', value: form.dataset.quoteRecipientSource || '' },
-                ], isInitialQuotation ? {
+                    : 'Send this revised quotation to the client by email?', recipientDetails, isInitialQuotation ? {
                     title: 'Confirm Recipient',
                     cancel: 'Cancel',
                     confirm: 'Send Quotation',

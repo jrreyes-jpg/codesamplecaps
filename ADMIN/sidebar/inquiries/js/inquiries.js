@@ -567,7 +567,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const modal = form.closest('.inquiry-modal');
         const draftKey = modal?.dataset.inquiryId ? 'edgeInquiryScheduleDraft:' + modal.dataset.inquiryId : '';
         const submitButton = form.querySelector('[data-schedule-submit]');
-        const clearButton = form.querySelector('[data-inquiry-clear-inputs]');
         const defaultSubmitLabel = submitButton?.textContent || 'Confirm Inspection Schedule & Send to Client';
 
         const syncInvalidUi = function () {
@@ -791,18 +790,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 form.dataset.submitAttempted = '1';
                 field.classList.add('is-invalid');
             });
-        });
-
-        clearButton?.addEventListener('click', function () {
-            form.reset();
-            form.dataset.submitAttempted = '0';
-            form.querySelectorAll('.is-invalid').forEach(function (field) {
-                field.classList.remove('is-invalid');
-            });
-            hiddenSchedule.value = '';
-            if (draftKey) sessionStorage.removeItem(draftKey);
-            syncTimeOptions();
-            syncScheduleSubmitState();
         });
 
         form.addEventListener('submit', function (event) {

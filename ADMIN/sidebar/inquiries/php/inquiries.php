@@ -2256,7 +2256,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </label>
                                             <div class="inquiry-review-actions">
                                                 <button type="submit" class="btn-primary" data-schedule-submit <?php echo empty($engineers) || $isScheduleConfirmed ? 'disabled' : ''; ?>><?php echo $scheduleSubmitLabel; ?></button>
-                                                <button type="button" class="btn-secondary inquiry-clear-inputs" data-inquiry-clear-inputs>Clear inputs</button>
                                             </div>
                                         </form>
                                     <?php endif; ?>

@@ -804,7 +804,7 @@ require __DIR__ . '/../layout/header.php';
                             <?php if ($isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
                             <?php elseif (!$canEditCosting): ?>
-                                <div class="inspection-submit-note inspection-submit-note--waiting">Complete the current inspection step before adding findings and costing.</div>
+                                <div class="inspection-submit-note inspection-submit-note--waiting">Start the inspection before adding findings and costing.</div>
                             <?php endif; ?>
 
                             <div class="inspection-costing-notes">

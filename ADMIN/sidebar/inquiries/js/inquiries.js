@@ -352,6 +352,49 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const setInspectionSchedulingState = function (modal, isScheduling) {
+        if (!modal) {
+            return;
+        }
+
+        if (isScheduling) {
+            modal.dataset.inspectionScheduling = '1';
+            modal.classList.add('is-inspection-scheduling');
+            modal.setAttribute('aria-busy', 'true');
+            // I-lock ang modal para hindi mabago ang schedule habang nagsa-save.
+            modal.inert = true;
+            modal.querySelectorAll('button, select, textarea, input:not([type="hidden"])').forEach(function (control) {
+                control.dataset.scheduleLockWasDisabled = control.disabled ? '1' : '0';
+                control.disabled = true;
+            });
+            modal.querySelectorAll('a').forEach(function (link) {
+                link.dataset.scheduleLockTabindex = link.getAttribute('tabindex') ?? '__none__';
+                link.setAttribute('tabindex', '-1');
+                link.setAttribute('aria-disabled', 'true');
+            });
+            return;
+        }
+
+        delete modal.dataset.inspectionScheduling;
+        modal.classList.remove('is-inspection-scheduling');
+        modal.removeAttribute('aria-busy');
+        modal.inert = false;
+        modal.querySelectorAll('[data-schedule-lock-was-disabled]').forEach(function (button) {
+            button.disabled = button.dataset.scheduleLockWasDisabled === '1';
+            delete button.dataset.scheduleLockWasDisabled;
+        });
+        modal.querySelectorAll('[data-schedule-lock-tabindex]').forEach(function (link) {
+            const previousTabindex = link.dataset.scheduleLockTabindex;
+            if (previousTabindex === '__none__') {
+                link.removeAttribute('tabindex');
+            } else {
+                link.setAttribute('tabindex', previousTabindex);
+            }
+            link.removeAttribute('aria-disabled');
+            delete link.dataset.scheduleLockTabindex;
+        });
+    };
+
     const openModal = function (modal) {
         if (!modal) {
             return;
@@ -375,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const activateModalTab = function (modal, target) {
-        if (!modal || !target || modal.dataset.quotationSending === '1' || modal.dataset.reviewSaving === '1') {
+        if (!modal || !target || modal.dataset.quotationSending === '1' || modal.dataset.reviewSaving === '1' || modal.dataset.inspectionScheduling === '1') {
             return false;
         }
 
@@ -413,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const requestCloseModal = function (modal) {
-        if (modal?.dataset.quotationSending === '1' || modal?.dataset.reviewSaving === '1') {
+        if (modal?.dataset.quotationSending === '1' || modal?.dataset.reviewSaving === '1' || modal?.dataset.inspectionScheduling === '1') {
             return;
         }
 
@@ -483,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.addEventListener('click', function (event) {
-        if (!event.target.closest('.inquiry-modal.is-quotation-sending, .inquiry-modal.is-review-saving')) {
+        if (!event.target.closest('.inquiry-modal.is-quotation-sending, .inquiry-modal.is-review-saving, .inquiry-modal.is-inspection-scheduling')) {
             return;
         }
 
@@ -525,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const draftKey = modal?.dataset.inquiryId ? 'edgeInquiryScheduleDraft:' + modal.dataset.inquiryId : '';
         const submitButton = form.querySelector('[data-schedule-submit]');
         const clearButton = form.querySelector('[data-inquiry-clear-inputs]');
+        const defaultSubmitLabel = submitButton?.textContent || 'Confirm Inspection Schedule & Send to Client';
 
         const syncInvalidUi = function () {
             if (form.dataset.submitAttempted !== '1') {
@@ -780,19 +824,59 @@ document.addEventListener('DOMContentLoaded', function () {
                 : '';
 
             if (form.dataset.confirmed === '1') {
+                const scheduleRequestData = new FormData(form);
                 form.dataset.submitting = '1';
                 if (submitButton) {
                     const spinner = document.createElement('span');
                     const label = document.createElement('span');
                     spinner.className = 'inquiry-send-spinner';
                     spinner.setAttribute('aria-hidden', 'true');
-                    label.textContent = 'Confirming...';
+                    label.textContent = 'Scheduling inspection...';
                     submitButton.disabled = true;
                     submitButton.classList.add('inquiry-send-button--loading');
                     submitButton.replaceChildren(spinner, label);
                 }
-                if (clearButton) clearButton.disabled = true;
+                setInspectionSchedulingState(modal, true);
                 if (draftKey) sessionStorage.removeItem(draftKey);
+                delete form.dataset.confirmed;
+                event.preventDefault();
+
+                fetch(form.getAttribute('action') || window.location.href, {
+                    method: 'POST',
+                    body: scheduleRequestData,
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            return { ok: response.ok, data: data };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.data.success) {
+                            throw new Error(result.data.message || 'Unable to save the inspection schedule.');
+                        }
+
+                        setInspectionSchedulingState(modal, false);
+                        window.location.assign(result.data.redirect || window.location.href);
+                    })
+                    .catch(function (error) {
+                        form.dataset.submitting = '0';
+                        setInspectionSchedulingState(modal, false);
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.classList.remove('inquiry-send-button--loading');
+                            submitButton.textContent = defaultSubmitLabel;
+                        }
+                        syncScheduleSubmitState();
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(error.message || 'Unable to save the inspection schedule.', 'error');
+                        } else {
+                            window.alert(error.message || 'Unable to save the inspection schedule.');
+                        }
+                    });
                 return;
             }
 
@@ -2014,6 +2098,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (openModalBeforeHistoryChange?.dataset.inspectionScheduling === '1') {
+            const activeTab = openModalBeforeHistoryChange.querySelector('.inquiry-modal-tab.is-active')?.getAttribute('data-inquiry-tab') || 'inspection';
+            pushModalHistory(openModalBeforeHistoryChange, activeTab);
+            return;
+        }
+
         if (!targetModal && openModalBeforeHistoryChange && inquiryReviewHasChanges(openModalBeforeHistoryChange)) {
             showDiscardConfirm(
                 openModalBeforeHistoryChange,
@@ -2116,7 +2206,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     window.addEventListener('beforeunload', function (event) {
-        if (!document.querySelector('.inquiry-modal[data-review-saving="1"]')) {
+        if (!document.querySelector('.inquiry-modal[data-review-saving="1"], .inquiry-modal[data-inspection-scheduling="1"]')) {
             return;
         }
         event.preventDefault();

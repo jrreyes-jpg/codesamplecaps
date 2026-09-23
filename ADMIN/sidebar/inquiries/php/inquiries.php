@@ -992,6 +992,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $engineerId = (int)($_POST['engineer_id'] ?? 0);
         $acceptedQuotationId = 0;
+        $scheduleNotificationWarning = false;
         $scheduledAt = trim((string)($_POST['scheduled_at'] ?? ''));
         if ($scheduledAt === '') {
             $scheduleDate = trim((string)($_POST['inspection_date'] ?? ''));
@@ -1239,10 +1240,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     $message = $clientEmailSent && $engineerEmailSent && $notificationMarked
-                        ? 'Inspection schedule confirmed. Client and Engineer notified by email.'
+                        ? 'Inspection scheduled. Client and Engineer notified.'
                         : 'Inspection schedule was saved, but one or more email notifications could not be sent.';
+                    $scheduleNotificationWarning = !($clientEmailSent && $engineerEmailSent && $notificationMarked);
+                    if ($scheduleNotificationWarning) {
+                        $_SESSION['inquiry_center_flash_type'] = 'warning';
+                    }
                 }
             }
+        }
+
+        if ($isAjaxRequest && $error === '') {
+            $_SESSION['inquiry_center_flash'] = $message !== '' ? $message : 'Inspection schedule saved.';
+            if ($scheduleNotificationWarning) {
+                $_SESSION['inquiry_center_flash_type'] = 'warning';
+            }
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'success' => true,
+                'message' => $_SESSION['inquiry_center_flash'],
+                'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?status=For+Inspection&open=inquiryModal' . $inquiryId . '&tab=inspection',
+            ]);
+            exit();
         }
     } else {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
@@ -1365,8 +1384,10 @@ if ($isAjaxRequest && $error !== '') {
 }
 
 $message = (string)($_SESSION['inquiry_center_flash'] ?? $message);
+$flashType = (string)($_SESSION['inquiry_center_flash_type'] ?? '');
 $flashProjectId = (int)($_SESSION['inquiry_center_flash_project_id'] ?? 0);
 unset($_SESSION['inquiry_center_flash']);
+unset($_SESSION['inquiry_center_flash_type']);
 unset($_SESSION['inquiry_center_flash_project_id']);
 
 $engineers = [];
@@ -1720,7 +1741,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
     >
         <?php if ($message || $error): ?>
             <div
-                class="shared-toast <?php echo $message ? 'shared-toast--success' : 'shared-toast--error'; ?>"
+                class="shared-toast <?php echo $message ? ($flashType === 'warning' ? 'shared-toast--warning' : 'shared-toast--success') : 'shared-toast--error'; ?>"
                 role="<?php echo $message ? 'status' : 'alert'; ?>"
                 data-shared-toast
             >

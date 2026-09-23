@@ -2210,6 +2210,21 @@ body.inquiry-modal-open {
     cursor: wait;
 }
 
+.inquiry-modal.is-inspection-scheduling .inquiry-modal-tabs,
+.inquiry-modal.is-inspection-scheduling .inquiry-schedule-form {
+    opacity: 0.58;
+    cursor: wait;
+}
+
+.inquiry-modal.is-inspection-scheduling .inquiry-modal__close,
+.inquiry-modal.is-inspection-scheduling .inquiry-modal-tab,
+.inquiry-modal.is-inspection-scheduling .inquiry-schedule-form button,
+.inquiry-modal.is-inspection-scheduling .inquiry-schedule-form select,
+.inquiry-modal.is-inspection-scheduling .inquiry-schedule-form input,
+.inquiry-modal.is-inspection-scheduling .inquiry-schedule-form textarea {
+    cursor: wait;
+}
+
 .inquiry-modal.is-send-complete .inquiry-modal__dialog {
     opacity: 0;
     transform: translateY(-4px);

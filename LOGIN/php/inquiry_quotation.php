@@ -99,7 +99,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <?php if ($quotation): ?>
         <div class="sticky-toolbar">
             <div class="sticky-toolbar__inner">
-                <button type="button" class="sticky-toolbar__download" data-download-review-pdf>Download Review PDF</button>
+                <button type="button" class="sticky-toolbar__download" data-download-review-pdf>Download Quotation PDF</button>
             </div>
         </div>
     <?php endif; ?>
@@ -219,8 +219,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         </div>
 
                         <div class="public-quote-totals">
-                            <div><span>Subtotal</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['subtotal']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div class="public-quote-grand-total"><span>Grand Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                            <div class="public-quote-grand-total"><span>Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                         </div>
                     </section>
 

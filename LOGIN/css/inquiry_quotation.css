@@ -194,6 +194,23 @@
     line-height: 1.55;
 }
 
+.public-quote-confirmation-modal__actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.public-quote-confirmation-modal__cancel {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+}
+
+.public-quote-confirmation-modal__actions .public-quote-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 @media (max-width: 720px) {
     .public-quote-shell {
         width: min(100% - 20px, 980px);
@@ -207,6 +224,10 @@
     .public-quote-finalized {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .public-quote-confirmation-modal__actions {
+        flex-direction: column-reverse;
     }
 }
 

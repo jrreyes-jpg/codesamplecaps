@@ -13,6 +13,7 @@ $sharedCssFiles = [
     '/codesamplecaps/SHARED/header/core/header.css',
     '/codesamplecaps/SHARED/sidebar/css/sidebar.css',
     '/codesamplecaps/CLIENT/common/css/client-common.css',
+    '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 
 $allClientCssFiles = array_values(
@@ -56,3 +57,4 @@ $allClientCssFiles = array_values(
 </head>
 
 <body>
+    <?php auth_render_flash_toast(); ?>

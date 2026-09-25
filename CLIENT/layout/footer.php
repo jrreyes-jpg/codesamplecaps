@@ -10,6 +10,8 @@ if (!is_array($clientJsFiles)) {
 $sharedClientJsFiles = [
     '/codesamplecaps/assets/js/app-window-guard.js',
     '/codesamplecaps/SHARED/header/core/operations-header.js',
+    '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/SHARED/auth/js/session-timeout.js',
 ];
 
 $allClientJsFiles = array_values(

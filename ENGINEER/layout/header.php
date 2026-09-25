@@ -7,6 +7,7 @@ $sharedCssFiles = [
     '/codesamplecaps/SHARED/header/core/header.css',
     '/codesamplecaps/SHARED/sidebar/css/sidebar.css',
     '/codesamplecaps/ENGINEER/common/css/engineer-common.css',
+    '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 
 $allEngineerCssFiles = array_values(array_unique(array_merge($sharedCssFiles, $engineerCssFiles)));
@@ -28,4 +29,5 @@ $allEngineerCssFiles = array_values(array_unique(array_merge($sharedCssFiles, $e
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
 </head>
 <body>
+<?php auth_render_flash_toast(); ?>
 <div class="container">

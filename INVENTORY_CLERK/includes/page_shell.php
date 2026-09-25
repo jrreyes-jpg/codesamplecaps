@@ -251,6 +251,7 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
         <link rel="stylesheet" href="/codesamplecaps/INVENTORY_CLERK/common/css/inventory-clerk-common.css">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/header/core/header.css">
         <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
+        <link rel="stylesheet" href="/codesamplecaps/SHARED/toast/css/toast.css">
         <link rel="stylesheet" href="/codesamplecaps/assets/css/responsive-foundation.css">
         <?php foreach ($pageStyles as $stylePath): ?>
             <link rel="stylesheet" href="<?php echo htmlspecialchars((string)$stylePath, ENT_QUOTES, 'UTF-8'); ?>">
@@ -258,6 +259,7 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
         <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
     </head>
     <body>
+    <?php auth_render_flash_toast(); ?>
     <div class="container">
         <?php include __DIR__ . '/../sidebar/inventory_clerk_sidebar.php'; ?>
         <div class="<?php echo htmlspecialchars($mainClasses, ENT_QUOTES, 'UTF-8'); ?>">
@@ -269,6 +271,8 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
     </div>
     <script src="/codesamplecaps/assets/js/app-window-guard.js"></script>
     <script src="/codesamplecaps/SHARED/header/core/operations-header.js"></script>
+    <script src="/codesamplecaps/SHARED/toast/js/toast.js"></script>
+    <script src="/codesamplecaps/SHARED/auth/js/session-timeout.js"></script>
     <script src="/codesamplecaps/INVENTORY_CLERK/common/js/inventory-clerk-common.js" defer></script>
     <?php foreach ($pageScripts as $scriptPath): ?>
         <script src="<?php echo htmlspecialchars((string)$scriptPath, ENT_QUOTES, 'UTF-8'); ?>" defer></script>

@@ -192,6 +192,32 @@ if (!function_exists('auth_login_user')) {
         $_SESSION['logged_in_at'] = time();
         $_SESSION['last_activity_at'] = time();
         $_SESSION['auth_user_agent'] = auth_user_agent_fingerprint();
+        $_SESSION['auth_flash'] = [
+            'type' => 'success',
+            'message' => 'Login successful.',
+        ];
+    }
+}
+
+if (!function_exists('auth_render_flash_toast')) {
+    function auth_render_flash_toast(): void
+    {
+        $flash = $_SESSION['auth_flash'] ?? null;
+        unset($_SESSION['auth_flash']);
+
+        if (!is_array($flash) || trim((string)($flash['message'] ?? '')) === '') {
+            return;
+        }
+
+        $type = (string)($flash['type'] ?? 'success');
+        $type = in_array($type, ['success', 'warning', 'error'], true) ? $type : 'success';
+        ?>
+        <div class="shared-toast shared-toast--<?php echo htmlspecialchars($type, ENT_QUOTES, 'UTF-8'); ?>" data-shared-toast role="status">
+            <span><?php echo htmlspecialchars((string)$flash['message'], ENT_QUOTES, 'UTF-8'); ?></span>
+            <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+            <span class="shared-toast__progress" aria-hidden="true"></span>
+        </div>
+        <?php
     }
 }
 

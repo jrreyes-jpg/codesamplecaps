@@ -34,6 +34,8 @@ $foremanNotifications = $foremanNotifications ?? [
 ];
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
+<link rel="stylesheet" href="/codesamplecaps/SHARED/toast/css/toast.css">
+<?php auth_render_flash_toast(); ?>
 <?php ob_start(); ?>
         <div class="topbar-notifications" data-notification-root>
             <button
@@ -124,3 +126,5 @@ $operationsHeaderAttrs = 'aria-live="polite"';
 include __DIR__ . '/../../SHARED/header/core/operations-header.php';
 ?>
 <script src="/codesamplecaps/SHARED/header/core/operations-header.js" defer></script>
+<script src="/codesamplecaps/SHARED/toast/js/toast.js" defer></script>
+<script src="/codesamplecaps/SHARED/auth/js/session-timeout.js" defer></script>

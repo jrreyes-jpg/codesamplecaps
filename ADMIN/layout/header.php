@@ -58,4 +58,5 @@ $allAdminCssFiles = array_values(
 </head>
 
 <body>
+    <?php auth_render_flash_toast(); ?>
     <div class="container">

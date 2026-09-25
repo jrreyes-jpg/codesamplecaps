@@ -33,3 +33,4 @@ if (!isset($pageStyles) || !is_array($pageStyles)) {
     <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
 </head>
 <body>
+<?php auth_render_flash_toast(); ?>

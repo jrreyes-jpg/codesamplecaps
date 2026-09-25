@@ -9,6 +9,7 @@ $sharedAdminJsFiles = [
     '/codesamplecaps/assets/js/app-window-guard.js',
     '/codesamplecaps/SHARED/header/core/operations-header.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/SHARED/auth/js/session-timeout.js',
 ];
 
 $adminJsFiles = array_values(array_unique(array_merge($sharedAdminJsFiles, $adminJsFiles)));

@@ -273,6 +273,7 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
     <script src="/codesamplecaps/SHARED/header/core/operations-header.js"></script>
     <script src="/codesamplecaps/SHARED/toast/js/toast.js"></script>
     <script src="/codesamplecaps/SHARED/auth/js/session-timeout.js"></script>
+    <script src="/codesamplecaps/SHARED/auth/js/logout-confirm.js"></script>
     <script src="/codesamplecaps/INVENTORY_CLERK/common/js/inventory-clerk-common.js" defer></script>
     <?php foreach ($pageScripts as $scriptPath): ?>
         <script src="<?php echo htmlspecialchars((string)$scriptPath, ENT_QUOTES, 'UTF-8'); ?>" defer></script>

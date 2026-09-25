@@ -10,6 +10,7 @@ $sharedAdminJsFiles = [
     '/codesamplecaps/SHARED/header/core/operations-header.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/auth/js/session-timeout.js',
+    '/codesamplecaps/SHARED/auth/js/logout-confirm.js',
 ];
 
 $adminJsFiles = array_values(array_unique(array_merge($sharedAdminJsFiles, $adminJsFiles)));

@@ -12,6 +12,7 @@ $sharedClientJsFiles = [
     '/codesamplecaps/SHARED/header/core/operations-header.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/auth/js/session-timeout.js',
+    '/codesamplecaps/SHARED/auth/js/logout-confirm.js',
 ];
 
 $allClientJsFiles = array_values(

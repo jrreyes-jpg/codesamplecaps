@@ -128,3 +128,4 @@ include __DIR__ . '/../../SHARED/header/core/operations-header.php';
 <script src="/codesamplecaps/SHARED/header/core/operations-header.js" defer></script>
 <script src="/codesamplecaps/SHARED/toast/js/toast.js" defer></script>
 <script src="/codesamplecaps/SHARED/auth/js/session-timeout.js" defer></script>
+<script src="/codesamplecaps/SHARED/auth/js/logout-confirm.js" defer></script>

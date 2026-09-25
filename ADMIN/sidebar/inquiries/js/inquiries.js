@@ -1769,7 +1769,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return isValid;
         };
 
-        const clearMaterialDependentValues = function (row) {
+        const clearMaterialDependentValues = function (row, preserveQuantity = false) {
             const itemName = row.querySelector('input[name="item_name[]"]');
             const quantityInput = row.querySelector('input[name="quantity[]"]');
             const quantityError = row.querySelector('[data-quotation-quantity-error]');
@@ -1778,12 +1778,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (itemName) {
                 itemName.value = '';
             }
-            if (quantityInput) {
+            if (quantityInput && !preserveQuantity) {
                 quantityInput.value = '';
                 quantityInput.setCustomValidity('');
                 quantityInput.removeAttribute('aria-invalid');
             }
-            if (quantityError) {
+            if (quantityError && !preserveQuantity) {
                 quantityError.textContent = '';
             }
             if (unitCostInput) {
@@ -1810,6 +1810,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const isManualMaterial = isMaterial && materialValue === 'manual';
             const currentUnit = row.querySelector('select[name="unit[]"]')?.value || '';
             const itemName = row.querySelector('input[name="item_name[]"]');
+            const quantityInput = row.querySelector('input[name="quantity[]"]');
 
             row.classList.toggle('is-material-item', isMaterial);
 
@@ -1822,7 +1823,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (resetForMaterialChange && isMaterial) {
-                clearMaterialDependentValues(row);
+                const quantityRaw = quantityInput?.value.trim() || '';
+                const materialUnit = selectedOption?.dataset.materialUnit || '';
+                const quantityValue = Number.parseFloat(quantityRaw);
+                const keepQuantity = isLinkedMaterial
+                    && quantityRaw !== ''
+                    && Number.isFinite(quantityValue)
+                    && quantityValue > 0
+                    && (!wholeCountUnits.includes(materialUnit.toLowerCase()) || Number.isInteger(quantityValue));
+                clearMaterialDependentValues(row, keepQuantity);
             }
 
             if (isLinkedMaterial) {
@@ -1842,6 +1851,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (isLinkedMaterial && selectedOption?.dataset.materialName) {
                     itemName.value = selectedOption.dataset.materialName;
                 }
+            }
+
+            if (resetForMaterialChange && isLinkedMaterial && quantityInput && quantityInput.value.trim() === '') {
+                quantityInput.value = '1';
             }
 
             validateQuotationQuantity(row, true, false, false);

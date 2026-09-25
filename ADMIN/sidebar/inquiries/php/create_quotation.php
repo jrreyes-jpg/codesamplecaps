@@ -123,7 +123,7 @@ $defaultItems = $savedItems ?: [[
     'item_type' => 'material',
     'material_id' => '',
     'item_name' => '',
-    'quantity' => '1',
+    'quantity' => '',
     'unit' => '',
     'unit_cost' => '',
     'notes' => '',
@@ -475,7 +475,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <option value="">Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual">Manual / non-stock material</option>
                             </select><span class="quotation-create-item__material-error" data-quotation-material-error aria-live="polite"></span></label>
                         <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" required></label>
-                        <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="1" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
+                        <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
                         <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit>
                                 <option value="pcs" selected>pcs</option>
                                 <option value="meter">meter</option>

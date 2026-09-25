@@ -845,6 +845,7 @@ require __DIR__ . '/../layout/header.php';
                                                         value="<?php echo (int)$material['id']; ?>"
                                                         data-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-available="<?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         <?php echo (int)($item['material_id'] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>
                                                     >
                                                         <?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo htmlspecialchars(number_format((float)$material['available_quantity'], 2), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?> available
@@ -881,6 +882,7 @@ require __DIR__ . '/../layout/header.php';
                                         <?php if ($canEditCosting): ?>
                                             <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
                                         <?php endif; ?>
+                                        <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                     </div>
                                 <?php endforeach; ?>
                             </div>

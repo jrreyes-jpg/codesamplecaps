@@ -164,6 +164,55 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const formatMaterialQuantity = function (value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return '0';
+
+        return new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        }).format(number);
+    };
+
+    const updateMaterialAvailability = function (row) {
+        const type = row.querySelector('select[name="item_type[]"]')?.value || '';
+        const picker = row.querySelector('[data-material-picker]');
+        const quantityField = row.querySelector('input[name="quantity[]"]');
+        const feedback = row.querySelector('[data-material-stock-feedback]');
+        const selected = picker?.selectedOptions[0];
+
+        if (!feedback) return;
+
+        const availableText = selected?.getAttribute('data-available');
+        const unit = selected?.getAttribute('data-unit') || '';
+        const required = Number(quantityField?.value.trim() || '');
+        const available = Number(availableText);
+        const hasLinkedMaterial = type === 'material'
+            && picker?.value !== ''
+            && availableText !== null
+            && availableText !== undefined
+            && unit !== '';
+        const hasValidRequiredQuantity = Number.isFinite(required) && required > 0;
+
+        feedback.hidden = !hasLinkedMaterial || !hasValidRequiredQuantity;
+        feedback.classList.remove('is-available', 'is-shortage');
+        feedback.textContent = '';
+
+        if (feedback.hidden) return;
+
+        const availableLabel = `${formatMaterialQuantity(available)} ${unit}`;
+        const requiredLabel = `${formatMaterialQuantity(required)} ${unit}`;
+        if (required <= available) {
+            feedback.classList.add('is-available');
+            feedback.textContent = `Available: ${availableLabel}`;
+            return;
+        }
+
+        const shortage = required - available;
+        feedback.classList.add('is-shortage');
+        feedback.textContent = `Insufficient stock — Available: ${availableLabel} • Required: ${requiredLabel} • Short by: ${formatMaterialQuantity(shortage)} ${unit}`;
+    };
+
     const assetRequirementHasMeaningfulData = function (row) {
         const assetId = row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value || '';
         const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]')?.value.trim() || '';
@@ -259,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
             itemName?.removeAttribute('readonly');
             unit?.removeAttribute('data-locked');
             unit?.removeAttribute('aria-disabled');
+            updateMaterialAvailability(row);
             return;
         }
 
@@ -276,6 +326,8 @@ document.addEventListener('DOMContentLoaded', function () {
             unit?.removeAttribute('data-locked');
             unit?.removeAttribute('aria-disabled');
         }
+
+        updateMaterialAvailability(row);
     };
 
     const rowHasMeaningfulData = function (row) {
@@ -297,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelectorAll('.costing-field-error').forEach((error) => error.remove());
         row.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
         setLinkedMaterialState(row);
+        updateMaterialAvailability(row);
     };
 
     const restoreFormDraft = function (form) {
@@ -614,6 +667,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const typeField = row.querySelector('select[name="item_type[]"]');
         let previousType = typeField?.value || 'material';
         setLinkedMaterialState(row);
+        updateMaterialAvailability(row);
 
         typeField?.addEventListener('change', function () {
             const nextType = typeField.value;
@@ -635,6 +689,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
                 syncTotal(form);
+                updateMaterialAvailability(row);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
@@ -652,6 +707,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         : (isWholeCountUnit(unit) ? `Enter a whole number for ${unit}.` : 'Qty must be greater than 0.'));
                 }
                 syncTotal(form);
+                updateMaterialAvailability(row);
             });
         });
 
@@ -672,6 +728,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (unitField) unitField.selectedIndex = 0;
             }
             setLinkedMaterialState(row);
+            updateMaterialAvailability(row);
             saveFormDraft(form);
             updateSaveDraftState(form);
         });
@@ -685,12 +742,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     : 'Qty must be greater than 0.');
             }
             syncTotal(form);
+            updateMaterialAvailability(row);
         });
 
         row.querySelectorAll('input, select').forEach(function (field) {
             field.addEventListener('input', function () {
                 clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
+                updateMaterialAvailability(row);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
@@ -702,6 +761,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
+                updateMaterialAvailability(row);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });

@@ -521,6 +521,27 @@ body.inspection-modal-open {
     grid-template-columns: 118px minmax(170px, 1fr) minmax(160px, 1fr) 86px 100px 132px minmax(130px, 1fr) auto;
     gap: 8px;
     align-items: end;
+    position: relative;
+    padding-bottom: 28px;
+}
+
+.material-stock-feedback {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 126px;
+    min-width: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.material-stock-feedback.is-available {
+    color: #15803d;
+}
+
+.material-stock-feedback.is-shortage {
+    color: #b45309;
 }
 
 .costing-row label {
@@ -722,6 +743,12 @@ body.inspection-modal-open {
 
     .costing-row {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding-bottom: 0;
+    }
+
+    .material-stock-feedback {
+        position: static;
+        grid-column: 1 / -1;
     }
 
     .asset-requirement-row {

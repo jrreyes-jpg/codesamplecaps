@@ -1541,6 +1541,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const localDraftKey = quotationInquiryId > 0
             ? 'initial_quotation_draft:' + String(quotationInquiryId)
             : '';
+        const localRestoreNoticeKey = quotationInquiryId > 0
+            ? 'initial_quotation_restore_notice:' + String(quotationInquiryId)
+            : '';
         const localDraftLifetime = 24 * 60 * 60 * 1000;
         const unitOptionsByType = {
             material: ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
@@ -1589,6 +1592,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     || !Array.isArray(draft?.rows)
                     || isExpired) {
                     window.localStorage.removeItem(localDraftKey);
+                    if (localRestoreNoticeKey !== '') {
+                        window.sessionStorage.removeItem(localRestoreNoticeKey);
+                    }
                     return null;
                 }
 
@@ -1609,6 +1615,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 window.localStorage.removeItem(localDraftKey);
+                if (localRestoreNoticeKey !== '') {
+                    window.sessionStorage.removeItem(localRestoreNoticeKey);
+                }
             } catch (error) {
                 // Walang gagawin kapag hindi available ang browser storage.
             }
@@ -2265,8 +2274,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (restoreLocalQuotationDraft(savedLocalDraft)) {
             updateQuotationPreview();
             validateDuplicateMaterialReferences(false);
-            if (typeof window.showToast === 'function') {
+            let hasShownRestoreNotice = false;
+            try {
+                hasShownRestoreNotice = localRestoreNoticeKey !== ''
+                    && window.sessionStorage.getItem(localRestoreNoticeKey) === '1';
+            } catch (error) {
+                hasShownRestoreNotice = false;
+            }
+            if (!hasShownRestoreNotice && typeof window.showToast === 'function') {
                 window.showToast('Unsaved quotation draft restored.', 'info');
+                try {
+                    window.sessionStorage.setItem(localRestoreNoticeKey, '1');
+                } catch (error) {
+                    // Walang gagawin kapag hindi available ang browser storage.
+                }
             }
         }
         updateEditSubmitState();
@@ -2277,6 +2298,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (clearInitialQuotationDraftId > 0) {
         try {
             window.localStorage.removeItem('initial_quotation_draft:' + String(clearInitialQuotationDraftId));
+            window.sessionStorage.removeItem('initial_quotation_restore_notice:' + String(clearInitialQuotationDraftId));
         } catch (error) {
             // Walang gagawin kapag hindi available ang browser storage.
         }

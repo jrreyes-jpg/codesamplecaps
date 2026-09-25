@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingDiscardModal = null;
     let pendingDiscardAction = null;
     let pendingDiscardKeepAction = null;
+    let pendingQuotationDraftDiscard = null;
 
     if ('scrollRestoration' in window.history) {
         window.history.scrollRestoration = 'manual';
@@ -143,6 +144,21 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(discardConfirmBox);
 
+    const quotationDraftDiscardBox = document.createElement('div');
+    quotationDraftDiscardBox.className = 'inquiry-confirm';
+    quotationDraftDiscardBox.hidden = true;
+    quotationDraftDiscardBox.innerHTML = [
+        '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="quotationDraftDiscardTitle">',
+        '<h3 id="quotationDraftDiscardTitle">Discard unsaved quotation changes?</h3>',
+        '<p>Your unsaved quotation changes will be cleared.</p>',
+        '<div class="inquiry-confirm__actions">',
+        '<button type="button" class="btn-secondary" data-quotation-draft-discard-keep>Keep Editing</button>',
+        '<button type="button" class="btn-primary" data-quotation-draft-discard-yes>Discard Changes</button>',
+        '</div>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(quotationDraftDiscardBox);
+
     const prerequisiteNotice = document.createElement('div');
     prerequisiteNotice.className = 'inquiry-confirm inquiry-prerequisite-modal';
     prerequisiteNotice.hidden = true;
@@ -239,6 +255,17 @@ document.addEventListener('DOMContentLoaded', function () {
         pendingDiscardKeepAction = onKeepEditing;
         discardConfirmBox.hidden = false;
         discardConfirmBox.querySelector('[data-inquiry-discard-keep]')?.focus();
+    };
+
+    const closeQuotationDraftDiscardConfirm = function () {
+        pendingQuotationDraftDiscard = null;
+        quotationDraftDiscardBox.hidden = true;
+    };
+
+    const showQuotationDraftDiscardConfirm = function (onDiscard) {
+        pendingQuotationDraftDiscard = onDiscard;
+        quotationDraftDiscardBox.hidden = false;
+        quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-keep]')?.focus();
     };
 
     const closePrerequisiteNotice = function () {
@@ -1509,6 +1536,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const markupError = form?.querySelector('[data-quotation-markup-error]');
         const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
+        const isInitialQuotation = form?.dataset.initialQuotation === 'true';
+        const quotationInquiryId = Number.parseInt(form?.dataset.quotationInquiryId || '0', 10);
+        const localDraftKey = quotationInquiryId > 0
+            ? 'initial_quotation_draft:' + String(quotationInquiryId)
+            : '';
+        const localDraftLifetime = 24 * 60 * 60 * 1000;
         const unitOptionsByType = {
             material: ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
             labor: ['person', 'hour', 'day', 'lot'],
@@ -1523,6 +1556,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let initialQuotationState = '';
         let quotationSubmitAccepted = false;
+        let localDraftTimer = null;
 
         const isQuotationDirty = function () {
             return serializeQuotationForm() !== initialQuotationState;
@@ -1534,6 +1568,96 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             updateSubmitButton.disabled = serializeQuotationForm() === initialQuotationState;
+        };
+
+        const readLocalQuotationDraft = function () {
+            if (!isInitialQuotation || localDraftKey === '') {
+                return null;
+            }
+
+            try {
+                const rawDraft = window.localStorage.getItem(localDraftKey);
+                if (!rawDraft) {
+                    return null;
+                }
+
+                const draft = JSON.parse(rawDraft);
+                const savedAt = Number(draft?.saved_at || 0);
+                const isExpired = !Number.isFinite(savedAt) || Date.now() - savedAt > localDraftLifetime;
+                if (draft?.version !== 1
+                    || Number(draft?.inquiry_id || 0) !== quotationInquiryId
+                    || !Array.isArray(draft?.rows)
+                    || isExpired) {
+                    window.localStorage.removeItem(localDraftKey);
+                    return null;
+                }
+
+                return draft;
+            } catch (error) {
+                return null;
+            }
+        };
+
+        const clearLocalQuotationDraft = function () {
+            if (localDraftTimer) {
+                window.clearTimeout(localDraftTimer);
+                localDraftTimer = null;
+            }
+            if (!isInitialQuotation || localDraftKey === '') {
+                return;
+            }
+
+            try {
+                window.localStorage.removeItem(localDraftKey);
+            } catch (error) {
+                // Walang gagawin kapag hindi available ang browser storage.
+            }
+        };
+
+        const buildLocalQuotationDraft = function () {
+            return {
+                version: 1,
+                inquiry_id: quotationInquiryId,
+                saved_at: Date.now(),
+                markup_percent: marginInput?.value || '',
+                rows: Array.from(items?.querySelectorAll('[data-quotation-item]') || []).map(function (row) {
+                    return {
+                        type: row.querySelector('select[name="item_type[]"]')?.value || 'material',
+                        material_id: row.querySelector('select[name="material_id[]"]')?.value || '',
+                        item_name: row.querySelector('input[name="item_name[]"]')?.value || '',
+                        quantity: row.querySelector('input[name="quantity[]"]')?.value || '',
+                        unit: row.querySelector('select[name="unit[]"]')?.value || '',
+                        unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
+                        notes: row.querySelector('input[name="item_notes[]"]')?.value || '',
+                    };
+                }),
+            };
+        };
+
+        const saveLocalQuotationDraft = function (force = false) {
+            if (!isInitialQuotation || localDraftKey === '' || (!force && !isQuotationDirty())) {
+                return;
+            }
+
+            try {
+                window.localStorage.setItem(localDraftKey, JSON.stringify(buildLocalQuotationDraft()));
+            } catch (error) {
+                // Walang gagawin kapag puno o hindi available ang browser storage.
+            }
+        };
+
+        const scheduleLocalQuotationDraftSave = function () {
+            if (!isInitialQuotation) {
+                return;
+            }
+
+            if (localDraftTimer) {
+                window.clearTimeout(localDraftTimer);
+            }
+            localDraftTimer = window.setTimeout(function () {
+                saveLocalQuotationDraft();
+                localDraftTimer = null;
+            }, 350);
         };
 
         const updateQuotationPreview = function () {
@@ -1861,6 +1985,59 @@ document.addEventListener('DOMContentLoaded', function () {
             validateMaterialReference(row, false);
         };
 
+        const restoreLocalQuotationDraft = function (draft) {
+            if (!draft || !items || !template) {
+                return false;
+            }
+
+            const savedRows = draft.rows.slice(0, 50);
+            if (savedRows.length === 0) {
+                return false;
+            }
+
+            items.replaceChildren();
+            savedRows.forEach(function (savedRow) {
+                items.appendChild(template.content.cloneNode(true));
+                const row = items.lastElementChild;
+                const typeSelect = row?.querySelector('select[name="item_type[]"]');
+                const materialSelect = row?.querySelector('select[name="material_id[]"]');
+                const itemName = row?.querySelector('input[name="item_name[]"]');
+                const quantityInput = row?.querySelector('input[name="quantity[]"]');
+                const unitSelect = row?.querySelector('select[name="unit[]"]');
+                const unitCostInput = row?.querySelector('input[name="unit_cost[]"]');
+                const notesInput = row?.querySelector('input[name="item_notes[]"]');
+                const savedType = String(savedRow?.type || 'material').toLowerCase();
+                const savedMaterialId = String(savedRow?.material_id || '');
+                const savedUnit = String(savedRow?.unit || '').toLowerCase();
+
+                if (typeSelect && Array.from(typeSelect.options).some(function (option) { return option.value === savedType; })) {
+                    typeSelect.value = savedType;
+                }
+                if (materialSelect && Array.from(materialSelect.options).some(function (option) { return option.value === savedMaterialId; })) {
+                    materialSelect.value = savedMaterialId;
+                }
+                if (savedType !== 'material') {
+                    setUnitOptions(row, unitOptionsByType[savedType] || unitOptionsByType.other, savedUnit, false);
+                } else if (savedMaterialId === 'manual') {
+                    setUnitOptions(row, unitOptionsByType.material, savedUnit, false, savedUnit === '');
+                }
+                if (itemName) itemName.value = String(savedRow?.item_name || '');
+                if (quantityInput) quantityInput.value = String(savedRow?.quantity || '');
+                if (unitSelect && savedUnit !== '' && Array.from(unitSelect.options).some(function (option) { return option.value === savedUnit; })) {
+                    unitSelect.value = savedUnit;
+                }
+                if (unitCostInput) unitCostInput.value = String(savedRow?.unit_cost || '');
+                if (notesInput) notesInput.value = String(savedRow?.notes || '');
+
+                syncMaterialReference(row);
+            });
+
+            if (marginInput) {
+                marginInput.value = String(draft.markup_percent || '');
+            }
+            return true;
+        };
+
         addButton?.addEventListener('click', function () {
             if (!items || !template || items.children.length >= 50) {
                 return;
@@ -1870,6 +2047,7 @@ document.addEventListener('DOMContentLoaded', function () {
             syncMaterialReference(items.lastElementChild);
             updateQuotationPreview();
             updateEditSubmitState();
+            scheduleLocalQuotationDraftSave();
         });
 
         items?.addEventListener('click', function (event) {
@@ -1882,6 +2060,7 @@ document.addEventListener('DOMContentLoaded', function () {
             validateDuplicateMaterialReferences(true);
             updateQuotationPreview();
             updateEditSubmitState();
+            scheduleLocalQuotationDraftSave();
         });
 
         items?.addEventListener('change', function (event) {
@@ -1908,6 +2087,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             updateQuotationPreview();
             updateEditSubmitState();
+            scheduleLocalQuotationDraftSave();
         });
 
         form?.addEventListener('submit', function (event) {
@@ -1962,12 +2142,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            saveLocalQuotationDraft(true);
             quotationSubmitAccepted = true;
         });
 
         document.addEventListener('click', function (event) {
             const link = event.target.closest('a[href]');
-            if (!link || link.target === '_blank' || link.hasAttribute('download') || !isQuotationDirty()) {
+            if (isInitialQuotation || !link || link.target === '_blank' || link.hasAttribute('download') || !isQuotationDirty()) {
                 return;
             }
 
@@ -1983,12 +2164,43 @@ document.addEventListener('DOMContentLoaded', function () {
         }, true);
 
         window.addEventListener('beforeunload', function (event) {
+            if (isInitialQuotation) {
+                if (!quotationSubmitAccepted) {
+                    saveLocalQuotationDraft();
+                }
+                return;
+            }
+
             if (quotationSubmitAccepted || !isQuotationDirty()) {
                 return;
             }
 
             event.preventDefault();
             event.returnValue = '';
+        });
+
+        window.addEventListener('pagehide', function () {
+            if (isInitialQuotation && !quotationSubmitAccepted) {
+                saveLocalQuotationDraft();
+            }
+        });
+
+        form?.querySelector('[data-quotation-cancel]')?.addEventListener('click', function (event) {
+            if (!isInitialQuotation) {
+                return;
+            }
+
+            saveLocalQuotationDraft();
+            if (!readLocalQuotationDraft()) {
+                return;
+            }
+
+            event.preventDefault();
+            const destination = this.href;
+            showQuotationDraftDiscardConfirm(function () {
+                clearLocalQuotationDraft();
+                window.location.assign(destination);
+            });
         });
 
         form?.addEventListener('input', function (event) {
@@ -2004,6 +2216,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             updateQuotationPreview();
             updateEditSubmitState();
+            scheduleLocalQuotationDraftSave();
         });
         marginInput?.addEventListener('blur', function () {
             validateMarkup(true, true);
@@ -2048,10 +2261,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         updateQuotationPreview();
         initialQuotationState = serializeQuotationForm();
+        const savedLocalDraft = readLocalQuotationDraft();
+        if (restoreLocalQuotationDraft(savedLocalDraft)) {
+            updateQuotationPreview();
+            validateDuplicateMaterialReferences(false);
+            if (typeof window.showToast === 'function') {
+                window.showToast('Unsaved quotation draft restored.', 'info');
+            }
+        }
         updateEditSubmitState();
     }
 
     const queryParams = new URLSearchParams(window.location.search);
+    const clearInitialQuotationDraftId = Number.parseInt(queryParams.get('clear_initial_quotation_draft') || '0', 10);
+    if (clearInitialQuotationDraftId > 0) {
+        try {
+            window.localStorage.removeItem('initial_quotation_draft:' + String(clearInitialQuotationDraftId));
+        } catch (error) {
+            // Walang gagawin kapag hindi available ang browser storage.
+        }
+        queryParams.delete('clear_initial_quotation_draft');
+        const cleanQuery = queryParams.toString();
+        window.history.replaceState({}, '', window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash);
+    }
     const inquiryIdFromUrl = Number.parseInt(queryParams.get('inquiry_id') || '0', 10);
     const urlOpenModalId = queryParams.get('open') || (inquiryIdFromUrl > 0 ? 'inquiryModal' + inquiryIdFromUrl : '');
     const urlOpenTab = queryParams.get('tab') || 'client';
@@ -2174,6 +2406,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-keep]')?.addEventListener('click', closeQuotationDraftDiscardConfirm);
+    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-yes]')?.addEventListener('click', function () {
+        const discardAction = pendingQuotationDraftDiscard;
+        closeQuotationDraftDiscardConfirm();
+        discardAction?.();
+    });
+    quotationDraftDiscardBox.addEventListener('click', function (event) {
+        if (event.target === quotationDraftDiscardBox) {
+            closeQuotationDraftDiscardConfirm();
+        }
+    });
+
     prerequisiteNotice.querySelector('[data-prerequisite-notice-ok]')?.addEventListener('click', closePrerequisiteNotice);
     prerequisiteNotice.addEventListener('click', function (event) {
         if (event.target === prerequisiteNotice) {
@@ -2193,6 +2437,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!discardConfirmBox.hidden) {
             closeDiscardConfirm(true);
+            return;
+        }
+
+        if (!quotationDraftDiscardBox.hidden) {
+            closeQuotationDraftDiscardConfirm();
             return;
         }
 

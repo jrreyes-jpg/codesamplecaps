@@ -349,6 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         . $inquiryId
                         . '&status=' . rawurlencode((string)$inquiry['status'])
                         . '&tab=quotation'
+                        . ($isInitialQuotationDraft ? '&clear_initial_quotation_draft=' . $inquiryId : '')
                 );
                 exit();
             } catch (Throwable $throwable) {
@@ -419,7 +420,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
             </div>
 
-            <form method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>">
+            <form method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
                 <?php if ($isEditMode): ?>

@@ -122,7 +122,14 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     :is(.global-topbar__copy strong, .engineer-topbar__brand strong) {
-        display: none;
+        display: block;
+        min-width: 0;
+        max-width: 112px;
+        overflow: hidden;
+        font-size: 0.82rem;
+        letter-spacing: 0.035em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
@@ -139,32 +146,132 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     :is(.global-topbar, .engineer-topbar),
     html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar) {
         min-height: 72px;
-        padding: 10px clamp(12px, 2.5vw, 20px) 10px 72px;
-        gap: 10px;
+        padding: 10px 10px 10px 64px;
+        gap: 6px;
         flex-wrap: nowrap;
     }
 
     .global-topbar__copy {
         flex: 1 1 auto;
         min-width: 0;
-        gap: 10px;
+        gap: 6px;
     }
 
     :is(.global-topbar__copy strong, .engineer-topbar__brand strong) {
-        max-width: 26vw;
+        display: block;
+        max-width: 72px;
         overflow: hidden;
+        font-size: 0.7rem;
+        letter-spacing: 0.02em;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
     :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
-        width: 40px;
-        height: 40px;
-        border-radius: 13px;
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
     }
 
     :is(.global-topbar__actions, .engineer-topbar__actions) {
         min-width: 0;
-        gap: 8px;
+        gap: 5px;
+    }
+
+    :is(.global-topbar, .engineer-topbar) .topbar-notifications__toggle {
+        width: 38px;
+        height: 38px;
+        border-radius: 13px;
+    }
+
+    :is(.global-topbar, .engineer-topbar) .topbar-profile__avatar-shell,
+    :is(.global-topbar, .engineer-topbar) .topbar-profile__avatar-image {
+        width: 38px;
+        height: 38px;
+    }
+
+    :is(.global-topbar, .engineer-topbar) :is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
+        min-width: 68px;
+    }
+
+    /* Admin mobile: EDGE lang para kumasya ang bell, avatar, at oras. */
+    .operations-topbar--admin,
+    html.ops-sidebar-shrink-pref .operations-topbar--admin {
+        padding-right: 8px;
+        padding-left: 56px;
+        gap: 4px;
+    }
+
+    .operations-topbar--admin .global-topbar__brand-link {
+        gap: 4px;
+        padding: 0;
+        margin: 0;
+    }
+
+    .operations-topbar--admin .global-topbar__brand-logo {
+        width: 32px;
+        height: 32px;
+    }
+
+    .operations-topbar--admin .global-topbar__copy {
+        flex: 0 1 auto;
+        gap: 4px;
+    }
+
+    .operations-topbar--admin .global-topbar__copy strong {
+        max-width: none;
+        overflow: visible;
+        font-size: 0;
+        letter-spacing: 0;
+    }
+
+    .operations-topbar--admin .global-topbar__copy strong::after {
+        content: "EDGE";
+        color: #0f172a;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        line-height: 1;
+    }
+
+    .operations-topbar--admin .global-topbar__actions {
+        flex: 0 0 auto;
+        gap: 4px;
+    }
+
+    .operations-topbar--admin .topbar-notifications__toggle,
+    .operations-topbar--admin .topbar-profile__avatar-shell,
+    .operations-topbar--admin .topbar-profile__avatar-image {
+        width: 36px;
+        height: 36px;
+    }
+
+    .operations-topbar--admin .global-topbar__clock {
+        min-width: 86px;
+    }
+
+    .operations-topbar--admin .global-topbar__time {
+        font-size: 0.82rem;
+    }
+
+    /* Ilagay ang menu sa kaliwa para hindi matakpan ang bell at profile. */
+    body:has(.operations-topbar--admin) .sidebar-mobile-toggle {
+        top: 14px;
+        right: auto;
+        left: 8px;
+        padding: 8px;
+    }
+}
+
+/* Mas maluwag na mobile: puwedeng ipakita ang buong brand name. */
+@media (min-width: 400px) and (max-width: 520px) {
+    .operations-topbar--admin .global-topbar__copy strong {
+        font-size: 0.74rem;
+        letter-spacing: 0.025em;
+        white-space: nowrap;
+    }
+
+    .operations-topbar--admin .global-topbar__copy strong::after {
+        content: none;
     }
 }

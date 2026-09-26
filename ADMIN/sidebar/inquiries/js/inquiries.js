@@ -1890,6 +1890,36 @@ document.addEventListener('DOMContentLoaded', function () {
             return message === '';
         };
 
+        const syncMaterialReferenceOptionAvailability = function () {
+            const materialRows = Array.from(items?.querySelectorAll('[data-quotation-item]') || []);
+            const selectedIds = new Set();
+
+            materialRows.forEach(function (row) {
+                const typeSelect = row.querySelector('select[name="item_type[]"]');
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                const materialId = materialSelect?.value || '';
+                if (typeSelect?.value === 'material' && /^[1-9]\d*$/.test(materialId)) {
+                    selectedIds.add(materialId);
+                }
+            });
+
+            materialRows.forEach(function (row) {
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                if (!materialSelect) {
+                    return;
+                }
+
+                const currentMaterialId = materialSelect.value || '';
+                Array.from(materialSelect.options).forEach(function (option) {
+                    const optionMaterialId = option.value || '';
+                    // Ang sariling napiling material ay dapat manatiling puwedeng piliin.
+                    option.disabled = /^[1-9]\d*$/.test(optionMaterialId)
+                        && selectedIds.has(optionMaterialId)
+                        && optionMaterialId !== currentMaterialId;
+                });
+            });
+        };
+
         const validateDuplicateMaterialReferences = function (showMessage) {
             const materialRows = Array.from(items?.querySelectorAll('[data-quotation-item]') || []);
             const selectedIds = new Map();
@@ -1915,6 +1945,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setMaterialReferenceMessage(row, '');
                 }
             });
+            syncMaterialReferenceOptionAvailability();
             return isValid;
         };
 
@@ -2070,6 +2101,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             items.appendChild(template.content.cloneNode(true));
             syncMaterialReference(items.lastElementChild);
+            syncMaterialReferenceOptionAvailability();
             updateQuotationPreview();
             updateEditSubmitState();
             scheduleLocalQuotationDraftSave();
@@ -2300,6 +2332,7 @@ document.addEventListener('DOMContentLoaded', function () {
         items?.querySelectorAll('[data-quotation-item]').forEach(function (row) {
             syncMaterialReference(row);
         });
+        syncMaterialReferenceOptionAvailability();
         updateQuotationPreview();
         initialQuotationState = serializeQuotationForm();
         const savedLocalDraft = readLocalQuotationDraft();

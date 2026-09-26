@@ -475,7 +475,8 @@
 
 @media (max-width: 760px) {
     .quotation-create-back {
-        top: 90px;
+        top: 96px;
+        margin-bottom: 22px;
     }
 
     .quotation-create-card {
@@ -500,6 +501,18 @@
         grid-template-columns: 1fr;
     }
 
+    .quotation-create-item {
+        gap: 12px;
+    }
+
+    .quotation-create-item input,
+    .quotation-create-item select,
+    .quotation-create-item textarea,
+    .quotation-create-summary input {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+
     .quotation-create-item__name,
     .quotation-create-item__notes,
     .quotation-create-item__type,
@@ -512,11 +525,38 @@
         grid-column: auto;
     }
 
+    .quotation-create-item .quotation-create-remove {
+        justify-self: stretch;
+        width: 100%;
+        min-height: 42px;
+        margin-bottom: 0;
+    }
+
+    .quotation-create-add-row {
+        justify-content: stretch;
+    }
+
+    .quotation-create-add-row .btn-secondary,
+    .quotation-create-actions .btn-primary,
+    .quotation-create-actions .btn-secondary {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 44px;
+        text-align: center;
+    }
+
+    .quotation-create-actions {
+        gap: 10px;
+    }
+
 }
 
 @media (max-width: 520px) {
     .quotation-create-back {
-        top: 84px;
+        top: 90px;
     }
 }
 

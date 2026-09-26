@@ -244,7 +244,14 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     .operations-topbar--admin .topbar-profile__avatar-shell,
     .operations-topbar--admin .topbar-profile__avatar-image {
         width: 50px;
-        height: 5   0px;
+        height: 50px;
+        box-sizing: border-box;
+    }
+
+    .operations-topbar--admin .topbar-notifications__icon,
+    .operations-topbar--admin .topbar-notifications__icon svg {
+        width: 23px;
+        height: 23px;
     }
 
     .operations-topbar--admin .topbar-notifications__badge {
@@ -267,11 +274,11 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
 
     /* Ilagay ang menu sa kaliwa para hindi matakpan ang bell at profile. */
     body:has(.operations-topbar--admin) .sidebar-mobile-toggle {
-        top: 14px;
+        top: 11px;
         right: auto;
-        left: 6px;
-        width: 44px;
-        height: 44px;
+        left: 2px;
+        width: 50px;
+        height: 50px;
         align-items: center;
         justify-content: center;
         gap: 4px;
@@ -285,7 +292,7 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
 }
 
 /* Mas maluwag na mobile: puwedeng ipakita ang buong brand name. */
-@media (min-width: 400px) and (max-width: 520px) {
+@media (min-width: 430px) and (max-width: 520px) {
     .operations-topbar--admin .global-topbar__copy strong {
         font-size: 0.74rem;
         letter-spacing: 0.025em;
@@ -294,5 +301,26 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
 
     .operations-topbar--admin .global-topbar__copy strong::after {
         content: none;
+    }
+}
+
+/* Sa sobrang liit na screen, liitan ang oras pero buo pa rin ang AM/PM. */
+@media (max-width: 399px) {
+    .operations-topbar--admin,
+    html.ops-sidebar-shrink-pref .operations-topbar--admin {
+        padding-right: 2px;
+        padding-left: 52px;
+    }
+
+    .operations-topbar--admin .global-topbar__clock {
+        min-width: 64px;
+    }
+
+    .operations-topbar--admin .global-topbar__time {
+        font-size: 0.72rem;
+    }
+
+    body:has(.operations-topbar--admin) .sidebar-mobile-toggle {
+        left: 0;
     }
 }

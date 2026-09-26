@@ -379,7 +379,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content">
+<main class="main-content admin-dashboard-content initial-quotation-editor">
     <div class="inquiries-shell quotation-create-shell" data-quotation-create>
         <?php if ($error !== ''): ?>
             <div class="shared-toast shared-toast--error" role="alert" data-shared-toast>

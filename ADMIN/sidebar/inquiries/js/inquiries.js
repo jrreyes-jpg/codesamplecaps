@@ -218,11 +218,27 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const closeConfirm = function () {
+        if (confirmBox.dataset.submitting === '1') {
+            return;
+        }
         if (pendingConfirmForm) {
             delete pendingConfirmForm.dataset.confirmationMode;
         }
         pendingConfirmForm = null;
         confirmBox.hidden = true;
+    };
+
+    const lockConfirmForQuotationDraft = function () {
+        const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
+        const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
+        confirmBox.dataset.submitting = '1';
+        if (cancelButton) {
+            cancelButton.disabled = true;
+        }
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.textContent = 'Creating draft...';
+        }
     };
 
     const inquiryReviewHasChanges = function (modal) {
@@ -2100,6 +2116,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form?.addEventListener('submit', function (event) {
+            if (quotationSubmitAccepted) {
+                event.preventDefault();
+                return;
+            }
+
             if (!validateMarkup(true, true)) {
                 event.preventDefault();
                 marginInput?.focus();
@@ -2140,8 +2161,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (event.submitter?.hasAttribute('data-confirm-quotation-save')
-                && !window.confirm('Create this initial quotation draft?')) {
+                && form.dataset.quotationDraftConfirmed !== '1') {
                 event.preventDefault();
+                showConfirm(
+                    form,
+                    'This will save the current costing as an initial quotation draft. You can review and edit it before sending it to the client.',
+                    null,
+                    {
+                        title: 'Create initial quotation draft?',
+                        cancel: 'Cancel',
+                        confirm: 'Create Draft',
+                        mode: 'quotation-draft-create',
+                    }
+                );
                 return;
             }
 
@@ -2396,14 +2428,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const form = pendingConfirmForm;
         const confirmationMode = form.dataset.confirmationMode || 'submit';
-        closeConfirm();
 
         if (confirmationMode === 'quotation-completeness') {
+            closeConfirm();
             form.dataset.completenessConfirmed = '1';
             form.requestSubmit();
             return;
         }
 
+        if (confirmationMode === 'quotation-draft-create') {
+            form.dataset.quotationDraftConfirmed = '1';
+            lockConfirmForQuotationDraft();
+            form.requestSubmit();
+            return;
+        }
+
+        closeConfirm();
         form.dataset.confirmed = '1';
         form.requestSubmit();
     });

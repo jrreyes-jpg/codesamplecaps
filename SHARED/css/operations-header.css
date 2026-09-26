@@ -197,8 +197,8 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     /* Admin mobile: EDGE lang para kumasya ang bell, avatar, at oras. */
     .operations-topbar--admin,
     html.ops-sidebar-shrink-pref .operations-topbar--admin {
-        padding-right: 8px;
-        padding-left: 56px;
+        padding-right: 6px;
+        padding-left: 54px;
         gap: 4px;
     }
 
@@ -209,8 +209,9 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     .operations-topbar--admin .global-topbar__brand-logo {
-        width: 32px;
-        height: 32px;
+        width: 50px;
+        height: 50px;
+        box-sizing: border-box;
     }
 
     .operations-topbar--admin .global-topbar__copy {
@@ -242,8 +243,18 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     .operations-topbar--admin .topbar-notifications__toggle,
     .operations-topbar--admin .topbar-profile__avatar-shell,
     .operations-topbar--admin .topbar-profile__avatar-image {
-        width: 36px;
-        height: 36px;
+        width: 50px;
+        height: 5   0px;
+    }
+
+    .operations-topbar--admin .topbar-notifications__badge {
+        top: -4px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-width: 2px;
+        font-size: 0.62rem;
     }
 
     .operations-topbar--admin .global-topbar__clock {
@@ -258,8 +269,18 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     body:has(.operations-topbar--admin) .sidebar-mobile-toggle {
         top: 14px;
         right: auto;
-        left: 8px;
-        padding: 8px;
+        left: 6px;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 0;
+    }
+
+    body:has(.operations-topbar--admin) .sidebar-mobile-toggle span {
+        width: 24px;
+        height: 2px;
     }
 }
 

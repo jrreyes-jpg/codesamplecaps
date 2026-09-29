@@ -276,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         </div>
         <div class="right-panel">
             <div class="form active verify-inquiry-card">
-                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>" data-otp-state="<?php echo htmlspecialchars($otpState, ENT_QUOTES, 'UTF-8'); ?>">
+                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>" data-otp-state="<?php echo htmlspecialchars($otpState, ENT_QUOTES, 'UTF-8'); ?>" data-verification-limit-reached="<?php echo ($verificationUnavailable && $resendLimitReached) ? 'true' : 'false'; ?>">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
                     <div class="verify-next-step" aria-label="What happens next">
@@ -293,20 +293,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                     </label>
                     <p class="verify-otp-countdown" data-otp-countdown aria-live="polite">Code expires in: --:--</p>
                     <button type="submit" id="verifyInquiryButton"<?php echo $verificationUnavailable ? ' disabled' : ''; ?>><?php echo $isOtpLocked ? 'Verification code locked' : ($isOtpExpired ? 'Verification code expired' : 'Verify and Submit'); ?></button>
-                    <?php if ($verificationUnavailable): ?>
+                    <?php if ($verificationUnavailable && !$resendLimitReached): ?>
                         <div class="verify-resend" aria-live="polite">
-                            <?php if ($resendLimitReached): ?>
-                                <p class="verify-resend__message">Verification limit reached. Please start a new inquiry.</p>
-                            <?php else: ?>
-                                <p class="verify-resend__cooldown" data-resend-cooldown-until="<?php echo htmlspecialchars($resendCooldownUntil?->format(DateTimeInterface::ATOM) ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                    <?php if ($resendCooldownRemaining > 0): ?>
-                                        Send new code in <?php echo sprintf('%02d:%02d', intdiv($resendCooldownRemaining, 60), $resendCooldownRemaining % 60); ?>
-                                    <?php else: ?>
-                                        Request a new verification code.
-                                    <?php endif; ?>
-                                </p>
-                                <button type="submit" id="resendInquiryOtpButton" data-action="resend" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>>Send New Code</button>
-                            <?php endif; ?>
+                            <p class="verify-resend__cooldown" data-resend-cooldown-until="<?php echo htmlspecialchars($resendCooldownUntil?->format(DateTimeInterface::ATOM) ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php if ($resendCooldownRemaining > 0): ?>
+                                    Send new code in <?php echo sprintf('%02d:%02d', intdiv($resendCooldownRemaining, 60), $resendCooldownRemaining % 60); ?>
+                                <?php else: ?>
+                                    Request a new verification code.
+                                <?php endif; ?>
+                            </p>
+                            <button type="submit" id="resendInquiryOtpButton" data-action="resend" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>>Send New Code</button>
                         </div>
                     <?php endif; ?>
                     <div class="links">

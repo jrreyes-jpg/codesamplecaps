@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const resendCooldown = document.querySelector('[data-resend-cooldown-until]');
     const expiryTimestamp = Date.parse(verifyInquiryForm?.dataset.otpExpiresAt || '');
     const otpState = verifyInquiryForm?.dataset.otpState || 'active';
+    const isVerificationLimitReached = verifyInquiryForm?.dataset.verificationLimitReached === 'true';
     let isVerifyingInquiry = false;
     let isResendingOtp = false;
     let isOtpUnavailable = otpState === 'expired' || otpState === 'locked';
@@ -151,6 +152,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const openLeaveVerificationConfirmation = function (event) {
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (isVerificationLimitReached) {
+            window.location.assign(backToHomeLink.href);
+            return;
+        }
+
         if (isVerifyingInquiry || isResendingOtp) {
             return;
         }

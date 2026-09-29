@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const verifyInquiryForm = document.getElementById('verifyInquiryForm');
     const verifyInquiryButton = document.getElementById('verifyInquiryButton');
     const backToHomeLink = document.getElementById('backToHomeLink');
+    const verifyInquiryAction = document.getElementById('verifyInquiryAction');
     const otpCodeInput = document.querySelector('.js-otp-code');
     const verifySentToast = document.getElementById('verifySentToast');
     const countdown = document.querySelector('[data-otp-countdown]');
@@ -110,9 +111,17 @@ document.addEventListener('DOMContentLoaded', function () {
         otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
     });
 
+    resendButton?.addEventListener('click', function () {
+        if (verifyInquiryAction) {
+            // Hidden value ito para kasama pa rin sa POST kahit disabled na ang button.
+            verifyInquiryAction.value = 'resend';
+        }
+    });
+
     verifyInquiryForm?.addEventListener('submit', function (event) {
-        if (event.submitter === resendButton) {
-            if (isResendingOtp || resendButton.disabled) {
+        const isResendSubmission = verifyInquiryAction?.value === 'resend';
+        if (isResendSubmission) {
+            if (isResendingOtp || resendButton?.disabled) {
                 event.preventDefault();
                 return;
             }
@@ -121,6 +130,10 @@ document.addEventListener('DOMContentLoaded', function () {
             resendButton.disabled = true;
             resendButton.textContent = 'Sending code...';
             return;
+        }
+
+        if (verifyInquiryAction) {
+            verifyInquiryAction.value = 'verify';
         }
 
         if (isOtpUnavailable || isVerifyingInquiry) {
@@ -135,9 +148,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    backToHomeLink?.addEventListener('click', function (event) {
+    const openLeaveVerificationConfirmation = function (event) {
         event.preventDefault();
-        if (isVerifyingInquiry) {
+        event.stopImmediatePropagation();
+        if (isVerifyingInquiry || isResendingOtp) {
             return;
         }
 
@@ -154,7 +168,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         if (!confirmation) {
-            window.location.assign(backToHomeLink.href);
+            // Huwag lumipat kapag hindi handa ang shared custom modal.
+            return;
         }
-    });
+    };
+
+    // Capture phase para hindi tumakbo ang luma o cached na native handler.
+    document.addEventListener('click', function (event) {
+        if (event.target instanceof Element && event.target.closest('#backToHomeLink')) {
+            openLeaveVerificationConfirmation(event);
+        }
+    }, true);
 });

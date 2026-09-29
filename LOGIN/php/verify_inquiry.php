@@ -17,6 +17,12 @@ function verify_inquiry_redirect_home(string $status): void
     exit();
 }
 
+function verify_inquiry_redirect_verify(string $token, string $notice = ''): void
+{
+    $query = $notice === '' ? [] : ['otp_notice' => $notice];
+    inquiry_otp_redirect('verify', $token, $query);
+}
+
 if ($token === '') {
     verify_inquiry_redirect_home('invalid');
 }
@@ -81,22 +87,35 @@ if (($_GET['resent'] ?? '') === '1') {
     $message = 'A new verification code was sent to your email.';
 }
 
+$otpNotice = trim((string)($_GET['otp_notice'] ?? ''));
+if (!$verificationUnavailable && $otpNotice === 'invalid') {
+    $error = 'Invalid verification code. Please check the 6-digit code and try again.';
+} elseif (!$verificationUnavailable && $otpNotice === 'format') {
+    $error = 'Enter the 6-digit code.';
+} elseif ($otpNotice === 'resend_wait') {
+    $error = 'Please wait before requesting another verification code.';
+} elseif ($otpNotice === 'resend_failed') {
+    $error = 'Could not send a new verification code. Please try again.';
+} elseif ($otpNotice === 'save_failed') {
+    $error = 'Could not save inquiry. Please try again.';
+}
+
 $requestAction = trim((string)($_POST['action'] ?? 'verify'));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
     if (!$verificationUnavailable) {
-        $error = 'Your current verification code is still active.';
+        verify_inquiry_redirect_verify($token);
     } elseif ($resendLimitReached) {
-        $error = 'Verification limit reached. Please start a new inquiry.';
+        verify_inquiry_redirect_verify($token);
     } elseif ($resendCooldownRemaining > 0) {
-        $error = 'Please wait before requesting another verification code.';
+        verify_inquiry_redirect_verify($token, 'resend_wait');
     } else {
         $payload = json_decode((string)($pending['payload_json'] ?? ''), true);
         $clientName = is_array($payload) ? trim((string)($payload['client_name'] ?? '')) : '';
         $email = is_array($payload) ? trim((string)($payload['email'] ?? '')) : '';
 
         if ($clientName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Unable to send a new verification code. Please start a new inquiry.';
+            verify_inquiry_redirect_verify($token, 'resend_failed');
         } else {
             $newOtp = (string)random_int(100000, 999999);
             $newOtpHash = password_hash($newOtp, PASSWORD_DEFAULT);
@@ -118,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
 
                 if ($resendUpdate->affected_rows !== 1) {
                     $conn->rollback();
-                    $error = 'A new verification code is not available yet. Please refresh and try again.';
+                    verify_inquiry_redirect_verify($token, 'resend_wait');
                 } else {
                     $expiryStmt = $conn->prepare('SELECT expires_at FROM pending_service_inquiries WHERE id = ? LIMIT 1');
                     $expiryStmt->bind_param('i', $pendingId);
@@ -132,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
 
                     if (!$newOtpExpiresAt || !(new EmailService())->sendInquiryOtp($email, $clientName, $newOtp, $newOtpExpiresAt)) {
                         $conn->rollback();
-                        $error = 'Could not send a new verification code. Please try again.';
+                        verify_inquiry_redirect_verify($token, 'resend_failed');
                     } else {
                         $conn->commit();
                         inquiry_otp_redirect('verify', $token, ['resent' => '1']);
@@ -141,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
             } catch (Throwable $exception) {
                 $conn->rollback();
                 error_log('Inquiry OTP resend failed: ' . $exception->getMessage());
-                $error = 'Could not send a new verification code. Please try again.';
+                verify_inquiry_redirect_verify($token, 'resend_failed');
             }
         }
     }
@@ -149,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
     $otp = trim((string)($_POST['otp'] ?? ''));
 
     if (!preg_match('/^\d{6}$/', $otp)) {
-        $error = 'Enter the 6-digit code.';
+        verify_inquiry_redirect_verify($token, 'format');
     } elseif (!password_verify($otp, (string)$pending['otp_hash'])) {
         $update = $conn->prepare(
             'UPDATE pending_service_inquiries
@@ -161,14 +180,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         $update->execute();
         $failedAttempts = (int)($pending['attempts'] ?? 0) + 1;
         if ($update->affected_rows !== 1 || $failedAttempts >= $maxAttempts) {
-            $isOtpLocked = true;
-            $verificationUnavailable = true;
-            $otpState = 'locked';
-            $error = $resendLimitReached
-                ? 'Verification limit reached. Please start a new inquiry.'
-                : 'Too many incorrect attempts. Please request a new verification code.';
+            verify_inquiry_redirect_verify($token);
         } else {
-            $error = 'Invalid verification code. Please check the 6-digit code and try again.';
+            verify_inquiry_redirect_verify($token, 'invalid');
         }
     } else {
         $payload = json_decode((string)$pending['payload_json'], true);
@@ -229,14 +243,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
             verify_inquiry_redirect_home('success');
         }
 
-        $error = 'Could not save inquiry. Please try again.';
+        verify_inquiry_redirect_verify($token, 'save_failed');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $error = $resendLimitReached
-        ? 'Verification limit reached. Please start a new inquiry.'
-        : ($isOtpLocked
-            ? 'Too many incorrect attempts. Please request a new verification code.'
-            : 'Verification code has expired. Please request a new verification code.');
+    verify_inquiry_redirect_verify($token);
 }
 ?>
 <!DOCTYPE html>
@@ -276,6 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                     <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="action" value="verify" id="verifyInquiryAction">
                     <label class="floating-field verify-code-field">
                         <input class="js-otp-code" type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " autocomplete="one-time-code" required autofocus<?php echo $verificationUnavailable ? ' disabled' : ''; ?>>
                         <span>6-digit code</span>
@@ -294,7 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                                         Request a new verification code.
                                     <?php endif; ?>
                                 </p>
-                                <button type="submit" id="resendInquiryOtpButton" name="action" value="resend" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>>Send New Code</button>
+                                <button type="submit" id="resendInquiryOtpButton" data-action="resend" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>>Send New Code</button>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>

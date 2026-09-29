@@ -1087,11 +1087,7 @@ const restoreInquiryDraft = () => {
             });
         });
 
-        clearDraftButton?.addEventListener('click', () => {
-            if (isSubmittingInquiry || !window.confirm('Clear all inquiry details?')) {
-                return;
-            }
-
+        const clearInquiryForm = () => {
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
             contactInput.value = '09';
@@ -1101,6 +1097,24 @@ const restoreInquiryDraft = () => {
             inquiryForm.querySelectorAll('.is-invalid').forEach((field) => clearFieldError(field));
             message.textContent = '';
             message.classList.remove('is-error');
+        };
+
+        clearDraftButton?.addEventListener('click', () => {
+            if (isSubmittingInquiry) {
+                return;
+            }
+
+            window.EdgePublicConfirmation?.open({
+                title: 'Clear inquiry form?',
+                message: 'This will remove all entered inquiry details. This action cannot be undone.',
+                cancelLabel: 'Cancel',
+                confirmLabel: 'Clear Form',
+                tone: 'danger',
+                onConfirm: function (controls) {
+                    clearInquiryForm();
+                    controls.close();
+                },
+            });
         });
 
         restoreInquiryDraft();

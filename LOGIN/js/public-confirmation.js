@@ -101,7 +101,7 @@
             current = {
                 busy: false,
                 onConfirm: options.onConfirm,
-                controls: { setBusy: setBusy },
+                controls: { setBusy: setBusy, close: close },
             };
             title.textContent = options.title || 'Please confirm';
             message.textContent = options.message || '';

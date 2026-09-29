@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $message = '';
 $error = '';
+$isOtpExpired = false;
 
 function verify_inquiry_redirect_home(string $status): void
 {
@@ -46,10 +47,11 @@ if (!$otpExpiresAt) {
 }
 
 if ($otpExpiresAt->getTimestamp() < time()) {
-    verify_inquiry_redirect_home('expired');
+    $isOtpExpired = true;
+    $error = 'Verification code has expired. Please request a new verification code.';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isOtpExpired) {
     $otp = trim((string)($_POST['otp'] ?? ''));
 
     if (!preg_match('/^\d{6}$/', $otp)) {
@@ -61,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pendingId = (int)$pending['id'];
         $update->bind_param('i', $pendingId);
         $update->execute();
-        $error = 'Invalid or expired code. Please try again.';
+        $error = 'Invalid verification code. Please check the 6-digit code and try again.';
     } else {
         $payload = json_decode((string)$pending['payload_json'], true);
         if (!is_array($payload)) {
@@ -152,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="right-panel">
             <div class="form active verify-inquiry-card">
-                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>">
+                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>" data-otp-expired="<?php echo $isOtpExpired ? '1' : '0'; ?>">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
                     <div class="verify-next-step" aria-label="What happens next">
@@ -167,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <span>6-digit code</span>
                     </label>
                     <p class="verify-otp-countdown" data-otp-countdown aria-live="polite">Code expires in: --:--</p>
-                    <button type="submit" id="verifyInquiryButton">Verify and Submit</button>
+                    <button type="submit" id="verifyInquiryButton"<?php echo $isOtpExpired ? ' disabled' : ''; ?>><?php echo $isOtpExpired ? 'Verification code expired' : 'Verify and Submit'; ?></button>
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/index.php" id="backToHomeLink">Back to Home</a>
                     </div>

@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const countdown = document.querySelector('[data-otp-countdown]');
     const expiryTimestamp = Date.parse(verifyInquiryForm?.dataset.otpExpiresAt || '');
     let isVerifyingInquiry = false;
-    let isOtpExpired = false;
+    let isOtpExpired = verifyInquiryForm?.dataset.otpExpired === '1';
     let countdownTimer = null;
 
     if (verifySentToast) {
@@ -54,7 +54,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    if (Number.isFinite(expiryTimestamp)) {
+    if (isOtpExpired) {
+        showExpiredState();
+    } else if (Number.isFinite(expiryTimestamp)) {
         updateCountdown();
         if (!isOtpExpired) {
             countdownTimer = window.setInterval(updateCountdown, 1000);

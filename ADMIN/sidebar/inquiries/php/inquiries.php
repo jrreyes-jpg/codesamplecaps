@@ -2227,7 +2227,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 && hash_equals($storedScheduleHash, $currentScheduleHash);
                                             $scheduleSubmitLabel = $latestInspection && $isScheduleConfirmed
                                                 ? 'Update Schedule & Notify Client'
-                                                : 'Confirm Inspection Schedule & Send to Client';
+                                                : 'Confirm Schedule & Notify Client and Engineer';
                                         ?>
                                         <?php if ($inspectionScheduleLocked): ?>
                                             <div class="inquiry-empty">The Engineer has acknowledged or started this inspection. Assignment and schedule changes are locked.</div>

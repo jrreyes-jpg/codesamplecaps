@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const modal = form.closest('.inquiry-modal');
         const draftKey = modal?.dataset.inquiryId ? 'edgeInquiryScheduleDraft:' + modal.dataset.inquiryId : '';
         const submitButton = form.querySelector('[data-schedule-submit]');
-        const defaultSubmitLabel = submitButton?.textContent || 'Confirm Inspection Schedule & Send to Client';
+        const defaultSubmitLabel = submitButton?.textContent || 'Confirm Schedule & Notify Client and Engineer';
 
         const syncInvalidUi = function () {
             if (form.dataset.submitAttempted !== '1') {

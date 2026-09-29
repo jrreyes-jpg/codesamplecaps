@@ -340,7 +340,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .finally(function () {
                     pendingReads.delete(pendingKey);
-                    window.location.assign(targetUrl);
+                    const notificationToggle = document.getElementById('topbarNotificationToggle');
+                    const notificationDropdown = document.getElementById('topbarNotificationDropdown');
+                    notificationToggle?.setAttribute('aria-expanded', 'false');
+                    if (notificationDropdown) {
+                        notificationDropdown.hidden = true;
+                    }
+
+                    let openedInCurrentPage = false;
+                    try {
+                        const target = new URL(targetUrl, window.location.origin);
+                        const current = new URL(window.location.href);
+                        const modalId = target.searchParams.get('open') || '';
+                        const tab = target.searchParams.get('tab') || 'client';
+
+                        if (target.pathname === current.pathname && modalId !== ''
+                            && typeof window.edgeOpenInquiryModalAtTab === 'function') {
+                            openedInCurrentPage = window.edgeOpenInquiryModalAtTab(modalId, tab) === true;
+                        }
+                    } catch (error) {
+                        openedInCurrentPage = false;
+                    }
+
+                    if (!openedInCurrentPage) {
+                        window.location.assign(targetUrl);
+                    }
                 });
         };
 

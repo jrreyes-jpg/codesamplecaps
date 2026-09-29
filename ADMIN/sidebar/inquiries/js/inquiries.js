@@ -498,6 +498,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }, '', url);
     };
 
+    // Shared opener ito para sa Admin bell at ibang inquiry links sa parehong page.
+    window.edgeOpenInquiryModalAtTab = function (modalId, targetTab) {
+        const modal = document.getElementById(String(modalId || ''));
+        if (!modal) {
+            return false;
+        }
+
+        document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(function (openInquiryModal) {
+            if (openInquiryModal !== modal) {
+                closeModal(openInquiryModal);
+            }
+        });
+
+        openModal(modal);
+        const requestedTab = String(targetTab || 'client');
+        const activeTab = activateModalTab(modal, requestedTab) ? requestedTab : 'client';
+        pushModalHistory(modal, activeTab);
+        return true;
+    };
+
     const requestCloseModal = function (modal) {
         if (modal?.dataset.quotationSending === '1' || modal?.dataset.reviewSaving === '1' || modal?.dataset.inspectionScheduling === '1') {
             return;

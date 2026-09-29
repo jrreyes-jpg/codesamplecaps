@@ -134,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
     <link rel="stylesheet" href="../css/auth-shared.css">
     <link rel="stylesheet" href="../css/verify_inquiry.css">
+    <link rel="stylesheet" href="../css/public-confirmation.css">
 </head>
 <body>
     <?php if (($_GET['sent'] ?? '') === '1'): ?>
@@ -174,6 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+    <script src="../js/public-confirmation.js" defer></script>
     <script src="../js/verify_inquiry.js" defer></script>
 </body>
 </html>

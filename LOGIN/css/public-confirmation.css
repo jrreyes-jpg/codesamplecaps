@@ -1,0 +1,99 @@
+/* Shared confirmation style para sa public inquiry pages. */
+.public-confirmation-modal[hidden] {
+    display: none;
+}
+
+.public-confirmation-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5200;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(6, 24, 16, 0.66);
+}
+
+.public-confirmation-modal__panel {
+    box-sizing: border-box;
+    width: min(100%, 480px);
+    padding: clamp(20px, 5vw, 28px);
+    border: 1px solid rgba(209, 226, 216, 0.95);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 64px rgba(4, 23, 14, 0.28);
+}
+
+.public-confirmation-modal__panel h2 {
+    margin: 0;
+    color: #133b27;
+    font-size: clamp(1.12rem, 3.5vw, 1.36rem);
+}
+
+.public-confirmation-modal__panel p {
+    margin: 10px 0 0;
+    color: #52645a;
+    font-size: 0.94rem;
+    line-height: 1.55;
+}
+
+.public-confirmation-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.public-confirmation-modal__button {
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.public-confirmation-modal__button--secondary {
+    border-color: #c9d7ce;
+    background: #ffffff;
+    color: #365244;
+}
+
+.public-confirmation-modal__button--primary {
+    background: #0b7a35;
+    color: #ffffff;
+}
+
+.public-confirmation-modal__button--danger {
+    background: #c73535;
+}
+
+.public-confirmation-modal__button:hover:not(:disabled),
+.public-confirmation-modal__button:focus-visible:not(:disabled) {
+    outline: 3px solid rgba(11, 122, 53, 0.18);
+    outline-offset: 2px;
+}
+
+.public-confirmation-modal__button--danger:hover:not(:disabled),
+.public-confirmation-modal__button--danger:focus-visible:not(:disabled) {
+    outline-color: rgba(199, 53, 53, 0.2);
+}
+
+.public-confirmation-modal__button:disabled {
+    opacity: 0.72;
+    cursor: wait;
+}
+
+@media (max-width: 480px) {
+    .public-confirmation-modal {
+        padding: 14px;
+    }
+
+    .public-confirmation-modal__actions {
+        flex-direction: column-reverse;
+    }
+
+    .public-confirmation-modal__button {
+        width: 100%;
+    }
+}

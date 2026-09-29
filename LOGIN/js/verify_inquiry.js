@@ -79,8 +79,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     backToHomeLink?.addEventListener('click', function (event) {
-        if (!window.confirm('Leave verification? Your inquiry is not submitted yet.')) {
-            event.preventDefault();
+        event.preventDefault();
+        if (isVerifyingInquiry) {
+            return;
+        }
+
+        const confirmation = window.EdgePublicConfirmation?.open({
+            title: 'Leave verification?',
+            message: 'Your inquiry has not been submitted yet. Leaving this page will cancel the current verification process.',
+            cancelLabel: 'Stay & Verify',
+            confirmLabel: 'Leave Verification',
+            tone: 'danger',
+            onConfirm: function (controls) {
+                controls.setBusy('Leaving...');
+                window.location.assign(backToHomeLink.href);
+            },
+        });
+
+        if (!confirmation) {
+            window.location.assign(backToHomeLink.href);
         }
     });
 });

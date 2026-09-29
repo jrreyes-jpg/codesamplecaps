@@ -478,6 +478,7 @@ const initInquiryForm = () => {
         const contactFeedback = inquiryForm.querySelector('[data-inquiry-contact-feedback]');
         const draftKey = 'edgeInquiryFormDraft';
         let isSubmittingInquiry = false;
+        let isInquirySubmitConfirmed = false;
 
         if (!contactInput || !message) {
             return;
@@ -1200,9 +1201,23 @@ const restoreInquiryDraft = () => {
                 return;
             }
 
-            const confirmed = window.confirm('Submit this inquiry now? We will send a 6-digit code to your email.');
-            if (!confirmed) {
+            if (!isInquirySubmitConfirmed) {
                 event.preventDefault();
+                const confirmation = window.EdgePublicConfirmation?.open({
+                    title: 'Submit inquiry?',
+                    message: 'We will send a 6-digit verification code to your email. Your inquiry will be submitted only after successful verification.',
+                    cancelLabel: 'Cancel',
+                    confirmLabel: 'Send Verification Code',
+                    onConfirm: function (controls) {
+                        controls.setBusy('Sending code...');
+                        isInquirySubmitConfirmed = true;
+                        inquiryForm.requestSubmit();
+                    },
+                });
+                if (!confirmation) {
+                    message.textContent = 'Unable to open confirmation. Please try again.';
+                    message.classList.add('is-error');
+                }
                 return;
             }
 
@@ -1220,6 +1235,7 @@ const restoreInquiryDraft = () => {
             }
 
             isSubmittingInquiry = false;
+            isInquirySubmitConfirmed = false;
             submitButton.disabled = false;
             submitButton.removeAttribute('aria-busy');
             submitButton.textContent = 'Submit Inquiry';

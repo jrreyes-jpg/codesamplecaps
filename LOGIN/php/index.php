@@ -20,6 +20,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <title>Edge Automation Technology Services, Co.</title>
     <link rel="stylesheet" href="../css/loader.css">
     <link rel="stylesheet" href="../css/index.css">
+    <link rel="stylesheet" href="../css/public-confirmation.css">
     <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
 
 </head>
@@ -677,6 +678,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
         window.edgeInquiryStatus = <?php echo json_encode((string)($_GET['inquiry'] ?? ''), JSON_UNESCAPED_SLASHES); ?>;
     </script>
     <script src="../js/loader.js" defer></script>
+    <script src="../js/public-confirmation.js" defer></script>
     <script src="../js/index.js" defer></script>
 
 </body>

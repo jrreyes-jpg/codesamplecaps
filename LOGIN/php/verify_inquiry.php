@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
+require_once __DIR__ . '/../../services/EmailService.php';
 
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $message = '';
@@ -37,33 +38,138 @@ if (!empty($pending['verified_at'])) {
     verify_inquiry_redirect_home('success');
 }
 
+$timezone = new DateTimeZone('Asia/Manila');
 $otpExpiresAt = DateTimeImmutable::createFromFormat(
     'Y-m-d H:i:s',
     (string)($pending['expires_at'] ?? ''),
-    new DateTimeZone('Asia/Manila')
+    $timezone
 );
 if (!$otpExpiresAt) {
     verify_inquiry_redirect_home('invalid');
 }
 
-if ($otpExpiresAt->getTimestamp() < time()) {
+$maxAttempts = inquiry_otp_max_attempts();
+$maxResends = inquiry_otp_max_resends();
+$resendCooldownSeconds = inquiry_otp_resend_cooldown_seconds();
+$now = new DateTimeImmutable('now', $timezone);
+$isOtpExpired = $otpExpiresAt->getTimestamp() < $now->getTimestamp();
+$isOtpLocked = (int)($pending['attempts'] ?? 0) >= $maxAttempts;
+$resendCount = (int)($pending['resend_count'] ?? 0);
+$resendLimitReached = $resendCount >= $maxResends;
+$lastResendAt = !empty($pending['last_resend_at'])
+    ? DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string)$pending['last_resend_at'], $timezone)
+    : null;
+$resendCooldownRemaining = $lastResendAt
+    ? max(0, $resendCooldownSeconds - ($now->getTimestamp() - $lastResendAt->getTimestamp()))
+    : 0;
+$verificationUnavailable = $isOtpExpired || $isOtpLocked;
+$resendCooldownUntil = $lastResendAt
+    ? $lastResendAt->modify('+' . $resendCooldownSeconds . ' seconds')
+    : null;
+$otpState = $isOtpLocked ? 'locked' : ($isOtpExpired ? 'expired' : 'active');
+
+if ($verificationUnavailable && $resendLimitReached) {
+    $error = 'Verification limit reached. Please start a new inquiry.';
+} elseif ($isOtpExpired) {
     $isOtpExpired = true;
     $error = 'Verification code has expired. Please request a new verification code.';
+} elseif ($isOtpLocked) {
+    $error = 'Too many incorrect attempts. Please request a new verification code.';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isOtpExpired) {
+if (($_GET['resent'] ?? '') === '1') {
+    $message = 'A new verification code was sent to your email.';
+}
+
+$requestAction = trim((string)($_POST['action'] ?? 'verify'));
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
+    if (!$verificationUnavailable) {
+        $error = 'Your current verification code is still active.';
+    } elseif ($resendLimitReached) {
+        $error = 'Verification limit reached. Please start a new inquiry.';
+    } elseif ($resendCooldownRemaining > 0) {
+        $error = 'Please wait before requesting another verification code.';
+    } else {
+        $payload = json_decode((string)($pending['payload_json'] ?? ''), true);
+        $clientName = is_array($payload) ? trim((string)($payload['client_name'] ?? '')) : '';
+        $email = is_array($payload) ? trim((string)($payload['email'] ?? '')) : '';
+
+        if ($clientName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Unable to send a new verification code. Please start a new inquiry.';
+        } else {
+            $newOtp = (string)random_int(100000, 999999);
+            $newOtpHash = password_hash($newOtp, PASSWORD_DEFAULT);
+
+            try {
+                $conn->begin_transaction();
+                $resendUpdate = $conn->prepare(
+                    'UPDATE pending_service_inquiries
+                     SET otp_hash = ?, attempts = 0, expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE),
+                         resend_count = resend_count + 1, last_resend_at = NOW()
+                     WHERE id = ? AND verified_at IS NULL
+                       AND resend_count < ?
+                       AND (attempts >= ? OR expires_at < NOW())
+                       AND (last_resend_at IS NULL OR last_resend_at <= DATE_SUB(NOW(), INTERVAL 60 SECOND))'
+                );
+                $pendingId = (int)$pending['id'];
+                $resendUpdate->bind_param('siii', $newOtpHash, $pendingId, $maxResends, $maxAttempts);
+                $resendUpdate->execute();
+
+                if ($resendUpdate->affected_rows !== 1) {
+                    $conn->rollback();
+                    $error = 'A new verification code is not available yet. Please refresh and try again.';
+                } else {
+                    $expiryStmt = $conn->prepare('SELECT expires_at FROM pending_service_inquiries WHERE id = ? LIMIT 1');
+                    $expiryStmt->bind_param('i', $pendingId);
+                    $expiryStmt->execute();
+                    $expiryRow = $expiryStmt->get_result()->fetch_assoc();
+                    $newOtpExpiresAt = DateTimeImmutable::createFromFormat(
+                        'Y-m-d H:i:s',
+                        (string)($expiryRow['expires_at'] ?? ''),
+                        $timezone
+                    );
+
+                    if (!$newOtpExpiresAt || !(new EmailService())->sendInquiryOtp($email, $clientName, $newOtp, $newOtpExpiresAt)) {
+                        $conn->rollback();
+                        $error = 'Could not send a new verification code. Please try again.';
+                    } else {
+                        $conn->commit();
+                        inquiry_otp_redirect('verify', $token, ['resent' => '1']);
+                    }
+                }
+            } catch (Throwable $exception) {
+                $conn->rollback();
+                error_log('Inquiry OTP resend failed: ' . $exception->getMessage());
+                $error = 'Could not send a new verification code. Please try again.';
+            }
+        }
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !$verificationUnavailable) {
     $otp = trim((string)($_POST['otp'] ?? ''));
 
     if (!preg_match('/^\d{6}$/', $otp)) {
         $error = 'Enter the 6-digit code.';
-    } elseif ((int)$pending['attempts'] >= 5) {
-        $error = 'Too many tries. Please submit the inquiry again.';
     } elseif (!password_verify($otp, (string)$pending['otp_hash'])) {
-        $update = $conn->prepare('UPDATE pending_service_inquiries SET attempts = attempts + 1 WHERE id = ?');
+        $update = $conn->prepare(
+            'UPDATE pending_service_inquiries
+             SET attempts = attempts + 1
+             WHERE id = ? AND attempts < ? AND verified_at IS NULL'
+        );
         $pendingId = (int)$pending['id'];
-        $update->bind_param('i', $pendingId);
+        $update->bind_param('ii', $pendingId, $maxAttempts);
         $update->execute();
-        $error = 'Invalid verification code. Please check the 6-digit code and try again.';
+        $failedAttempts = (int)($pending['attempts'] ?? 0) + 1;
+        if ($update->affected_rows !== 1 || $failedAttempts >= $maxAttempts) {
+            $isOtpLocked = true;
+            $verificationUnavailable = true;
+            $otpState = 'locked';
+            $error = $resendLimitReached
+                ? 'Verification limit reached. Please start a new inquiry.'
+                : 'Too many incorrect attempts. Please request a new verification code.';
+        } else {
+            $error = 'Invalid verification code. Please check the 6-digit code and try again.';
+        }
     } else {
         $payload = json_decode((string)$pending['payload_json'], true);
         if (!is_array($payload)) {
@@ -125,6 +231,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isOtpExpired) {
 
         $error = 'Could not save inquiry. Please try again.';
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $error = $resendLimitReached
+        ? 'Verification limit reached. Please start a new inquiry.'
+        : ($isOtpLocked
+            ? 'Too many incorrect attempts. Please request a new verification code.'
+            : 'Verification code has expired. Please request a new verification code.');
 }
 ?>
 <!DOCTYPE html>
@@ -154,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isOtpExpired) {
         </div>
         <div class="right-panel">
             <div class="form active verify-inquiry-card">
-                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>" data-otp-expired="<?php echo $isOtpExpired ? '1' : '0'; ?>">
+                <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>" data-otp-state="<?php echo htmlspecialchars($otpState, ENT_QUOTES, 'UTF-8'); ?>">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
                     <div class="verify-next-step" aria-label="What happens next">
@@ -165,11 +277,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isOtpExpired) {
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                     <label class="floating-field verify-code-field">
-                        <input class="js-otp-code" type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " autocomplete="one-time-code" required autofocus>
+                        <input class="js-otp-code" type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " autocomplete="one-time-code" required autofocus<?php echo $verificationUnavailable ? ' disabled' : ''; ?>>
                         <span>6-digit code</span>
                     </label>
                     <p class="verify-otp-countdown" data-otp-countdown aria-live="polite">Code expires in: --:--</p>
-                    <button type="submit" id="verifyInquiryButton"<?php echo $isOtpExpired ? ' disabled' : ''; ?>><?php echo $isOtpExpired ? 'Verification code expired' : 'Verify and Submit'; ?></button>
+                    <button type="submit" id="verifyInquiryButton"<?php echo $verificationUnavailable ? ' disabled' : ''; ?>><?php echo $isOtpLocked ? 'Verification code locked' : ($isOtpExpired ? 'Verification code expired' : 'Verify and Submit'); ?></button>
+                    <?php if ($verificationUnavailable): ?>
+                        <div class="verify-resend" aria-live="polite">
+                            <?php if ($resendLimitReached): ?>
+                                <p class="verify-resend__message">Verification limit reached. Please start a new inquiry.</p>
+                            <?php else: ?>
+                                <p class="verify-resend__cooldown" data-resend-cooldown-until="<?php echo htmlspecialchars($resendCooldownUntil?->format(DateTimeInterface::ATOM) ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php if ($resendCooldownRemaining > 0): ?>
+                                        Send new code in <?php echo sprintf('%02d:%02d', intdiv($resendCooldownRemaining, 60), $resendCooldownRemaining % 60); ?>
+                                    <?php else: ?>
+                                        Request a new verification code.
+                                    <?php endif; ?>
+                                </p>
+                                <button type="submit" id="resendInquiryOtpButton" name="action" value="resend" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>>Send New Code</button>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/index.php" id="backToHomeLink">Back to Home</a>
                     </div>

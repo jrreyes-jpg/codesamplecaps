@@ -406,6 +406,8 @@ CREATE TABLE `pending_service_inquiries` (
   `otp_hash` varchar(255) NOT NULL,
   `payload_json` longtext NOT NULL,
   `attempts` int(11) NOT NULL DEFAULT 0,
+  `resend_count` int(11) NOT NULL DEFAULT 0,
+  `last_resend_at` datetime DEFAULT NULL,
   `expires_at` datetime NOT NULL,
   `verified_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),

@@ -987,6 +987,8 @@ CREATE TABLE `site_inspections` (
   `inquiry_id` int(11) NOT NULL,
   `engineer_id` int(11) NOT NULL,
   `scheduled_at` datetime NOT NULL,
+  `client_schedule_notified_at` timestamp NULL DEFAULT NULL,
+  `engineer_schedule_notified_at` timestamp NULL DEFAULT NULL,
   `schedule_notified_at` timestamp NULL DEFAULT NULL,
   `schedule_notification_hash` char(64) DEFAULT NULL,
   `site_notes` text DEFAULT NULL,

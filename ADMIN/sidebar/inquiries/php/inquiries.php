@@ -2276,7 +2276,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </section>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <div class="inquiry-empty">No inspection schedule yet.</div>
+                                        <div class="inquiry-empty">
+                                            <strong>Inspection Status: Not Scheduled</strong>
+                                            <span class="inquiry-empty__helper">Select an Engineer, inspection date, and time below.</span>
+                                        </div>
                                     <?php endif; ?>
 
                                     <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
@@ -2342,7 +2345,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </label>
                                             </div>
                                             <label>
-                                                <span>Site Notes</span>
+                                                <span>Site Notes (Optional)</span>
                                                 <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions">

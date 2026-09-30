@@ -2314,9 +2314,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (event.submitter?.hasAttribute('data-confirm-quotation-update')
-                && !window.confirm('Are you sure you want to save and update these quotation changes?')) {
+            if (form.dataset.quotationUpdateConfirmed === '1') {
+                delete form.dataset.quotationUpdateConfirmed;
+            } else if (event.submitter?.hasAttribute('data-confirm-quotation-update')) {
                 event.preventDefault();
+                showConfirm(
+                    form,
+                    'This will update the saved quotation using your current items, quantities, costs, notes, markup, and recalculated totals.',
+                    null,
+                    {
+                        title: 'Save quotation changes?',
+                        cancel: 'Cancel',
+                        confirm: 'Save Changes',
+                        mode: 'quotation-update',
+                    }
+                );
                 return;
             }
 
@@ -2583,6 +2595,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (confirmationMode === 'quotation-draft-create') {
             form.dataset.quotationDraftConfirmed = '1';
             lockConfirmForQuotationDraft();
+            form.requestSubmit();
+            return;
+        }
+
+        if (confirmationMode === 'quotation-update') {
+            closeConfirm();
+            form.dataset.quotationUpdateConfirmed = '1';
             form.requestSubmit();
             return;
         }

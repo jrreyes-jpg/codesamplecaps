@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingDiscardAction = null;
     let pendingDiscardKeepAction = null;
     let pendingQuotationDraftDiscard = null;
+    let pendingQuotationItemRemoval = null;
 
     if ('scrollRestoration' in window.history) {
         window.history.scrollRestoration = 'manual';
@@ -220,6 +221,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeConfirm = function () {
         if (confirmBox.dataset.submitting === '1') {
             return;
+        }
+        if (pendingConfirmForm?.dataset.confirmationMode === 'quotation-item-remove') {
+            pendingQuotationItemRemoval = null;
         }
         if (pendingConfirmForm) {
             delete pendingConfirmForm.dataset.confirmationMode;
@@ -2152,17 +2156,73 @@ document.addEventListener('DOMContentLoaded', function () {
             scheduleLocalQuotationDraftSave();
         });
 
+        const hasMeaningfulQuotationItemData = function (row) {
+            const type = row.querySelector('select[name="item_type[]"]')?.value || 'material';
+            const materialId = row.querySelector('select[name="material_id[]"]')?.value || '';
+            const itemName = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
+            const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
+            const unit = row.querySelector('select[name="unit[]"]')?.value || '';
+            const unitCost = row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
+            const notes = row.querySelector('input[name="item_notes[]"]')?.value.trim() || '';
+
+            return materialId !== ''
+                || itemName !== ''
+                || quantity !== ''
+                || unitCost !== ''
+                || notes !== ''
+                || type !== 'material'
+                || (unit !== '' && unit !== 'pcs');
+        };
+
+        const quotationItemLabel = function (row) {
+            const itemName = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
+            if (itemName !== '') {
+                return itemName;
+            }
+
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const materialName = materialSelect?.options[materialSelect.selectedIndex]?.textContent?.trim() || '';
+            return materialName !== '' && materialSelect?.value !== '' ? materialName : 'this item';
+        };
+
+        const removeQuotationItem = function (row) {
+            row?.remove();
+            validateDuplicateMaterialReferences(true);
+            updateQuotationPreview();
+            updateEditSubmitState();
+            scheduleLocalQuotationDraftSave();
+        };
+
         items?.addEventListener('click', function (event) {
             const removeButton = event.target.closest('[data-quotation-remove-item]');
             if (!removeButton || items.querySelectorAll('[data-quotation-item]').length <= 1) {
                 return;
             }
 
-            removeButton.closest('[data-quotation-item]')?.remove();
-            validateDuplicateMaterialReferences(true);
-            updateQuotationPreview();
-            updateEditSubmitState();
-            scheduleLocalQuotationDraftSave();
+            const row = removeButton.closest('[data-quotation-item]');
+            if (!row) {
+                return;
+            }
+
+            if (!hasMeaningfulQuotationItemData(row)) {
+                removeQuotationItem(row);
+                return;
+            }
+
+            pendingQuotationItemRemoval = function () {
+                removeQuotationItem(row);
+            };
+            showConfirm(
+                form,
+                'Remove "' + quotationItemLabel(row) + '" from this quotation? The totals will be recalculated. This change will only be saved after you click Save Quotation Changes.',
+                null,
+                {
+                    title: 'Remove quotation item?',
+                    cancel: 'Cancel',
+                    confirm: 'Remove Item',
+                    mode: 'quotation-item-remove',
+                }
+            );
         });
 
         items?.addEventListener('change', function (event) {
@@ -2524,6 +2584,14 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.quotationDraftConfirmed = '1';
             lockConfirmForQuotationDraft();
             form.requestSubmit();
+            return;
+        }
+
+        if (confirmationMode === 'quotation-item-remove') {
+            const removeItem = pendingQuotationItemRemoval;
+            pendingQuotationItemRemoval = null;
+            closeConfirm();
+            removeItem?.();
             return;
         }
 

@@ -1161,6 +1161,7 @@
 .inquiry-view-link {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     min-height: 28px;
     padding: 5px 10px;
     border-radius: 999px;
@@ -1175,6 +1176,17 @@
 .inquiry-view-link.is-active {
     background: #166534;
     color: #ffffff;
+}
+
+.inquiry-lifecycle-filter.is-active .inquiry-quotation-filter__count {
+    background: rgba(255, 255, 255, 0.22);
+    color: inherit;
+}
+
+.inquiry-status-link.inquiry-lifecycle-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .inquiry-open-modal {

@@ -306,6 +306,44 @@ function inquiry_center_quotation_filter_counts(mysqli $conn, array $scopeWhere,
     return $counts;
 }
 
+function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere, string $searchTypes, array $searchParams): array
+{
+    $counts = array_fill_keys(['all', 'pending_review', 'qualified', 'for_inspection', 'not_qualified', 'archived'], 0);
+    $sql = 'SELECT
+                COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS all_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = \'Pending Review\' THEN 1 END) AS pending_review_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = \'Verified Lead\' THEN 1 END) AS qualified_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = \'For Inspection\' THEN 1 END) AS for_inspection_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = \'Not Qualified\' THEN 1 END) AS not_qualified_count,
+                COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS archived_count
+            FROM service_inquiries';
+
+    if ($searchWhere !== []) {
+        $sql .= ' WHERE ' . implode(' AND ', $searchWhere);
+    }
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return $counts;
+    }
+
+    if ($searchTypes !== '') {
+        $stmt->bind_param($searchTypes, ...$searchParams);
+    }
+
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc() ?: [];
+
+    return [
+        'all' => (int)($row['all_count'] ?? 0),
+        'pending_review' => (int)($row['pending_review_count'] ?? 0),
+        'qualified' => (int)($row['qualified_count'] ?? 0),
+        'for_inspection' => (int)($row['for_inspection_count'] ?? 0),
+        'not_qualified' => (int)($row['not_qualified_count'] ?? 0),
+        'archived' => (int)($row['archived_count'] ?? 0),
+    ];
+}
+
 function inquiry_center_quotation_status_label(string $status): string
 {
     return inquiry_quote_normalize_status($status) === 'accepted'
@@ -1437,10 +1475,14 @@ $hasQuotationProjectLink = $hasInquiryQuotationTable
     && inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id');
 $inquiryRows = [];
 $quotationFilterCounts = array_fill_keys($quotationFilterOptions, 0);
+$lifecycleFilterCounts = array_fill_keys(['all', 'pending_review', 'qualified', 'for_inspection', 'not_qualified', 'archived'], 0);
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     $where = [];
     $types = '';
     $params = [];
+    $lifecycleSearchWhere = [];
+    $lifecycleSearchTypes = '';
+    $lifecycleSearchParams = [];
 
     $where[] = $view === 'archive' ? 'archived_at IS NOT NULL' : 'archived_at IS NULL';
 
@@ -1480,10 +1522,14 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
     if ($search !== '') {
         // Smart search: hanapin sa important fields para mas mabilis ang lead filtering.
-        $where[] = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ? OR status LIKE ? OR description LIKE ? OR admin_notes LIKE ? OR archive_reason LIKE ?)';
+        $searchCondition = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ? OR status LIKE ? OR description LIKE ? OR admin_notes LIKE ? OR archive_reason LIKE ?)';
+        $where[] = $searchCondition;
         $keyword = '%' . $search . '%';
         $types .= 'sssssssssssss';
         array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
+        $lifecycleSearchWhere[] = $searchCondition;
+        $lifecycleSearchTypes = 'sssssssssssss';
+        $lifecycleSearchParams = array_fill(0, 13, $keyword);
     }
 
     $quotationFilterScopeWhere = $where;
@@ -1527,6 +1573,13 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
             $quotationFilterScopeParams
         );
     }
+
+    $lifecycleFilterCounts = inquiry_center_lifecycle_filter_counts(
+        $conn,
+        $lifecycleSearchWhere,
+        $lifecycleSearchTypes,
+        $lifecycleSearchParams
+    );
 }
 
 $inspectionByInquiry = [];
@@ -1791,11 +1844,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
         </form>
 
         <nav class="inquiry-status-strip inquiry-status-strip--primary" aria-label="Inquiry lifecycle filters">
-            <a class="inquiry-view-link <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url($search !== '' ? ['search' => $search] : []), ENT_QUOTES, 'UTF-8'); ?>">All</a>
+            <a class="inquiry-view-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url($search !== '' ? ['search' => $search] : []), ENT_QUOTES, 'UTF-8'); ?>">
+                <span>All</span>
+                <span class="inquiry-quotation-filter__count"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
+            </a>
             <?php foreach (['Pending Review', 'Verified Lead', 'For Inspection', 'Not Qualified'] as $status): ?>
-                <a class="inquiry-status inquiry-status-link <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></a>
+                <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Verified Lead' => 'qualified', 'For Inspection' => 'for_inspection', 'Not Qualified' => 'not_qualified' }; ?>
+                <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">
+                    <span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="inquiry-quotation-filter__count"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
+                </a>
             <?php endforeach; ?>
-            <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">Archived</a>
+            <a class="inquiry-view-link inquiry-lifecycle-filter <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">
+                <span>Archived</span>
+                <span class="inquiry-quotation-filter__count"><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></span>
+            </a>
         </nav>
 
         <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['', 'Verified Lead', 'For Inspection'], true); ?>

@@ -739,16 +739,23 @@ function inquiry_quote_send_to_client(mysqli $conn, int $draftId, int $adminId):
             throw new RuntimeException('This quotation can no longer be sent.');
         }
 
-        if (!$emailService->sendInquiryQuotationLink(
-            $recipientEmail,
-            $recipientName,
-            (string)$quotation['quotation_no'],
-            (float)($quotation['grand_total'] ?? 0),
-            $publicLink,
-            14
-        )) {
+        try {
+            $emailSent = $emailService->sendInquiryQuotationLink(
+                $recipientEmail,
+                $recipientName,
+                (string)$quotation['quotation_no'],
+                (float)($quotation['grand_total'] ?? 0),
+                $publicLink,
+                14
+            );
+        } catch (Throwable $throwable) {
+            error_log('Inquiry quotation email failed for draft #' . $draftId . ': ' . $throwable->getMessage());
+            throw new RuntimeException('Quotation email service failed.', 503, $throwable);
+        }
+
+        if (!$emailSent) {
             error_log('Inquiry quotation email failed for draft #' . $draftId . ': ' . $emailService->getError());
-            throw new RuntimeException('Quotation email cannot be sent right now. Please check email settings and try again.');
+            throw new RuntimeException('Quotation email service failed.', 503);
         }
 
         $stmt = $conn->prepare(

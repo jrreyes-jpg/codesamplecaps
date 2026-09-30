@@ -1560,7 +1560,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(function (result) {
                     if (!result.response.ok || !result.data.success) {
-                        throw new Error(result.data.message || 'Unable to send quotation.');
+                        const requestError = new Error(result.data.message || 'Unable to send quotation.');
+                        requestError.code = result.data.error_code || '';
+                        throw requestError;
                     }
                     sendingModal?.classList.add('is-send-complete');
                     window.setTimeout(function () {
@@ -1577,7 +1579,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (submitButton) {
                         submitButton.disabled = false;
                         submitButton.classList.remove('inquiry-send-button--loading');
-                        submitButton.textContent = defaultText;
+                        submitButton.textContent = error.code === 'quotation_email_send_failed'
+                            ? (isInitialQuotation ? 'Retry Send Quotation' : 'Retry Send Revised Quotation')
+                            : defaultText;
                     }
 
                     if (typeof window.showToast === 'function') {

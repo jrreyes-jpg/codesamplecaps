@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
 $error = '';
+$ajaxErrorStatus = 422;
 $allowedStatuses = ['Pending Review', 'Verified Lead', 'Not Qualified', 'For Inspection'];
 $inquiryFilterStatuses = array_merge($allowedStatuses, ['Rejected', 'Converted to Project']);
 
@@ -849,7 +850,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 inquiry_center_redirect_to_open_modal($inquiryId, 'Verified Lead', $quotationSentMessage);
             } catch (Throwable $throwable) {
-                $error = $throwable->getMessage();
+                if ((int)$throwable->getCode() === 503) {
+                    $error = 'Quotation was not sent. Please check your connection or email service and try again.';
+                    $ajaxErrorStatus = 503;
+                } else {
+                    $error = $throwable->getMessage();
+                }
             }
         }
     } elseif (($_POST['action'] ?? '') === 'reopen_quotation_revision') {
@@ -1433,11 +1439,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($isAjaxRequest && $error !== '') {
-    http_response_code(422);
+    http_response_code($ajaxErrorStatus);
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode([
         'success' => false,
         'message' => $error,
+        'error_code' => $ajaxErrorStatus === 503 ? 'quotation_email_send_failed' : 'request_failed',
     ]);
     exit();
 }

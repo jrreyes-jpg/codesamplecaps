@@ -1053,7 +1053,31 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (form.dataset.confirmed !== '1' && statusChanged) {
-                showConfirm(form, 'Change inquiry status from ' + statusLabel(originalStatus) + ' to ' + statusLabel(statusField.value) + '?');
+                if (statusField.value === 'Verified Lead') {
+                    showConfirm(
+                        form,
+                        'This will mark the inquiry as Qualified, save your review, and notify the client.',
+                        null,
+                        {
+                            title: 'Confirm inquiry qualification?',
+                            cancel: 'Cancel',
+                            confirm: 'Confirm & Notify',
+                        }
+                    );
+                } else if (statusField.value === 'Not Qualified') {
+                    showConfirm(
+                        form,
+                        'This will mark the inquiry as Not Qualified, save your review, and notify the client.',
+                        null,
+                        {
+                            title: 'Confirm inquiry decision?',
+                            cancel: 'Cancel',
+                            confirm: 'Confirm & Notify',
+                        }
+                    );
+                } else {
+                    showConfirm(form, 'Change inquiry status from ' + statusLabel(originalStatus) + ' to ' + statusLabel(statusField.value) + '?');
+                }
                 return;
             }
 

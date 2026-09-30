@@ -1106,7 +1106,7 @@
 .inquiry-status-strip--quotation {
     gap: 6px;
     margin-top: 2px;
-    padding-top: 10px;
+    padding-top: 7px;
     border-top: 1px solid #e2e8f0;
 }
 
@@ -1866,7 +1866,7 @@ body.inquiry-modal-open {
     .main-content.admin-dashboard-content {
         width: 100% !important;
         margin-left: 0 !important;
-        padding: 118px 14px 20px;
+        padding: 104px 14px 20px;
     }
 
     /* Mas dikit nang kaunti sa header ang Create/Edit quotation lang. */

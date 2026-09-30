@@ -1833,7 +1833,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
 
         <form class="inquiry-filter-bar" method="GET">
-            <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, email, contact, status, notes, address, service, or archive reason">
+            <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries...">
             <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
             <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
             <?php if ($quotationFilter !== ''): ?><input type="hidden" name="quotation_filter" value="<?php echo htmlspecialchars($quotationFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>

@@ -149,11 +149,11 @@ document.addEventListener('DOMContentLoaded', function () {
     quotationDraftDiscardBox.hidden = true;
     quotationDraftDiscardBox.innerHTML = [
         '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="quotationDraftDiscardTitle">',
-        '<h3 id="quotationDraftDiscardTitle">Discard unsaved quotation changes?</h3>',
-        '<p>Your unsaved quotation changes will be cleared.</p>',
+        '<h3 id="quotationDraftDiscardTitle">Unsaved quotation changes</h3>',
+        '<p>You have changes that haven\'t been saved to this quotation. Leaving now will keep the saved quotation and totals unchanged.</p>',
         '<div class="inquiry-confirm__actions">',
         '<button type="button" class="btn-secondary" data-quotation-draft-discard-keep>Keep Editing</button>',
-        '<button type="button" class="btn-primary" data-quotation-draft-discard-yes>Discard Changes</button>',
+        '<button type="button" class="btn-primary" data-quotation-draft-discard-yes>Leave Without Saving</button>',
         '</div>',
         '</div>',
     ].join('');
@@ -1619,6 +1619,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let initialQuotationState = '';
         let quotationSubmitAccepted = false;
+        let quotationLeaveAccepted = false;
         let localDraftTimer = null;
 
         const isQuotationDirty = function () {
@@ -2263,14 +2264,29 @@ document.addEventListener('DOMContentLoaded', function () {
             quotationSubmitAccepted = true;
         });
 
+        const leaveInitialQuotationWithoutSaving = function (destination) {
+            showQuotationDraftDiscardConfirm(function () {
+                quotationLeaveAccepted = true;
+                clearLocalQuotationDraft();
+                window.location.assign(destination);
+            });
+        };
+
         document.addEventListener('click', function (event) {
             const link = event.target.closest('a[href]');
-            if (isInitialQuotation || !link || link.target === '_blank' || link.hasAttribute('download') || !isQuotationDirty()) {
+            if (!link || link.target === '_blank' || link.hasAttribute('download') || !isQuotationDirty()) {
                 return;
             }
 
             const destination = link.getAttribute('href') || '';
             if (destination === '' || destination.startsWith('#') || destination.startsWith('javascript:')) {
+                return;
+            }
+
+            if (isInitialQuotation) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                leaveInitialQuotationWithoutSaving(destination);
                 return;
             }
 
@@ -2281,15 +2297,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }, true);
 
         window.addEventListener('beforeunload', function (event) {
-            if (isInitialQuotation) {
-                if (!quotationSubmitAccepted) {
-                    saveLocalQuotationDraft();
-                }
+            if (quotationSubmitAccepted || quotationLeaveAccepted || !isQuotationDirty()) {
                 return;
             }
 
-            if (quotationSubmitAccepted || !isQuotationDirty()) {
-                return;
+            if (isInitialQuotation) {
+                if (!quotationLeaveAccepted) {
+                    saveLocalQuotationDraft();
+                }
             }
 
             event.preventDefault();
@@ -2297,27 +2312,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         window.addEventListener('pagehide', function () {
-            if (isInitialQuotation && !quotationSubmitAccepted) {
+            if (isInitialQuotation && !quotationSubmitAccepted && !quotationLeaveAccepted) {
                 saveLocalQuotationDraft();
             }
         });
 
         form?.querySelector('[data-quotation-cancel]')?.addEventListener('click', function (event) {
-            if (!isInitialQuotation) {
-                return;
-            }
-
-            saveLocalQuotationDraft();
-            if (!readLocalQuotationDraft()) {
+            if (!isInitialQuotation || !isQuotationDirty()) {
                 return;
             }
 
             event.preventDefault();
-            const destination = this.href;
-            showQuotationDraftDiscardConfirm(function () {
-                clearLocalQuotationDraft();
-                window.location.assign(destination);
-            });
+            event.stopImmediatePropagation();
+            leaveInitialQuotationWithoutSaving(this.href);
         });
 
         form?.addEventListener('input', function (event) {

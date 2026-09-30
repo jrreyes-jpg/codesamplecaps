@@ -479,7 +479,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         tabs.forEach(function (tab) {
-            tab.classList.toggle('is-active', tab === targetTab);
+            const isSelected = tab === targetTab;
+            tab.classList.toggle('is-active', isSelected);
+            tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
         });
         panels.forEach(function (panel) {
             panel.hidden = panel.getAttribute('data-inquiry-panel') !== target;

@@ -1486,6 +1486,19 @@
     display: block;
 }
 
+.inquiry-workflow__step.is-active:not(.chip-disabled):not(:disabled) {
+    border-color: #166534;
+    background: #166534;
+    color: #ffffff;
+    box-shadow: 0 6px 14px rgba(22, 101, 52, 0.22);
+    transform: translateY(-1px);
+}
+
+.inquiry-workflow__step.is-active:not(.chip-disabled):not(:disabled) .inquiry-workflow__marker {
+    background: #ffffff;
+    color: #166534;
+}
+
 .inquiry-modal-tab.chip-disabled,
 .inquiry-modal-tab:disabled {
     border-color: #e2e8f0;

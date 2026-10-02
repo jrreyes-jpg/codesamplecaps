@@ -434,7 +434,9 @@ class EmailService {
         string $inspectionSchedule,
         string $engineerName,
         string $siteAddress,
-        string $siteNotes = ''
+        string $siteNotes = '',
+        string $scheduleLink = '',
+        bool $isUpdated = false
     ): bool {
         try {
             if ($this->error !== '') {
@@ -450,16 +452,20 @@ class EmailService {
                 ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
                 : '';
             $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
+            $safeScheduleLink = htmlspecialchars($scheduleLink, ENT_QUOTES, 'UTF-8');
+            $scheduleCta = $scheduleLink !== ''
+                ? "<p><a href='{$safeScheduleLink}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>" . ($isUpdated ? 'Review Updated Schedule' : 'Review Inspection Schedule') . '</a></p>'
+                : '';
 
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Inspection Schedule Confirmed - Edge Automation';
+            $this->mailer->Subject = ($isUpdated ? 'Inspection Schedule Updated' : 'Inspection Schedule Confirmed') . ' - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
-                        <h2 style='margin:0'>Your site inspection is scheduled</h2>
+                        <h2 style='margin:0'>" . ($isUpdated ? 'Your site inspection schedule has been updated' : 'Your site inspection is scheduled') . "</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
@@ -469,6 +475,7 @@ class EmailService {
                         <p><strong>Assigned Engineer:</strong> {$safeEngineer}</p>
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         {$siteNotesHtml}
+                        {$scheduleCta}
                         <p>Our team will contact you if more details are needed.</p>
                     </div>
                 </div>";
@@ -491,7 +498,9 @@ class EmailService {
         string $siteAddress,
         string $contactNumber,
         string $clientEmail,
-        string $siteNotes = ''
+        string $siteNotes = '',
+        bool $isUpdated = false,
+        string $inspectionUrl = ''
     ): bool {
         try {
             if ($this->error !== '') {
@@ -509,16 +518,18 @@ class EmailService {
                 ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
                 : '';
             $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
+            $safeInspectionUrl = htmlspecialchars($inspectionUrl, ENT_QUOTES, 'UTF-8');
+            $inspectionCta = $inspectionUrl !== '' ? "<p><a href='{$safeInspectionUrl}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:bold'>Open Site Inspection</a></p>" : '';
 
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'New Site Inspection Assignment - Edge Automation';
+            $this->mailer->Subject = ($isUpdated ? 'Site Inspection Schedule Updated' : 'New Site Inspection Assignment') . ' - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#1d4ed8;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
-                        <h2 style='margin:0'>New site inspection assignment</h2>
+                        <h2 style='margin:0'>" . ($isUpdated ? 'Site inspection schedule updated' : 'New site inspection assignment') . "</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeEngineer},</p>
@@ -529,6 +540,7 @@ class EmailService {
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         <p><strong>Contact Number:</strong> {$safeContact}<br><strong>Client Email:</strong> {$safeClientEmail}</p>
                         {$siteNotesHtml}
+                        {$inspectionCta}
                     </div>
                 </div>";
             $this->mailer->AltBody = "Hello {$engineerName},\n\nYou have a new site inspection assignment. Please check your Engineer dashboard for the full details.\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nContact Number: {$contactNumber}\nClient Email: {$clientEmail}{$siteNotesText}";

@@ -1237,7 +1237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $existingInspectionStatus = (string)($existingRow['status'] ?? '');
             }
 
-            if ($existingInspectionId > 0 && $existingInspectionStatus !== 'Assigned') {
+            if ($existingInspectionId > 0 && !in_array($existingInspectionStatus, ['Assigned', 'Acknowledged'], true)) {
                 $error = 'The Engineer already started this inspection workflow. Its assignment and schedule are now locked.';
             }
 
@@ -1252,20 +1252,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 || !hash_equals($storedNotificationHash, $notificationHash)
                 || empty($existingInspection['client_schedule_notified_at'])
                 || empty($existingInspection['engineer_schedule_notified_at']);
+            $clientScheduleToken = $hasScheduleChanges ? bin2hex(random_bytes(32)) : '';
+            $clientScheduleTokenHash = $clientScheduleToken !== '' ? site_inspection_schedule_token_hash($clientScheduleToken) : '';
 
             $stmt = null;
             if ($error === '' && $hasScheduleChanges) {
                 $stmt = $existingInspectionId > 0
                     ? $conn->prepare(
-                        'UPDATE site_inspections
+                        "UPDATE site_inspections
                          SET engineer_id = ?, scheduled_at = ?, site_notes = ?,
                              client_schedule_notified_at = NULL, engineer_schedule_notified_at = NULL,
-                             schedule_notified_at = NULL, schedule_notification_hash = NULL
-                         WHERE id = ? AND status = \'Assigned\''
+                             schedule_notified_at = NULL, schedule_notification_hash = NULL,
+                             client_schedule_response = 'pending', client_schedule_response_note = NULL,
+                             client_schedule_preferred_at = NULL, client_schedule_responded_at = NULL,
+                             client_schedule_token_hash = ?, client_schedule_token_expires_at = DATE_ADD(NOW(), INTERVAL 14 DAY),
+                             engineer_schedule_response = 'pending', engineer_schedule_response_note = NULL,
+                             engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NULL,
+                             status = CASE WHEN status = 'Acknowledged' THEN 'Assigned' ELSE status END,
+                             acknowledged_at = CASE WHEN status = 'Acknowledged' THEN NULL ELSE acknowledged_at END
+                         WHERE id = ? AND status IN ('Assigned', 'Acknowledged')"
                     )
                     : $conn->prepare(
-                        "INSERT INTO site_inspections (inquiry_id, engineer_id, scheduled_at, site_notes, status, created_by)
-                         VALUES (?, ?, ?, ?, 'Assigned', ?)"
+                        "INSERT INTO site_inspections (inquiry_id, engineer_id, scheduled_at, site_notes, client_schedule_token_hash, client_schedule_token_expires_at, status, created_by)
+                         VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 14 DAY), 'Assigned', ?)"
                     );
             }
 
@@ -1274,9 +1283,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($error === '' && $hasScheduleChanges && $stmt) {
                 $createdBy = (int)($_SESSION['user_id'] ?? 0);
                 if ($existingInspectionId > 0) {
-                    $stmt->bind_param('issi', $engineerId, $scheduleValue, $siteNotes, $existingInspectionId);
+                    $stmt->bind_param('isssi', $engineerId, $scheduleValue, $siteNotes, $clientScheduleTokenHash, $existingInspectionId);
                 } else {
-                    $stmt->bind_param('iissi', $inquiryId, $engineerId, $scheduleValue, $siteNotes, $createdBy);
+                    $stmt->bind_param('iisssi', $inquiryId, $engineerId, $scheduleValue, $siteNotes, $clientScheduleTokenHash, $createdBy);
                 }
                 if ($stmt->execute()) {
                     $savedInspectionId = $existingInspectionId > 0 ? $existingInspectionId : (int)$conn->insert_id;
@@ -1359,6 +1368,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ], static fn(string $value): bool => $value !== '');
                     $siteAddress = implode(', ', $siteAddressParts);
                     $scheduleForEmail = $scheduleDateTime->format('l, F j, Y, g:i A') . ' (PHT)';
+                    $clientScheduleLink = $clientScheduleToken !== '' ? site_inspection_schedule_public_link($clientScheduleToken) : '';
+                    $isScheduleUpdate = $existingInspectionId > 0 && $hasScheduleChanges;
 
                     // Para lang ito sa unang assignment. Walang reschedule notification dito.
                     if ($existingInspectionId <= 0 && $savedInspectionId > 0 && $notificationInquiry && $notificationEngineer) {
@@ -1392,7 +1403,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $scheduleForEmail,
                             $engineerName,
                             $siteAddress !== '' ? $siteAddress : 'Site address not set',
-                            $siteNotes
+                            $siteNotes,
+                            $clientScheduleLink,
+                            $isScheduleUpdate
                         );
                         if ($clientEmailSent) {
                             $markClient = $conn->prepare('UPDATE site_inspections SET client_schedule_notified_at = NOW() WHERE id = ? AND client_schedule_notified_at IS NULL');
@@ -1414,7 +1427,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $siteAddress !== '' ? $siteAddress : 'Site address not set',
                             trim((string)($notificationInquiry['contact_no'] ?? '')),
                             $clientEmail,
-                            $siteNotes
+                            $siteNotes,
+                            $isScheduleUpdate,
+                            '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $savedInspectionId
                         );
                         if ($engineerEmailSent) {
                             $markEngineer = $conn->prepare('UPDATE site_inspections SET engineer_schedule_notified_at = NOW() WHERE id = ? AND engineer_schedule_notified_at IS NULL');
@@ -1423,6 +1438,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $markEngineer->execute();
                             }
                         }
+                    }
+
+                    if ($isScheduleUpdate && $notificationEngineer && $notificationInquiry) {
+                        user_notifications_create_if_missing(
+                            $conn,
+                            $engineerId,
+                            'site_inspection_schedule_updated',
+                            $savedInspectionId,
+                            'Inspection Schedule Updated',
+                            'Client: ' . ($clientName !== '' ? $clientName : 'Client') . ' • New schedule: ' . $scheduleForEmail . ($siteNotes !== '' ? ' • Notes: ' . mb_strimwidth($siteNotes, 0, 80, '…') : ''),
+                            '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $savedInspectionId,
+                            'site_inspection_schedule_updated:' . $engineerId . ':' . $savedInspectionId . ':' . $notificationHash
+                        );
                     }
 
                     $notificationMarked = false;
@@ -1740,6 +1768,14 @@ $inspectionResult = $conn->query(
         si.engineer_schedule_notified_at,
         si.schedule_notified_at,
         si.schedule_notification_hash,
+        si.client_schedule_response,
+        si.client_schedule_response_note,
+        si.client_schedule_preferred_at,
+        si.client_schedule_responded_at,
+        si.engineer_schedule_response,
+        si.engineer_schedule_response_note,
+        si.engineer_schedule_preferred_at,
+        si.engineer_schedule_responded_at,
         si.status,
         si.created_at,
         si.acknowledged_at,
@@ -2282,6 +2318,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </label>
                                             <div class="inquiry-review-actions inquiry-review-form__actions">
                                                 <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Review</button>
+                                            </div>
+                                            <div class="inquiry-details-grid">
+                                                <div class="inquiry-detail"><span>Client Schedule Response</span><strong><?php echo htmlspecialchars(site_inspection_schedule_response_label((string)($latestInspection['client_schedule_response'] ?? 'pending')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                <div class="inquiry-detail"><span>Engineer Schedule Response</span><strong><?php echo htmlspecialchars(site_inspection_schedule_response_label((string)($latestInspection['engineer_schedule_response'] ?? 'pending')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                <?php if (!empty($latestInspection['client_schedule_response_note'])): ?><div class="inquiry-detail inquiry-detail--wide"><span>Client Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['client_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div><?php endif; ?>
+                                                <?php if (!empty($latestInspection['engineer_schedule_response_note'])): ?><div class="inquiry-detail inquiry-detail--wide"><span>Engineer Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div><?php endif; ?>
                                             </div>
                                         </form>
                                     <?php endif; ?>

@@ -1,4 +1,24 @@
 <?php
+
+function site_inspection_schedule_token_hash(string $token): string
+{
+    return hash('sha256', $token);
+}
+
+function site_inspection_schedule_public_link(string $token): string
+{
+    $appUrl = rtrim((string)Config::getInstance()->get('APP_URL', 'http://localhost/codesamplecaps'), '/');
+    return $appUrl . '/LOGIN/php/inspection_schedule.php?token=' . urlencode($token);
+}
+
+function site_inspection_schedule_response_label(string $response): string
+{
+    return match ($response) {
+        'confirmed' => 'Confirmed',
+        'reschedule_requested' => 'Reschedule Requested',
+        default => 'Pending',
+    };
+}
 // Shared Site Inspection helpers para hindi duplicate sa Admin at Engineer.
 
 if (!function_exists('site_inspection_format_datetime')) {

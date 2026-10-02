@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/site_inspections.php';
 require_once __DIR__ . '/../../config/audit_log.php';
+require_once __DIR__ . '/../../config/user_notifications.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 require_once __DIR__ . '/../includes/engineer_helpers.php';
 
@@ -192,7 +193,7 @@ function engineer_owns_inspection(mysqli $conn, int $inspectionId, int $engineer
 function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $engineerId): array
 {
     $stmt = $conn->prepare(
-        'SELECT status, admin_review_status, admin_remarks, submitted_at
+        'SELECT status, admin_review_status, admin_remarks, submitted_at, client_schedule_response, engineer_schedule_response
          FROM site_inspections
          WHERE id = ? AND engineer_id = ?
          LIMIT 1'
@@ -210,6 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inspectionId = (int)($_POST['inspection_id'] ?? 0);
     $costingAction = (string)($_POST['costing_action'] ?? 'save_draft');
     $workflowAction = (string)($_POST['workflow_action'] ?? '');
+    $scheduleResponseAction = (string)($_POST['schedule_response_action'] ?? '');
     $workflowTargets = [
         'acknowledge' => 'Acknowledged',
         'start' => 'Ongoing',
@@ -225,11 +227,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid request. Please try again.';
     } elseif ($inspectionId <= 0 || !engineer_owns_inspection($conn, $inspectionId, $userId)) {
         $error = 'Inspection not found.';
+    } elseif ($scheduleResponseAction === 'request_reschedule') {
+        $reason = trim((string)($_POST['schedule_response_note'] ?? ''));
+        $preferredDate = trim((string)($_POST['schedule_preferred_date'] ?? ''));
+        $preferredTime = trim((string)($_POST['schedule_preferred_time'] ?? ''));
+        $preferredAt = ($preferredDate !== '' && $preferredTime !== '') ? $preferredDate . ' ' . $preferredTime . ':00' : null;
+        if (in_array($currentStatus, ['Ongoing', 'Completed', 'Submitted'], true) || mb_strlen($reason) < 5) {
+            $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
+        } else {
+            $update = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'reschedule_requested', engineer_schedule_response_note = ?, engineer_schedule_preferred_at = ?, engineer_schedule_responded_at = NOW(), status = 'Assigned', acknowledged_at = NULL WHERE id = ? AND engineer_id = ?");
+            if ($update) {
+                $update->bind_param('ssii', $reason, $preferredAt, $inspectionId, $userId);
+                $update->execute();
+                $noticeStmt = $conn->prepare('SELECT si.created_by, si.inquiry_id, si.scheduled_at, s.client_name FROM site_inspections si JOIN service_inquiries s ON s.id = si.inquiry_id WHERE si.id = ? LIMIT 1');
+                if ($noticeStmt) {
+                    $noticeStmt->bind_param('i', $inspectionId);
+                    $noticeStmt->execute();
+                    $notice = $noticeStmt->get_result()->fetch_assoc() ?: [];
+                    user_notifications_create_if_missing($conn, (int)($notice['created_by'] ?? 0), 'engineer_inspection_reschedule_requested', $inspectionId, 'Engineer Requested Inspection Reschedule', 'Engineer requested a schedule change. Reason: ' . mb_strimwidth($reason, 0, 90, '…'), '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . (int)($notice['inquiry_id'] ?? 0) . '&tab=inspection', 'engineer_inspection_reschedule:' . $inspectionId . ':' . hash('sha256', (string)($notice['scheduled_at'] ?? '') . $reason));
+                }
+                $message = 'Reschedule request sent to Admin.';
+            }
+        }
     } elseif ($workflowAction !== '') {
         $targetStatus = $workflowTargets[$workflowAction] ?? '';
         if ($targetStatus === '' || !site_inspection_can_transition($currentStatus, $targetStatus)) {
             $error = 'Invalid inspection status change. Please refresh the page.';
+        } elseif ($workflowAction === 'start' && (string)($inspectionState['client_schedule_response'] ?? '') === 'reschedule_requested') {
+            $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
+        } elseif ($workflowAction === 'start' && (string)($inspectionState['engineer_schedule_response'] ?? '') === 'reschedule_requested') {
+            $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
         } elseif (site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
+            if ($workflowAction === 'acknowledge') {
+                $confirmSchedule = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'confirmed', engineer_schedule_response_note = NULL, engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NOW() WHERE id = ? AND engineer_id = ?");
+                if ($confirmSchedule) { $confirmSchedule->bind_param('ii', $inspectionId, $userId); $confirmSchedule->execute(); }
+            }
             $message = match ($targetStatus) {
                 'Acknowledged' => 'Assignment acknowledged.',
                 'Ongoing' => 'Site inspection started.',
@@ -600,6 +632,8 @@ $stmt = $conn->prepare(
         si.scheduled_at,
         si.site_notes,
         si.status,
+        si.client_schedule_response,
+        si.engineer_schedule_response,
         si.acknowledged_at,
         si.started_at,
         si.completed_at,
@@ -791,6 +825,21 @@ require __DIR__ . '/../layout/header.php';
                                             <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                         </button>
                                     </form>
+                                <?php endif; ?>
+
+                                <?php if (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)): ?>
+                                    <details class="inspection-schedule-response">
+                                        <summary>Request Reschedule</summary>
+                                        <form method="POST">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                            <input type="hidden" name="schedule_response_action" value="request_reschedule">
+                                            <label>Reason<textarea name="schedule_response_note" required minlength="5"></textarea></label>
+                                            <label>Preferred Date<input type="date" name="schedule_preferred_date"></label>
+                                            <label>Preferred Time<input type="time" name="schedule_preferred_time"></label>
+                                            <button type="submit" class="btn-secondary">Send Reschedule Request</button>
+                                        </form>
+                                    </details>
                                 <?php endif; ?>
 
                                 <form method="POST" class="inspection-costing-form" data-costing-form>

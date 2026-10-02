@@ -21,6 +21,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const cancelButton = modalElement.querySelector('[data-schedule-modal-cancel]');
         const primaryButton = modalElement.querySelector('[data-schedule-modal-primary]');
         const backdrop = modalElement.querySelector('[data-schedule-modal-backdrop]');
+        if (!dialog || !title || !message || !closeButton || !cancelButton || !primaryButton || !backdrop) {
+            return {
+                confirm: function (options) {
+                    if (typeof options.onCancel === 'function') options.onCancel();
+                },
+                notify: function () {},
+                setSubmitting: function () {},
+                close: function () {},
+            };
+        }
         let activeModal = null;
 
         const getFocusable = function () {

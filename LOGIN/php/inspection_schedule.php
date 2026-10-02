@@ -198,7 +198,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
     <?php endif; ?>
 </section></main>
 <div class="schedule-modal" data-schedule-modal hidden>
-    <div class="schedule-modal__backdrop" data-schedule-modal-backdrop></div>
+    <div class="schedule-modal__backdrop" data-schedule-modal-backdrop aria-hidden="true"></div>
     <section class="schedule-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle" aria-describedby="scheduleModalMessage" tabindex="-1">
         <button type="button" class="schedule-modal__close" data-schedule-modal-close aria-label="Close">&times;</button>
         <h2 id="scheduleModalTitle" data-schedule-modal-title></h2>

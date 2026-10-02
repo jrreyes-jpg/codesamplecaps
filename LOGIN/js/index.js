@@ -1063,10 +1063,14 @@ const restoreInquiryDraft = () => {
             saveInquiryDraft();
         });
 
-        inquiryForm.querySelector('textarea[name="description"]')?.addEventListener('input', (event) => {
-            validateMeaningfulTextField(event.currentTarget, 'Project Description');
+        const projectDescriptionInput = inquiryForm.querySelector('textarea[name="description"]');
+        projectDescriptionInput?.addEventListener('input', (event) => {
+            clearFieldError(event.currentTarget);
             clearFormMessageIfReady();
             saveInquiryDraft();
+        });
+        projectDescriptionInput?.addEventListener('blur', (event) => {
+            validateMeaningfulTextField(event.currentTarget, 'Project Description');
         });
 
         inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {

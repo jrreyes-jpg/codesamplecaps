@@ -73,20 +73,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $date = trim((string)($_POST['preferred_date'] ?? ''));
     $time = trim((string)($_POST['preferred_time'] ?? ''));
     $timeZone = new DateTimeZone('Asia/Manila');
-    if ($note === '' || mb_strlen($note) < 5) $reply(false, 'Please enter a reason with at least 5 characters.');
+    $meaningfulNote = preg_replace('/\s+/', '', $note) ?? '';
+    if ($note === '' || mb_strlen($meaningfulNote) < 5) $reply(false, 'Please enter a reason with at least 5 characters.');
     if (mb_strlen($note) > 2000) $reply(false, 'Please keep the reason under 2000 characters.');
-    if (($date !== '') !== ($time !== '')) $reply(false, 'Please provide both a preferred date and time, or leave both blank.');
+    if ($date === '' || $time === '') $reply(false, 'Please choose both a preferred date and time.');
 
-    $preferred = null;
-    if ($date !== '') {
-        $preferredDateTime = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, $timeZone);
-        $dateErrors = DateTimeImmutable::getLastErrors();
-        $hasDateErrors = is_array($dateErrors) && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0);
-        if (!$preferredDateTime || $hasDateErrors || $preferredDateTime < new DateTimeImmutable('today', $timeZone)) {
-            $reply(false, 'Please choose a valid preferred date that is not in the past.');
-        }
-        $preferred = $preferredDateTime->format('Y-m-d H:i:s');
+    $allowedPreferredTimes = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+    if (!in_array($time, $allowedPreferredTimes, true)) $reply(false, 'Please choose a valid preferred time.');
+    $preferredDateTime = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, $timeZone);
+    $dateErrors = DateTimeImmutable::getLastErrors();
+    $hasDateErrors = is_array($dateErrors) && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0);
+    if (!$preferredDateTime || $hasDateErrors || $preferredDateTime <= new DateTimeImmutable('now', $timeZone)) {
+        $reply(false, 'Please choose a future preferred date and time.');
     }
+    $preferred = $preferredDateTime->format('Y-m-d H:i:s');
 
     $update = $conn->prepare(
         "UPDATE site_inspections
@@ -155,7 +155,33 @@ $siteAddress = $inspection ? implode(', ', array_filter([
         <?php else: ?>
             <section class="schedule-actions"><p>Please confirm the official date and time, or ask Admin to reschedule it.</p>
                 <form method="post" class="schedule-action-form" data-schedule-action-form><input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>"><button name="action" value="confirm" type="submit" class="schedule-button schedule-button--primary">Confirm Schedule</button></form>
-                <details class="schedule-reschedule"><summary>Request Reschedule</summary><form method="post" class="schedule-reschedule-form" data-schedule-reschedule-form novalidate><input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="action" value="request_reschedule"><label>Reason <span aria-hidden="true">*</span><textarea name="reason" required minlength="5" maxlength="2000" aria-describedby="scheduleReasonError"></textarea><small id="scheduleReasonError" data-field-error="reason"></small></label><div class="schedule-reschedule-form__dates"><label>Preferred Date <input type="date" name="preferred_date" min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" aria-describedby="scheduleDateError"><small id="scheduleDateError" data-field-error="preferred_date"></small></label><label>Preferred Time <input type="time" name="preferred_time" aria-describedby="scheduleTimeError"><small id="scheduleTimeError" data-field-error="preferred_time"></small></label></div><button type="submit" class="schedule-button schedule-button--secondary">Send Request</button></form></details>
+                <details class="schedule-reschedule">
+                    <summary>Request Reschedule</summary>
+                    <form method="post" class="schedule-reschedule-form" data-schedule-reschedule-form novalidate>
+                        <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="action" value="request_reschedule">
+                        <label>Reason <span aria-hidden="true">*</span>
+                            <textarea name="reason" required minlength="5" maxlength="2000" aria-describedby="scheduleReasonError"></textarea>
+                            <small id="scheduleReasonError" data-field-error="reason"></small>
+                        </label>
+                        <div class="schedule-reschedule-form__dates">
+                            <label>Preferred Date <span aria-hidden="true">*</span>
+                                <input type="date" name="preferred_date" required min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" aria-describedby="scheduleDateError">
+                                <small id="scheduleDateError" data-field-error="preferred_date"></small>
+                            </label>
+                            <label>Preferred Time <span aria-hidden="true">*</span>
+                                <select name="preferred_time" required aria-describedby="scheduleTimeError">
+                                    <option value="">Select time</option>
+                                    <?php foreach (['08:00' => '8:00 AM', '09:00' => '9:00 AM', '10:00' => '10:00 AM', '11:00' => '11:00 AM', '13:00' => '1:00 PM', '14:00' => '2:00 PM', '15:00' => '3:00 PM', '16:00' => '4:00 PM', '17:00' => '5:00 PM'] as $timeValue => $timeLabel): ?>
+                                        <option value="<?php echo $timeValue; ?>"><?php echo $timeLabel; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small id="scheduleTimeError" data-field-error="preferred_time"></small>
+                            </label>
+                        </div>
+                        <button type="submit" class="schedule-button schedule-button--secondary">Send Request</button>
+                    </form>
+                </details>
             </section>
         <?php endif; ?>
     <?php endif; ?>

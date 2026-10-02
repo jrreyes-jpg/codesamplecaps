@@ -23,9 +23,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const value = function (type) { return parts.find(function (part) { return part.type === type; })?.value || ''; };
         const date = value('year') + '-' + value('month') + '-' + value('day');
         const time = value('hour') + ':' + value('minute') + ':' + value('second');
-        const timestamp = Date.parse(date + 'T' + time + '+08:00');
+const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
         // Pareho sa server: minuto lang ang base ng 1-hour lead time.
-        return { date: date, timestamp: timestamp - (timestamp % 60000) };
+        return { date: date, timestamp: manilaTimestamp - (manilaTimestamp % 60000)
+ };
     };
 
     const manilaNow = function () {

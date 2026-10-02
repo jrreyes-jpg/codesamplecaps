@@ -901,6 +901,26 @@
     color: #115e59 !important;
 }
 
+.inquiry-schedule-response[data-schedule-response="not_scheduled"] {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+}
+
+.inquiry-schedule-response[data-schedule-response="pending"] {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.inquiry-schedule-response[data-schedule-response="confirmed"] {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.inquiry-schedule-response[data-schedule-response="reschedule_requested"] {
+    background: #ffedd5 !important;
+    color: #9a3412 !important;
+}
+
 .inquiry-status-link {
     border: 1px solid transparent;
     text-decoration: none;

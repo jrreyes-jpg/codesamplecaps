@@ -2319,12 +2319,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <div class="inquiry-review-actions inquiry-review-form__actions">
                                                 <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Review</button>
                                             </div>
-                                            <div class="inquiry-details-grid">
-                                                <div class="inquiry-detail"><span>Client Schedule Response</span><strong><?php echo htmlspecialchars(site_inspection_schedule_response_label((string)($latestInspection['client_schedule_response'] ?? 'pending')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                <div class="inquiry-detail"><span>Engineer Schedule Response</span><strong><?php echo htmlspecialchars(site_inspection_schedule_response_label((string)($latestInspection['engineer_schedule_response'] ?? 'pending')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                <?php if (!empty($latestInspection['client_schedule_response_note'])): ?><div class="inquiry-detail inquiry-detail--wide"><span>Client Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['client_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div><?php endif; ?>
-                                                <?php if (!empty($latestInspection['engineer_schedule_response_note'])): ?><div class="inquiry-detail inquiry-detail--wide"><span>Engineer Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div><?php endif; ?>
-                                            </div>
                                         </form>
                                     <?php endif; ?>
 
@@ -2339,6 +2333,37 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
                                     <div class="inquiry-section-title">Inspection</div>
+                                    <?php
+                                    $hasOfficialInspectionSchedule = $latestInspection && !empty($latestInspection['scheduled_at']);
+                                    $clientScheduleResponse = $hasOfficialInspectionSchedule
+                                        ? (string)($latestInspection['client_schedule_response'] ?? 'pending')
+                                        : 'not_scheduled';
+                                    $engineerScheduleResponse = $hasOfficialInspectionSchedule
+                                        ? (string)($latestInspection['engineer_schedule_response'] ?? 'pending')
+                                        : 'not_scheduled';
+                                    $clientScheduleResponseLabel = $clientScheduleResponse === 'not_scheduled'
+                                        ? 'Not Scheduled'
+                                        : site_inspection_schedule_response_label($clientScheduleResponse);
+                                    $engineerScheduleResponseLabel = $engineerScheduleResponse === 'not_scheduled'
+                                        ? 'Not Scheduled'
+                                        : site_inspection_schedule_response_label($engineerScheduleResponse);
+                                    ?>
+                                    <div class="inquiry-details-grid inquiry-schedule-responses">
+                                        <div class="inquiry-detail">
+                                            <span>Client Schedule Response</span>
+                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                        </div>
+                                        <div class="inquiry-detail">
+                                            <span>Engineer Schedule Response</span>
+                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response="<?php echo htmlspecialchars($engineerScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($engineerScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                        </div>
+                                        <?php if ($hasOfficialInspectionSchedule && !empty($latestInspection['client_schedule_response_note'])): ?>
+                                            <div class="inquiry-detail inquiry-detail--wide"><span>Client Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['client_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <?php endif; ?>
+                                        <?php if ($hasOfficialInspectionSchedule && !empty($latestInspection['engineer_schedule_response_note'])): ?>
+                                            <div class="inquiry-detail inquiry-detail--wide"><span>Engineer Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <?php endif; ?>
+                                    </div>
                                     <?php if ($latestInspection): ?>
                                         <?php
                                         $latestInspectionStatus = (string)($latestInspection['status'] ?? 'Assigned');

@@ -140,9 +140,8 @@ $siteAddress = $inspection ? implode(', ', array_filter([
     <?php if (!$inspection): ?>
         <p class="schedule-alert schedule-alert--error" role="alert">This schedule link is invalid or expired.</p>
     <?php else: ?>
-        <div class="schedule-live-message" aria-live="polite" data-schedule-live-message hidden></div>
-        <?php if ($message): ?><p class="schedule-alert schedule-alert--success" role="status"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-        <?php if ($error): ?><p class="schedule-alert schedule-alert--error" role="alert"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+        <?php if ($message): ?><p class="schedule-alert schedule-alert--success" role="status" data-schedule-server-message data-schedule-message-type="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+        <?php if ($error): ?><p class="schedule-alert schedule-alert--error" role="alert" data-schedule-server-message data-schedule-message-type="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
         <section class="schedule-details" aria-label="Inspection details">
             <div><span>Client</span><strong><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
             <div><span>Service</span><strong><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
@@ -160,7 +159,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
             <section class="schedule-actions"><p>Please confirm the official date and time, or ask Admin to reschedule it.</p>
                 <form method="post" class="schedule-action-form" data-schedule-action-form><input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>"><button name="action" value="confirm" type="submit" class="schedule-button schedule-button--primary">Confirm Schedule</button></form>
                 <details class="schedule-reschedule">
-                    <summary>Request a Schedule Change</summary>
+                    <summary class="schedule-button schedule-button--secondary schedule-reschedule__toggle">Request a Schedule Change</summary>
                     <form method="post" class="schedule-reschedule-form" data-schedule-reschedule-form novalidate>
                         <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="request_reschedule">
@@ -197,4 +196,17 @@ $siteAddress = $inspection ? implode(', ', array_filter([
             </section>
         <?php endif; ?>
     <?php endif; ?>
-</section></main><script src="../js/inspection_schedule.js"></script></body></html>
+</section></main>
+<div class="schedule-modal" data-schedule-modal hidden>
+    <div class="schedule-modal__backdrop" data-schedule-modal-backdrop></div>
+    <section class="schedule-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle" aria-describedby="scheduleModalMessage" tabindex="-1">
+        <button type="button" class="schedule-modal__close" data-schedule-modal-close aria-label="Close">&times;</button>
+        <h2 id="scheduleModalTitle" data-schedule-modal-title></h2>
+        <p id="scheduleModalMessage" data-schedule-modal-message></p>
+        <div class="schedule-modal__actions">
+            <button type="button" class="schedule-modal__button schedule-modal__button--cancel" data-schedule-modal-cancel>Cancel</button>
+            <button type="button" class="schedule-modal__button schedule-modal__button--primary" data-schedule-modal-primary>Confirm</button>
+        </div>
+    </section>
+</div>
+<script src="../js/inspection_schedule.js"></script></body></html>

@@ -9,6 +9,7 @@ body {
     color: #1e293b;
     font-family: "Segoe UI", Arial, sans-serif;
 }
+body.is-schedule-modal-open { overflow: hidden; }
 
 .schedule-page {
     min-height: 100vh;
@@ -40,8 +41,7 @@ body {
 .schedule-details,
 .schedule-actions,
 .schedule-response-state,
-.schedule-alert,
-.schedule-live-message { margin: 22px 28px; }
+.schedule-alert { margin: 22px 28px; }
 
 .schedule-details {
     display: grid;
@@ -86,7 +86,11 @@ body {
 .schedule-button--secondary { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
 
 .schedule-reschedule { border-top: 1px solid #e2e8f0; padding-top: 14px; }
-.schedule-reschedule summary { width: fit-content; cursor: pointer; color: #9a3412; font-weight: 800; }
+.schedule-reschedule summary { list-style: none; }
+.schedule-reschedule summary::-webkit-details-marker { display: none; }
+.schedule-reschedule__toggle { display: flex; align-items: center; justify-content: space-between; }
+.schedule-reschedule__toggle::after { content: '+'; font-size: 1.25rem; line-height: 1; }
+.schedule-reschedule[open] .schedule-reschedule__toggle::after { content: '−'; }
 .schedule-reschedule-form { display: grid; gap: 13px; padding-top: 14px; }
 .schedule-reschedule-form__description { margin: 0; color: #475569; font-size: .88rem; line-height: 1.5; }
 .schedule-reschedule-form label { display: grid; gap: 6px; color: #334155; font-size: .88rem; font-weight: 800; }
@@ -117,12 +121,27 @@ body {
 .schedule-response-state--reschedule p { color: #9a3412; }
 .schedule-response-state__note { font-size: .9rem; }
 
-.schedule-alert,
-.schedule-live-message { border-radius: 10px; padding: 12px 14px; font-weight: 700; line-height: 1.42; }
+.schedule-alert { border-radius: 10px; padding: 12px 14px; font-weight: 700; line-height: 1.42; }
 .schedule-alert--success,
-.schedule-live-message.is-success { background: #dcfce7; color: #166534; }
+.schedule-alert--success { background: #dcfce7; color: #166534; }
 .schedule-alert--error,
-.schedule-live-message.is-error { background: #fee2e2; color: #991b1b; }
+.schedule-alert--error { background: #fee2e2; color: #991b1b; }
+
+.schedule-modal { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 16px; }
+.schedule-modal__backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, .58); }
+.schedule-modal__dialog { position: relative; width: min(100%, 470px); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid #dbe5df; border-radius: 16px; padding: 26px; background: #fff; box-shadow: 0 22px 55px rgba(15, 23, 42, .25); }
+.schedule-modal__dialog h2 { margin: 0 36px 10px 0; color: #14532d; font-size: 1.22rem; line-height: 1.3; }
+.schedule-modal__dialog p { margin: 0; color: #475569; line-height: 1.55; }
+.schedule-modal__close { position: absolute; top: 13px; right: 13px; display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 8px; background: #f1f5f9; color: #334155; font-size: 1.35rem; line-height: 1; cursor: pointer; }
+.schedule-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.schedule-modal__button { min-height: 42px; border: 1px solid transparent; border-radius: 8px; padding: 9px 14px; font: inherit; font-weight: 800; cursor: pointer; }
+.schedule-modal__button--cancel { border-color: #cbd5e1; background: #fff; color: #334155; }
+.schedule-modal__button--primary { background: #166534; color: #fff; }
+.schedule-modal__button--primary.is-error { background: #b91c1c; }
+.schedule-modal__close:focus-visible,
+.schedule-modal__button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.schedule-modal__close:disabled,
+.schedule-modal__button:disabled { cursor: wait; opacity: .72; }
 
 @media (max-width: 560px) {
     .schedule-page { align-items: start; padding: 16px 12px; }
@@ -130,14 +149,16 @@ body {
     .schedule-details,
     .schedule-actions,
     .schedule-response-state,
-    .schedule-alert,
-    .schedule-live-message { margin-inline: 18px; }
+    .schedule-alert { margin-inline: 18px; }
     .schedule-details,
     .schedule-reschedule-form__dates { grid-template-columns: 1fr; }
     .schedule-details > div,
     .schedule-details > div:nth-child(odd) { border-right: 0; border-bottom: 1px solid #e2e8f0; }
     .schedule-details > div:last-child { border-bottom: 0; }
     .schedule-reschedule-form__dates { gap: 0; }
+    .schedule-modal__dialog { padding: 22px 18px; }
+    .schedule-modal__actions { flex-direction: column-reverse; }
+    .schedule-modal__button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

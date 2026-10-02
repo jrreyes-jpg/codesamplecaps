@@ -1,12 +1,114 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const liveMessage = document.querySelector('[data-schedule-live-message]');
     const forms = document.querySelectorAll('[data-schedule-action-form], [data-schedule-reschedule-form]');
+    const modalElement = document.querySelector('[data-schedule-modal]');
 
-    const showMessage = function (message, type) {
-        if (!liveMessage) return;
-        liveMessage.textContent = message;
-        liveMessage.className = 'schedule-live-message is-' + type;
-        liveMessage.hidden = false;
+    const scheduleModal = (function () {
+        if (!modalElement) {
+            return {
+                confirm: function (options) {
+                    if (typeof options.onCancel === 'function') options.onCancel();
+                },
+                notify: function () {},
+                setSubmitting: function () {},
+                close: function () {},
+            };
+        }
+
+        const dialog = modalElement.querySelector('.schedule-modal__dialog');
+        const title = modalElement.querySelector('[data-schedule-modal-title]');
+        const message = modalElement.querySelector('[data-schedule-modal-message]');
+        const closeButton = modalElement.querySelector('[data-schedule-modal-close]');
+        const cancelButton = modalElement.querySelector('[data-schedule-modal-cancel]');
+        const primaryButton = modalElement.querySelector('[data-schedule-modal-primary]');
+        const backdrop = modalElement.querySelector('[data-schedule-modal-backdrop]');
+        let activeModal = null;
+
+        const getFocusable = function () {
+            return Array.from(dialog.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+        };
+
+        const close = function (isCancelled, forceClose) {
+            if (!activeModal || (activeModal.submitting && !forceClose)) return;
+            const currentModal = activeModal;
+            activeModal = null;
+            modalElement.hidden = true;
+            document.body.classList.remove('is-schedule-modal-open');
+            if (isCancelled && typeof currentModal.onCancel === 'function') currentModal.onCancel();
+            if (currentModal.trigger && typeof currentModal.trigger.focus === 'function') currentModal.trigger.focus();
+        };
+
+        const open = function (options) {
+            activeModal = {
+                trigger: options.trigger || document.activeElement,
+                onConfirm: options.onConfirm || null,
+                onCancel: options.onCancel || null,
+                submitting: false,
+                isNotification: Boolean(options.isNotification),
+            };
+            title.textContent = options.title;
+            message.textContent = options.message;
+            primaryButton.textContent = options.primaryLabel || 'Close';
+            primaryButton.className = 'schedule-modal__button schedule-modal__button--primary' + (options.tone === 'error' ? ' is-error' : '');
+            cancelButton.hidden = Boolean(options.isNotification);
+            closeButton.disabled = false;
+            cancelButton.disabled = false;
+            primaryButton.disabled = false;
+            modalElement.hidden = false;
+            document.body.classList.add('is-schedule-modal-open');
+            window.setTimeout(function () {
+                (options.isNotification ? primaryButton : primaryButton).focus();
+            }, 0);
+        };
+
+        primaryButton.addEventListener('click', function () {
+            if (!activeModal || activeModal.submitting) return;
+            if (activeModal.isNotification) {
+                close(false);
+                return;
+            }
+            activeModal.submitting = true;
+            if (typeof activeModal.onConfirm === 'function') activeModal.onConfirm();
+        });
+
+        closeButton.addEventListener('click', function () { close(true); });
+        cancelButton.addEventListener('click', function () { close(true); });
+        backdrop.addEventListener('click', function () { close(true); });
+        dialog.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close(true);
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const focusable = getFocusable();
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+
+        return {
+            confirm: function (options) { open(options); },
+            notify: function (options) { open(Object.assign({}, options, { isNotification: true, primaryLabel: 'Close' })); },
+            setSubmitting: function (label) {
+                if (!activeModal) return;
+                primaryButton.disabled = true;
+                primaryButton.textContent = label;
+                closeButton.disabled = true;
+                cancelButton.disabled = true;
+            },
+            close: function () { close(false, true); },
+        };
+    }());
+
+    const showErrorModal = function (message) {
+        scheduleModal.notify({ title: 'Submission Failed', message: message, tone: 'error' });
     };
 
     const setFieldError = function (field, message) {
@@ -117,7 +219,7 @@ const validateReason = function (reason) {
     const meaningfulLength = reason.value.replace(/\s+/g, '').length;
     const message = meaningfulLength >= 5
         ? ''
-        : 'Enter a reason with at least 5 characters.';
+        : 'Please provide at least 5 characters explaining your request.';
 
 setFieldError(reason, message);
     return message === '';
@@ -163,7 +265,7 @@ setFieldError(reason, message);
         const time = form.elements.preferred_time;
         const hasSubmitAttempt = function () { return form.dataset.submitAttempted === '1'; };
         refreshTimeOptions(form);
-        reason.addEventListener('input', function () { validateReason(reason); });
+        reason.addEventListener('blur', function () { validateReason(reason); });
         date.addEventListener('change', function () {
             refreshTimeOptions(form);
             // Date change lang ito. Error ay lalabas lang sa Submit.
@@ -176,10 +278,63 @@ setFieldError(reason, message);
         window.setInterval(function () { refreshTimeOptions(form); }, 60000);
     });
 
+    const submitResponse = function (form, action, button, originalLabel) {
+if (form.elements.reason) {
+    form.elements.reason.value = form.elements.reason.value.trim();
+}
+
+const payload = new FormData(form);
+        if (!payload.has('action')) payload.set('action', action);
+        form.dataset.submitting = '1';
+        scheduleModal.setSubmitting(action === 'request_reschedule' ? 'Submitting...' : 'Confirming...');
+        if (button) {
+            button.disabled = true;
+            button.textContent = action === 'request_reschedule' ? 'Sending Request...' : 'Confirming...';
+        }
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            body: payload,
+            credentials: 'same-origin',
+        })
+            .then(function (response) {
+                return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.data.success) throw new Error(result.data.message || 'Unable to save your response.');
+                scheduleModal.close();
+                const actionArea = form.closest('.schedule-actions');
+                if (!actionArea) return;
+                actionArea.className = 'schedule-response-state ' + (action === 'request_reschedule' ? 'schedule-response-state--reschedule' : 'schedule-response-state--confirmed');
+                const title = document.createElement('strong');
+                const text = document.createElement('p');
+                title.textContent = action === 'request_reschedule' ? 'Request Submitted' : 'Schedule Confirmed';
+                text.textContent = action === 'request_reschedule'
+                    ? 'Your reschedule request has been sent to Admin. Your current inspection schedule remains unchanged while your request is being reviewed.'
+                    : 'Your response has been recorded.';
+                actionArea.replaceChildren(title, text);
+            })
+            .catch(function (error) {
+                const isNetworkError = error instanceof TypeError || error instanceof SyntaxError;
+                delete form.dataset.submitting;
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = originalLabel;
+                }
+                scheduleModal.close();
+                showErrorModal(
+                    isNetworkError
+                        ? 'Unable to submit your request. Please check your internet connection and try again.'
+                        : (error.message || 'Unable to save your response. Please try again.')
+                );
+            });
+    };
+
     forms.forEach(function (form) {
         form.addEventListener('submit', function (event) {
             event.preventDefault();
-            if (form.dataset.submitting === '1') return;
+            if (form.dataset.submitting === '1' || form.dataset.confirming === '1') return;
             if (form.matches('[data-schedule-reschedule-form]')) {
                 form.dataset.submitAttempted = '1';
                 if (!validateReschedule(form, true)) return;
@@ -188,49 +343,30 @@ setFieldError(reason, message);
             const button = form.querySelector('button[type="submit"]');
             const originalLabel = button?.textContent || '';
             const action = String(form.elements.action?.value || 'confirm');
-if (form.elements.reason) {
-    form.elements.reason.value = form.elements.reason.value.trim();
-}
-
-const payload = new FormData(form);
-            if (!payload.has('action')) payload.set('action', action);
-            form.dataset.submitting = '1';
-            if (button) {
-                button.disabled = true;
-                button.textContent = action === 'request_reschedule' ? 'Sending Request...' : 'Confirming...';
-            }
-
-            fetch(window.location.href, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
-                body: payload,
-                credentials: 'same-origin',
-            })
-                .then(function (response) {
-                    return response.json().then(function (data) { return { ok: response.ok, data: data }; });
-                })
-                .then(function (result) {
-                    if (!result.ok || !result.data.success) throw new Error(result.data.message || 'Unable to save your response.');
-                    showMessage(result.data.message, 'success');
-                    const actionArea = form.closest('.schedule-actions');
-                    if (!actionArea) return;
-                    actionArea.className = 'schedule-response-state ' + (action === 'request_reschedule' ? 'schedule-response-state--reschedule' : 'schedule-response-state--confirmed');
-                    const title = document.createElement('strong');
-                    const text = document.createElement('p');
-                    title.textContent = action === 'request_reschedule' ? 'Request Submitted' : 'Schedule Confirmed';
-                    text.textContent = action === 'request_reschedule'
-                        ? 'Your reschedule request has been sent to Admin. Your current inspection schedule remains unchanged while your request is being reviewed.'
-                        : 'Your response has been recorded.';
-                    actionArea.replaceChildren(title, text);
-                })
-                .catch(function (error) {
-                    showMessage(error.message || 'Unable to save your response. Please try again.', 'error');
-                    delete form.dataset.submitting;
-                    if (button) {
-                        button.disabled = false;
-                        button.textContent = originalLabel;
-                    }
-                });
+            const isRescheduleRequest = action === 'request_reschedule';
+            form.dataset.confirming = '1';
+            scheduleModal.confirm({
+                title: isRescheduleRequest ? 'Submit Reschedule Request' : 'Confirm Inspection Schedule',
+                message: isRescheduleRequest
+                    ? 'Submit this reschedule request? Your current inspection schedule will remain unchanged while Admin reviews your request.'
+                    : 'Are you sure you want to confirm this inspection schedule? By continuing, you are confirming the official inspection date and time. This response cannot be changed through this link.',
+                primaryLabel: isRescheduleRequest ? 'Submit Request' : 'Confirm Schedule',
+                trigger: button,
+                onCancel: function () { delete form.dataset.confirming; },
+                onConfirm: function () {
+                    delete form.dataset.confirming;
+                    submitResponse(form, action, button, originalLabel);
+                },
+            });
         });
+    });
+
+    document.querySelectorAll('[data-schedule-server-message]').forEach(function (notice) {
+        scheduleModal.notify({
+            title: notice.dataset.scheduleMessageType === 'error' ? 'Schedule Update' : 'Schedule Updated',
+            message: notice.textContent.trim(),
+            tone: notice.dataset.scheduleMessageType === 'error' ? 'error' : 'success',
+        });
+        notice.hidden = true;
     });
 });

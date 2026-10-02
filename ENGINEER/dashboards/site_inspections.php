@@ -1,4 +1,15 @@
 <?php
+require_once __DIR__ . '/../../config/auth_middleware.php';
+auth_start_session();
+$requestedInspectionId = filter_var($_GET['inspection_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+if (!auth_session_is_valid_for_roles(['engineer'])) {
+    $loginQuery = ['return_to' => 'engineer_inspection'];
+    if ($requestedInspectionId !== false) {
+        $loginQuery['inspection_id'] = (int)$requestedInspectionId;
+    }
+    auth_redirect_to_login($loginQuery);
+}
+
 define('AUTH_REQUIRED_ROLE', 'engineer');
 require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
@@ -676,6 +687,19 @@ if ($stmt) {
     while ($row = $result->fetch_assoc()) {
         $row['complete_site_address'] = engineer_inspection_complete_site_address($row);
         $inspections[] = $row;
+    }
+}
+
+if ($requestedInspectionId !== false && $error === '') {
+    $requestedInspectionFound = false;
+    foreach ($inspections as $inspection) {
+        if ((int)$inspection['id'] === (int)$requestedInspectionId) {
+            $requestedInspectionFound = true;
+            break;
+        }
+    }
+    if (!$requestedInspectionFound) {
+        $error = 'Inspection not found or not assigned to you.';
     }
 }
 

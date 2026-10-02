@@ -197,7 +197,7 @@ function inquiry_center_send_pending_schedule_notifications(mysqli $conn, int $i
 
     if (empty($inspection['engineer_schedule_notified_at']) && filter_var($engineerEmail, FILTER_VALIDATE_EMAIL)) {
         $engineerMailer = new EmailService();
-        if ($engineerMailer->sendInspectionScheduleEngineerAssignment($engineerEmail, $engineerName, $clientName, $service, $scheduleForEmail, $siteAddress ?: 'Site address not set', trim((string)($inquiry['contact_no'] ?? '')), $clientEmail, $siteNotes)) {
+        if ($engineerMailer->sendInspectionScheduleEngineerAssignment($engineerEmail, $engineerName, $clientName, $service, $scheduleForEmail, $siteAddress ?: 'Site address not set', trim((string)($inquiry['contact_no'] ?? '')), $clientEmail, $siteNotes, false, site_inspection_engineer_link($inspectionId))) {
             $markEngineer = $conn->prepare('UPDATE site_inspections SET engineer_schedule_notified_at = NOW() WHERE id = ? AND engineer_schedule_notified_at IS NULL');
             if ($markEngineer) { $markEngineer->bind_param('i', $inspectionId); $markEngineer->execute(); }
         }
@@ -1480,7 +1480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $clientEmail,
                             $siteNotes,
                             $isScheduleUpdate,
-                            '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $savedInspectionId
+                            site_inspection_engineer_link($savedInspectionId)
                         );
                         if ($engineerEmailSent) {
                             $markEngineer = $conn->prepare('UPDATE site_inspections SET engineer_schedule_notified_at = NOW() WHERE id = ? AND engineer_schedule_notified_at IS NULL');

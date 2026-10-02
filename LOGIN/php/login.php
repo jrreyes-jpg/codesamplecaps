@@ -39,6 +39,22 @@ function login_debug_log(string $event, array $context = []): void
     );
 }
 
+function login_engineer_inspection_return_path(?string $role): ?string
+{
+    $returnTo = (string)($_POST['return_to'] ?? $_GET['return_to'] ?? '');
+    $requestedInspectionId = $_POST['inspection_id'] ?? $_GET['inspection_id'] ?? null;
+    if ($role !== 'engineer' || $returnTo !== 'engineer_inspection') {
+        return null;
+    }
+
+    $inspectionId = filter_var($requestedInspectionId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($inspectionId === false) {
+        return null;
+    }
+
+    return '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . (int)$inspectionId;
+}
+
 function login_redirect_if_authenticated(mysqli $conn): void
 {
     $allowedRoles = ['super_admin', 'admin', 'inventory_clerk', 'engineer', 'foreman', 'client'];
@@ -74,6 +90,12 @@ function login_redirect_if_authenticated(mysqli $conn): void
     ) {
         auth_destroy_session();
         return;
+    }
+
+    $returnPath = login_engineer_inspection_return_path($sessionRole);
+    if ($returnPath !== null) {
+        header('Location: ' . $returnPath);
+        exit();
     }
 
     auth_redirect_authenticated_user();
@@ -367,7 +389,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             unset($_SESSION['login_flash'], $_SESSION['last_login_email']);
                             login_clear_remembered_email();
 
-                            $dashboardPath = auth_dashboard_path_for_role($user['role'] ?? null);
+                            $dashboardPath = login_engineer_inspection_return_path((string)($user['role'] ?? ''))
+                                ?? auth_dashboard_path_for_role($user['role'] ?? null);
                             if ($dashboardPath === null) {
                                 $error = 'Your account role is not allowed to access this system.';
                             } else {
@@ -493,6 +516,10 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
         <div class="right-panel">
             <div class="form active" id="loginForm">
                 <form method="POST" autocomplete="off">
+                    <?php if ((string)($_GET['return_to'] ?? '') === 'engineer_inspection' && filter_var($_GET['inspection_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false): ?>
+                        <input type="hidden" name="return_to" value="engineer_inspection">
+                        <input type="hidden" name="inspection_id" value="<?php echo (int)$_GET['inspection_id']; ?>">
+                    <?php endif; ?>
                     <div class="mobile-login-brand">
                         <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo">
                         <strong>EDGE Automation</strong>

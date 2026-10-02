@@ -11,6 +11,12 @@ function site_inspection_schedule_public_link(string $token): string
     return $appUrl . '/LOGIN/php/inspection_schedule.php?token=' . urlencode($token);
 }
 
+function site_inspection_engineer_link(int $inspectionId): string
+{
+    $appUrl = rtrim((string)Config::getInstance()->get('APP_URL', 'http://localhost/codesamplecaps'), '/');
+    return $appUrl . '/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $inspectionId;
+}
+
 function site_inspection_schedule_response_label(string $response): string
 {
     return match ($response) {

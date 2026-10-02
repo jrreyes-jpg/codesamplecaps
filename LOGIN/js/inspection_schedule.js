@@ -275,6 +275,7 @@ setFieldError(reason, message);
         const time = form.elements.preferred_time;
         const hasSubmitAttempt = function () { return form.dataset.submitAttempted === '1'; };
         refreshTimeOptions(form);
+        reason.addEventListener('input', function () { setFieldError(reason, ''); });
         reason.addEventListener('blur', function () { validateReason(reason); });
         date.addEventListener('change', function () {
             refreshTimeOptions(form);

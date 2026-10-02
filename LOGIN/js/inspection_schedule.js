@@ -113,13 +113,16 @@ const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
         return now;
     };
 
-    const validateReason = function (reason) {
-        reason.value = reason.value.trim();
-        const meaningfulLength = reason.value.replace(/\s+/g, '').length;
-        const message = meaningfulLength >= 5 ? '' : 'Enter a reason with at least 5 characters.';
-        setFieldError(reason, message);
-        return message === '';
-    };
+const validateReason = function (reason) {
+    const meaningfulLength = reason.value.replace(/\s+/g, '').length;
+    const message = meaningfulLength >= 5
+        ? ''
+        : 'Enter a reason with at least 5 characters.';
+
+setFieldError(reason, message);
+    return message === '';
+};
+
 
     const validateDateTime = function (form) {
         const date = form.elements.preferred_date;
@@ -185,7 +188,11 @@ const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
             const button = form.querySelector('button[type="submit"]');
             const originalLabel = button?.textContent || '';
             const action = String(form.elements.action?.value || 'confirm');
-            const payload = new FormData(form);
+if (form.elements.reason) {
+    form.elements.reason.value = form.elements.reason.value.trim();
+}
+
+const payload = new FormData(form);
             if (!payload.has('action')) payload.set('action', action);
             form.dataset.submitting = '1';
             if (button) {

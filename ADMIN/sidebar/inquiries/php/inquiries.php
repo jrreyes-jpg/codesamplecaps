@@ -1221,7 +1221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             && ($scheduleParseErrors === false || ($scheduleParseErrors['warning_count'] === 0 && $scheduleParseErrors['error_count'] === 0));
         $scheduleTimestamp = $isValidScheduleDateTime ? $scheduleDateTime->getTimestamp() : false;
         $scheduleTime = $isValidScheduleDateTime ? $scheduleDateTime->format('H:i') : '';
-        $allowedInspectionTimes = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+        $allowedInspectionTimes = array_keys(site_inspection_available_time_slots());
         $earliestSameDaySchedule = new DateTimeImmutable('now', $manilaTimezone);
         $earliestSameDaySchedule = $earliestSameDaySchedule->modify('+1 hour');
 
@@ -2599,7 +2599,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span>Inspection Time</span>
                                                     <select class="js-admin-inspection-time" name="inspection_time" required>
                                                         <option value="">Select time</option>
-                                                        <?php foreach (['08:00' => '8:00 AM', '09:00' => '9:00 AM', '10:00' => '10:00 AM', '11:00' => '11:00 AM', '13:00' => '1:00 PM', '14:00' => '2:00 PM', '15:00' => '3:00 PM', '16:00' => '4:00 PM', '17:00' => '5:00 PM'] as $timeValue => $timeLabel): ?>
+                                                        <?php foreach (site_inspection_available_time_slots() as $timeValue => $timeLabel): ?>
                                                             <option value="<?php echo $timeValue; ?>" <?php echo $inspectionTimestamp && date('H:i', $inspectionTimestamp) === $timeValue ? 'selected' : ''; ?>><?php echo $timeLabel; ?></option>
                                                         <?php endforeach; ?>
                                                     </select>

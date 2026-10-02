@@ -19,6 +19,21 @@ function site_inspection_schedule_response_label(string $response): string
         default => 'Pending',
     };
 }
+
+function site_inspection_available_time_slots(): array
+{
+    return [
+        '08:00' => '8:00 AM',
+        '09:00' => '9:00 AM',
+        '10:00' => '10:00 AM',
+        '11:00' => '11:00 AM',
+        '13:00' => '1:00 PM',
+        '14:00' => '2:00 PM',
+        '15:00' => '3:00 PM',
+        '16:00' => '4:00 PM',
+        '17:00' => '5:00 PM',
+    ];
+}
 // Shared Site Inspection helpers para hindi duplicate sa Admin at Engineer.
 
 if (!function_exists('site_inspection_format_datetime')) {

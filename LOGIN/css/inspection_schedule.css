@@ -88,7 +88,10 @@ body {
 .schedule-reschedule { border-top: 1px solid #e2e8f0; padding-top: 14px; }
 .schedule-reschedule summary { width: fit-content; cursor: pointer; color: #9a3412; font-weight: 800; }
 .schedule-reschedule-form { display: grid; gap: 13px; padding-top: 14px; }
+.schedule-reschedule-form__description { margin: 0; color: #475569; font-size: .88rem; line-height: 1.5; }
 .schedule-reschedule-form label { display: grid; gap: 6px; color: #334155; font-size: .88rem; font-weight: 800; }
+.schedule-field-label { display: inline-flex; align-items: baseline; gap: 3px; width: fit-content; white-space: nowrap; }
+.schedule-required-mark { color: #dc2626; font-size: .82em; line-height: 1; }
 .schedule-reschedule-form input,
 .schedule-reschedule-form select,
 .schedule-reschedule-form textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; color: #0f172a; background: #fff; font: inherit; }
@@ -97,6 +100,8 @@ body {
 .schedule-reschedule-form select[aria-invalid="true"],
 .schedule-reschedule-form textarea[aria-invalid="true"] { border-color: #dc2626; background: #fffafa; }
 .schedule-reschedule-form small { min-height: 1.1em; color: #b91c1c; font-size: .78rem; font-weight: 700; }
+.schedule-reschedule-form .schedule-field-helper { color: #64748b; font-weight: 600; }
+.schedule-reschedule-form .schedule-time-availability { color: #9a3412; font-weight: 700; }
 .schedule-reschedule-form__dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
 .schedule-response-state { border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; background: #f8fafc; }

@@ -78,12 +78,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (mb_strlen($note) > 2000) $reply(false, 'Please keep the reason under 2000 characters.');
     if ($date === '' || $time === '') $reply(false, 'Please choose both a preferred date and time.');
 
-    $allowedPreferredTimes = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+    $allowedPreferredTimes = array_keys(site_inspection_available_time_slots());
     if (!in_array($time, $allowedPreferredTimes, true)) $reply(false, 'Please choose a valid preferred time.');
     $preferredDateTime = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, $timeZone);
     $dateErrors = DateTimeImmutable::getLastErrors();
     $hasDateErrors = is_array($dateErrors) && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0);
-    if (!$preferredDateTime || $hasDateErrors || $preferredDateTime <= new DateTimeImmutable('now', $timeZone)) {
+    $nowInManila = new DateTimeImmutable('now', $timeZone);
+    $minimumLeadTime = $nowInManila
+        ->setTime((int)$nowInManila->format('H'), (int)$nowInManila->format('i'), 0)
+        ->modify('+1 hour');
+    if (!$preferredDateTime || $hasDateErrors || $preferredDateTime < $minimumLeadTime) {
         $reply(false, 'Please choose a future preferred date and time.');
     }
     $preferred = $preferredDateTime->format('Y-m-d H:i:s');
@@ -121,9 +125,9 @@ $clientResponse = (string)($inspection['client_schedule_response'] ?? 'pending')
 $engineerResponse = (string)($inspection['engineer_schedule_response'] ?? 'pending');
 $isWorkflowLocked = $inspection && in_array((string)$inspection['status'], ['Ongoing', 'Completed', 'Submitted'], true);
 $isWaitingForAdmin = $inspection && ($clientResponse === 'reschedule_requested' || $engineerResponse === 'reschedule_requested');
-$rescheduleStateTitle = $clientResponse === 'reschedule_requested' ? 'Reschedule Request Sent' : 'Schedule Under Review';
+$rescheduleStateTitle = $clientResponse === 'reschedule_requested' ? 'Request Submitted' : 'Schedule Under Review';
 $rescheduleStateMessage = $clientResponse === 'reschedule_requested'
-    ? 'A schedule change is waiting for Admin review. A new schedule will need confirmation.'
+    ? 'Your reschedule request has been sent to Admin. Your current inspection schedule remains unchanged while your request is being reviewed.'
     : 'A schedule change was requested. Admin will send a new official schedule for confirmation.';
 $scheduleText = $inspection ? (new DateTimeImmutable((string)$inspection['scheduled_at'], $timeZone))->format('D, M j, Y • g:i A') . ' PHT' : '';
 $siteAddress = $inspection ? implode(', ', array_filter([
@@ -156,30 +160,34 @@ $siteAddress = $inspection ? implode(', ', array_filter([
             <section class="schedule-actions"><p>Please confirm the official date and time, or ask Admin to reschedule it.</p>
                 <form method="post" class="schedule-action-form" data-schedule-action-form><input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>"><button name="action" value="confirm" type="submit" class="schedule-button schedule-button--primary">Confirm Schedule</button></form>
                 <details class="schedule-reschedule">
-                    <summary>Request Reschedule</summary>
+                    <summary>Request a Schedule Change</summary>
                     <form method="post" class="schedule-reschedule-form" data-schedule-reschedule-form novalidate>
                         <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="request_reschedule">
-                        <label>Reason <span aria-hidden="true">*</span>
-                            <textarea name="reason" required minlength="5" maxlength="2000" aria-describedby="scheduleReasonError"></textarea>
+                        <p class="schedule-reschedule-form__description">Choose your preferred date and time. Admin will review your request; your current schedule stays unchanged until updated.</p>
+                        <label><span class="schedule-field-label">Reason for Request <b class="schedule-required-mark" aria-hidden="true">*</b></span>
+                            <textarea name="reason" required minlength="5" maxlength="2000" placeholder="Please explain why you need to change the schedule." aria-describedby="scheduleReasonError"></textarea>
                             <small id="scheduleReasonError" data-field-error="reason"></small>
                         </label>
                         <div class="schedule-reschedule-form__dates">
-                            <label>Preferred Date <span aria-hidden="true">*</span>
-                                <input type="date" name="preferred_date" required min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" aria-describedby="scheduleDateError">
+                            <label><span class="schedule-field-label">Preferred New Date <b class="schedule-required-mark" aria-hidden="true">*</b></span>
+                                <input type="date" name="preferred_date" required min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" aria-describedby="scheduleDateHelp scheduleDateError">
+                                <small id="scheduleDateHelp" class="schedule-field-helper">Select your preferred date.</small>
                                 <small id="scheduleDateError" data-field-error="preferred_date"></small>
                             </label>
-                            <label>Preferred Time <span aria-hidden="true">*</span>
-                                <select name="preferred_time" required aria-describedby="scheduleTimeError">
+                            <label><span class="schedule-field-label">Preferred New Time <b class="schedule-required-mark" aria-hidden="true">*</b></span>
+                                <select name="preferred_time" required aria-describedby="scheduleTimeHelp scheduleTimeError">
                                     <option value="">Select time</option>
-                                    <?php foreach (['08:00' => '8:00 AM', '09:00' => '9:00 AM', '10:00' => '10:00 AM', '11:00' => '11:00 AM', '13:00' => '1:00 PM', '14:00' => '2:00 PM', '15:00' => '3:00 PM', '16:00' => '4:00 PM', '17:00' => '5:00 PM'] as $timeValue => $timeLabel): ?>
-                                        <option value="<?php echo $timeValue; ?>"><?php echo $timeLabel; ?></option>
+                                    <?php foreach (site_inspection_available_time_slots() as $timeValue => $timeLabel): ?>
+                                        <option value="<?php echo $timeValue; ?>" data-schedule-time-option><?php echo $timeLabel; ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <small id="scheduleTimeHelp" class="schedule-field-helper">Available times depend on the date you select.</small>
+                                <small class="schedule-time-availability" data-schedule-time-availability aria-live="polite"></small>
                                 <small id="scheduleTimeError" data-field-error="preferred_time"></small>
                             </label>
                         </div>
-                        <button type="submit" class="schedule-button schedule-button--secondary">Send Request</button>
+                        <button type="submit" class="schedule-button schedule-button--secondary">Submit Reschedule Request</button>
                     </form>
                 </details>
             </section>

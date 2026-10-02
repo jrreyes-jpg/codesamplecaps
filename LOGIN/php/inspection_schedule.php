@@ -170,21 +170,25 @@ $siteAddress = $inspection ? implode(', ', array_filter([
                             <small id="scheduleReasonError" data-field-error="reason"></small>
                         </label>
                         <div class="schedule-reschedule-form__dates">
-                            <label><span class="schedule-field-label">Preferred New Date <b class="schedule-required-mark" aria-hidden="true">*</b></span>
+                            <label class="schedule-date-field"><span class="schedule-field-label">Preferred New Date <b class="schedule-required-mark" aria-hidden="true">*</b></span>
                                 <input type="date" name="preferred_date" required min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" aria-describedby="scheduleDateHelp scheduleDateError">
-                                <small id="scheduleDateHelp" class="schedule-field-helper">Select your preferred date.</small>
-                                <small id="scheduleDateError" data-field-error="preferred_date"></small>
+                                <span class="schedule-field-feedback">
+                                    <small id="scheduleDateHelp" class="schedule-field-helper">Select your preferred date.</small>
+                                    <small id="scheduleDateError" data-field-error="preferred_date"></small>
+                                </span>
                             </label>
-                            <label><span class="schedule-field-label">Preferred New Time <b class="schedule-required-mark" aria-hidden="true">*</b></span>
+                            <label class="schedule-time-field"><span class="schedule-field-label">Preferred New Time <b class="schedule-required-mark" aria-hidden="true">*</b></span>
                                 <select name="preferred_time" required aria-describedby="scheduleTimeHelp scheduleTimeError">
                                     <option value="">Select time</option>
                                     <?php foreach (site_inspection_available_time_slots() as $timeValue => $timeLabel): ?>
                                         <option value="<?php echo $timeValue; ?>" data-schedule-time-option><?php echo $timeLabel; ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <small id="scheduleTimeHelp" class="schedule-field-helper">Available times depend on the date you select.</small>
-                                <small class="schedule-time-availability" data-schedule-time-availability aria-live="polite"></small>
-                                <small id="scheduleTimeError" data-field-error="preferred_time"></small>
+                                <span class="schedule-field-feedback">
+                                    <small id="scheduleTimeHelp" class="schedule-field-helper">Available times depend on the date you select.</small>
+                                    <small class="schedule-time-availability" data-schedule-time-availability aria-live="polite"></small>
+                                    <small id="scheduleTimeError" data-field-error="preferred_time"></small>
+                                </span>
                             </label>
                         </div>
                         <button type="submit" class="schedule-button schedule-button--secondary">Submit Reschedule Request</button>

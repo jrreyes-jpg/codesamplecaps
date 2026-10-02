@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
-    const refreshTimeOptions = function (form, showTimeError) {
+    const refreshTimeOptions = function (form) {
         const date = form.elements.preferred_date;
         const time = form.elements.preferred_time;
         const availability = form.querySelector('[data-schedule-time-availability]');
@@ -71,10 +71,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const previousValue = time.value;
         const visibleSlots = date.value ? availableTimeSlots(slots, date.value, now) : [];
+        const selectedTimeIsAvailable = previousValue !== '' && visibleSlots.some(function (slot) {
+            return slot.value === previousValue;
+        });
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.disabled = true;
-        placeholder.selected = !previousValue || !visibleSlots.some(function (slot) { return slot.value === previousValue; });
+        placeholder.selected = !selectedTimeIsAvailable;
         if (!date.value && noTimesToday) {
             placeholder.textContent = 'No available times remain today';
         } else if (!date.value) {
@@ -93,6 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
             option.selected = slot.value === previousValue;
             time.append(option);
         });
+        time.value = selectedTimeIsAvailable ? previousValue : '';
         time.disabled = !date.value || visibleSlots.length === 0;
 
         if (availability) {
@@ -100,8 +104,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? 'No available times remain today. Please choose another date.'
                 : '';
         }
-        if (previousValue && !visibleSlots.some(function (slot) { return slot.value === previousValue; }) && showTimeError) {
-            setFieldError(time, 'Choose an available preferred time.');
+        if (previousValue && !selectedTimeIsAvailable) {
+            // Tahimik na alisin ang lumang error kapag nagbago ang date.
+            setFieldError(time, '');
         }
 
         return now;
@@ -118,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const validateDateTime = function (form) {
         const date = form.elements.preferred_date;
         const time = form.elements.preferred_time;
-        const now = refreshTimeOptions(form, false);
+        const now = refreshTimeOptions(form);
         let valid = true;
         if (!date.value) {
             setFieldError(date, 'Choose a preferred date.');
@@ -153,16 +158,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const date = form.elements.preferred_date;
         const time = form.elements.preferred_time;
         const hasSubmitAttempt = function () { return form.dataset.submitAttempted === '1'; };
-        refreshTimeOptions(form, false);
+        refreshTimeOptions(form);
         reason.addEventListener('input', function () { validateReason(reason); });
         date.addEventListener('change', function () {
-            refreshTimeOptions(form, hasSubmitAttempt());
-            if (hasSubmitAttempt()) validateDateTime(form);
+            refreshTimeOptions(form);
+            // Date change lang ito. Error ay lalabas lang sa Submit.
+            setFieldError(date, '');
+            setFieldError(time, '');
         });
         time.addEventListener('change', function () {
             if (hasSubmitAttempt()) validateDateTime(form);
         });
-        window.setInterval(function () { refreshTimeOptions(form, hasSubmitAttempt() && Boolean(time.value)); }, 60000);
+        window.setInterval(function () { refreshTimeOptions(form); }, 60000);
     });
 
     forms.forEach(function (form) {

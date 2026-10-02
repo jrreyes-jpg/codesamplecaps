@@ -592,6 +592,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_qu
     exit();
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_inspection_schedule_response') {
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store');
+
+    $inquiryId = (int)($_GET['inquiry_id'] ?? 0);
+    $response = [
+        'scheduled' => false,
+        'client' => ['response' => 'not_scheduled', 'label' => 'Not Scheduled', 'note' => ''],
+        'engineer' => ['response' => 'not_scheduled', 'label' => 'Not Scheduled', 'note' => ''],
+    ];
+
+    if ($inquiryId > 0) {
+        $stmt = $conn->prepare(
+            'SELECT scheduled_at, client_schedule_response, client_schedule_response_note,
+                    client_schedule_responded_at, engineer_schedule_response,
+                    engineer_schedule_response_note, engineer_schedule_responded_at
+             FROM site_inspections
+             WHERE inquiry_id = ?
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+        if ($stmt) {
+            $stmt->bind_param('i', $inquiryId);
+            $stmt->execute();
+            $inspectionResponse = $stmt->get_result()->fetch_assoc() ?: null;
+            if ($inspectionResponse && !empty($inspectionResponse['scheduled_at'])) {
+                $clientResponse = (string)($inspectionResponse['client_schedule_response'] ?? 'pending');
+                $engineerResponse = (string)($inspectionResponse['engineer_schedule_response'] ?? 'pending');
+                $response = [
+                    'scheduled' => true,
+                    'client' => [
+                        'response' => $clientResponse,
+                        'label' => site_inspection_schedule_response_label($clientResponse),
+                        'note' => (string)($inspectionResponse['client_schedule_response_note'] ?? ''),
+                        'responded_at' => (string)($inspectionResponse['client_schedule_responded_at'] ?? ''),
+                    ],
+                    'engineer' => [
+                        'response' => $engineerResponse,
+                        'label' => site_inspection_schedule_response_label($engineerResponse),
+                        'note' => (string)($inspectionResponse['engineer_schedule_response_note'] ?? ''),
+                        'responded_at' => (string)($inspectionResponse['engineer_schedule_responded_at'] ?? ''),
+                    ],
+                ];
+            }
+        }
+    }
+
+    echo json_encode(['success' => true, 'inspection' => $response]);
+    exit();
+}
+
 if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_inquiries')) {
     $viewedInquiryId = (int)$_GET['viewed_inquiry'];
     if ($viewedInquiryId > 0) {
@@ -2351,17 +2402,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <div class="inquiry-details-grid inquiry-schedule-responses">
                                         <div class="inquiry-detail">
                                             <span>Client Schedule Response</span>
-                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="client" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
                                         </div>
                                         <div class="inquiry-detail">
                                             <span>Engineer Schedule Response</span>
-                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response="<?php echo htmlspecialchars($engineerScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($engineerScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="engineer" data-schedule-response="<?php echo htmlspecialchars($engineerScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($engineerScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
                                         </div>
                                         <?php if ($hasOfficialInspectionSchedule && !empty($latestInspection['client_schedule_response_note'])): ?>
-                                            <div class="inquiry-detail inquiry-detail--wide"><span>Client Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['client_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail inquiry-detail--wide" data-schedule-response-note-card="client"><span>Client Request</span><strong data-schedule-response-note="client"><?php echo htmlspecialchars((string)$latestInspection['client_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
                                         <?php if ($hasOfficialInspectionSchedule && !empty($latestInspection['engineer_schedule_response_note'])): ?>
-                                            <div class="inquiry-detail inquiry-detail--wide"><span>Engineer Request</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail inquiry-detail--wide" data-schedule-response-note-card="engineer"><span>Engineer Request</span><strong data-schedule-response-note="engineer"><?php echo htmlspecialchars((string)$latestInspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
                                     </div>
                                     <?php if ($latestInspection): ?>

@@ -461,7 +461,7 @@ class EmailService {
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = ($isUpdated ? 'Inspection Schedule Updated' : 'Inspection Schedule Confirmed') . ' - Edge Automation';
+            $this->mailer->Subject = ($isUpdated ? 'Inspection Schedule Updated' : 'Inspection Schedule - Confirmation Required') . ' - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
@@ -469,7 +469,7 @@ class EmailService {
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
-                        <p>Your site inspection has been scheduled by Edge Automation.</p>
+                        <p>Your site inspection has been scheduled by Edge Automation. Please review and confirm the schedule.</p>
                         <p><strong>Service:</strong> {$safeService}</p>
                         <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
                         <p><strong>Assigned Engineer:</strong> {$safeEngineer}</p>
@@ -479,7 +479,7 @@ class EmailService {
                         <p>Our team will contact you if more details are needed.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$recipientName},\n\nYour site inspection has been scheduled by Edge Automation.\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$siteNotesText}";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\nYour site inspection has been scheduled by Edge Automation. Please review and confirm the schedule.\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$siteNotesText}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

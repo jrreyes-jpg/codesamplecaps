@@ -234,8 +234,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $preferredAt = ($preferredDate !== '' && $preferredTime !== '') ? $preferredDate . ' ' . $preferredTime . ':00' : null;
         if (in_array($currentStatus, ['Ongoing', 'Completed', 'Submitted'], true) || mb_strlen($reason) < 5) {
             $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
+        } elseif ((string)($inspectionState['engineer_schedule_response'] ?? 'pending') !== 'pending'
+            || (string)($inspectionState['client_schedule_response'] ?? 'pending') === 'reschedule_requested') {
+            $error = 'This schedule response is already recorded or is waiting for Admin review.';
         } else {
-            $update = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'reschedule_requested', engineer_schedule_response_note = ?, engineer_schedule_preferred_at = ?, engineer_schedule_responded_at = NOW(), status = 'Assigned', acknowledged_at = NULL WHERE id = ? AND engineer_id = ?");
+            $update = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'reschedule_requested', engineer_schedule_response_note = ?, engineer_schedule_preferred_at = ?, engineer_schedule_responded_at = NOW(), status = 'Assigned', acknowledged_at = NULL WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
             if ($update) {
                 $update->bind_param('ssii', $reason, $preferredAt, $inspectionId, $userId);
                 $update->execute();
@@ -253,13 +256,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $targetStatus = $workflowTargets[$workflowAction] ?? '';
         if ($targetStatus === '' || !site_inspection_can_transition($currentStatus, $targetStatus)) {
             $error = 'Invalid inspection status change. Please refresh the page.';
+        } elseif ($workflowAction === 'acknowledge' && ((string)($inspectionState['engineer_schedule_response'] ?? 'pending') !== 'pending'
+            || (string)($inspectionState['client_schedule_response'] ?? 'pending') === 'reschedule_requested')) {
+            $error = 'This schedule response is already recorded or is waiting for Admin review.';
+        } elseif ($workflowAction === 'start' && ((string)($inspectionState['client_schedule_response'] ?? '') !== 'confirmed'
+            || (string)($inspectionState['engineer_schedule_response'] ?? '') !== 'confirmed')) {
+            $error = 'Wait until both the Client and Engineer confirm the official schedule.';
         } elseif ($workflowAction === 'start' && (string)($inspectionState['client_schedule_response'] ?? '') === 'reschedule_requested') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
         } elseif ($workflowAction === 'start' && (string)($inspectionState['engineer_schedule_response'] ?? '') === 'reschedule_requested') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
         } elseif (site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
             if ($workflowAction === 'acknowledge') {
-                $confirmSchedule = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'confirmed', engineer_schedule_response_note = NULL, engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NOW() WHERE id = ? AND engineer_id = ?");
+                $confirmSchedule = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'confirmed', engineer_schedule_response_note = NULL, engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NOW() WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
                 if ($confirmSchedule) { $confirmSchedule->bind_param('ii', $inspectionId, $userId); $confirmSchedule->execute(); }
             }
             $message = match ($targetStatus) {
@@ -827,7 +836,9 @@ require __DIR__ . '/../layout/header.php';
                                     </form>
                                 <?php endif; ?>
 
-                                <?php if (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)): ?>
+                                <?php if (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
+                                    && (string)($inspection['engineer_schedule_response'] ?? 'pending') === 'pending'
+                                    && (string)($inspection['client_schedule_response'] ?? 'pending') !== 'reschedule_requested'): ?>
                                     <details class="inspection-schedule-response">
                                         <summary>Request Reschedule</summary>
                                         <form method="POST">

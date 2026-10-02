@@ -1258,6 +1258,89 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const quotationStatusModals = Array.from(document.querySelectorAll('.inquiry-modal[data-inquiry-id]'));
     let quotationPollInProgress = false;
+    let inspectionResponsePollInProgress = false;
+
+    document.addEventListener('edge:inquiry-opened', function (event) {
+        const inquiryId = Number.parseInt(event.detail?.inquiryId || '0', 10);
+        const modal = document.querySelector('.inquiry-modal[data-inquiry-id="' + String(inquiryId) + '"]');
+        if (modal) {
+            delete modal.dataset.inspectionResponsePollReady;
+        }
+    });
+
+    const updateInspectionResponseNote = function (modal, party, note) {
+        const responseGrid = modal.querySelector('.inquiry-schedule-responses');
+        if (!responseGrid) return;
+        let card = responseGrid.querySelector('[data-schedule-response-note-card="' + party + '"]');
+        if (!note) {
+            card?.remove();
+            return;
+        }
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'inquiry-detail inquiry-detail--wide';
+            card.dataset.scheduleResponseNoteCard = party;
+            const label = document.createElement('span');
+            const value = document.createElement('strong');
+            label.textContent = party === 'client' ? 'Client Request' : 'Engineer Request';
+            value.dataset.scheduleResponseNote = party;
+            card.append(label, value);
+            responseGrid.append(card);
+        }
+        const value = card.querySelector('[data-schedule-response-note]');
+        if (value) value.textContent = note;
+    };
+
+    const pollInspectionScheduleResponse = function () {
+        if (inspectionResponsePollInProgress || document.hidden) return;
+        const modal = document.querySelector('.inquiry-modal:not([hidden])[data-inquiry-id]');
+        const inspectionPanel = modal?.querySelector('[data-inquiry-panel="inspection"].is-active:not([hidden])');
+        const inquiryId = Number.parseInt(modal?.dataset.inquiryId || '0', 10);
+        if (!modal || !inspectionPanel || inquiryId <= 0) return;
+
+        const pollUrl = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', window.location.origin);
+        pollUrl.searchParams.set('action', 'poll_inspection_schedule_response');
+        pollUrl.searchParams.set('inquiry_id', String(inquiryId));
+        inspectionResponsePollInProgress = true;
+
+        fetch(pollUrl.toString(), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store',
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Unable to check inspection responses.');
+                return response.json();
+            })
+            .then(function (data) {
+                if (!data.success || !data.inspection) return;
+                const isInitialLoad = modal.dataset.inspectionResponsePollReady !== '1';
+                ['client', 'engineer'].forEach(function (party) {
+                    const response = data.inspection[party] || {};
+                    const badge = modal.querySelector('[data-schedule-response-party="' + party + '"]');
+                    const previousResponse = badge?.dataset.scheduleResponse || '';
+                    if (badge) {
+                        badge.dataset.scheduleResponse = String(response.response || 'not_scheduled');
+                        badge.textContent = response.label || 'Not Scheduled';
+                    }
+                    updateInspectionResponseNote(modal, party, data.inspection.scheduled ? String(response.note || '') : '');
+                    if (!isInitialLoad && previousResponse !== String(response.response || 'not_scheduled')) {
+                        showLiveInquiryToast(
+                            (party === 'client' ? 'Client' : 'Engineer') + ' schedule response: ' + (response.label || 'Not Scheduled') + '.',
+                            inquiryId,
+                            'inspection',
+                            response.response === 'reschedule_requested' ? 'warning' : 'success'
+                        );
+                    }
+                });
+                modal.dataset.inspectionResponsePollReady = '1';
+            })
+            .catch(function () {
+                // Tahimik lang. Susubok ulit sa next poll.
+            })
+            .finally(function () {
+                inspectionResponsePollInProgress = false;
+            });
+    };
 
     const pollQuotationStatuses = function () {
         if (quotationPollInProgress || document.hidden || quotationStatusModals.length === 0) {
@@ -1426,8 +1509,13 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     };
 
-    pollQuotationStatuses();
-    window.setInterval(pollQuotationStatuses, 5000);
+    const pollInquiryUpdates = function () {
+        pollQuotationStatuses();
+        pollInspectionScheduleResponse();
+    };
+
+    pollInquiryUpdates();
+    window.setInterval(pollInquiryUpdates, 5000);
 
     document.querySelectorAll('[data-inquiry-history-back]').forEach(function (link) {
         link.addEventListener('click', function (event) {

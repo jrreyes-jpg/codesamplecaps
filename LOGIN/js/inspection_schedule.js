@@ -21,7 +21,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const cancelButton = modalElement.querySelector('[data-schedule-modal-cancel]');
         const primaryButton = modalElement.querySelector('[data-schedule-modal-primary]');
         const backdrop = modalElement.querySelector('[data-schedule-modal-backdrop]');
-        if (!dialog || !title || !message || !closeButton || !cancelButton || !primaryButton || !backdrop) {
+        const details = modalElement.querySelector('[data-schedule-modal-details]');
+        const actions = modalElement.querySelector('[data-schedule-modal-actions]');
+        const requestForm = modalElement.querySelector('[data-schedule-reschedule-form]');
+        if (!dialog || !title || !message || !closeButton || !cancelButton || !primaryButton || !backdrop || !details || !actions) {
             return {
                 confirm: function (options) {
                     if (typeof options.onCancel === 'function') options.onCancel();
@@ -42,6 +45,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentModal = activeModal;
             activeModal = null;
             modalElement.hidden = true;
+            if (requestForm) requestForm.hidden = true;
+            actions.hidden = false;
+            message.hidden = false;
+            details.hidden = true;
+            details.replaceChildren();
             document.body.classList.remove('is-schedule-modal-open');
             if (isCancelled && typeof currentModal.onCancel === 'function') currentModal.onCancel();
             if (currentModal.trigger && typeof currentModal.trigger.focus === 'function') currentModal.trigger.focus();
@@ -57,6 +65,18 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             title.textContent = options.title;
             message.textContent = options.message;
+            message.hidden = false;
+            details.replaceChildren();
+            (options.details || []).forEach(function (detail) {
+                const term = document.createElement('dt');
+                const value = document.createElement('dd');
+                term.textContent = detail.label;
+                value.textContent = detail.value;
+                details.append(term, value);
+            });
+            details.hidden = !(options.details || []).length;
+            if (requestForm) requestForm.hidden = true;
+            actions.hidden = false;
             primaryButton.textContent = options.primaryLabel || 'Close';
             primaryButton.className = 'schedule-modal__button schedule-modal__button--primary' + (options.tone === 'error' ? ' is-error' : '');
             cancelButton.hidden = Boolean(options.isNotification);
@@ -106,6 +126,26 @@ document.addEventListener('DOMContentLoaded', function () {
         return {
             confirm: function (options) { open(options); },
             notify: function (options) { open(Object.assign({}, options, { isNotification: true, primaryLabel: 'Close' })); },
+            openRequestForm: function (options) {
+                if (!requestForm) return;
+                activeModal = {
+                    trigger: options.trigger || document.activeElement,
+                    onConfirm: null,
+                    onCancel: options.onCancel || null,
+                    submitting: false,
+                    isNotification: false,
+                };
+                title.textContent = options.title;
+                message.hidden = true;
+                details.hidden = true;
+                details.replaceChildren();
+                actions.hidden = true;
+                requestForm.hidden = false;
+                closeButton.disabled = false;
+                modalElement.hidden = false;
+                document.body.classList.add('is-schedule-modal-open');
+                window.setTimeout(function () { requestForm.elements.reason?.focus(); }, 0);
+            },
             setSubmitting: function (label) {
                 if (!activeModal) return;
                 primaryButton.disabled = true;
@@ -120,6 +160,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const showErrorModal = function (message) {
         scheduleModal.notify({ title: 'Submission Failed', message: message, tone: 'error' });
     };
+
+    const requestScheduleButton = document.querySelector('[data-schedule-reschedule-open]');
+    const requestScheduleForm = document.querySelector('[data-schedule-reschedule-form]');
+    const requestScheduleCancel = document.querySelector('[data-schedule-reschedule-cancel]');
+
+    const openRequestScheduleForm = function (trigger) {
+        if (!requestScheduleForm) return;
+        scheduleModal.openRequestForm({
+            title: 'Request a Schedule Change',
+            trigger: trigger,
+        });
+    };
+
+    requestScheduleButton?.addEventListener('click', function () {
+        openRequestScheduleForm(requestScheduleButton);
+    });
+
+    requestScheduleCancel?.addEventListener('click', function () {
+        scheduleModal.close();
+    });
 
     const setFieldError = function (field, message) {
         const error = document.querySelector('[data-field-error="' + field.name + '"]');
@@ -290,10 +350,6 @@ setFieldError(reason, message);
     });
 
     const submitResponse = function (form, action, button, originalLabel) {
-if (form.elements.reason) {
-    form.elements.reason.value = form.elements.reason.value.trim();
-}
-
 const payload = new FormData(form);
         if (!payload.has('action')) payload.set('action', action);
         form.dataset.submitting = '1';
@@ -315,16 +371,47 @@ const payload = new FormData(form);
             .then(function (result) {
                 if (!result.ok || !result.data.success) throw new Error(result.data.message || 'Unable to save your response.');
                 scheduleModal.close();
-                const actionArea = form.closest('.schedule-actions');
+                const actionArea = document.querySelector('[data-schedule-actions]');
                 if (!actionArea) return;
                 actionArea.className = 'schedule-response-state ' + (action === 'request_reschedule' ? 'schedule-response-state--reschedule' : 'schedule-response-state--confirmed');
                 const title = document.createElement('strong');
                 const text = document.createElement('p');
-                title.textContent = action === 'request_reschedule' ? 'Request Submitted' : 'Schedule Confirmed';
+                title.textContent = action === 'request_reschedule' ? 'Pending Admin Review' : 'Schedule Confirmed';
                 text.textContent = action === 'request_reschedule'
                     ? 'Your reschedule request has been sent to Admin. Your current inspection schedule remains unchanged while your request is being reviewed.'
                     : 'Your response has been recorded.';
                 actionArea.replaceChildren(title, text);
+                if (action === 'request_reschedule') {
+                    const requested = document.createElement('p');
+                    requested.className = 'schedule-response-state__requested';
+                    const label = document.createElement('span');
+                    const date = form.elements.preferred_date.value;
+                    const time = form.elements.preferred_time.options[form.elements.preferred_time.selectedIndex]?.textContent || '';
+                    label.textContent = 'Requested schedule';
+                    requested.append(label, document.createTextNode(date + ' ' + time + ' PHT'));
+                    actionArea.append(requested);
+                    const reason = document.createElement('p');
+                    reason.className = 'schedule-response-state__note';
+                    reason.textContent = 'Your reason: ' + form.elements.reason.value;
+                    actionArea.append(reason);
+                    const pendingButton = document.createElement('button');
+                    pendingButton.type = 'button';
+                    pendingButton.className = 'schedule-button schedule-button--secondary schedule-response-state__pending-button';
+                    pendingButton.disabled = true;
+                    pendingButton.textContent = 'Request Pending';
+                    actionArea.append(pendingButton);
+                    scheduleModal.notify({
+                        title: 'Request Sent',
+                        message: 'Your schedule change request was sent to Admin for review.',
+                        tone: 'success',
+                    });
+                } else {
+                    scheduleModal.notify({
+                        title: 'Schedule Confirmed',
+                        message: 'Your schedule confirmation was recorded.',
+                        tone: 'success',
+                    });
+                }
             })
             .catch(function (error) {
                 const isNetworkError = error instanceof TypeError || error instanceof SyntaxError;
@@ -359,11 +446,22 @@ const payload = new FormData(form);
             scheduleModal.confirm({
                 title: isRescheduleRequest ? 'Submit Reschedule Request' : 'Confirm Inspection Schedule',
                 message: isRescheduleRequest
-                    ? 'Submit this reschedule request? Your current inspection schedule will remain unchanged while Admin reviews your request.'
+                    ? 'Please check your request before sending it to Admin.'
                     : 'Are you sure you want to confirm this inspection schedule? By continuing, you are confirming the official inspection date and time. This response cannot be changed through this link.',
                 primaryLabel: isRescheduleRequest ? 'Submit Request' : 'Confirm Schedule',
                 trigger: button,
-                onCancel: function () { delete form.dataset.confirming; },
+                details: isRescheduleRequest ? [
+                    { label: 'Official schedule', value: document.querySelector('[data-schedule-official-schedule]')?.textContent.trim() || 'Not set' },
+                    { label: 'Requested date', value: form.elements.preferred_date.value },
+                    { label: 'Requested time', value: form.elements.preferred_time.options[form.elements.preferred_time.selectedIndex]?.textContent || '' },
+                    { label: 'Reason', value: form.elements.reason.value },
+                ] : [],
+                onCancel: function () {
+                    delete form.dataset.confirming;
+                    if (isRescheduleRequest) {
+                        window.setTimeout(function () { openRequestScheduleForm(button); }, 0);
+                    }
+                },
                 onConfirm: function () {
                     delete form.dataset.confirming;
                     submitResponse(form, action, button, originalLabel);

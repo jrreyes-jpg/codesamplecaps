@@ -92,7 +92,12 @@ body.is-schedule-modal-open { overflow: hidden; }
 .schedule-reschedule__toggle::after { content: '+'; font-size: 1.25rem; line-height: 1; }
 .schedule-reschedule[open] .schedule-reschedule__toggle::after { content: '−'; }
 .schedule-reschedule-form { display: grid; gap: 13px; padding-top: 14px; }
+.schedule-modal__request-form { padding-top: 14px; }
+.schedule-modal__request-form[hidden] { display: none; }
 .schedule-reschedule-form__description { margin: 0; color: #475569; font-size: .88rem; line-height: 1.5; }
+.schedule-reschedule-form__official { margin: 0; border: 1px solid #dbe5df; border-radius: 9px; padding: 10px 12px; color: #14532d; background: #f0fdf4; font-size: .9rem; font-weight: 800; line-height: 1.45; }
+.schedule-reschedule-form__official span,
+.schedule-response-state__requested span { display: block; margin-bottom: 3px; color: #64748b; font-size: .72rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
 .schedule-reschedule-form label { display: grid; gap: 6px; color: #334155; font-size: .88rem; font-weight: 800; }
 .schedule-reschedule-form__dates > label { grid-template-rows: auto minmax(44px, auto) auto; align-content: start; }
 .schedule-field-label { display: inline-flex; align-items: baseline; gap: 3px; width: fit-content; white-space: nowrap; }
@@ -120,6 +125,8 @@ body.is-schedule-modal-open { overflow: hidden; }
 .schedule-response-state--reschedule { border-color: #fdba74; background: #fff7ed; color: #9a3412; }
 .schedule-response-state--reschedule p { color: #9a3412; }
 .schedule-response-state__note { font-size: .9rem; }
+.schedule-response-state__requested { border-top: 1px solid #fdba74; padding-top: 9px; font-size: .9rem; font-weight: 800; }
+.schedule-response-state__pending-button:disabled { margin-top: 14px; cursor: not-allowed; opacity: .72; }
 
 .schedule-alert { border-radius: 10px; padding: 12px 14px; font-weight: 700; line-height: 1.42; }
 .schedule-alert--success,
@@ -130,9 +137,12 @@ body.is-schedule-modal-open { overflow: hidden; }
 .schedule-modal[hidden] { display: none; }
 .schedule-modal { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; isolation: isolate; padding: 16px; }
 .schedule-modal__backdrop { position: absolute; z-index: 0; inset: 0; background: rgba(15, 23, 42, .58); cursor: pointer; }
-.schedule-modal__dialog { position: relative; z-index: 1; width: min(100%, 470px); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid #dbe5df; border-radius: 16px; padding: 26px; background: #fff; box-shadow: 0 22px 55px rgba(15, 23, 42, .25); pointer-events: auto; }
+.schedule-modal__dialog { position: relative; z-index: 1; width: min(100%, 560px); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid #dbe5df; border-radius: 16px; padding: 26px; background: #fff; box-shadow: 0 22px 55px rgba(15, 23, 42, .25); pointer-events: auto; }
 .schedule-modal__dialog h2 { margin: 0 36px 10px 0; color: #14532d; font-size: 1.22rem; line-height: 1.3; }
 .schedule-modal__dialog p { margin: 0; color: #475569; line-height: 1.55; }
+.schedule-modal__details { display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr); gap: 8px 14px; margin: 18px 0 0; border: 1px solid #dbe5df; border-radius: 10px; padding: 12px; background: #f8fafc; }
+.schedule-modal__details dt { color: #64748b; font-size: .78rem; font-weight: 800; }
+.schedule-modal__details dd { min-width: 0; margin: 0; color: #1e293b; font-size: .88rem; font-weight: 700; overflow-wrap: anywhere; }
 .schedule-modal__close { position: absolute; top: 13px; right: 13px; display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 8px; background: #f1f5f9; color: #334155; font-size: 1.35rem; line-height: 1; cursor: pointer; }
 .schedule-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 .schedule-modal__button { min-height: 42px; border: 1px solid transparent; border-radius: 8px; padding: 9px 14px; font: inherit; font-weight: 800; cursor: pointer; }
@@ -158,6 +168,8 @@ body.is-schedule-modal-open { overflow: hidden; }
     .schedule-details > div:last-child { border-bottom: 0; }
     .schedule-reschedule-form__dates { gap: 0; }
     .schedule-modal__dialog { padding: 22px 18px; }
+    .schedule-modal__details { grid-template-columns: 1fr; gap: 2px; }
+    .schedule-modal__details dd { margin-bottom: 8px; }
     .schedule-modal__actions { flex-direction: column-reverse; }
     .schedule-modal__button { width: 100%; }
 }

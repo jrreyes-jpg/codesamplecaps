@@ -889,7 +889,7 @@ require __DIR__ . '/../layout/header.php';
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                                             <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?>>
+                                                <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?>>
                                                 <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </button>
                                         </form>
@@ -1110,7 +1110,18 @@ require __DIR__ . '/../layout/header.php';
             </div>
         </div>
 
-        <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-modal data-available-time-slots='<?php echo htmlspecialchars(json_encode(site_inspection_available_time_slots()), ENT_QUOTES, 'UTF-8'); ?>' hidden>
+        <div class="inspection-confirm-modal" data-acknowledge-modal hidden>
+            <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="acknowledgeInspectionTitle">
+                <h2 id="acknowledgeInspectionTitle">Acknowledge Assignment</h2>
+                <p>Confirm that you acknowledge this assignment. This records that you received the task.</p>
+                <div class="inspection-confirm-modal__actions">
+                    <button type="button" class="btn-secondary" data-acknowledge-cancel>Cancel</button>
+                    <button type="button" class="btn-primary" data-acknowledge-confirm>Acknowledge Assignment</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-modal data-available-time-slots='<?php echo htmlspecialchars(json_encode(site_inspection_available_time_slots()), ENT_QUOTES, 'UTF-8'); ?>' data-reschedule-sent="<?php echo $message === 'Reschedule request sent to Admin.' ? '1' : '0'; ?>" hidden>
             <div class="inspection-confirm-modal__panel inspection-reschedule-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerRescheduleTitle">
                 <h2 id="engineerRescheduleTitle">Request a Schedule Change</h2>
                 <p class="inspection-reschedule-modal__notice">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved.</p>

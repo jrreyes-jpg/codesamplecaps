@@ -195,6 +195,9 @@
 .inspection-status-action {
     display: flex;
     justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .inspection-grid {
@@ -433,7 +436,8 @@
 }
 
 .inspection-reschedule-field input,
-.inspection-reschedule-field textarea {
+.inspection-reschedule-field textarea,
+.inspection-reschedule-field select {
     width: 100%;
     min-height: 42px;
     border: 1px solid #cbd5e1;
@@ -449,7 +453,8 @@
 }
 
 .inspection-reschedule-field input[aria-invalid="true"],
-.inspection-reschedule-field textarea[aria-invalid="true"] {
+.inspection-reschedule-field textarea[aria-invalid="true"],
+.inspection-reschedule-field select[aria-invalid="true"] {
     border-color: #dc2626;
     background: #fffafa;
 }

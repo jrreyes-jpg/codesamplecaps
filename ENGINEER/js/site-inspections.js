@@ -953,6 +953,49 @@ document.addEventListener('DOMContentLoaded', function () {
         pendingCompletionForm.requestSubmit();
     });
 
+    const acknowledgeModal = document.querySelector('[data-acknowledge-modal]');
+    const acknowledgeCancelButton = acknowledgeModal?.querySelector('[data-acknowledge-cancel]');
+    const acknowledgeConfirmButton = acknowledgeModal?.querySelector('[data-acknowledge-confirm]');
+    let pendingAcknowledgeForm = null;
+    let pendingAcknowledgeButton = null;
+
+    document.querySelectorAll('[data-confirm-acknowledge]').forEach(function(button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            pendingAcknowledgeForm = button.closest('form');
+            pendingAcknowledgeButton = button;
+            if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+            acknowledgeModal.hidden = false;
+            acknowledgeCancelButton?.focus();
+        });
+    });
+
+    acknowledgeCancelButton?.addEventListener('click', function () {
+        if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+        acknowledgeModal.hidden = true;
+        pendingAcknowledgeForm = null;
+        pendingAcknowledgeButton = null;
+    });
+    acknowledgeModal?.addEventListener('click', function (event) {
+        if (event.target === acknowledgeModal) {
+            acknowledgeModal.hidden = true;
+            pendingAcknowledgeForm = null;
+            pendingAcknowledgeButton = null;
+        }
+    });
+
+    acknowledgeConfirmButton?.addEventListener('click', function () {
+        if (!pendingAcknowledgeForm || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+        acknowledgeModal.dataset.isAcknowledging = 'true';
+        acknowledgeCancelButton.disabled = true;
+        acknowledgeConfirmButton.disabled = true;
+        acknowledgeConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
+        pendingAcknowledgeButton.disabled = true;
+        pendingAcknowledgeButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
+        pendingAcknowledgeForm.dataset.acknowledgeConfirmed = 'true';
+        pendingAcknowledgeForm.requestSubmit();
+    });
+
     const rescheduleModal = document.querySelector('[data-engineer-reschedule-modal]');
     const rescheduleReviewModal = document.querySelector('[data-engineer-reschedule-review-modal]');
     const rescheduleForm = document.querySelector('[data-engineer-reschedule-form]');
@@ -1110,7 +1153,9 @@ document.addEventListener('DOMContentLoaded', function () {
             rescheduleTrigger = button;
             rescheduleForm.reset();
             rescheduleForm.dataset.submitted = '';
+            rescheduleForm.dataset.reviewConfirmed = '';
             rescheduleForm.elements.inspection_id.value = button.dataset.inspectionId || '';
+            const inspectionIdForDraft = rescheduleForm.elements.inspection_id.value || '';
             const official = rescheduleModal.querySelector('[data-engineer-reschedule-official]');
             if (official) official.textContent = button.dataset.officialSchedule || 'Not set';
             rescheduleForm.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
@@ -1119,6 +1164,26 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             // populate time options based on any preset date
             refreshTimeOptions();
+
+            // restore draft if present and server hasn't already recorded submission
+            try {
+                const draftKey = 'reschedule-draft-' + inspectionIdForDraft;
+                const raw = sessionStorage.getItem(draftKey);
+                if (raw && rescheduleModal.dataset.rescheduleSent !== '1') {
+                    const draft = JSON.parse(raw);
+                    if (draft) {
+                        if (draft.date) rescheduleForm.elements.schedule_preferred_date.value = draft.date;
+                        refreshTimeOptions();
+                        if (draft.time) rescheduleForm.elements.schedule_preferred_time.value = draft.time;
+                        if (draft.reason) rescheduleForm.elements.schedule_response_note.value = draft.reason;
+                        // mark touched for validation rules
+                        rescheduleForm.querySelectorAll('textarea, input, select').forEach(function (f) { if (f.value) f.dataset.touched = 'true'; });
+                    }
+                } else if (raw && rescheduleModal.dataset.rescheduleSent === '1') {
+                    sessionStorage.removeItem(draftKey);
+                }
+            } catch (e) { /* ignore */ }
+
             rescheduleModal.hidden = false;
             rescheduleForm.elements.schedule_response_note.focus();
         });
@@ -1172,6 +1237,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     rescheduleReviewSubmitButton?.addEventListener('click', function () {
         if (!rescheduleForm || rescheduleReviewModal?.dataset.submitting === 'true') return;
+        // save draft to sessionStorage to preserve values on network failure
+        try {
+            const inspectionIdForDraft = rescheduleForm.elements.inspection_id.value || '';
+            const draftKey = 'reschedule-draft-' + inspectionIdForDraft;
+            const draft = {
+                reason: rescheduleForm.elements.schedule_response_note.value,
+                date: rescheduleForm.elements.schedule_preferred_date.value,
+                time: rescheduleForm.elements.schedule_preferred_time.value,
+            };
+            sessionStorage.setItem(draftKey, JSON.stringify(draft));
+        } catch (e) { /* ignore */ }
+
         rescheduleReviewModal.dataset.submitting = 'true';
         rescheduleReviewCancelButton.disabled = true;
         rescheduleReviewSubmitButton.disabled = true;
@@ -1257,8 +1334,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeCompletionModal();
                 return;
             }
+            if (acknowledgeModal && !acknowledgeModal.hidden) {
+                event.preventDefault();
+                acknowledgeModal.hidden = true;
+                return;
+            }
             document.querySelectorAll('.inspection-modal:not([hidden])').forEach(closeInspectionModal);
         }
+    });
+
+    // Warn user about unsaved reschedule form changes using native beforeunload prompt
+    window.addEventListener('beforeunload', function (e) {
+        try {
+            if (!rescheduleForm) return;
+            const hasTouched = Array.from(rescheduleForm.querySelectorAll('textarea, input, select')).some(function (f) { return f.dataset.touched === 'true'; });
+            if (hasTouched && !rescheduleForm.dataset.submitted) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes.';
+            }
+        } catch (err) { /* ignore */ }
     });
 
     const requestedInspectionId = Number.parseInt(new URLSearchParams(window.location.search).get('inspection_id') || '0', 10);

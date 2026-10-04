@@ -984,16 +984,115 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    const resetAcknowledgeLoadingState = function (isSuccess) {
+        if (!acknowledgeModal) return;
+        acknowledgeModal.dataset.isAcknowledging = '';
+        acknowledgeCancelButton.disabled = false;
+        acknowledgeConfirmButton.disabled = isSuccess;
+        acknowledgeConfirmButton.innerHTML = isSuccess ? 'Acknowledged' : 'Acknowledge Assignment';
+        if (pendingAcknowledgeButton) {
+            pendingAcknowledgeButton.disabled = isSuccess;
+            const originalLabel = pendingAcknowledgeButton.dataset.originalLabel || 'Acknowledge Assignment';
+            pendingAcknowledgeButton.innerHTML = isSuccess ? 'Acknowledged' : originalLabel;
+        }
+    };
+
     acknowledgeConfirmButton?.addEventListener('click', function () {
-        if (!pendingAcknowledgeForm || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+        if (!pendingAcknowledgeForm || !pendingAcknowledgeButton || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+
+        const form = pendingAcknowledgeForm;
+        const button = pendingAcknowledgeButton;
+        const requestUrl = form.getAttribute('action') || window.location.href;
+        const formData = new URLSearchParams();
+        formData.append('csrf_token', form.elements.csrf_token?.value || '');
+        formData.append('inspection_id', String(form.elements.inspection_id?.value || ''));
+        formData.append('workflow_action', 'acknowledge');
+
         acknowledgeModal.dataset.isAcknowledging = 'true';
         acknowledgeCancelButton.disabled = true;
         acknowledgeConfirmButton.disabled = true;
+        button.dataset.originalLabel = button.textContent.trim() || 'Acknowledge Assignment';
         acknowledgeConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
-        pendingAcknowledgeButton.disabled = true;
-        pendingAcknowledgeButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
-        pendingAcknowledgeForm.dataset.acknowledgeConfirmed = 'true';
-        pendingAcknowledgeForm.requestSubmit();
+        button.disabled = true;
+        button.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
+        form.dataset.acknowledgeConfirmed = 'true';
+
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(function () {
+            controller.abort();
+        }, 15000);
+
+        fetch(requestUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            signal: controller.signal,
+            body: formData.toString()
+        }).then(async function (response) {
+            const responseText = await response.text();
+            let payload = {};
+            if (responseText) {
+                try {
+                    payload = JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error('The server returned an invalid response. Please try again.');
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error((payload && payload.message) || 'Unable to acknowledge assignment. Please try again.');
+            }
+
+            if (!payload || payload.success !== true) {
+                throw new Error((payload && payload.message) || 'Unable to acknowledge assignment. Please try again.');
+            }
+
+            acknowledgeModal.hidden = true;
+            pendingAcknowledgeForm = null;
+            pendingAcknowledgeButton = null;
+            acknowledgeModal.dataset.isAcknowledging = '';
+            if (typeof window.showToast === 'function') {
+                window.showToast(payload.message || 'Assignment acknowledged.', 'success', { duration: 4000 });
+            }
+            if (payload && payload.status === 'Acknowledged') {
+                const card = document.querySelector('[data-confirm-acknowledge]')?.closest('.inspection-card');
+                if (card) {
+                    const statusNode = card.querySelector('.inspection-status');
+                    if (statusNode) {
+                        statusNode.setAttribute('data-status', 'Acknowledged');
+                        statusNode.textContent = 'Acknowledged';
+                    }
+                    const actionButton = card.querySelector('[data-confirm-acknowledge]');
+                    if (actionButton) {
+                        actionButton.disabled = true;
+                        actionButton.textContent = 'Acknowledged';
+                    }
+                }
+            }
+            return payload;
+        }).catch(function (error) {
+            const message = error && error.name === 'AbortError'
+                ? 'The server did not respond in time. Please try again.'
+                : (error && error.message) || 'Unable to acknowledge assignment. Please try again.';
+            acknowledgeModal.hidden = false;
+            if (typeof window.showToast === 'function') {
+                window.showToast(message, 'error', { duration: 8000 });
+            }
+            resetAcknowledgeLoadingState(false);
+            if (pendingAcknowledgeForm && pendingAcknowledgeButton) {
+                pendingAcknowledgeButton.disabled = false;
+            }
+        }).finally(function () {
+            window.clearTimeout(timeoutId);
+            if (acknowledgeModal && acknowledgeModal.dataset.isAcknowledging === '') {
+                acknowledgeCancelButton.disabled = false;
+                acknowledgeConfirmButton.disabled = false;
+            }
+        });
     });
 
     const rescheduleModal = document.querySelector('[data-engineer-reschedule-modal]');

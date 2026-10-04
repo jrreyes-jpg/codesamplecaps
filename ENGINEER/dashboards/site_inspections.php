@@ -218,6 +218,14 @@ function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $eng
     return $stmt->get_result()->fetch_assoc() ?: [];
 }
 
+$isAjaxRequest = $_SERVER['REQUEST_METHOD'] === 'POST'
+    && strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+
+if ($isAjaxRequest) {
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED & ~E_NOTICE & ~E_USER_NOTICE & ~E_WARNING & ~E_USER_WARNING);
+    ini_set('display_errors', '0');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inspectionId = (int)($_POST['inspection_id'] ?? 0);
     $costingAction = (string)($_POST['costing_action'] ?? 'save_draft');
@@ -297,8 +305,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($workflowAction !== '') {
         $targetStatus = $workflowTargets[$workflowAction] ?? '';
+        $savedStatus = $currentStatus;
+        $savedAcknowledgedAt = null;
+
         if ($targetStatus === '' || !site_inspection_can_transition($currentStatus, $targetStatus)) {
             $error = 'Invalid inspection status change. Please refresh the page.';
+        } elseif ($workflowAction === 'acknowledge' && $currentStatus === 'Acknowledged') {
+            $message = 'Assignment already acknowledged.';
         } elseif ($workflowAction === 'acknowledge' && ((string)($inspectionState['engineer_schedule_response'] ?? 'pending') !== 'pending'
             || (string)($inspectionState['client_schedule_response'] ?? 'pending') === 'reschedule_requested')) {
             $error = 'This schedule response is already recorded or is waiting for Admin review.';
@@ -320,8 +333,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'Completed' => 'Inspection marked as completed.',
                 default => 'Inspection status updated.',
             };
+            $savedStatus = $targetStatus;
         } else {
             $error = 'Inspection status was not changed. Please refresh the page.';
+        }
+
+        if ($workflowAction === 'acknowledge') {
+            $stateStmt = $conn->prepare('SELECT status, acknowledged_at FROM site_inspections WHERE id = ? AND engineer_id = ? LIMIT 1');
+            if ($stateStmt) {
+                $stateStmt->bind_param('ii', $inspectionId, $userId);
+                $stateStmt->execute();
+                $savedState = $stateStmt->get_result()->fetch_assoc() ?: [];
+                $savedStatus = (string)($savedState['status'] ?? $savedStatus);
+                $savedAcknowledgedAt = $savedState['acknowledged_at'] ?? null;
+            }
+        }
+
+        if ($isAjaxRequest) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'success' => $error === '',
+                'message' => $error !== '' ? $error : $message,
+                'status' => $error === '' ? ($workflowAction === 'acknowledge' ? $savedStatus : $targetStatus) : 'error',
+                'acknowledged_at' => $savedAcknowledgedAt,
+                'inspection_id' => $inspectionId,
+            ]);
+            exit;
         }
     } elseif (!in_array($costingAction, ['save_draft', 'submit_to_admin'], true)) {
         $error = 'Invalid costing action.';

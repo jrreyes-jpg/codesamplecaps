@@ -245,6 +245,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $preferredAt = ($preferredDate !== '' && $preferredTime !== '') ? $preferredDate . ' ' . $preferredTime . ':00' : null;
         if (in_array($currentStatus, ['Ongoing', 'Completed', 'Submitted'], true) || mb_strlen($reason) < 5) {
             $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
+        } elseif ($preferredDate === '' || $preferredTime === '') {
+            $error = 'Choose a preferred new date and time.';
         } elseif ((string)($inspectionState['engineer_schedule_response'] ?? 'pending') !== 'pending'
             || (string)($inspectionState['client_schedule_response'] ?? 'pending') === 'reschedule_requested') {
             $error = 'This schedule response is already recorded or is waiting for Admin review.';
@@ -253,6 +255,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($update) {
                 $update->bind_param('ssii', $reason, $preferredAt, $inspectionId, $userId);
                 $update->execute();
+                if ($update->affected_rows !== 1) {
+                    $error = 'This schedule response was already updated. Please refresh the page.';
+                } else {
                 $noticeStmt = $conn->prepare('SELECT si.created_by, si.inquiry_id, si.scheduled_at, s.client_name FROM site_inspections si JOIN service_inquiries s ON s.id = si.inquiry_id WHERE si.id = ? LIMIT 1');
                 if ($noticeStmt) {
                     $noticeStmt->bind_param('i', $inspectionId);
@@ -261,6 +266,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     user_notifications_create_if_missing($conn, (int)($notice['created_by'] ?? 0), 'engineer_inspection_reschedule_requested', $inspectionId, 'Engineer Requested Inspection Reschedule', 'Engineer requested a schedule change. Reason: ' . mb_strimwidth($reason, 0, 90, '…'), '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . (int)($notice['inquiry_id'] ?? 0) . '&tab=inspection', 'engineer_inspection_reschedule:' . $inspectionId . ':' . hash('sha256', (string)($notice['scheduled_at'] ?? '') . $reason));
                 }
                 $message = 'Reschedule request sent to Admin.';
+                }
+            } else {
+                $error = 'Unable to send the reschedule request. Please try again.';
             }
         }
     } elseif ($workflowAction !== '') {
@@ -654,6 +662,8 @@ $stmt = $conn->prepare(
         si.status,
         si.client_schedule_response,
         si.engineer_schedule_response,
+        si.engineer_schedule_response_note,
+        si.engineer_schedule_preferred_at,
         si.acknowledged_at,
         si.started_at,
         si.completed_at,
@@ -726,7 +736,7 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
-        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection marked as completed.'], true)): ?>
+        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection marked as completed.', 'Reschedule request sent to Admin.'], true)): ?>
             <div class="shared-toast shared-toast--success" data-shared-toast role="status">
                 <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                 <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
@@ -860,21 +870,23 @@ require __DIR__ . '/../layout/header.php';
                                     </form>
                                 <?php endif; ?>
 
-                                <?php if (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
+                                <?php if ((string)($inspection['engineer_schedule_response'] ?? 'pending') === 'reschedule_requested'): ?>
+                                    <section class="inspection-schedule-pending" aria-live="polite">
+                                        <strong>Pending Admin Review</strong>
+                                        <p>Your requested schedule is waiting for Admin review. The official schedule stays unchanged.</p>
+                                        <?php if (!empty($inspection['engineer_schedule_preferred_at'])): ?><p><span>Requested schedule</span><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['engineer_schedule_preferred_at']), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+                                        <?php if (!empty($inspection['engineer_schedule_response_note'])): ?><p><span>Your reason</span><?php echo htmlspecialchars((string)$inspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+                                        <button type="button" class="btn-secondary" disabled>Request Pending</button>
+                                    </section>
+                                <?php elseif (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
                                     && (string)($inspection['engineer_schedule_response'] ?? 'pending') === 'pending'
                                     && (string)($inspection['client_schedule_response'] ?? 'pending') !== 'reschedule_requested'): ?>
-                                    <details class="inspection-schedule-response">
-                                        <summary>Request Reschedule</summary>
-                                        <form method="POST">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
-                                            <input type="hidden" name="schedule_response_action" value="request_reschedule">
-                                            <label>Reason<textarea name="schedule_response_note" required minlength="5"></textarea></label>
-                                            <label>Preferred Date<input type="date" name="schedule_preferred_date"></label>
-                                            <label>Preferred Time<input type="time" name="schedule_preferred_time"></label>
-                                            <button type="submit" class="btn-secondary">Send Reschedule Request</button>
-                                        </form>
-                                    </details>
+                                    <button type="button" class="btn-secondary inspection-schedule-change-button"
+                                        data-engineer-reschedule-open
+                                        data-inspection-id="<?php echo $inspectionId; ?>"
+                                        data-official-schedule="<?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>">
+                                        Request a Schedule Change
+                                    </button>
                                 <?php endif; ?>
 
                                 <form method="POST" class="inspection-costing-form" data-costing-form>
@@ -1068,6 +1080,49 @@ require __DIR__ . '/../layout/header.php';
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-complete-inspection-cancel>Cancel</button>
                     <button type="button" class="btn-primary" data-complete-inspection-confirm>Mark as Completed</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-modal hidden>
+            <div class="inspection-confirm-modal__panel inspection-reschedule-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerRescheduleTitle">
+                <h2 id="engineerRescheduleTitle">Request a Schedule Change</h2>
+                <p class="inspection-reschedule-modal__notice">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved.</p>
+                <p class="inspection-reschedule-modal__official"><span>Current official schedule</span><strong data-engineer-reschedule-official></strong></p>
+                <form method="POST" data-engineer-reschedule-form novalidate>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="inspection_id" value="" data-engineer-reschedule-inspection-id>
+                    <input type="hidden" name="schedule_response_action" value="request_reschedule">
+                    <label class="inspection-reschedule-field">Reason for request
+                        <textarea name="schedule_response_note" required minlength="5" placeholder="Explain why the schedule needs to change." data-engineer-reschedule-reason></textarea>
+                        <small data-engineer-reschedule-error="reason" hidden></small>
+                    </label>
+                    <div class="inspection-reschedule-fields">
+                        <label class="inspection-reschedule-field">Preferred new date
+                            <input type="date" name="schedule_preferred_date" min="<?php echo (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d'); ?>" required data-engineer-reschedule-date>
+                            <small data-engineer-reschedule-error="date" hidden></small>
+                        </label>
+                        <label class="inspection-reschedule-field">Preferred new time
+                            <input type="time" name="schedule_preferred_time" required data-engineer-reschedule-time>
+                            <small data-engineer-reschedule-error="time" hidden></small>
+                        </label>
+                    </div>
+                    <div class="inspection-confirm-modal__actions inspection-reschedule-modal__actions">
+                        <button type="button" class="btn-secondary" data-engineer-reschedule-cancel>Cancel</button>
+                        <button type="submit" class="btn-primary">Continue</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-review-modal hidden>
+            <div class="inspection-confirm-modal__panel inspection-reschedule-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerRescheduleReviewTitle">
+                <h2 id="engineerRescheduleReviewTitle">Review Schedule Change Request</h2>
+                <p>Please check your request before sending it to Admin.</p>
+                <dl class="inspection-reschedule-review" data-engineer-reschedule-review-details></dl>
+                <div class="inspection-confirm-modal__actions">
+                    <button type="button" class="btn-secondary" data-engineer-reschedule-review-cancel>Cancel</button>
+                    <button type="button" class="btn-primary" data-engineer-reschedule-review-submit>Submit Request</button>
                 </div>
             </div>
         </div>

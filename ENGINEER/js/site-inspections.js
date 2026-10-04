@@ -953,6 +953,137 @@ document.addEventListener('DOMContentLoaded', function () {
         pendingCompletionForm.requestSubmit();
     });
 
+    const rescheduleModal = document.querySelector('[data-engineer-reschedule-modal]');
+    const rescheduleReviewModal = document.querySelector('[data-engineer-reschedule-review-modal]');
+    const rescheduleForm = document.querySelector('[data-engineer-reschedule-form]');
+    const rescheduleOpenButtons = document.querySelectorAll('[data-engineer-reschedule-open]');
+    const rescheduleCancelButton = rescheduleModal?.querySelector('[data-engineer-reschedule-cancel]');
+    const rescheduleReviewCancelButton = rescheduleReviewModal?.querySelector('[data-engineer-reschedule-review-cancel]');
+    const rescheduleReviewSubmitButton = rescheduleReviewModal?.querySelector('[data-engineer-reschedule-review-submit]');
+    let rescheduleTrigger = null;
+
+    const setRescheduleFieldError = function (field, message) {
+        if (!field) return;
+        const error = rescheduleModal?.querySelector('[data-engineer-reschedule-error="' + field.name.replace('schedule_preferred_', '') + '"]')
+            || rescheduleModal?.querySelector('[data-engineer-reschedule-error="reason"]');
+        field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        if (error) {
+            error.textContent = message || '';
+            error.hidden = !message;
+        }
+    };
+
+    const closeRescheduleModal = function () {
+        if (!rescheduleModal || rescheduleModal.dataset.submitting === 'true') return;
+        rescheduleModal.hidden = true;
+        rescheduleTrigger?.focus();
+    };
+
+    const closeRescheduleReviewModal = function (returnToForm) {
+        if (!rescheduleReviewModal || rescheduleReviewModal.dataset.submitting === 'true') return;
+        rescheduleReviewModal.hidden = true;
+        if (returnToForm && rescheduleModal) {
+            rescheduleModal.hidden = false;
+            rescheduleForm?.querySelector('[data-engineer-reschedule-reason]')?.focus();
+        }
+    };
+
+    const validateRescheduleForm = function () {
+        if (!rescheduleForm) return false;
+        const reason = rescheduleForm.elements.schedule_response_note;
+        const date = rescheduleForm.elements.schedule_preferred_date;
+        const time = rescheduleForm.elements.schedule_preferred_time;
+        const checks = [
+            [reason, reason.value.trim().replace(/\s+/g, '').length >= 5, 'Enter at least 5 characters.'],
+            [date, date.value !== '', 'Choose a preferred new date.'],
+            [time, time.value !== '', 'Choose a preferred new time.'],
+        ];
+        let firstInvalid = null;
+        checks.forEach(function ([field, isValid, message]) {
+            setRescheduleFieldError(field, isValid ? '' : message);
+            if (!isValid && !firstInvalid) firstInvalid = field;
+        });
+        firstInvalid?.focus();
+        return !firstInvalid;
+    };
+
+    const openRescheduleReview = function () {
+        if (!rescheduleModal || !rescheduleReviewModal || !rescheduleForm || !validateRescheduleForm()) return;
+        const official = rescheduleModal.querySelector('[data-engineer-reschedule-official]')?.textContent || 'Not set';
+        const details = [
+            ['Official schedule', official],
+            ['Requested date', rescheduleForm.elements.schedule_preferred_date.value],
+            ['Requested time', rescheduleForm.elements.schedule_preferred_time.value],
+            ['Reason', rescheduleForm.elements.schedule_response_note.value],
+        ];
+        const list = rescheduleReviewModal.querySelector('[data-engineer-reschedule-review-details]');
+        list?.replaceChildren();
+        details.forEach(function ([label, value]) {
+            const term = document.createElement('dt');
+            const description = document.createElement('dd');
+            term.textContent = label;
+            description.textContent = value;
+            list?.append(term, description);
+        });
+        rescheduleModal.hidden = true;
+        rescheduleReviewModal.hidden = false;
+        rescheduleReviewCancelButton?.focus();
+    };
+
+    rescheduleOpenButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (!rescheduleModal || !rescheduleForm) return;
+            rescheduleTrigger = button;
+            rescheduleForm.reset();
+            rescheduleForm.elements.inspection_id.value = button.dataset.inspectionId || '';
+            const official = rescheduleModal.querySelector('[data-engineer-reschedule-official]');
+            if (official) official.textContent = button.dataset.officialSchedule || 'Not set';
+            rescheduleForm.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
+                setRescheduleFieldError(field, '');
+            });
+            rescheduleModal.hidden = false;
+            rescheduleForm.elements.schedule_response_note.focus();
+        });
+    });
+
+    rescheduleForm?.querySelectorAll('textarea, input').forEach(function (field) {
+        field.addEventListener('input', function () { setRescheduleFieldError(field, ''); });
+        field.addEventListener('blur', function () {
+            if (field.name === 'schedule_response_note') {
+                const valid = field.value.trim().replace(/\s+/g, '').length >= 5;
+                setRescheduleFieldError(field, valid ? '' : 'Enter at least 5 characters.');
+            } else if (field.name === 'schedule_preferred_date') {
+                setRescheduleFieldError(field, field.value ? '' : 'Choose a preferred new date.');
+            } else if (field.name === 'schedule_preferred_time') {
+                setRescheduleFieldError(field, field.value ? '' : 'Choose a preferred new time.');
+            }
+        });
+    });
+
+    rescheduleForm?.addEventListener('submit', function (event) {
+        if (rescheduleForm.dataset.reviewConfirmed === 'true') return;
+        event.preventDefault();
+        openRescheduleReview();
+    });
+
+    rescheduleCancelButton?.addEventListener('click', closeRescheduleModal);
+    rescheduleModal?.addEventListener('click', function (event) {
+        if (event.target === rescheduleModal) closeRescheduleModal();
+    });
+    rescheduleReviewCancelButton?.addEventListener('click', function () { closeRescheduleReviewModal(true); });
+    rescheduleReviewModal?.addEventListener('click', function (event) {
+        if (event.target === rescheduleReviewModal) closeRescheduleReviewModal(true);
+    });
+    rescheduleReviewSubmitButton?.addEventListener('click', function () {
+        if (!rescheduleForm || rescheduleReviewModal?.dataset.submitting === 'true') return;
+        rescheduleReviewModal.dataset.submitting = 'true';
+        rescheduleReviewCancelButton.disabled = true;
+        rescheduleReviewSubmitButton.disabled = true;
+        rescheduleReviewSubmitButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Sending...';
+        rescheduleForm.dataset.reviewConfirmed = 'true';
+        rescheduleForm.requestSubmit();
+    });
+
     document.querySelectorAll('[data-confirm-inspection-transition]').forEach(function (button) {
         button.closest('form')?.addEventListener('submit', function (event) {
             const form = event.currentTarget;
@@ -1015,6 +1146,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
+            if (rescheduleReviewModal && !rescheduleReviewModal.hidden) {
+                event.preventDefault();
+                closeRescheduleReviewModal(true);
+                return;
+            }
+            if (rescheduleModal && !rescheduleModal.hidden) {
+                event.preventDefault();
+                closeRescheduleModal();
+                return;
+            }
             if (completionModal && !completionModal.hidden) {
                 event.preventDefault();
                 closeCompletionModal();

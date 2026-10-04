@@ -859,37 +859,39 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endforeach; ?>
                                 </div>
 
-                                <?php if ($workflowAction !== ''): ?>
-                                    <form method="POST" class="inspection-status-action">
-                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
-                                        <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?>>
-                                            <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                <div class="inspection-status-action">
+                                    <?php if ($workflowAction !== ''): ?>
+                                        <form method="POST" class="inspection-status-action">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                            <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?>>
+                                                <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <?php if ((string)($inspection['engineer_schedule_response'] ?? 'pending') === 'reschedule_requested'): ?>
+                                        <section class="inspection-schedule-pending" aria-live="polite">
+                                            <strong>Pending Admin Review</strong>
+                                            <p>Your requested schedule is waiting for Admin review. The official schedule stays unchanged.</p>
+                                            <?php if (!empty($inspection['engineer_schedule_preferred_at'])): ?><p><span>Requested schedule</span><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['engineer_schedule_preferred_at']), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+                                            <?php if (!empty($inspection['engineer_schedule_response_note'])): ?><p><span>Your reason</span><?php echo htmlspecialchars((string)$inspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+                                            <button type="button" class="btn-secondary" disabled>Request Pending</button>
+                                        </section>
+                                    <?php elseif (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
+                                        && (string)($inspection['engineer_schedule_response'] ?? 'pending') === 'pending'
+                                        && (string)($inspection['client_schedule_response'] ?? 'pending') !== 'reschedule_requested'): ?>
+                                        <button type="button" class="btn-secondary inspection-schedule-change-button"
+                                            data-engineer-reschedule-open
+                                            data-inspection-id="<?php echo $inspectionId; ?>"
+                                            data-official-schedule="<?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>">
+                                            Request a Schedule Change
                                         </button>
-                                    </form>
-                                <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
 
-                                <?php if ((string)($inspection['engineer_schedule_response'] ?? 'pending') === 'reschedule_requested'): ?>
-                                    <section class="inspection-schedule-pending" aria-live="polite">
-                                        <strong>Pending Admin Review</strong>
-                                        <p>Your requested schedule is waiting for Admin review. The official schedule stays unchanged.</p>
-                                        <?php if (!empty($inspection['engineer_schedule_preferred_at'])): ?><p><span>Requested schedule</span><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['engineer_schedule_preferred_at']), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-                                        <?php if (!empty($inspection['engineer_schedule_response_note'])): ?><p><span>Your reason</span><?php echo htmlspecialchars((string)$inspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-                                        <button type="button" class="btn-secondary" disabled>Request Pending</button>
-                                    </section>
-                                <?php elseif (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
-                                    && (string)($inspection['engineer_schedule_response'] ?? 'pending') === 'pending'
-                                    && (string)($inspection['client_schedule_response'] ?? 'pending') !== 'reschedule_requested'): ?>
-                                    <button type="button" class="btn-secondary inspection-schedule-change-button"
-                                        data-engineer-reschedule-open
-                                        data-inspection-id="<?php echo $inspectionId; ?>"
-                                        data-official-schedule="<?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>">
-                                        Request a Schedule Change
-                                    </button>
-                                <?php endif; ?>
-
-                                <form method="POST" class="inspection-costing-form" data-costing-form>
+                                <?php if ($canEditCosting): ?><form method="POST" class="inspection-costing-form" data-costing-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
@@ -1065,7 +1067,7 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
-                                </form>
+                                </form><?php endif; ?>
                             </div>
                         </div>
                     </article>

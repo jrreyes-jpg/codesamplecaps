@@ -92,7 +92,7 @@ body.is-schedule-modal-open { overflow: hidden; }
 .schedule-reschedule__toggle::after { content: '+'; font-size: 1.25rem; line-height: 1; }
 .schedule-reschedule[open] .schedule-reschedule__toggle::after { content: '−'; }
 .schedule-reschedule-form { display: grid; gap: 13px; padding-top: 14px; }
-.schedule-modal__request-form { padding-top: 14px; }
+.schedule-modal__request-form { padding-top: 0; }
 .schedule-modal__request-form[hidden] { display: none; }
 .schedule-reschedule-form__description { margin: 0; color: #475569; font-size: .88rem; line-height: 1.5; }
 .schedule-reschedule-form__official { margin: 0; border: 1px solid #dbe5df; border-radius: 9px; padding: 10px 12px; color: #14532d; background: #f0fdf4; font-size: .9rem; font-weight: 800; line-height: 1.45; }
@@ -141,10 +141,13 @@ body.is-schedule-modal-open { overflow: hidden; }
 .schedule-modal__dialog h2 { margin: 0 36px 10px 0; color: #14532d; font-size: 1.22rem; line-height: 1.3; }
 .schedule-modal__dialog p { margin: 0; color: #475569; line-height: 1.55; }
 .schedule-modal__details { display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr); gap: 8px 14px; margin: 18px 0 0; border: 1px solid #dbe5df; border-radius: 10px; padding: 12px; background: #f8fafc; }
+.schedule-modal__details[hidden],
+.schedule-modal__actions[hidden] { display: none; }
 .schedule-modal__details dt { color: #64748b; font-size: .78rem; font-weight: 800; }
 .schedule-modal__details dd { min-width: 0; margin: 0; color: #1e293b; font-size: .88rem; font-weight: 700; overflow-wrap: anywhere; }
 .schedule-modal__close { position: absolute; top: 13px; right: 13px; display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 8px; background: #f1f5f9; color: #334155; font-size: 1.35rem; line-height: 1; cursor: pointer; }
-.schedule-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.schedule-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.schedule-modal__request-actions { margin-top: 4px; }
 .schedule-modal__button { min-height: 42px; border: 1px solid transparent; border-radius: 8px; padding: 9px 14px; font: inherit; font-weight: 800; cursor: pointer; }
 .schedule-modal__button--cancel { border-color: #cbd5e1; background: #fff; color: #334155; }
 .schedule-modal__button--primary { background: #166534; color: #fff; }

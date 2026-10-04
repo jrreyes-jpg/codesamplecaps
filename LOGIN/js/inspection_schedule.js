@@ -447,7 +447,7 @@ const payload = new FormData(form);
                 title: isRescheduleRequest ? 'Submit Reschedule Request' : 'Confirm Inspection Schedule',
                 message: isRescheduleRequest
                     ? 'Please check your request before sending it to Admin.'
-                    : 'Are you sure you want to confirm this inspection schedule? By continuing, you are confirming the official inspection date and time. This response cannot be changed through this link.',
+                    : 'Confirm the official inspection schedule.',
                 primaryLabel: isRescheduleRequest ? 'Submit Request' : 'Confirm Schedule',
                 trigger: button,
                 details: isRescheduleRequest ? [

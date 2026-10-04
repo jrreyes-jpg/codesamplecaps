@@ -1123,6 +1123,7 @@ require __DIR__ . '/../layout/header.php';
 
         <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-modal data-available-time-slots='<?php echo htmlspecialchars(json_encode(site_inspection_available_time_slots()), ENT_QUOTES, 'UTF-8'); ?>' data-reschedule-sent="<?php echo $message === 'Reschedule request sent to Admin.' ? '1' : '0'; ?>" hidden>
             <div class="inspection-confirm-modal__panel inspection-reschedule-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerRescheduleTitle">
+                <button type="button" class="inspection-modal__close" data-engineer-reschedule-close aria-label="Close schedule change form">&times;</button>
                 <h2 id="engineerRescheduleTitle">Request a Schedule Change</h2>
                 <p class="inspection-reschedule-modal__notice">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved.</p>
                 <p class="inspection-reschedule-modal__official"><span>Current official schedule</span><strong data-engineer-reschedule-official></strong></p>

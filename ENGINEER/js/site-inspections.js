@@ -1074,6 +1074,13 @@ document.addEventListener('DOMContentLoaded', function () {
         rescheduleTrigger?.focus();
     };
 
+    const closeRescheduleModalByButton = function () {
+        closeRescheduleModal();
+        if (rescheduleForm) {
+            rescheduleForm.dataset.submitted = '';
+        }
+    };
+
     const closeRescheduleReviewModal = function (returnToForm) {
         if (!rescheduleReviewModal || rescheduleReviewModal.dataset.submitting === 'true') return;
         rescheduleReviewModal.hidden = true;
@@ -1207,14 +1214,14 @@ document.addEventListener('DOMContentLoaded', function () {
             setRescheduleFieldError(field, '');
         });
         field.addEventListener('blur', function () {
+            field.dataset.touched = 'true';
             if (field.name === 'schedule_response_note') {
-                const touched = field.dataset.touched === 'true' || rescheduleForm.dataset.submitted === 'true';
-                if (!touched) { setRescheduleFieldError(field, ''); return; }
                 const valid = field.value.trim().replace(/\s+/g, '').length >= 5;
                 setRescheduleFieldError(field, valid ? '' : 'Enter at least 5 characters.');
             } else if (field.name === 'schedule_preferred_date') {
                 setRescheduleFieldError(field, field.value ? '' : 'Choose a preferred new date.');
             } else if (field.name === 'schedule_preferred_time') {
+                if (!rescheduleTimeSelect || rescheduleTimeSelect.disabled) return;
                 setRescheduleFieldError(field, field.value ? '' : 'Choose a preferred new time.');
             }
         });
@@ -1227,9 +1234,11 @@ document.addEventListener('DOMContentLoaded', function () {
         openRescheduleReview();
     });
 
-    rescheduleCancelButton?.addEventListener('click', closeRescheduleModal);
+    const closeRescheduleButton = rescheduleModal?.querySelector('[data-engineer-reschedule-close]');
+    rescheduleCancelButton?.addEventListener('click', closeRescheduleModalByButton);
+    closeRescheduleButton?.addEventListener('click', closeRescheduleModalByButton);
     rescheduleModal?.addEventListener('click', function (event) {
-        if (event.target === rescheduleModal) closeRescheduleModal();
+        if (event.target === rescheduleModal) closeRescheduleModalByButton();
     });
     rescheduleReviewCancelButton?.addEventListener('click', function () { closeRescheduleReviewModal(true); });
     rescheduleReviewModal?.addEventListener('click', function (event) {
@@ -1266,6 +1275,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 event.preventDefault();
                 openCompletionModal(form, button);
+                return;
+            }
+
+            // Use custom acknowledge modal instead of native confirm
+            if (button.hasAttribute('data-confirm-acknowledge')) {
+                if (form.dataset.acknowledgeConfirmed === 'true') return;
+                event.preventDefault();
+                // reuse the same flow as clicking the acknowledge button
+                pendingAcknowledgeForm = button.closest('form');
+                pendingAcknowledgeButton = button;
+                if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+                acknowledgeModal.hidden = false;
+                acknowledgeCancelButton?.focus();
                 return;
             }
 

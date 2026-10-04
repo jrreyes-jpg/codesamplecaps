@@ -401,6 +401,13 @@
     width: min(560px, calc(100vw - 40px));
     max-height: calc(100vh - 40px);
     overflow-y: auto;
+    position: relative;
+}
+
+.inspection-reschedule-modal__panel .inspection-modal__close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
 }
 
 .inspection-reschedule-modal__notice {
@@ -433,6 +440,12 @@
     color: #334155;
     font-size: 0.86rem;
     font-weight: 800;
+    min-width: 0;
+}
+
+.inspection-reschedule-field label,
+.inspection-reschedule-field > span {
+    display: block;
 }
 
 .inspection-reschedule-field input,
@@ -445,6 +458,7 @@
     padding: 10px;
     color: #0f172a;
     font: inherit;
+    box-sizing: border-box;
 }
 
 .inspection-reschedule-field textarea {
@@ -460,9 +474,13 @@
 }
 
 .inspection-reschedule-field small {
+    display: block;
+    min-height: 1.1em;
     color: #b91c1c;
     font-size: 0.76rem;
     font-weight: 700;
+    line-height: 1.25;
+    margin-top: 2px;
 }
 
 .inspection-reschedule-field small[hidden] {
@@ -473,7 +491,13 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+    align-items: start;
 }
+
+.inspection-reschedule-fields .inspection-reschedule-field {
+    min-width: 0;
+}
+
 
 .inspection-reschedule-modal__actions {
     margin-top: 4px;

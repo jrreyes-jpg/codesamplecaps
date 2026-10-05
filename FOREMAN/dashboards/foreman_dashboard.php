@@ -3,6 +3,7 @@ define('AUTH_REQUIRED_ROLE', 'foreman');
 require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/project_access.php';
+require_once __DIR__ . '/../../config/project_progress.php';
 require_once __DIR__ . '/../includes/foreman_helpers.php';
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -14,15 +15,14 @@ $assetSummary = $dashboardData['asset_summary'];
 $usageSummary = $dashboardData['usage_summary'];
 $scanSummary = $dashboardData['scan_summary'];
 $supportSummary = $dashboardData['support_summary'];
-$recentUsageLogs = array_slice($dashboardData['recent_usage_logs'], 0, 4);
-$recentScanRows = array_slice($dashboardData['recent_scan_rows'], 0, 5);
-$workerSummaryRows = array_slice($dashboardData['worker_summary_rows'], 0, 4);
+$assignedProjectRows = array_slice($dashboardData['assigned_projects'], 0, 3);
+$recentUsageLogs = array_slice($dashboardData['recent_usage_logs'], 0, 5);
+$workerSummaryRows = array_slice($dashboardData['worker_summary_rows'], 0, 5);
 $foremanNotifications = [
     'attention_count' => (int)($assetSummary['maintenance_assets'] ?? 0) + (int)($assetSummary['damaged_assets'] ?? 0),
     'logs_today' => (int)($usageSummary['logs_today'] ?? 0),
     'scans_today' => (int)($scanSummary['scans_today'] ?? 0),
 ];
-$projectRoleSummary = project_role_summary_label('foreman');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,183 +42,97 @@ $projectRoleSummary = project_role_summary_label('foreman');
     <div class="page-shell">
         <section class="page-hero">
             <div class="page-hero__content">
-                <span class="page-hero__eyebrow">Overview</span>
-                <h1 class="page-hero__title"><?php echo htmlspecialchars($foremanProfileName); ?></h1>
-                <p class="page-hero__copy page-hero__copy--compact"><?php echo htmlspecialchars($projectRoleSummary); ?></p>
+                <h1 class="page-hero__title">Hello, <?php echo htmlspecialchars($foremanProfileName); ?></h1>
                 <div class="hero-actions">
                     <button class="btn-primary" type="button" data-open-qr-scanner>Scan Asset</button>
-                    <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">View Logs</a>
+                    <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/asset_status.php">Asset Status</a>
                 </div>
             </div>
-
-            <aside class="page-hero__aside">
-                <div class="aside-stat">
-                    <span>Account Status</span>
-                    <strong><?php echo htmlspecialchars(foreman_status_label((string)($foremanProfile['status'] ?? 'active'))); ?></strong>
-                </div>
-                <div class="aside-stat">
-                    <span>Usage Logs Today</span>
-                    <strong><?php echo (int)($usageSummary['logs_today'] ?? 0); ?></strong>
-                </div>
-                <div class="aside-stat">
-                    <span>Scans Today</span>
-                    <strong><?php echo (int)($scanSummary['scans_today'] ?? 0); ?></strong>
-                </div>
-                <div class="aside-stat">
-                    <span>Workers Today</span>
-                    <strong><?php echo (int)($usageSummary['workers_today'] ?? 0); ?></strong>
-                </div>
-            </aside>
         </section>
 
         <section class="metrics-grid" aria-label="Foreman metrics">
             <article class="metric-card">
-                <span>Total Assets</span>
-                <strong><?php echo (int)($assetSummary['total_assets'] ?? 0); ?></strong>
-                <small>Tracked inventory visible to field operations.</small>
+                <span>Available Assets</span>
+                <strong><?php echo (int)($assetSummary['available_assets'] ?? 0); ?></strong>
             </article>
             <article class="metric-card">
                 <span>Assets In Use</span>
                 <strong><?php echo (int)($assetSummary['in_use_assets'] ?? 0); ?></strong>
-                <small>Currently active based on asset status.</small>
             </article>
-            <article class="metric-card">
-                <span>Active Projects</span>
-                <strong><?php echo (int)($supportSummary['active_projects'] ?? 0); ?></strong>
-                <small>Projects still open under your assigned work.</small>
+            <article class="metric-card metric-card--warning">
+                <span>Maintenance</span>
+                <strong><?php echo (int)($assetSummary['maintenance_assets'] ?? 0); ?></strong>
             </article>
             <article class="metric-card metric-card--danger">
-                <span>Needs Attention</span>
-                <strong><?php echo (int)$foremanNotifications['attention_count']; ?></strong>
-                <small>Maintenance, damaged, or lost assets need checking.</small>
+                <span>Damaged Or Lost</span>
+                <strong><?php echo (int)($assetSummary['damaged_assets'] ?? 0); ?></strong>
             </article>
         </section>
 
-        <section class="content-grid">
-            <article class="panel-card">
-                <div class="section-heading">
-                    <div>
-                        <span class="section-badge">Quick Actions</span>
-                        <h2>Scan And Check Assets</h2>
-                        <p>Scan an asset for field work or check its current status.</p>
-                    </div>
-                </div>
-
-                <div class="foreman-quick-actions" aria-label="Foreman quick actions">
-                    <button class="foreman-quick-action foreman-quick-action--scan" type="button" data-open-qr-scanner>
-                        <span class="foreman-quick-action__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M4 4h5v2H6v3H4V4Zm11 0h5v5h-2V6h-3V4ZM4 15h2v3h3v2H4v-5Zm14 0h2v5h-5v-2h3v-3ZM8 8h3v3H8V8Zm5 0h3v3h-3V8ZM8 13h3v3H8v-3Zm5 0h3v3h-3v-3Z" />
-                            </svg>
-                        </span>
-                        <span class="foreman-quick-action__content">
-                            <strong>Scan Asset</strong>
-                            <span>Scan a QR code to log field asset use.</span>
-                        </span>
-                    </button>
-                    <a class="foreman-quick-action foreman-quick-action--status" href="/codesamplecaps/FOREMAN/dashboards/asset_status.php">
-                        <span class="foreman-quick-action__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Zm2 1v11h12v-11H6Zm2 2h3v3H8v-3Zm5 0h3v3h-3v-3Zm-5 5h3v2H8v-2Zm5 0h3v2h-3v-2Z" />
-                            </svg>
-                        </span>
-                        <span class="foreman-quick-action__content">
-                            <strong>Asset Status</strong>
-                            <span>Check available and active field assets.</span>
-                        </span>
-                    </a>
-                </div>
-            </article>
-
-            <article class="panel-card">
-                <div class="section-heading">
-                    <div>
-                        <span class="section-badge">Snapshot</span>
-                        <h2>Today At A Glance</h2>
-                    </div>
-                </div>
-
-                <div class="snapshot-list">
-                    <div class="snapshot-item">
-                        <span>Available assets</span>
-                        <strong><?php echo (int)($assetSummary['available_assets'] ?? 0); ?></strong>
-                    </div>
-                    <div class="snapshot-item">
-                        <span>Open tasks</span>
-                        <strong><?php echo (int)($supportSummary['open_tasks'] ?? 0); ?></strong>
-                    </div>
-                    <div class="snapshot-item">
-                        <span>Logs in 7 days</span>
-                        <strong><?php echo (int)($usageSummary['logs_last_7_days'] ?? 0); ?></strong>
-                    </div>
-                    <div class="snapshot-item">
-                        <span>Scans in 7 days</span>
-                        <strong><?php echo (int)($scanSummary['scans_last_7_days'] ?? 0); ?></strong>
-                    </div>
-                </div>
-            </article>
-        </section>
-
-        <section class="scan-automation-panel" aria-label="Scan activity automation">
-            <div class="scan-automation-panel__lead">
-                <span class="section-badge">Automation</span>
-                <h2>Scan Activity Command Center</h2>
-                <p>Every successful QR log automatically records usage, scan timestamp, unit code, foreman account, and device details for audit review.</p>
-                <div class="scan-automation-panel__actions">
-                    <button class="btn-primary" type="button" data-open-qr-scanner>Run Scan</button>
-                    <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">Open Activity Log</a>
-                </div>
+        <section class="panel-card" aria-label="Today at a glance">
+            <div class="section-heading">
+                <h2>Today At A Glance</h2>
             </div>
-
-            <div class="scan-automation-panel__metrics" aria-label="Scan automation metrics">
-                <div class="automation-metric">
-                    <span>Scans Today</span>
-                    <strong><?php echo (int)($scanSummary['scans_today'] ?? 0); ?></strong>
-                </div>
-                <div class="automation-metric">
-                    <span>7-Day Scans</span>
-                    <strong><?php echo (int)($scanSummary['scans_last_7_days'] ?? 0); ?></strong>
-                </div>
-                <div class="automation-metric">
+            <div class="snapshot-list">
+                <div class="snapshot-item">
                     <span>Usage Logs Today</span>
                     <strong><?php echo (int)($usageSummary['logs_today'] ?? 0); ?></strong>
                 </div>
-            </div>
-
-            <div class="scan-automation-panel__stream">
-                <div class="scan-stream-head">
-                    <strong>Latest Scan Events</strong>
-                    <span>Auto-captured by QR workflow</span>
+                <div class="snapshot-item">
+                    <span>Open Tasks</span>
+                    <strong><?php echo (int)($supportSummary['open_tasks'] ?? 0); ?></strong>
                 </div>
-
-                <?php if (!empty($recentScanRows)): ?>
-                    <div class="scan-timeline">
-                        <?php foreach ($recentScanRows as $scan): ?>
-                            <article class="scan-timeline__item">
-                                <span class="scan-timeline__pulse" aria-hidden="true"></span>
-                                <div>
-                                    <strong><?php echo htmlspecialchars((string)($scan['asset_name'] ?? 'Unknown Asset')); ?></strong>
-                                    <span>
-                                        <?php echo htmlspecialchars((string)($scan['unit_code'] ?? 'General asset QR')); ?>
-                                        | <?php echo htmlspecialchars(foreman_format_datetime($scan['scan_time'] ?? null)); ?>
-                                    </span>
-                                </div>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="empty-state empty-state--inline">No scan activity yet. Start with Run Scan to capture the first event.</div>
-                <?php endif; ?>
+                <div class="snapshot-item">
+                    <span>Scans In 7 Days</span>
+                    <strong><?php echo (int)($scanSummary['scans_last_7_days'] ?? 0); ?></strong>
+                </div>
             </div>
+        </section>
+
+        <section class="panel-card" aria-label="Assigned projects preview">
+            <div class="section-heading">
+                <div>
+                    <h2>My Projects</h2>
+                </div>
+                <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/projects.php">Open My Projects</a>
+            </div>
+
+            <?php if (!empty($assignedProjectRows)): ?>
+                <div class="project-list project-list--preview">
+                    <?php foreach ($assignedProjectRows as $project): ?>
+                        <?php
+                        $projectStatus = (string)($project['status'] ?? 'pending');
+                        $projectProgress = build_role_project_progress($project, 'foreman');
+                        ?>
+                        <article class="project-card">
+                            <div class="project-card__header">
+                                <h3><?php echo htmlspecialchars((string)($project['project_name'] ?? 'Untitled Project')); ?></h3>
+                                <span class="status-badge status-badge--<?php echo htmlspecialchars($projectStatus); ?>">
+                                    <?php echo htmlspecialchars(foreman_status_label($projectStatus)); ?>
+                                </span>
+                            </div>
+                            <div class="project-progress">
+                                <div class="project-progress__meta">
+                                    <span>Progress</span>
+                                    <strong><?php echo (int)($projectProgress['percent'] ?? 0); ?>%</strong>
+                                </div>
+                                <progress value="<?php echo (int)($projectProgress['percent'] ?? 0); ?>" max="100">
+                                    <?php echo (int)($projectProgress['percent'] ?? 0); ?>%
+                                </progress>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="empty-state">No projects yet.</div>
+            <?php endif; ?>
         </section>
 
         <section class="content-grid">
             <article class="panel-card">
                 <div class="section-heading">
                     <div>
-                        <span class="section-badge">Recent Logs</span>
-                        <h2>Latest Field Entries</h2>
-                        <p>Short preview only. Full list is in Usage Logs.</p>
+                        <h2>Recent Logs</h2>
                     </div>
                     <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">Open Usage Logs</a>
                 </div>
@@ -230,30 +144,24 @@ $projectRoleSummary = project_role_summary_label('foreman');
                                 <div class="activity-card__header">
                                     <div>
                                         <h3><?php echo htmlspecialchars((string)($log['asset_name'] ?? 'Unknown Asset')); ?></h3>
-                                        <p><?php echo htmlspecialchars((string)($log['worker_name'] ?? 'Unknown Worker')); ?></p>
+                                        <p><?php echo htmlspecialchars(foreman_format_datetime($log['used_at'] ?? null)); ?></p>
                                     </div>
                                     <span class="status-badge status-badge--<?php echo htmlspecialchars((string)($log['resolved_status'] ?? 'available')); ?>">
                                         <?php echo htmlspecialchars(foreman_status_label((string)($log['resolved_status'] ?? 'available'))); ?>
                                     </span>
                                 </div>
-                                <div class="activity-meta">
-                                    <span>Type: <?php echo htmlspecialchars((string)($log['asset_type'] ?? 'No type')); ?></span>
-                                    <span><?php echo htmlspecialchars(foreman_format_datetime($log['used_at'] ?? null)); ?></span>
-                                </div>
                             </article>
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="empty-state">No usage logs yet.</div>
+                    <div class="empty-state">No logs yet.</div>
                 <?php endif; ?>
             </article>
 
             <article class="panel-card">
                 <div class="section-heading">
                     <div>
-                        <span class="section-badge">Workers</span>
-                        <h2>Top Active This Week</h2>
-                        <p>Preview only. Full list is in Worker Summary.</p>
+                        <h2>Worker Summary</h2>
                     </div>
                     <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/worker_summary.php">Open Worker Summary</a>
                 </div>
@@ -266,12 +174,11 @@ $projectRoleSummary = project_role_summary_label('foreman');
                                     <h3><?php echo htmlspecialchars((string)($worker['worker_name'] ?? 'Unknown')); ?></h3>
                                     <span class="status-badge status-badge--ok"><?php echo (int)($worker['usage_count'] ?? 0); ?> logs</span>
                                 </div>
-                                <p>Last activity: <?php echo htmlspecialchars(foreman_format_datetime($worker['last_used_at'] ?? null)); ?></p>
                             </article>
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="empty-state">No worker activity yet.</div>
+                    <div class="empty-state">No workers yet.</div>
                 <?php endif; ?>
             </article>
         </section>

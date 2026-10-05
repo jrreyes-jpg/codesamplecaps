@@ -98,32 +98,34 @@ $projectRoleSummary = project_role_summary_label('foreman');
             <article class="panel-card">
                 <div class="section-heading">
                     <div>
-                        <span class="section-badge">Quick Access</span>
-                        <h2>Go Straight To The Right Page</h2>
-                        <p>Overview stays summary-only. Full details are inside their own pages.</p>
+                        <span class="section-badge">Quick Actions</span>
+                        <h2>Scan And Check Assets</h2>
+                        <p>Scan an asset for field work or check its current status.</p>
                     </div>
                 </div>
 
-                <div class="quick-links-grid">
-                    <button class="quick-link quick-link--scan" type="button" data-open-qr-scanner>
-                        <strong>Scan Asset</strong>
-                        <span>Open QR scanner and log usage instantly.</span>
+                <div class="foreman-quick-actions" aria-label="Foreman quick actions">
+                    <button class="foreman-quick-action foreman-quick-action--scan" type="button" data-open-qr-scanner>
+                        <span class="foreman-quick-action__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M4 4h5v2H6v3H4V4Zm11 0h5v5h-2V6h-3V4ZM4 15h2v3h3v2H4v-5Zm14 0h2v5h-5v-2h3v-3ZM8 8h3v3H8V8Zm5 0h3v3h-3V8ZM8 13h3v3H8v-3Zm5 0h3v3h-3v-3Z" />
+                            </svg>
+                        </span>
+                        <span class="foreman-quick-action__content">
+                            <strong>Scan Asset</strong>
+                            <span>Scan a QR code to log field asset use.</span>
+                        </span>
                     </button>
-                    <a class="quick-link" href="/codesamplecaps/FOREMAN/dashboards/asset_status.php">
-                        <strong>Asset Status</strong>
-                        <span>See available, in use, maintenance, and damaged assets.</span>
-                    </a>
-                    <a class="quick-link" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">
-                        <strong>Usage Logs</strong>
-                        <span>Review detailed usage entries and scan history.</span>
-                    </a>
-                    <a class="quick-link" href="/codesamplecaps/FOREMAN/dashboards/projects.php">
-                        <strong>My Projects</strong>
-                        <span>Review assigned project status, deadlines, and open work only.</span>
-                    </a>
-                    <a class="quick-link" href="/codesamplecaps/FOREMAN/dashboards/worker_summary.php">
-                        <strong>Worker Summary</strong>
-                        <span>Check who handled assets most this week.</span>
+                    <a class="foreman-quick-action foreman-quick-action--status" href="/codesamplecaps/FOREMAN/dashboards/asset_status.php">
+                        <span class="foreman-quick-action__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Zm2 1v11h12v-11H6Zm2 2h3v3H8v-3Zm5 0h3v3h-3v-3Zm-5 5h3v2H8v-2Zm5 0h3v2h-3v-2Z" />
+                            </svg>
+                        </span>
+                        <span class="foreman-quick-action__content">
+                            <strong>Asset Status</strong>
+                            <span>Check available and active field assets.</span>
+                        </span>
                     </a>
                 </div>
             </article>

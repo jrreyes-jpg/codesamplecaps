@@ -248,6 +248,101 @@ body {
     gap: 14px;
 }
 
+.foreman-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.foreman-quick-action {
+    align-items: center;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 18px;
+    display: flex;
+    gap: 14px;
+    justify-content: flex-start;
+    min-height: 132px;
+    padding: 20px;
+    text-align: left;
+    text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    width: 100%;
+}
+
+.foreman-quick-action:hover,
+.foreman-quick-action:focus-visible {
+    transform: translateY(-2px);
+}
+
+.foreman-quick-action:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, .3);
+    outline-offset: 3px;
+}
+
+.foreman-quick-action__icon {
+    align-items: center;
+    border-radius: 14px;
+    display: inline-flex;
+    flex: 0 0 52px;
+    height: 52px;
+    justify-content: center;
+    width: 52px;
+}
+
+.foreman-quick-action__icon svg {
+    fill: currentColor;
+    height: 28px;
+    width: 28px;
+}
+
+.foreman-quick-action__content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.foreman-quick-action__content strong {
+    font-size: 1.05rem;
+}
+
+.foreman-quick-action__content span {
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+.foreman-quick-action--scan {
+    background: linear-gradient(135deg, #15803d, #16a34a);
+    border-color: #15803d;
+    box-shadow: 0 12px 26px rgba(22, 163, 74, .22);
+    color: #fff;
+}
+
+.foreman-quick-action--scan:hover,
+.foreman-quick-action--scan:focus-visible {
+    box-shadow: 0 16px 30px rgba(22, 163, 74, .3);
+}
+
+.foreman-quick-action--scan .foreman-quick-action__icon {
+    background: rgba(255, 255, 255, .18);
+}
+
+.foreman-quick-action--status {
+    background: #fff;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.foreman-quick-action--status:hover,
+.foreman-quick-action--status:focus-visible {
+    border-color: #22c55e;
+    box-shadow: 0 12px 24px rgba(22, 163, 74, .13);
+}
+
+.foreman-quick-action--status .foreman-quick-action__icon {
+    background: #dcfce7;
+}
+
 .quick-link {
     align-items: flex-start;
     justify-content: flex-start;
@@ -1126,6 +1221,7 @@ body {
     .metrics-grid,
     .foreman-form-grid,
     .quick-links-grid,
+    .foreman-quick-actions,
     .status-grid,
     .activity-meta,
     .scan-meta,

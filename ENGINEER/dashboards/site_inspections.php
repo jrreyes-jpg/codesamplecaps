@@ -941,7 +941,7 @@ require __DIR__ . '/../layout/header.php';
                                             <button type="button" class="btn-secondary" disabled>Request Pending</button>
                                         </section>
                                     <?php elseif (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
-                                        && (string)($inspection['engineer_schedule_response'] ?? 'pending') === 'pending'
+                                       && (string)($inspection['engineer_schedule_response'] ?? 'pending') !== 'reschedule_requested'
                                         && (string)($inspection['client_schedule_response'] ?? 'pending') !== 'reschedule_requested'): ?>
                                         <button type="button" class="btn-secondary inspection-schedule-change-button"
                                             data-engineer-reschedule-open

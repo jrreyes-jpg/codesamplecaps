@@ -35,7 +35,6 @@ body {
 .page-hero__aside,
 .panel-card,
 .metric-card,
-.quick-link,
 .activity-card,
 .worker-card,
 .scan-card,
@@ -98,8 +97,7 @@ body {
 }
 
 .btn-primary,
-.btn-secondary,
-.quick-link {
+.btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -114,8 +112,7 @@ body {
 }
 
 .btn-primary:hover,
-.btn-secondary:hover,
-.quick-link:hover {
+.btn-secondary:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-hover);
 }
@@ -356,6 +353,47 @@ body {
 
 .project-list--preview {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.project-progress {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.project-progress__meta {
+    align-items: center;
+    color: var(--text-light);
+    display: flex;
+    font-size: .86rem;
+    justify-content: space-between;
+}
+
+.project-progress__meta strong {
+    color: #0f172a;
+}
+
+.project-progress progress {
+    appearance: none;
+    border: 0;
+    height: 8px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.project-progress progress::-webkit-progress-bar {
+    background: #e2e8f0;
+    border-radius: 999px;
+}
+
+.project-progress progress::-webkit-progress-value {
+    background: #16a34a;
+    border-radius: 999px;
+}
+
+.project-progress progress::-moz-progress-bar {
+    background: #16a34a;
+    border-radius: 999px;
 }
 
 .activity-card,
@@ -944,7 +982,6 @@ body {
 
     .content-grid,
     .page-hero,
-    .scan-automation-panel,
     .review-workspace,
     .summary-grid,
     .review-action-guide {
@@ -963,8 +1000,6 @@ body {
 
     .metrics-grid,
     .foreman-form-grid,
-    .quick-links-grid,
-    .foreman-quick-actions,
     .project-list--preview,
     .status-grid,
     .activity-meta,
@@ -975,19 +1010,8 @@ body {
 
     .page-hero,
     .panel-card,
-    .metric-card,
-    .scan-automation-panel {
+    .metric-card {
         padding: 20px;
-    }
-
-    .scan-stream-head,
-    .scan-automation-panel__actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .scan-automation-panel__actions > * {
-        width: 100%;
     }
 
     .header-meta {

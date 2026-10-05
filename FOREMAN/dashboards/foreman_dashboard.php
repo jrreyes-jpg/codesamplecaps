@@ -40,7 +40,7 @@ $foremanNotifications = [
 
 <main class="main-content">
     <div class="page-shell">
-        <section class="page-hero">
+        <section class="page-hero page-hero--overview">
             <div class="page-hero__content">
                 <h1 class="page-hero__title">Hello, <?php echo htmlspecialchars($foremanProfileName); ?></h1>
                 <div class="hero-actions">

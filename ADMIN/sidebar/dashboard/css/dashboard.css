@@ -550,6 +550,17 @@
 }
 
 /* Mobile-first overview */
+.admin-dashboard-content,
+.overview-dashboard,
+.overview-dashboard .dashboard-panel {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.admin-dashboard-content {
+    overflow-x: clip;
+}
+
 .overview-dashboard {
     gap: 18px;
 }
@@ -718,6 +729,10 @@
 }
 
 @media (max-width: 1200px) {
+    .overview-summary-grid.metric-strip-compact {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .overview-attention-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -823,6 +838,12 @@
 
     .overview-analytics-summary small {
         display: none;
+    }
+}
+
+@media (max-width: 520px) {
+    .overview-summary-grid.metric-strip-compact {
+        grid-template-columns: 1fr;
     }
 }
 

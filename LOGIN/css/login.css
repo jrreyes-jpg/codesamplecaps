@@ -231,6 +231,8 @@ button:disabled {
         min-height: 100svh;
         height: auto;
         padding: 18px 14px;
+        flex-direction: column;
+        justify-content: flex-start;
         align-items: flex-start;
         background: linear-gradient(160deg, #087f23, #0a8f2c);
     }
@@ -258,8 +260,10 @@ button:disabled {
 
     .container {
         width: 100%;
+        max-width: 440px;
         min-height: 0;
         height: auto;
+        align-self: center;
         border-radius: 22px;
         overflow: visible;
         box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28);

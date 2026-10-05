@@ -31,9 +31,6 @@ $foremanNotifications = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foreman Overview - Edge Automation</title>
     <script src="/codesamplecaps/SHARED/sidebar/js/sidebar-state.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/sidebar/css/sidebar.css">
     <link rel="stylesheet" href="../css/foreman_dashboard.css">
     <link rel="stylesheet" href="../css/qr_scanner.css">

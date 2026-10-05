@@ -1,9 +1,11 @@
 /* Shared base/header para pareho ang Foreman shell sa operations pages. */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 @import url('/codesamplecaps/SHARED/admin_ui/css/base.css');
 @import url('/codesamplecaps/SHARED/header/core/header.css');
 
 body {
     opacity: 1;
+    font-family: 'Poppins', system-ui, sans-serif;
 }
 
 .main-content {
@@ -18,10 +20,6 @@ body {
     gap: 24px;
     min-width: 0;
     width: 100%;
-}
-
-.foreman-overview {
-    font-family: 'Poppins', system-ui, sans-serif;
 }
 
 .page-hero {

@@ -761,6 +761,13 @@ html.ops-sidebar-shrink-pref .dashboard-main {
 }
 
 @media (max-width: 768px) {
+    .main-content,
+    .dashboard-main {
+        margin-left: 0 !important;
+        min-width: 0;
+        width: 100% !important;
+    }
+
     html.ops-sidebar-shrink-pref .main-content,
     html.ops-sidebar-shrink-pref .dashboard-main {
         margin-left: 0 !important;

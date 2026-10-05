@@ -8,12 +8,20 @@ body {
 
 .main-content {
     min-height: 100vh;
+    min-width: 0;
+    overflow-x: clip;
     padding: 112px 32px 32px;
 }
 
 .page-shell {
     display: grid;
     gap: 24px;
+    min-width: 0;
+    width: 100%;
+}
+
+.foreman-overview {
+    font-family: 'Poppins', system-ui, sans-serif;
 }
 
 .page-hero {
@@ -29,6 +37,13 @@ body {
 
 .page-hero--overview {
     grid-template-columns: 1fr;
+}
+
+.foreman-overview .page-hero__title,
+.foreman-overview .section-heading h2 {
+    font-size: clamp(1.8rem, 3vw, 2.35rem);
+    font-weight: 700;
+    letter-spacing: normal;
 }
 
 .page-hero__content,
@@ -166,17 +181,19 @@ body {
 }
 
 .metric-card {
+    align-content: center;
+    min-height: 142px;
     padding: 20px;
     border-radius: 20px;
 }
 
-.metric-card span {
+.foreman-overview .metric-card span {
     display: block;
     color: var(--text-light);
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
 }
 
 .metric-card strong {
@@ -353,6 +370,11 @@ body {
 
 .project-list--preview {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.foreman-overview :is(.page-hero, .panel-card, .metric-card, .project-card, .activity-card, .worker-card) {
+    max-width: 100%;
+    min-width: 0;
 }
 
 .project-progress {
@@ -998,7 +1020,6 @@ body {
         padding: 96px 18px 18px;
     }
 
-    .metrics-grid,
     .foreman-form-grid,
     .project-list--preview,
     .status-grid,
@@ -1012,6 +1033,15 @@ body {
     .panel-card,
     .metric-card {
         padding: 20px;
+    }
+
+    .foreman-overview .hero-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .foreman-overview .hero-actions > * {
+        width: 100%;
     }
 
     .header-meta {
@@ -1086,5 +1116,11 @@ body {
         text-transform: uppercase;
         color: var(--text-light);
         flex: 0 0 90px;
+    }
+}
+
+@media (max-width: 560px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
     }
 }

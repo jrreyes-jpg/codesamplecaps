@@ -237,6 +237,81 @@ if (!function_exists('auth_session_is_valid_for_roles')) {
     }
 }
 
+if (!function_exists('auth_session_account_is_valid')) {
+    /**
+     * Check kung active pa ang naka-login na user sa database.
+     * Isang query lang ito kada request para hindi paulit-ulit.
+     */
+    function auth_session_account_is_valid(?mysqli $connection = null): bool
+    {
+        static $validatedSessions = [];
+
+        $userId = $_SESSION['user_id'] ?? null;
+        $sessionRole = $_SESSION['role'] ?? null;
+
+        if (!is_int($userId) || $userId <= 0 || !is_string($sessionRole) || $sessionRole === '') {
+            return false;
+        }
+
+        $cacheKey = $userId . ':' . $sessionRole;
+        if (array_key_exists($cacheKey, $validatedSessions)) {
+            return $validatedSessions[$cacheKey];
+        }
+
+        if (!$connection instanceof mysqli && isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof mysqli) {
+            $connection = $GLOBALS['conn'];
+        }
+
+        if (!$connection instanceof mysqli) {
+            require_once __DIR__ . '/database.php';
+            $connection = $conn ?? null;
+        }
+
+        if (!$connection instanceof mysqli) {
+            return $validatedSessions[$cacheKey] = false;
+        }
+
+        try {
+            $statement = $connection->prepare('SELECT role, status FROM users WHERE id = ? LIMIT 1');
+            if (!$statement) {
+                return $validatedSessions[$cacheKey] = false;
+            }
+
+            $statement->bind_param('i', $userId);
+            $statement->execute();
+            $user = $statement->get_result()->fetch_assoc();
+            $statement->close();
+        } catch (Throwable $exception) {
+            error_log('Unable to validate the current account session.');
+            return $validatedSessions[$cacheKey] = false;
+        }
+
+        return $validatedSessions[$cacheKey] = is_array($user)
+            && strtolower((string)($user['status'] ?? '')) === 'active'
+            && hash_equals($sessionRole, (string)($user['role'] ?? ''));
+    }
+}
+
+if (!function_exists('auth_invalidate_account_session')) {
+    function auth_invalidate_account_session(): void
+    {
+        auth_destroy_session();
+        auth_start_session();
+        session_regenerate_id(true);
+
+        // Isang beses lang ipakita sa login page ang warning.
+        $_SESSION['login_flash'] = [
+            'error' => 'Your account is inactive. Please contact the administrator.',
+            'attempts_display' => '',
+            'class' => 'error-warning error-account-inactive',
+            'remaining_seconds' => 0,
+            'lock_type' => '',
+            'attempts_left' => null,
+            'email' => '',
+        ];
+    }
+}
+
 if (!function_exists('require_role')) {
     function require_role($role): void
     {
@@ -254,6 +329,11 @@ if (!function_exists('require_role')) {
             }
 
             auth_destroy_session();
+            auth_redirect_to_login();
+        }
+
+        if (!auth_session_account_is_valid()) {
+            auth_invalidate_account_session();
             auth_redirect_to_login();
         }
     }
@@ -276,6 +356,11 @@ if (!function_exists('require_any_role')) {
             }
 
             auth_destroy_session();
+            auth_redirect_to_login();
+        }
+
+        if (!auth_session_account_is_valid()) {
+            auth_invalidate_account_session();
             auth_redirect_to_login();
         }
     }

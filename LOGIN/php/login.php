@@ -71,26 +71,12 @@ function login_redirect_if_authenticated(mysqli $conn): void
 
     auth_enforce_activity_timeout();
 
-    $userId = (int)$_SESSION['user_id'];
+    if (!auth_session_account_is_valid($conn)) {
+        auth_invalidate_account_session();
+        return;
+    }
+
     $sessionRole = (string)$_SESSION['role'];
-    $stmt = $conn->prepare('SELECT role, status FROM users WHERE id = ? LIMIT 1');
-
-    if (!$stmt) {
-        return;
-    }
-
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-
-    if (
-        !$user
-        || strtolower((string)($user['status'] ?? '')) !== 'active'
-        || (string)($user['role'] ?? '') !== $sessionRole
-    ) {
-        auth_destroy_session();
-        return;
-    }
 
     $returnPath = login_engineer_inspection_return_path($sessionRole);
     if ($returnPath !== null) {
@@ -383,6 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($passwordMatches) {
                         if (($user['status'] ?? '') !== 'active') {
                             $error = 'Your account is inactive. Please contact the administrator.';
+                            $error_class = 'error-warning error-account-inactive';
                         } else {
                             login_clear_attempts($conn, $email, $ip_address);
                             login_clear_ip_attempts($conn, $ip_address);

@@ -391,7 +391,7 @@ const initEmailLockStatus = () => {
         hideStatus();
         setLoginControls(false);
 
-        if (serverError) {
+        if (serverError && !serverError.classList.contains('error-account-inactive')) {
             serverError.classList.add('is-hidden');
         }
 

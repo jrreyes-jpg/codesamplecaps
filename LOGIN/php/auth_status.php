@@ -35,6 +35,12 @@ $isLoggedIn = !$timedOut
         'client',
     ]);
 
+if ($isLoggedIn && !auth_session_account_is_valid()) {
+    auth_invalidate_account_session();
+    $isLoggedIn = false;
+    $dashboardPath = null;
+}
+
 echo json_encode([
     'authenticated' => $isLoggedIn,
     'dashboard' => $isLoggedIn ? $dashboardPath : null,

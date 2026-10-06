@@ -1,7 +1,5 @@
 // Inquiry modal controls para malinis at walang inline JavaScript.
 document.addEventListener('DOMContentLoaded', function () {
-    const openButtons = document.querySelectorAll('[data-inquiry-modal-open]');
-    const archiveOpenButtons = document.querySelectorAll('[data-archive-modal-open]');
     const inquiryShell = document.querySelector('.inquiries-shell');
     const listStartAtTopKey = 'edgeInquiryListStartAtTop';
     let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);
@@ -315,6 +313,8 @@ document.addEventListener('DOMContentLoaded', function () {
             lastOpenButton.focus();
             lastOpenButton = null;
         }
+
+        document.dispatchEvent(new CustomEvent('edge:inquiry-modal-closed'));
     };
 
     const setQuotationSendingState = function (modal, isSending) {
@@ -547,24 +547,27 @@ document.addEventListener('DOMContentLoaded', function () {
         window.history.replaceState({}, document.title, 'inquiries.php');
     };
 
-    openButtons.forEach(function (button) {
-        button.addEventListener('click', function (event) {
-            event.stopPropagation();
-            const modalId = button.getAttribute('data-inquiry-modal-open');
-            lastOpenButton = button;
-            const modal = document.getElementById(modalId);
-            openModal(modal);
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-inquiry-modal-open]');
+        if (!button) {
+            return;
+        }
 
-            if (modal) {
-                const requestedTab = button.getAttribute('data-inquiry-open-tab') || 'client';
-                let activeTab = requestedTab;
-                if (!activateModalTab(modal, activeTab)) {
-                    activeTab = 'client';
-                    activateModalTab(modal, activeTab);
-                }
-                pushModalHistory(modal, activeTab);
+        event.stopPropagation();
+        const modalId = button.getAttribute('data-inquiry-modal-open');
+        lastOpenButton = button;
+        const modal = document.getElementById(modalId);
+        openModal(modal);
+
+        if (modal) {
+            const requestedTab = button.getAttribute('data-inquiry-open-tab') || 'client';
+            let activeTab = requestedTab;
+            if (!activateModalTab(modal, activeTab)) {
+                activeTab = 'client';
+                activateModalTab(modal, activeTab);
             }
-        });
+            pushModalHistory(modal, activeTab);
+        }
     });
 
     document.querySelectorAll('.inquiry-status-link, .inquiry-view-link').forEach(function (link) {
@@ -586,12 +589,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterForm = document.querySelector('.inquiry-filter-bar');
     filterForm?.addEventListener('submit', showPageLoading);
 
-    document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal || event.target.closest('[data-inquiry-modal-close]')) {
-                requestCloseModal(modal);
-            }
-        });
+    document.addEventListener('click', function (event) {
+        const modal = event.target.closest('.inquiry-modal');
+        if (modal && (event.target === modal || event.target.closest('[data-inquiry-modal-close]'))) {
+            requestCloseModal(modal);
+        }
     });
 
     document.addEventListener('click', function (event) {
@@ -606,25 +608,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeArchiveModal = function (modal) {
         if (modal) {
             modal.hidden = true;
+            document.dispatchEvent(new CustomEvent('edge:inquiry-modal-closed'));
         }
     };
 
-    archiveOpenButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            const modal = document.getElementById(button.getAttribute('data-archive-modal-open'));
+    document.addEventListener('click', function (event) {
+        const openButton = event.target.closest('[data-archive-modal-open]');
+        if (openButton) {
+            const modal = document.getElementById(openButton.getAttribute('data-archive-modal-open'));
             if (modal) {
                 modal.hidden = false;
                 modal.querySelector('textarea')?.focus();
             }
-        });
-    });
+            return;
+        }
 
-    document.querySelectorAll('.inquiry-archive-modal').forEach(function (modal) {
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal || event.target.closest('[data-archive-modal-close]')) {
-                closeArchiveModal(modal);
-            }
-        });
+        const modal = event.target.closest('.inquiry-archive-modal');
+        if (modal && (event.target === modal || event.target.closest('[data-archive-modal-close]'))) {
+            closeArchiveModal(modal);
+        }
     });
 
     document.querySelectorAll('.inquiry-schedule-form').forEach(function (form) {
@@ -950,7 +952,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('.inquiry-review-form').forEach(function (form) {
+    const bindInquiryReviewForm = function (form) {
+        if (!form || form.dataset.reviewHandlersBound === '1') {
+            return;
+        }
+        form.dataset.reviewHandlersBound = '1';
+
         const statusSelect = form.querySelector('select[name="status"]');
         const statusField = form.querySelector('[name="status"]');
         const notesField = form.querySelector('textarea[name="admin_notes"]');
@@ -1148,9 +1155,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
         });
-    });
+    };
 
-    document.querySelectorAll('.inquiry-archive-form').forEach(function (form) {
+    const bindInquiryReviewForms = function (root) {
+        root.querySelectorAll('.inquiry-review-form').forEach(bindInquiryReviewForm);
+    };
+
+    bindInquiryReviewForms(document);
+
+    const bindInquiryArchiveForm = function (form) {
+        if (!form || form.dataset.archiveHandlersBound === '1') {
+            return;
+        }
+        form.dataset.archiveHandlersBound = '1';
+
         const reasonSelect = form.querySelector('select[name="archive_reason"]');
         const manualReason = form.querySelector('textarea[name="archive_reason_other"]');
         const manualReasonMark = form.querySelector('[data-archive-other-required]');
@@ -1194,7 +1212,13 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             showConfirm(form, 'Archive this inquiry? It will move to Archive list.');
         });
-    });
+    };
+
+    const bindInquiryArchiveForms = function (root) {
+        root.querySelectorAll('.inquiry-archive-form').forEach(bindInquiryArchiveForm);
+    };
+
+    bindInquiryArchiveForms(document);
 
     document.querySelectorAll('.inquiry-delete-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
@@ -1218,34 +1242,193 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('.inquiry-modal').forEach(function (modal) {
-        const tabs = Array.from(modal.querySelectorAll('[data-inquiry-tab]'));
+    document.addEventListener('click', function (event) {
+        const tab = event.target.closest('[data-inquiry-tab]');
+        const modal = tab?.closest('.inquiry-modal');
+        if (!tab || !modal) {
+            return;
+        }
 
-        tabs.forEach(function (tab) {
-            tab.addEventListener('click', function () {
-                const target = tab.getAttribute('data-inquiry-tab');
+        const target = tab.getAttribute('data-inquiry-tab');
+        if (tab.classList.contains('chip-disabled')) {
+            if (target === 'quotation') {
+                showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and set the status to 'Qualified' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
+            } else if (target === 'inspection') {
+                const prerequisite = modal.querySelector('[data-prerequisite-check="client-quotation-approval"]');
+                showPrerequisiteNotice(
+                    prerequisite?.dataset.prerequisiteMessage
+                    || 'Complete the quotation and wait for client approval before assigning an Engineer.'
+                );
+            }
+            return;
+        }
 
-                if (tab.classList.contains('chip-disabled')) {
-                    if (target === 'quotation') {
-                        showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and set the status to 'Qualified' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
-                    } else if (target === 'inspection') {
-                        const prerequisite = modal.querySelector('[data-prerequisite-check="client-quotation-approval"]');
-                        showPrerequisiteNotice(
-                            prerequisite?.dataset.prerequisiteMessage
-                            || 'Complete the quotation and wait for client approval before assigning an Engineer.'
-                        );
-                    }
-                    return;
-                }
+        if (tab.classList.contains('is-active')) {
+            return;
+        }
 
-                if (tab.classList.contains('is-active')) {
-                    return;
-                }
+        activateModalTab(modal, target);
+        pushModalHistory(modal, target);
+    });
 
-                activateModalTab(modal, target);
-                pushModalHistory(modal, target);
-            });
+    const inquiryRefreshUrl = new URL(window.location.href);
+    ['action', 'open', 'tab', 'viewed_inquiry'].forEach(function (key) {
+        inquiryRefreshUrl.searchParams.delete(key);
+    });
+    let inquiryListRefreshInProgress = false;
+    let inquiryListRefreshDeferred = false;
+    let inquiryListRefreshSerial = 0;
+    let requestedInquiryLatestId = 0;
+    let appliedInquiryLatestId = Array.from(document.querySelectorAll('[data-inquiry-card-id]')).reduce(function (latestId, card) {
+        return Math.max(latestId, Number.parseInt(card.dataset.inquiryCardId || '0', 10));
+    }, 0);
+
+    const inquiryRefreshIsBlocked = function () {
+        return Boolean(document.querySelector('.inquiry-modal:not([hidden]), .inquiry-archive-modal:not([hidden])'));
+    };
+
+    const updateInquiryCounts = function (nextDocument) {
+        nextDocument.querySelectorAll('[data-inquiry-count-key]').forEach(function (nextCount) {
+            const key = nextCount.getAttribute('data-inquiry-count-key');
+            const currentCount = key
+                ? document.querySelector('[data-inquiry-count-key="' + CSS.escape(key) + '"]')
+                : null;
+            if (currentCount) {
+                currentCount.textContent = nextCount.textContent;
+            }
         });
+    };
+
+    const mergeNewInquiryCards = function (nextDocument) {
+        if (!inquiryShell) {
+            return;
+        }
+
+        updateInquiryCounts(nextDocument);
+        const nextShell = nextDocument.querySelector('.inquiries-shell');
+        const nextList = nextShell?.querySelector(':scope > .inquiry-list');
+        if (!nextList) {
+            return;
+        }
+
+        let currentList = inquiryShell.querySelector(':scope > .inquiry-list');
+        const nextCards = Array.from(nextList.querySelectorAll(':scope > [data-inquiry-card-id]'));
+        if (nextCards.length === 0) {
+            return;
+        }
+
+        if (!currentList) {
+            currentList = document.createElement('div');
+            currentList.className = 'inquiry-list';
+            const emptyState = inquiryShell.querySelector(':scope > .inquiry-empty');
+            if (emptyState) {
+                emptyState.replaceWith(currentList);
+            } else {
+                inquiryShell.appendChild(currentList);
+            }
+        }
+
+        const scrollX = window.scrollX;
+        const scrollY = window.scrollY;
+        const currentIds = new Set(Array.from(currentList.querySelectorAll(':scope > [data-inquiry-card-id]')).map(function (card) {
+            return card.dataset.inquiryCardId || '';
+        }));
+
+        nextCards.reverse().forEach(function (nextCard) {
+            const inquiryId = nextCard.dataset.inquiryCardId || '';
+            if (inquiryId === '' || currentIds.has(inquiryId)) {
+                return;
+            }
+
+            const importedCard = document.importNode(nextCard, true);
+            currentList.prepend(importedCard);
+            currentIds.add(inquiryId);
+            bindInquiryReviewForms(importedCard);
+            bindInquiryArchiveForms(importedCard);
+        });
+
+        window.requestAnimationFrame(function () {
+            window.scrollTo(scrollX, scrollY);
+        });
+    };
+
+    const refreshInquiryListFromCurrentFilters = function (latestId) {
+        requestedInquiryLatestId = Math.max(requestedInquiryLatestId, Number.parseInt(latestId || '0', 10));
+        if (!inquiryShell || requestedInquiryLatestId <= appliedInquiryLatestId) {
+            return;
+        }
+
+        if (inquiryRefreshIsBlocked()) {
+            inquiryListRefreshDeferred = true;
+            return;
+        }
+
+        if (inquiryListRefreshInProgress) {
+            return;
+        }
+
+        inquiryListRefreshInProgress = true;
+        inquiryListRefreshDeferred = false;
+        const refreshSerial = ++inquiryListRefreshSerial;
+        const refreshThroughId = requestedInquiryLatestId;
+        let refreshSucceeded = false;
+
+        fetch(inquiryRefreshUrl.toString(), {
+            headers: {
+                Accept: 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            cache: 'no-store',
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Inquiry list refresh failed.');
+                }
+                return response.text();
+            })
+            .then(function (html) {
+                if (refreshSerial !== inquiryListRefreshSerial || inquiryRefreshIsBlocked()) {
+                    inquiryListRefreshDeferred = true;
+                    return;
+                }
+
+                const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                if (!nextDocument.querySelector('.inquiries-shell')) {
+                    throw new Error('Inquiry list response is invalid.');
+                }
+
+                mergeNewInquiryCards(nextDocument);
+                appliedInquiryLatestId = Math.max(appliedInquiryLatestId, refreshThroughId);
+                refreshSucceeded = true;
+            })
+            .catch(function () {
+                // Panatilihin ang kasalukuyang listahan. Susubok ulit sa susunod na bell check.
+            })
+            .finally(function () {
+                inquiryListRefreshInProgress = false;
+                if (refreshSucceeded && requestedInquiryLatestId > appliedInquiryLatestId) {
+                    refreshInquiryListFromCurrentFilters(requestedInquiryLatestId);
+                }
+            });
+    };
+
+    document.addEventListener('edge:admin-inquiry-notifications-updated', function (event) {
+        const latestId = Number.parseInt(event.detail?.latest_id || '0', 10);
+        const newItems = Array.isArray(event.detail?.new_items) ? event.detail.new_items : [];
+        const hasMissingCard = newItems.some(function (item) {
+            const inquiryId = String(Number.parseInt(item?.id || '0', 10));
+            return inquiryId !== '0' && !document.querySelector('[data-inquiry-card-id="' + CSS.escape(inquiryId) + '"]');
+        });
+
+        if (latestId > appliedInquiryLatestId || hasMissingCard) {
+            refreshInquiryListFromCurrentFilters(latestId);
+        }
+    });
+
+    document.addEventListener('edge:inquiry-modal-closed', function () {
+        if (inquiryListRefreshDeferred && !inquiryRefreshIsBlocked()) {
+            refreshInquiryListFromCurrentFilters(requestedInquiryLatestId);
+        }
     });
 
     document.querySelectorAll('[data-go-to-inspection]').forEach(function (button) {

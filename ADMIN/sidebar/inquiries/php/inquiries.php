@@ -2082,18 +2082,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <nav class="inquiry-status-strip inquiry-status-strip--primary" aria-label="Inquiry lifecycle filters">
             <a class="inquiry-view-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url($search !== '' ? ['search' => $search] : []), ENT_QUOTES, 'UTF-8'); ?>">
                 <span>All</span>
-                <span class="inquiry-quotation-filter__count"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
+                <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:all"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
             </a>
             <?php foreach (['Pending Review', 'Verified Lead', 'For Inspection', 'Not Qualified'] as $status): ?>
                 <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Verified Lead' => 'qualified', 'For Inspection' => 'for_inspection', 'Not Qualified' => 'not_qualified' }; ?>
                 <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">
                     <span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span>
-                    <span class="inquiry-quotation-filter__count"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
+                    <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:<?php echo htmlspecialchars($lifecycleCountKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
                 </a>
             <?php endforeach; ?>
             <a class="inquiry-view-link inquiry-lifecycle-filter <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span>Archived</span>
-                <span class="inquiry-quotation-filter__count"><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></span>
+                <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:archived"><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></span>
             </a>
         </nav>
 
@@ -2105,7 +2105,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <?php foreach ($quotationFilterChips as $filterKey => $filterLabel): ?>
                     <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey]), ENT_QUOTES, 'UTF-8'); ?>">
                         <span><?php echo htmlspecialchars($filterLabel, ENT_QUOTES, 'UTF-8'); ?></span>
-                        <span class="inquiry-quotation-filter__count"><?php echo (int)($quotationFilterCounts[$filterKey] ?? 0); ?></span>
+                        <span class="inquiry-quotation-filter__count" data-inquiry-count-key="quotation:<?php echo htmlspecialchars($filterKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($quotationFilterCounts[$filterKey] ?? 0); ?></span>
                     </a>
                 <?php endforeach; ?>
             </nav>

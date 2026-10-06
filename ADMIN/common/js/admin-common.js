@@ -268,6 +268,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!data.success) return;
                     applyNotificationState(data);
                     showPollingToast(data);
+                    document.dispatchEvent(new CustomEvent('edge:admin-inquiry-notifications-updated', {
+                        detail: data,
+                    }));
                 })
                 .catch(function () {
                     // Susubok ulit sa next poll kapag may temporary error.

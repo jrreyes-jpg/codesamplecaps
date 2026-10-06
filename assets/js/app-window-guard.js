@@ -9,6 +9,7 @@
         '/codesamplecaps/CLIENT/',
     ];
     const currentRolePath = rolePaths.find((path) => window.location.pathname.startsWith(path));
+    const loginPath = '/codesamplecaps/LOGIN/php/login.php';
     const loginLogoutPath = '/codesamplecaps/LOGIN/php/login.php?logout=1';
     const loginTimeoutPath = '/codesamplecaps/LOGIN/php/login.php?timeout=1';
     const logoutPath = '/codesamplecaps/LOGIN/php/logout.php';
@@ -25,7 +26,23 @@
             return;
         }
 
+        if (reason === 'inactive') {
+            window.location.replace(loginPath);
+            return;
+        }
+
         window.location.replace(reason === 'timeout' ? loginTimeoutPath : loginLogoutPath);
+    };
+
+    const broadcastSessionEnd = function (status) {
+        try {
+            localStorage.setItem('edge_login_flow', JSON.stringify({
+                status: status,
+                at: Date.now(),
+            }));
+        } catch (error) {
+            // Kapag blocked ang storage, server redirect pa rin ang gumagana.
+        }
     };
 
     const broadcastLogout = function () {
@@ -58,7 +75,17 @@
             })
             .then(function (payload) {
                 if (!payload || payload.authenticated !== true) {
-                    redirectToLoggedOutLogin(payload && payload.timeout === true ? 'timeout' : 'logout');
+                    const reason = payload && payload.session_end_reason === 'inactive'
+                        ? 'inactive'
+                        : (payload && payload.timeout === true ? 'timeout' : 'logout');
+
+                    if (reason === 'inactive') {
+                        broadcastSessionEnd('inactive');
+                    } else if (reason === 'timeout') {
+                        broadcastSessionEnd('timed-out');
+                    }
+
+                    redirectToLoggedOutLogin(reason);
                 }
             })
             .catch(function () {

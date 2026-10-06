@@ -455,6 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $is_device_locked = $error_class === 'error-locked' && $lock_type === 'ip';
 $is_email_locked = $error_class === 'error-locked' && $lock_type === 'email';
+$is_inactive_account_notice = strpos($error_class, 'error-account-inactive') !== false;
 $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' && $flash_email !== '')
     ? $flash_email
     : '';
@@ -592,7 +593,8 @@ window.lockoutConfig = {
     lockType: <?php echo json_encode($lock_type); ?>,
     statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php',
     isLogoutPage: <?php echo isset($_GET['logout']) ? 'true' : 'false'; ?>,
-    isTimeoutPage: <?php echo isset($_GET['timeout']) ? 'true' : 'false'; ?>
+    isTimeoutPage: <?php echo isset($_GET['timeout']) ? 'true' : 'false'; ?>,
+    sessionEndReason: <?php echo $is_inactive_account_notice ? "'inactive'" : 'null'; ?>
 };
 </script>
     <script src="../js/login.js"></script>

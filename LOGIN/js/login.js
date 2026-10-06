@@ -162,17 +162,27 @@ const initStaleLoginWindowGuard = () => {
 
     const isLogoutPage = window.lockoutConfig?.isLogoutPage;
     const isTimeoutPage = window.lockoutConfig?.isTimeoutPage;
+    const sessionEndReason = window.lockoutConfig?.sessionEndReason ?? null;
 
-    if (isLogoutPage || isTimeoutPage) {
-        localStorage.removeItem('edge_auth_state');
+    const sendSessionEndSignal = (status) => {
         try {
             localStorage.setItem('edge_login_flow', JSON.stringify({
-                status: isTimeoutPage ? 'timed-out' : 'logged-out',
+                status,
                 at: Date.now(),
             }));
         } catch (error) {
+            // Okay lang kahit blocked ang localStorage; current tab lang ang lilinisin.
+        }
+    };
+
+    if (isLogoutPage || isTimeoutPage) {
+        try {
+            localStorage.removeItem('edge_auth_state');
+        } catch (error) {
             // Ignore localStorage errors.
         }
+
+        sendSessionEndSignal(isTimeoutPage ? 'timed-out' : 'logged-out');
 
         if (window.history?.replaceState) {
             window.history.replaceState({}, document.title, '/codesamplecaps/LOGIN/php/login.php');
@@ -183,7 +193,15 @@ const initStaleLoginWindowGuard = () => {
         if (isLogoutPage || isTimeoutPage) {
             form?.reset();
             if (email) email.value = '';
-            if (password) password.value = '';
+            if (password) {
+                password.value = '';
+                password.type = 'password';
+            }
+            const showButton = form?.querySelector('.togglePassword');
+            if (showButton) {
+                showButton.textContent = 'Show';
+                showButton.setAttribute('aria-pressed', 'false');
+            }
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.textContent = defaultSubmitText;
@@ -203,12 +221,28 @@ const initStaleLoginWindowGuard = () => {
     };
 
     const clearStaleCredentials = () => {
+        if (email) {
+            email.value = '';
+        }
+
         if (password) {
             password.value = '';
+            password.type = 'password';
+        }
+
+        const showButton = form?.querySelector('.togglePassword');
+        if (showButton) {
+            showButton.textContent = 'Show';
+            showButton.setAttribute('aria-pressed', 'false');
         }
 
         resetSubmitState();
     };
+
+    if (sessionEndReason === 'inactive') {
+        clearStaleCredentials();
+        sendSessionEndSignal('inactive');
+    }
 
     const redirectAuthenticatedLoginPage = async () => {
         if (window.location.search.includes('logout=1')) {
@@ -256,7 +290,7 @@ const initStaleLoginWindowGuard = () => {
 
         try {
             const state = JSON.parse(event.newValue);
-            if (state.status === 'logged-out') {
+            if (['logged-out', 'timed-out', 'inactive'].includes(state.status)) {
                 clearStaleCredentials();
             }
         } catch (error) {

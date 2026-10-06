@@ -7,6 +7,7 @@ auth_apply_no_cache_headers();
 header('Content-Type: application/json');
 
 $timedOut = false;
+$sessionEndReason = null;
 $userId = $_SESSION['user_id'] ?? null;
 
 if ($userId !== null) {
@@ -16,6 +17,7 @@ if ($userId !== null) {
     // Kapag idle na ng 15 minutes, server mismo ang mag-iinvalidate ng session.
     if (($now - $lastActivity) > 900) {
         $timedOut = true;
+        $sessionEndReason = 'timeout';
         auth_destroy_session();
     } else {
         $_SESSION['last_activity_at'] = $now;
@@ -39,10 +41,12 @@ if ($isLoggedIn && !auth_session_account_is_valid()) {
     auth_invalidate_account_session();
     $isLoggedIn = false;
     $dashboardPath = null;
+    $sessionEndReason = 'inactive';
 }
 
 echo json_encode([
     'authenticated' => $isLoggedIn,
     'dashboard' => $isLoggedIn ? $dashboardPath : null,
     'timeout' => $timedOut,
+    'session_end_reason' => $sessionEndReason,
 ]);

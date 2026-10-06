@@ -365,20 +365,16 @@ const initInquiryForm = () => {
 
     const phonePattern = /^09\d{9}$/;
     const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    const formatLocalDate = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-    const now = new Date();
-    const todayDate = formatLocalDate(now);
-    const tomorrowDate = (() => {
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return formatLocalDate(tomorrow);
-    })();
-    const preferredDateMin = now.getHours() >= 17 ? tomorrowDate : todayDate;
+    const manilaDateParts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date()).reduce((parts, part) => {
+        if (part.type !== 'literal') parts[part.type] = part.value;
+        return parts;
+    }, {});
+    const preferredDateMin = `${manilaDateParts.year}-${manilaDateParts.month}-${manilaDateParts.day}`;
 
     const clearFieldError = (field) => {
         field.classList.remove('is-invalid');

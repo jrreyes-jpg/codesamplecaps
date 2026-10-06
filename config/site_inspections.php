@@ -26,31 +26,98 @@ function site_inspection_schedule_response_label(string $response): string
     };
 }
 
+function site_inspection_timezone(): DateTimeZone
+{
+    return new DateTimeZone('Asia/Manila');
+}
+
+function site_inspection_duration_minutes(): int
+{
+    return 60;
+}
+
+function site_inspection_minimum_lead_minutes(): int
+{
+    return 60;
+}
+
 function site_inspection_available_time_slots(): array
 {
-    return [
-        '08:00' => '8:00 AM',
-        '09:00' => '9:00 AM',
-        '10:00' => '10:00 AM',
-        '11:00' => '11:00 AM',
-        '13:00' => '1:00 PM',
-        '14:00' => '2:00 PM',
-        '15:00' => '3:00 PM',
-        '16:00' => '4:00 PM',
-        '17:00' => '5:00 PM',
-    ];
+    $slots = [];
+    foreach ([[8 * 60, 11 * 60 + 30], [13 * 60, 16 * 60]] as [$start, $end]) {
+        for ($minutes = $start; $minutes <= $end; $minutes += 30) {
+            $hour = intdiv($minutes, 60);
+            $minute = $minutes % 60;
+            $value = sprintf('%02d:%02d', $hour, $minute);
+            $slots[$value] = (new DateTimeImmutable($value, site_inspection_timezone()))->format('g:i A');
+        }
+    }
+
+    return $slots;
+}
+
+function site_inspection_validate_start(string $date, string $time, ?DateTimeImmutable $now = null): array
+{
+    $timezone = site_inspection_timezone();
+    $candidate = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, $timezone);
+    $parseErrors = DateTimeImmutable::getLastErrors();
+    $hasParseErrors = is_array($parseErrors)
+        && ((int)$parseErrors['warning_count'] > 0 || (int)$parseErrors['error_count'] > 0);
+
+    if (!$candidate || $hasParseErrors || $candidate->format('Y-m-d') !== $date || $candidate->format('H:i') !== $time) {
+        return ['valid' => false, 'message' => 'Please choose a valid inspection date and time.', 'datetime' => null];
+    }
+    if (!array_key_exists($time, site_inspection_available_time_slots())) {
+        return ['valid' => false, 'message' => 'Please choose an available inspection time.', 'datetime' => null];
+    }
+
+    $now = $now ?: new DateTimeImmutable('now', $timezone);
+    $minimum = $now->setTime((int)$now->format('H'), (int)$now->format('i'))->modify('+' . site_inspection_minimum_lead_minutes() . ' minutes');
+    if ($candidate < $minimum) {
+        return ['valid' => false, 'message' => 'Please choose a schedule at least 1 hour from now.', 'datetime' => null];
+    }
+
+    return ['valid' => true, 'message' => '', 'datetime' => $candidate];
+}
+
+function site_inspection_engineer_has_conflict(
+    mysqli $conn,
+    int $engineerId,
+    DateTimeImmutable $candidate,
+    int $excludeInspectionId = 0,
+    bool $lockRows = false
+): bool {
+    $duration = site_inspection_duration_minutes();
+    $start = $candidate->format('Y-m-d H:i:s');
+    $end = $candidate->modify('+' . $duration . ' minutes')->format('Y-m-d H:i:s');
+    $sql = 'SELECT id FROM site_inspections
+            WHERE engineer_id = ? AND id <> ?
+              AND scheduled_at < ?
+              AND DATE_ADD(scheduled_at, INTERVAL ' . $duration . ' MINUTE) > ?
+            LIMIT 1' . ($lockRows ? ' FOR UPDATE' : '');
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return true;
+    }
+    $stmt->bind_param('iiss', $engineerId, $excludeInspectionId, $end, $start);
+    $stmt->execute();
+
+    return (bool)$stmt->get_result()->fetch_assoc();
 }
 // Shared Site Inspection helpers para hindi duplicate sa Admin at Engineer.
 
 if (!function_exists('site_inspection_format_datetime')) {
     function site_inspection_format_datetime(?string $dateTime): string
     {
-        $timestamp = $dateTime ? strtotime($dateTime) : false;
-        if ($timestamp === false) {
+        if (!$dateTime) {
             return 'Not set';
         }
 
-        return date('M j, Y, g:ia', $timestamp);
+        try {
+            return (new DateTimeImmutable($dateTime, site_inspection_timezone()))->format('M j, Y, g:i A');
+        } catch (Throwable $exception) {
+            return 'Not set';
+        }
     }
 }
 

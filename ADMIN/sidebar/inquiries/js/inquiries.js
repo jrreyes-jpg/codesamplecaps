@@ -720,7 +720,6 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: '2-digit',
             hourCycle: 'h23',
         });
-        const inspectionDayEndMinutes = 17 * 60;
         const inspectionLeadMinutes = 60;
         let dateNoteTimer = null;
 
@@ -748,10 +747,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const parts = value.split(':').map(Number);
             return (parts[0] * 60) + parts[1];
         };
+        const inspectionLastStartMinutes = Array.from(timeInput.options)
+            .map(function (option) { return option.value ? timeValueToMinutes(option.value) : -1; })
+            .reduce(function (latest, minutes) { return Math.max(latest, minutes); }, 16 * 60);
 
         const getEarliestScheduleDate = function () {
             const now = getManilaNow();
-            return now.minutes + inspectionLeadMinutes <= inspectionDayEndMinutes
+            return now.minutes + inspectionLeadMinutes <= inspectionLastStartMinutes
                 ? now.date
                 : addDaysToDate(now.date, 1);
         };

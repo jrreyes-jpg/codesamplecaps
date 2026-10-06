@@ -199,7 +199,7 @@ function inquiry_center_send_pending_schedule_notifications(mysqli $conn, int $i
         trim((string)($inquiry['city_municipality'] ?? '')),
         trim((string)($inquiry['province'] ?? '')),
     ], static fn(string $value): bool => $value !== ''));
-    $scheduleForEmail = (new DateTimeImmutable($scheduleValue, new DateTimeZone('Asia/Manila')))->format('l, F j, Y, g:i A') . ' (PHT)';
+    $scheduleForEmail = (new DateTimeImmutable($scheduleValue, site_inspection_timezone()))->format('l, F j, Y, g:i A') . ' (PHT)';
     $service = trim((string)($inquiry['service_category'] ?? ''));
 
     if ($createAssignmentNotification) {
@@ -1240,31 +1240,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acceptedQuotationId = 0;
         $scheduleNotificationWarning = false;
         $scheduledAt = trim((string)($_POST['scheduled_at'] ?? ''));
+        $scheduleDate = trim((string)($_POST['inspection_date'] ?? ''));
+        $scheduleTime = trim((string)($_POST['inspection_time'] ?? ''));
         if ($scheduledAt === '') {
-            $scheduleDate = trim((string)($_POST['inspection_date'] ?? ''));
-            $scheduleTime = trim((string)($_POST['inspection_time'] ?? ''));
             $scheduledAt = ($scheduleDate !== '' && $scheduleTime !== '') ? $scheduleDate . ' ' . $scheduleTime : '';
+        } elseif (($scheduleDate === '' || $scheduleTime === '') && preg_match('/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/', $scheduledAt, $parts)) {
+            $scheduleDate = $parts[1];
+            $scheduleTime = $parts[2];
         }
         $siteNotes = trim((string)($_POST['site_notes'] ?? ''));
         $rescheduleReason = trim((string)($_POST['reschedule_reason'] ?? ''));
-        $manilaTimezone = new DateTimeZone('Asia/Manila');
-        $scheduleDateTime = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $scheduledAt, $manilaTimezone);
-        $scheduleParseErrors = DateTimeImmutable::getLastErrors();
-        $isValidScheduleDateTime = $scheduleDateTime instanceof DateTimeImmutable
-            && $scheduleDateTime->format('Y-m-d H:i') === $scheduledAt
-            && ($scheduleParseErrors === false || ($scheduleParseErrors['warning_count'] === 0 && $scheduleParseErrors['error_count'] === 0));
-        $scheduleTimestamp = $isValidScheduleDateTime ? $scheduleDateTime->getTimestamp() : false;
-        $scheduleTime = $isValidScheduleDateTime ? $scheduleDateTime->format('H:i') : '';
-        $allowedInspectionTimes = array_keys(site_inspection_available_time_slots());
-        $earliestSameDaySchedule = new DateTimeImmutable('now', $manilaTimezone);
-        $earliestSameDaySchedule = $earliestSameDaySchedule->modify('+1 hour');
+        $scheduleValidation = site_inspection_validate_start($scheduleDate, $scheduleTime);
+        $scheduleDateTime = $scheduleValidation['datetime'];
 
-        if ($inquiryId <= 0 || $engineerId <= 0 || $scheduleTimestamp === false) {
+        if ($inquiryId <= 0 || $engineerId <= 0) {
             $error = 'Please select engineer and valid inspection schedule.';
-        } elseif (!in_array($scheduleTime, $allowedInspectionTimes, true)) {
-            $error = 'The selected inspection schedule is no longer available. Please choose a later date or time.';
-        } elseif ($scheduleDateTime < $earliestSameDaySchedule) {
-            $error = 'The selected inspection schedule is no longer available. Please choose a later date or time.';
+        } elseif (!$scheduleValidation['valid']) {
+            $error = (string)$scheduleValidation['message'];
         } else {
             $currentInquiryStatus = '';
             $statusStmt = $conn->prepare('SELECT status FROM service_inquiries WHERE id = ? LIMIT 1');
@@ -1349,6 +1341,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($error === '' && $existingInspectionId > 0 && inquiry_center_inspection_schedule_is_locked($existingInspection)) {
                 $error = 'The inspection already started. Engineer, date, and time can no longer be changed.';
+            }
+            if ($error === '' && site_inspection_engineer_has_conflict(
+                $conn,
+                $engineerId,
+                $scheduleDateTime,
+                $existingInspectionId,
+                true
+            )) {
+                $error = 'The selected Engineer already has an overlapping inspection schedule.';
             }
 
             $notificationHash = inquiry_center_schedule_notification_hash($engineerId, $scheduleValue, $siteNotes);

@@ -255,52 +255,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
         } elseif ($preferredDate === '' || $preferredTime === '') {
             $error = 'Choose a preferred new date and time.';
-        } elseif (!array_key_exists($preferredTime, site_inspection_available_time_slots())) {
-            $error = 'Selected time is not allowed. Choose from available slots.';
         } else {
-            // server-side: enforce same-day one-hour rule in Asia/Manila
-            try {
-                $tz = new DateTimeZone('Asia/Manila');
-                $now = new DateTimeImmutable('now', $tz);
-                $preferredDt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $preferredAt, $tz);
-                if ($preferredDt === false) {
-                    $error = 'Invalid preferred date/time.';
-                } else {
-                    if ($preferredDt->format('Y-m-d') === $now->format('Y-m-d')) {
-                        $cutoff = $now->modify('+1 hour');
-                        if ($preferredDt < $cutoff) {
-                            $error = 'Choose a time at least 1 hour from now for today.';
-                        }
-                    }
-                }
-            } catch (Exception $e) {
-                // fallback: continue to next checks
+            $scheduleValidation = site_inspection_validate_start($preferredDate, $preferredTime);
+            if (!$scheduleValidation['valid']) {
+                $error = (string)$scheduleValidation['message'];
             }
         }
         if (empty($error)) {
-            if ((string)($inspectionState['engineer_schedule_response'] ?? 'pending') !== 'pending'
-                || (string)($inspectionState['client_schedule_response'] ?? 'pending') === 'reschedule_requested') {
-                $error = 'This schedule response is already recorded or is waiting for Admin review.';
-            } else {
-                $update = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'reschedule_requested', engineer_schedule_response_note = ?, engineer_schedule_preferred_at = ?, engineer_schedule_responded_at = NOW(), status = 'Assigned', acknowledged_at = NULL WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
-                if ($update) {
-                    $update->bind_param('ssii', $reason, $preferredAt, $inspectionId, $userId);
-                    $update->execute();
-                    if ($update->affected_rows !== 1) {
-                        $error = 'This schedule response was already updated. Please refresh the page.';
-                    } else {
-                        $noticeStmt = $conn->prepare('SELECT si.created_by, si.inquiry_id, si.scheduled_at, s.client_name FROM site_inspections si JOIN service_inquiries s ON s.id = si.inquiry_id WHERE si.id = ? LIMIT 1');
-                        if ($noticeStmt) {
-                            $noticeStmt->bind_param('i', $inspectionId);
-                            $noticeStmt->execute();
-                            $notice = $noticeStmt->get_result()->fetch_assoc() ?: [];
-                            user_notifications_create_if_missing($conn, (int)($notice['created_by'] ?? 0), 'engineer_inspection_reschedule_requested', $inspectionId, 'Engineer Requested Inspection Reschedule', 'Engineer requested a schedule change. Reason: ' . mb_strimwidth($reason, 0, 90, '…'), '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . (int)($notice['inquiry_id'] ?? 0) . '&tab=inspection', 'engineer_inspection_reschedule:' . $inspectionId . ':' . hash('sha256', (string)($notice['scheduled_at'] ?? '') . $reason));
-                        }
-                        $message = 'Reschedule request sent to Admin.';
-                    }
-                } else {
-                    $error = 'Unable to send the reschedule request. Please try again.';
+            $preferredDt = $scheduleValidation['datetime'];
+            $conn->begin_transaction();
+            $transactionCommitted = false;
+            try {
+                $lock = $conn->prepare(
+                    'SELECT status, client_schedule_response, engineer_schedule_response
+                     FROM site_inspections WHERE id = ? AND engineer_id = ? LIMIT 1 FOR UPDATE'
+                );
+                if (!$lock) throw new RuntimeException('Unable to check the inspection schedule.');
+                $lock->bind_param('ii', $inspectionId, $userId);
+                $lock->execute();
+                $currentSchedule = $lock->get_result()->fetch_assoc();
+                if (!$currentSchedule
+                    || !in_array((string)$currentSchedule['status'], ['Assigned', 'Acknowledged'], true)
+                    || (string)$currentSchedule['engineer_schedule_response'] !== 'pending'
+                    || (string)$currentSchedule['client_schedule_response'] === 'reschedule_requested') {
+                    throw new RuntimeException('This schedule response is already recorded or is waiting for Admin review.');
                 }
+                if (site_inspection_engineer_has_conflict($conn, $userId, $preferredDt, $inspectionId, true)) {
+                    throw new RuntimeException('You already have an overlapping inspection schedule. Choose another time.');
+                }
+
+                $update = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'reschedule_requested', engineer_schedule_response_note = ?, engineer_schedule_preferred_at = ?, engineer_schedule_responded_at = NOW(), status = 'Assigned', acknowledged_at = NULL WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
+                if (!$update) throw new RuntimeException('Unable to send the reschedule request.');
+                $update->bind_param('ssii', $reason, $preferredAt, $inspectionId, $userId);
+                $update->execute();
+                if ($update->affected_rows !== 1) {
+                    throw new RuntimeException('This schedule response was already updated. Please refresh the page.');
+                }
+                $conn->commit();
+                $transactionCommitted = true;
+            } catch (Throwable $exception) {
+                if (!$transactionCommitted) {
+                    $conn->rollback();
+                }
+                $safeMessages = [
+                    'This schedule response is already recorded or is waiting for Admin review.',
+                    'You already have an overlapping inspection schedule. Choose another time.',
+                    'This schedule response was already updated. Please refresh the page.',
+                ];
+                $error = in_array($exception->getMessage(), $safeMessages, true)
+                    ? $exception->getMessage()
+                    : 'Unable to send the reschedule request. Please try again.';
+            }
+            if ($transactionCommitted) {
+                $noticeStmt = $conn->prepare('SELECT si.created_by, si.inquiry_id, si.scheduled_at, s.client_name FROM site_inspections si JOIN service_inquiries s ON s.id = si.inquiry_id WHERE si.id = ? LIMIT 1');
+                if ($noticeStmt) {
+                    $noticeStmt->bind_param('i', $inspectionId);
+                    $noticeStmt->execute();
+                    $notice = $noticeStmt->get_result()->fetch_assoc() ?: [];
+                    user_notifications_create_if_missing($conn, (int)($notice['created_by'] ?? 0), 'engineer_inspection_reschedule_requested', $inspectionId, 'Engineer Requested Inspection Reschedule', 'Engineer requested a schedule change. Reason: ' . mb_strimwidth($reason, 0, 90, '…'), '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . (int)($notice['inquiry_id'] ?? 0) . '&tab=inspection', 'engineer_inspection_reschedule:' . $inspectionId . ':' . hash('sha256', (string)($notice['scheduled_at'] ?? '') . $reason));
+                }
+                $message = 'Reschedule request sent to Admin.';
             }
         }
     } elseif ($workflowAction !== '') {
@@ -1174,7 +1188,7 @@ require __DIR__ . '/../layout/header.php';
                     </label>
                     <div class="inspection-reschedule-fields">
                         <label class="inspection-reschedule-field">Preferred new date
-                            <input type="date" name="schedule_preferred_date" min="<?php echo (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d'); ?>" required data-engineer-reschedule-date>
+                            <input type="date" name="schedule_preferred_date" min="<?php echo (new DateTimeImmutable('today', site_inspection_timezone()))->format('Y-m-d'); ?>" required data-engineer-reschedule-date>
                             <small data-engineer-reschedule-error="date" hidden></small>
                         </label>
                         <label class="inspection-reschedule-field">Preferred new time

@@ -141,10 +141,7 @@ if (
 if ($preferredInspectionDate !== '') {
     $timezone = new DateTimeZone('Asia/Manila');
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $preferredInspectionDate, $timezone);
-    $now = new DateTimeImmutable('now', $timezone);
-    $minimumDate = ((int)$now->format('H') >= 17)
-        ? (new DateTimeImmutable('tomorrow', $timezone))->setTime(0, 0, 0)
-        : (new DateTimeImmutable('today', $timezone))->setTime(0, 0, 0);
+    $minimumDate = (new DateTimeImmutable('today', $timezone))->setTime(0, 0, 0);
 
     if (!$date || $date->format('Y-m-d') !== $preferredInspectionDate || $date < $minimumDate) {
         $errors[] = 'preferred_inspection_date';

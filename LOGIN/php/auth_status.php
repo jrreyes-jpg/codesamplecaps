@@ -7,7 +7,7 @@ auth_apply_no_cache_headers();
 header('Content-Type: application/json');
 
 $timedOut = false;
-$sessionEndReason = null;
+$sessionEndReason = auth_pending_session_end_reason();
 $userId = $_SESSION['user_id'] ?? null;
 
 if ($userId !== null) {
@@ -41,7 +41,7 @@ if ($isLoggedIn && !auth_session_account_is_valid()) {
     auth_invalidate_account_session();
     $isLoggedIn = false;
     $dashboardPath = null;
-    $sessionEndReason = 'inactive';
+    $sessionEndReason = auth_pending_session_end_reason();
 }
 
 echo json_encode([

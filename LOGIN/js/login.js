@@ -189,7 +189,7 @@ const initStaleLoginWindowGuard = () => {
         }
     }
 
-    if (!form || window.location.search.includes('logout=1') || window.location.search.includes('timeout=1')) {
+    if (!form || isLogoutPage || isTimeoutPage) {
         if (isLogoutPage || isTimeoutPage) {
             form?.reset();
             if (email) email.value = '';

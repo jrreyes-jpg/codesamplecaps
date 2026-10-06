@@ -314,6 +314,33 @@ if (!function_exists('auth_invalidate_account_session')) {
             'attempts_left' => null,
             'email' => '',
         ];
+        $_SESSION['auth_session_end_reason'] = 'inactive';
+    }
+}
+
+if (!function_exists('auth_pending_session_end_reason')) {
+    function auth_pending_session_end_reason(): ?string
+    {
+        $reason = $_SESSION['auth_session_end_reason'] ?? null;
+        return in_array($reason, ['inactive'], true) ? $reason : null;
+    }
+}
+
+if (!function_exists('auth_consume_session_end_reason')) {
+    function auth_consume_session_end_reason(string $expectedReason): void
+    {
+        if (auth_pending_session_end_reason() === $expectedReason) {
+            unset($_SESSION['auth_session_end_reason']);
+        }
+    }
+}
+
+if (!function_exists('auth_login_flash_is_inactive')) {
+    function auth_login_flash_is_inactive(array $flash): bool
+    {
+        $classes = preg_split('/\s+/', trim((string)($flash['class'] ?? ''))) ?: [];
+        return in_array('error-account-inactive', $classes, true)
+            && (string)($flash['error'] ?? '') === 'Your account is inactive. Please contact the administrator.';
     }
 }
 

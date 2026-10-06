@@ -109,8 +109,18 @@ $remaining_seconds = $login_flash['remaining_seconds'] ?? 0;
 $flash_email = filter_var((string)($login_flash['email'] ?? ''), FILTER_VALIDATE_EMAIL)
     ? (string)$login_flash['email']
     : '';
+$rendering_inactive_warning = $_SERVER['REQUEST_METHOD'] !== 'POST'
+    && auth_login_flash_is_inactive($login_flash);
 
-if (isset($_GET['timeout'])) {
+if ($rendering_inactive_warning) {
+    $error = $login_flash['error'];
+    $failed_attempts_display = '';
+    $attempts_left = null;
+    $error_class = $login_flash['class'];
+    $lock_type = '';
+    unset($_SESSION['login_flash']);
+    auth_consume_session_end_reason('inactive');
+} elseif (isset($_GET['timeout'])) {
     $error = 'Your session expired after 15 minutes of inactivity. Please log in again.';
     $error_class = 'login-toast-warning';
 } elseif (isset($_GET['logout'])) {
@@ -165,7 +175,7 @@ if (isset($_GET['timeout'])) {
 }
 
 // Kahit refresh/hard refresh/new tab, database time ang susundin para tuloy-tuloy ang countdown.
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !$rendering_inactive_warning) {
     $ip_attempt_summary = login_get_ip_attempt_summary($conn, $ip_address);
 
     if ((int)$ip_attempt_summary['attempts'] >= $max_ip_attempts) {
@@ -592,8 +602,8 @@ window.lockoutConfig = {
     unlockAt: <?php echo (int)(time() + (int)$remaining_seconds); ?>,
     lockType: <?php echo json_encode($lock_type); ?>,
     statusUrl: '/codesamplecaps/LOGIN/php/login_lock_status.php',
-    isLogoutPage: <?php echo isset($_GET['logout']) ? 'true' : 'false'; ?>,
-    isTimeoutPage: <?php echo isset($_GET['timeout']) ? 'true' : 'false'; ?>,
+    isLogoutPage: <?php echo isset($_GET['logout']) && !$is_inactive_account_notice ? 'true' : 'false'; ?>,
+    isTimeoutPage: <?php echo isset($_GET['timeout']) && !$is_inactive_account_notice ? 'true' : 'false'; ?>,
     sessionEndReason: <?php echo $is_inactive_account_notice ? "'inactive'" : 'null'; ?>
 };
 </script>

@@ -338,3 +338,38 @@ tbody tr:hover {
 .strong-border {
     border-color: #15803d !important;
 }
+
+/* Pareho ang Super Admin mobile header controls sa Admin header. */
+@media (max-width: 520px) {
+    .global-topbar.operations-topbar--super_admin {
+        min-height: 72px !important;
+        padding: 10px 6px 10px 54px !important;
+        gap: 4px !important;
+    }
+
+    .operations-topbar--super_admin .global-topbar__brand-logo,
+    .operations-topbar--super_admin .topbar-notifications__toggle,
+    .operations-topbar--super_admin .topbar-profile__toggle,
+    .operations-topbar--super_admin .topbar-profile__avatar-shell,
+    .operations-topbar--super_admin .topbar-profile__avatar-image {
+        width: 50px !important;
+        height: 50px !important;
+        min-height: 50px !important;
+    }
+
+    .operations-topbar--super_admin .global-topbar__clock {
+        display: flex !important;
+        min-width: 86px !important;
+    }
+}
+
+@media (max-width: 399px) {
+    .global-topbar.operations-topbar--super_admin {
+        padding-right: 2px !important;
+        padding-left: 52px !important;
+    }
+
+    .operations-topbar--super_admin .global-topbar__clock {
+        min-width: 64px !important;
+    }
+}

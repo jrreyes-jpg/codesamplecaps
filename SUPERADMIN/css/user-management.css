@@ -142,6 +142,273 @@ body:has([data-user-management-shell]) .user-management-panel {
     }
 }
 
+/* Final User Management layout: compact table sa desktop, cards sa maliit na screen. */
+.main-content.superadmin-user-management-page .user-management-panel {
+    padding: 24px;
+    gap: 16px;
+}
+
+.main-content.superadmin-user-management-page .user-table-toolbar {
+    grid-template-columns: minmax(160px, 0.8fr) minmax(280px, 1.5fr) auto;
+    gap: 12px;
+    padding: 0;
+}
+
+.main-content.superadmin-user-management-page .user-filters {
+    gap: 12px;
+    padding: 0;
+}
+
+.main-content.superadmin-user-management-page .users-table {
+    overflow: visible;
+}
+
+.main-content.superadmin-user-management-page .user-management-table .responsive-table {
+    width: 100%;
+    min-width: 0 !important;
+    table-layout: fixed;
+}
+
+.main-content.superadmin-user-management-page .user-management-table th,
+.main-content.superadmin-user-management-page .user-management-table td {
+    min-width: 0;
+    padding: 10px 8px;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-name {
+    width: 17%;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-email {
+    width: 21%;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-phone {
+    width: 13%;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-role {
+    width: 13%;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-status {
+    width: 15%;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-created {
+    width: 10%;
+}
+
+.main-content.superadmin-user-management-page .user-management-table__col-actions {
+    width: 11%;
+}
+
+.main-content.superadmin-user-management-page .user-actions-menu__toggle {
+    min-width: 92px;
+    padding-inline: 10px;
+}
+
+.user-status-filter-mobile {
+    display: none;
+}
+
+@media (max-width: 1080px) and (min-width: 901px) {
+    .main-content.superadmin-user-management-page .user-table-toolbar {
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 1.4fr) auto;
+    }
+}
+
+@media (max-width: 900px) {
+    .main-content.superadmin-user-management-page {
+        padding: 96px 14px 20px !important;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-panel {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .main-content.superadmin-user-management-page .user-table-toolbar {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .main-content.superadmin-user-management-page .user-table-toolbar__copy,
+    .main-content.superadmin-user-management-page .user-table-toolbar__controls,
+    .main-content.superadmin-user-management-page .user-search-field,
+    .main-content.superadmin-user-management-page .user-management-trigger {
+        width: 100%;
+        max-width: none;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-trigger {
+        justify-self: stretch;
+    }
+
+    .main-content.superadmin-user-management-page .user-filters > .action-chip {
+        display: none;
+    }
+
+    .main-content.superadmin-user-management-page .user-filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: end;
+    }
+
+    .user-status-filter-mobile,
+    .user-role-filter {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 6px;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .user-status-filter-mobile span,
+    .user-role-filter label {
+        color: #64748b;
+        font-size: 0.82rem;
+        font-weight: 800;
+    }
+
+    .user-status-filter-mobile select,
+    .user-role-filter select {
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        padding: 9px 38px 9px 12px;
+        border: 1px solid #d7dee7;
+        border-radius: 12px;
+        background-color: #ffffff;
+        color: #0f172a;
+        font: inherit;
+        font-weight: 700;
+    }
+
+    .main-content.superadmin-user-management-page .users-table {
+        max-height: none;
+        overflow: visible;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table .responsive-table,
+    .main-content.superadmin-user-management-page .user-management-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table colgroup,
+    .main-content.superadmin-user-management-page .user-management-table thead {
+        display: none;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table tr.user-row {
+        display: grid;
+        gap: 0;
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table tbody > tr:not(.user-row) {
+        display: block;
+        width: 100%;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table tr[hidden] {
+        display: none !important;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 0;
+        border: 0;
+        border-bottom: 1px solid #edf2f7;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td::before {
+        content: attr(data-label);
+        color: #64748b;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td:first-child {
+        display: block;
+        padding-top: 0;
+        padding-bottom: 12px;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td:first-child::before {
+        display: none;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td:last-child {
+        display: block;
+        padding-top: 12px;
+        padding-bottom: 0;
+        border-bottom: 0;
+        text-align: left;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td:last-child::before {
+        display: none;
+    }
+
+    .main-content.superadmin-user-management-page .user-name-value {
+        font-size: 1rem;
+    }
+
+    .main-content.superadmin-user-management-page .user-actions-menu,
+    .main-content.superadmin-user-management-page .user-actions-menu__toggle {
+        width: 100%;
+    }
+
+    .main-content.superadmin-user-management-page .user-actions-menu__toggle {
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .main-content.superadmin-user-management-page .user-table-empty {
+        display: block;
+        width: 100%;
+        padding: 20px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #ffffff;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content.superadmin-user-management-page .user-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .main-content.superadmin-user-management-page .user-management-table td {
+        grid-template-columns: 82px minmax(0, 1fr);
+    }
+}
+
 /* Desktop guard: ito ang pinaka-huling panalo para hindi bumaba sa ilalim ang users panel. */
 @media (min-width: 769px) {
     body:has([data-user-management-shell]) .main-content {
@@ -173,10 +440,17 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: none;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 500;
+    line-height: 1.2;
+    overflow-wrap: normal;
+    white-space: nowrap;
 }
 
 .action-btn {
@@ -566,7 +840,7 @@ body:has([data-user-management-shell]) .user-management-panel {
     }
 
     html:not(.ops-sidebar-shrink-pref) .main-content.superadmin-user-management-page .user-management-table .responsive-table {
-        min-width: 980px;
+        min-width: 0;
     }
 }
 
@@ -578,6 +852,7 @@ body:has([data-user-management-shell]) .user-management-panel {
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .user-management-table .responsive-table th:last-child,
@@ -598,9 +873,8 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-contact-value--email {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .user-contact-value--phone {
@@ -608,11 +882,15 @@ body:has([data-user-management-shell]) .user-management-panel {
     white-space: nowrap;
 }
 
-.user-management-table td:first-child .table-input {
+.user-name-value {
+    display: block;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .hidden-save-form {
@@ -835,7 +1113,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .user-management-table .responsive-table {
-    min-width: 1050px;
+    min-width: 0;
 }
 
 .user-management-table .table-input {
@@ -941,6 +1219,26 @@ body:has([data-user-management-shell]) .user-management-panel {
     text-align: center;
 }
 
+.user-management-table .responsive-table th:nth-child(1),
+.user-management-table .responsive-table td:nth-child(1) {
+    min-width: 0;
+}
+
+.user-management-table .responsive-table th:nth-child(2),
+.user-management-table .responsive-table td:nth-child(2) {
+    min-width: 0;
+}
+
+.user-management-table .responsive-table th:nth-child(4),
+.user-management-table .responsive-table td:nth-child(4) {
+    min-width: 0;
+}
+
+.user-management-table .responsive-table th:nth-child(5),
+.user-management-table .responsive-table td:nth-child(5) {
+    min-width: 0;
+}
+
 .user-management-table .responsive-table td:nth-child(7) {
     padding-inline: 12px;
     white-space: nowrap;
@@ -948,7 +1246,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 @media (max-width: 960px) {
     .user-management-table .responsive-table {
-        min-width: 920px;
+        min-width: 0;
     }
 
     .user-actions-menu__toggle {
@@ -968,6 +1266,25 @@ body:has([data-user-management-shell]) .user-management-panel {
 
     .user-actions-menu__toggle::after {
         display: none;
+    }
+}
+
+/* Panatilihing malinaw ang action label kahit naka-scroll ang mobile table. */
+@media (max-width: 960px) {
+    .user-actions-menu__toggle {
+        width: auto;
+        min-width: 108px;
+        padding: 8px 12px;
+        justify-content: space-between;
+        font-size: 12px;
+    }
+
+    .user-actions-menu__toggle::before {
+        display: none;
+    }
+
+    .user-actions-menu__toggle::after {
+        display: block;
     }
 }
 
@@ -1291,7 +1608,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 @media (max-width: 900px) {
     .main-content.superadmin-user-management-page {
         min-height: auto !important;
-        padding-top: 118px !important;
+        padding-top: 96px !important;
     }
 
     .main-content.superadmin-user-management-page .users-table {
@@ -1301,11 +1618,29 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 @media (max-width: 768px) {
     .user-management-table .responsive-table {
-        min-width: 840px;
+        min-width: 0;
     }
 
     .user-contact-value {
         font-size: 0.8rem;
+    }
+
+    .user-table-toolbar,
+    .user-filters {
+        padding-inline: 0;
+    }
+
+    .user-role-filter {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+        margin-left: 0;
+        padding: 4px 0 0;
+    }
+
+    .user-role-filter select {
+        width: 100%;
+        min-width: 0;
     }
 }
 

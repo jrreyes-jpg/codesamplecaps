@@ -96,12 +96,30 @@ $messageType = $messageType ?? 'success';
                 <?php
                 $statusBase = $userRoleFilter !== '' ? ['role' => $userRoleFilter] : [];
                 $trashQuery = array_merge(['view' => 'trash'], $userRoleFilter !== '' ? ['role' => $userRoleFilter] : []);
+                $statusFilterUrls = [
+                    '' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php' . ($statusBase ? '?' . http_build_query($statusBase) : ''),
+                    'active' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php?' . http_build_query(array_merge($statusBase, ['status' => 'active'])),
+                    'pending_activation' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php?' . http_build_query(array_merge($statusBase, ['status' => 'pending_activation'])),
+                    'inactive' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php?' . http_build_query(array_merge($statusBase, ['status' => 'inactive'])),
+                    'trash' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php?' . http_build_query($trashQuery),
+                ];
+                $selectedStatusOption = $userTrashView ? 'trash' : $userStatusFilter;
                 ?>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php<?php echo $statusBase ? '?' . http_build_query($statusBase) : ''; ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === '' ? ' active-chip' : ''; ?>">All</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'active'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'active' ? ' active-chip' : ''; ?>">Active</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'pending_activation'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'pending_activation' ? ' active-chip' : ''; ?>">Pending Activation</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query(array_merge($statusBase, ['status' => 'inactive'])); ?>" class="action-chip<?php echo !$userTrashView && $userStatusFilter === 'inactive' ? ' active-chip' : ''; ?>">Inactive</a>
                 <a href="/codesamplecaps/SUPERADMIN/sidebar/user_management.php?<?php echo http_build_query($trashQuery); ?>" class="action-chip action-chip-trash<?php echo $userTrashView ? ' active-chip' : ''; ?>">Trash</a>
+                <label class="user-status-filter-mobile" for="userStatusFilterMobile">
+                    <span>Status</span>
+                    <select id="userStatusFilterMobile" data-status-filter-select>
+                        <option value="<?php echo htmlspecialchars($statusFilterUrls[''], ENT_QUOTES, 'UTF-8'); ?>" <?php echo $selectedStatusOption === '' ? 'selected' : ''; ?>>All</option>
+                        <option value="<?php echo htmlspecialchars($statusFilterUrls['active'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo $selectedStatusOption === 'active' ? 'selected' : ''; ?>>Active</option>
+                        <option value="<?php echo htmlspecialchars($statusFilterUrls['pending_activation'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo $selectedStatusOption === 'pending_activation' ? 'selected' : ''; ?>>Pending Activation</option>
+                        <option value="<?php echo htmlspecialchars($statusFilterUrls['inactive'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo $selectedStatusOption === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                        <option value="<?php echo htmlspecialchars($statusFilterUrls['trash'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo $selectedStatusOption === 'trash' ? 'selected' : ''; ?>>Trash</option>
+                    </select>
+                </label>
                 <form method="GET" class="user-role-filter" data-role-filter-form>
                     <?php if ($userTrashView): ?>
                         <input type="hidden" name="view" value="trash">
@@ -141,9 +159,7 @@ $messageType = $messageType ?? 'success';
                         <?php else: ?>
                             <?php foreach ($managedUsers as $user): $status = $user['status'] ?? 'active'; $rowId = (int)$user['id']; $normalizedRole = normalizeRole((string)($user['role'] ?? '')); $deactivationBlockers = ($status === 'active' && !$userTrashView) ? getDeactivationBlockers($conn, $rowId, $normalizedRole) : []; ?>
                                 <tr class="user-row" data-row-id="<?php echo $rowId; ?>" data-user-search="<?php echo htmlspecialchars(strtolower(trim(($user['full_name'] ?? '') . ' ' . ($user['email'] ?? '') . ' ' . ($user['phone'] ?? '') . ' ' . $normalizedRole . ' ' . $status))); ?>">
-                                    <td data-label="Name">
-                                        <input class="table-input" type="text" data-field="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" title="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?>" readonly required>
-                                    </td>
+                                    <td data-label="Name"><span class="user-name-value" title="<?php echo htmlspecialchars((string)$user['full_name'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$user['full_name']); ?></span></td>
                                     <td data-label="Email"><span class="user-contact-value user-contact-value--email" title="<?php echo htmlspecialchars((string)($user['email'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?>" tabindex="0"><?php echo htmlspecialchars((string)($user['email'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
                                     <td data-label="Phone"><span class="user-contact-value user-contact-value--phone"><?php echo htmlspecialchars((string)($user['phone'] ?? 'Not set'), ENT_QUOTES, 'UTF-8'); ?></span></td>
                                     <td data-label="Role">

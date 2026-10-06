@@ -163,6 +163,13 @@ document.addEventListener('DOMContentLoaded', function () {
         event.target.closest('form')?.submit();
     });
 
+    document.querySelector('[data-status-filter-select]')?.addEventListener('change', function (event) {
+        const targetUrl = event.target.value;
+        if (targetUrl) {
+            window.location.assign(targetUrl);
+        }
+    });
+
     const closeUserActionMenus = function (exceptMenu) {
         let hasOpenMenu = false;
         document.querySelectorAll('[data-user-actions-menu]').forEach(function (menu) {

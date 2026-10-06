@@ -2408,7 +2408,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <span class="inquiry-workflow__label">Inspection</span>
                                     </button>
                                 </div>
-                            <div class="inquiry-modal-panels" <?php echo !empty($inquiry['archived_at']) ? 'inert aria-disabled="true"' : ''; ?>>
+                            <div class="inquiry-modal-panels" <?php echo !empty($inquiry['archived_at']) ? 'data-archived-readonly="true"' : ''; ?>>
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
                                     <div class="inquiry-section-title">Contact and Request Details</div>
                                     <div class="inquiry-details-grid">
@@ -2776,7 +2776,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotationDraft['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div class="inquiry-quote-draft__action">
-                                                <?php if (inquiry_quote_normalize_status((string)$quotationDraft['status']) === 'draft'): ?>
+                                                <?php if (empty($inquiry['archived_at']) && inquiry_quote_normalize_status((string)$quotationDraft['status']) === 'draft'): ?>
                                                     <a class="inquiry-quote-edit-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo (int)$quotationDraft['id']; ?>">
                                                         Edit Details
                                                     </a>
@@ -2933,7 +2933,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </label>
                                             <button type="submit" class="btn-primary">Generate Quotation Draft</button>
                                         </form>
-                                    <?php elseif ($currentStatus === 'Verified Lead'): ?>
+                                    <?php elseif ($currentStatus === 'Verified Lead' && empty($inquiry['archived_at'])): ?>
                                         <a class="btn-primary inquiry-modal__primary-action inquiry-quotation-primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Initial Quotation</a>
                                     <?php else: ?>
                                         <div class="inquiry-empty">Quotation is not available for this inquiry.</div>

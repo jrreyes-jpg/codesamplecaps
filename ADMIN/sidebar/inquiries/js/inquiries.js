@@ -442,11 +442,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const applyArchivedReadOnly = function (container) {
+        if (!container || container.dataset.readonlyApplied === '1') return;
+        container.dataset.readonlyApplied = '1';
+        container.querySelectorAll('input:not([type="hidden"]), textarea').forEach(function (field) {
+            field.readOnly = true;
+            field.setAttribute('aria-readonly', 'true');
+            if (field.matches('[type="checkbox"], [type="radio"], [type="file"]')) {
+                field.disabled = true;
+            }
+        });
+        container.querySelectorAll('select, button').forEach(function (control) {
+            control.disabled = true;
+        });
+        container.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+            });
+        });
+    };
+
     const openModal = function (modal) {
         if (!modal) {
             return;
         }
 
+        applyArchivedReadOnly(modal.querySelector('[data-archived-readonly="true"]'));
         modal.hidden = false;
         document.body.classList.add('inquiry-modal-open');
         sessionStorage.setItem('edgeLastInquiryModal', modal.id);
@@ -463,6 +484,8 @@ document.addEventListener('DOMContentLoaded', function () {
             closeButton.focus();
         }
     };
+
+    document.querySelectorAll('[data-archived-readonly="true"]').forEach(applyArchivedReadOnly);
 
     const activateModalTab = function (modal, target) {
         if (!modal || !target || modal.dataset.quotationSending === '1' || modal.dataset.reviewSaving === '1' || modal.dataset.inspectionScheduling === '1') {

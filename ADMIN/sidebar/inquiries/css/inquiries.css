@@ -1558,9 +1558,11 @@
 
 .inquiry-modal-panels {
     min-height: 0;
+    min-width: 0;
     max-height: 70vh;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 18px;
 }
 
@@ -2575,10 +2577,14 @@ body.inquiry-modal-open {
     font-weight: 800;
 }
 
-.inquiry-modal-panels[inert] form :is(input, select, textarea, button),
-.inquiry-modal-panels[inert] a {
+.inquiry-modal-panels[data-archived-readonly="true"] :is(input:not([type="hidden"]), select, textarea, button):disabled {
     opacity: 0.55;
     cursor: not-allowed;
+}
+
+.inquiry-modal-panels[data-archived-readonly="true"] :is(input:not([type="hidden"]), textarea)[readonly] {
+    opacity: 0.78;
+    cursor: text;
 }
 
 .inquiry-delete-form {

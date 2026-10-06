@@ -265,6 +265,11 @@ if (!function_exists('auth_session_account_is_valid')) {
         if (!$connection instanceof mysqli) {
             require_once __DIR__ . '/database.php';
             $connection = $conn ?? null;
+
+            // Ginagamit din ng kasunod na page code ang shared DB connection.
+            if ($connection instanceof mysqli) {
+                $GLOBALS['conn'] = $connection;
+            }
         }
 
         if (!$connection instanceof mysqli) {

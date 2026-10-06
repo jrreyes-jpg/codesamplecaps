@@ -15,6 +15,7 @@
         const countLabel = root.querySelector('[data-engineer-notification-count]');
         const list = root.querySelector('[data-engineer-notification-list]');
         let pollInProgress = false;
+        const shownAssignmentNotificationIds = new Set();
 
         const formatRelativeTime = function (dateTime) {
             const timestamp = Date.parse(String(dateTime || '').replace(' ', 'T'));
@@ -75,6 +76,26 @@
             renderList(data.items);
         };
 
+        const announceNewAssignments = function (data) {
+            const newItems = Array.isArray(data.new_items) ? data.new_items : [];
+            newItems.forEach(function (item) {
+                const notificationId = Number.parseInt(item.notification_id || '0', 10);
+                if (notificationId <= 0 || shownAssignmentNotificationIds.has(notificationId)) return;
+
+                shownAssignmentNotificationIds.add(notificationId);
+                if (typeof window.showToast === 'function') {
+                    const clientName = String(item.client_name || 'Client').trim() || 'Client';
+                    window.showToast('New site inspection assigned: ' + clientName + '.', 'success', { duration: 6000 });
+                }
+            });
+        };
+
+        const publishNotificationUpdate = function (data) {
+            document.dispatchEvent(new CustomEvent('edge:engineer-notifications-updated', {
+                detail: data,
+            }));
+        };
+
         const pollNotifications = function () {
             if (!endpoint || pollInProgress || document.hidden) return;
             pollInProgress = true;
@@ -85,7 +106,10 @@
                     return response.json();
                 })
                 .then(function (data) {
-                    if (data.success) applyState(data);
+                    if (!data.success) return;
+                    applyState(data);
+                    announceNewAssignments(data);
+                    publishNotificationUpdate(data);
                 })
                 .catch(function () {
                     // Susubok ulit sa next poll kapag may temporary error.

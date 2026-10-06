@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Engineer inspection live assignment test</title>
+    <script>
+        window.testToastMessages = [];
+        window.testNotificationFetches = 0;
+        window.testInspectionFetches = 0;
+        window.showToast = function (message) {
+            window.testToastMessages.push(message);
+        };
+        window.setInterval = function (callback) {
+            window.setTimeout(callback, 120);
+            return 1;
+        };
+        window.fetch = function (url) {
+            if (String(url).includes('/ENGINEER/api/notifications.php')) {
+                window.testNotificationFetches += 1;
+                return Promise.resolve(new Response(JSON.stringify({
+                    success: true,
+                    unread_count: 1,
+                    items: [{
+                        id: 91,
+                        title: 'New Site Inspection Assignment',
+                        message: 'Client: Sample Client',
+                        target_url: '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=42',
+                        created_at: '2026-10-06 10:00:00'
+                    }],
+                    new_items: [{ notification_id: 91, inspection_id: 42, client_name: 'Sample Client' }],
+                    assignment_items: [{ notification_id: 91, inspection_id: 42, client_name: 'Sample Client' }]
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+            }
+
+            window.testInspectionFetches += 1;
+            const html = [
+                '<main><section class="inspection-panel">',
+                '<article class="inspection-card" data-inspection-card-id="42">',
+                '<button type="button" data-inspection-modal-open="inspectionModal42">View Details</button>',
+                '<div class="inspection-modal" id="inspectionModal42" hidden>',
+                '<div class="inspection-modal__panel">',
+                '<button type="button" data-inspection-modal-close>Close</button>',
+                '<form><input name="csrf_token" value="test"><input name="inspection_id" value="42">',
+                '<button type="submit" data-confirm-acknowledge>Acknowledge Assignment</button></form>',
+                '</div></div>',
+                '</article>',
+                '</section></main>'
+            ].join('');
+            return Promise.resolve(new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } }));
+        };
+    </script>
+</head>
+<body>
+    <div data-notification-root data-engineer-notification-endpoint="/codesamplecaps/ENGINEER/api/notifications.php" data-engineer-notification-csrf="test">
+        <span data-engineer-notification-badge hidden></span>
+        <span data-engineer-notification-count></span>
+        <div data-engineer-notification-list></div>
+    </div>
+    <main>
+        <div class="inspection-shell">
+            <section class="inspection-panel">
+                <p class="inspection-meta" data-inspection-empty>No site inspections yet.</p>
+            </section>
+            <div class="inspection-modal" id="inspectionModalActive">
+                <div class="inspection-modal__panel">
+                    <textarea data-test-unsaved>Unsaved findings</textarea>
+                    <button type="button" data-inspection-modal-close>Close active form</button>
+                </div>
+            </div>
+            <div data-acknowledge-modal hidden>
+                <button type="button" data-acknowledge-cancel>Cancel</button>
+                <button type="button" data-acknowledge-confirm>Acknowledge Assignment</button>
+            </div>
+        </div>
+    </main>
+    <output id="testResult">RUNNING</output>
+
+    <script src="../ENGINEER/common/js/engineer-notifications.js"></script>
+    <script src="../ENGINEER/js/site-inspections.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let activeFormWasPreserved = false;
+            window.setTimeout(function () {
+                activeFormWasPreserved = !document.querySelector('[data-inspection-card-id="42"]')
+                    && document.querySelector('[data-test-unsaved]')?.value === 'Unsaved findings';
+                document.querySelector('#inspectionModalActive [data-inspection-modal-close]')?.click();
+            }, 80);
+            window.setTimeout(function () {
+                const card = document.querySelectorAll('[data-inspection-card-id="42"]');
+                const viewButton = card[0]?.querySelector('[data-inspection-modal-open]');
+                viewButton?.click();
+                const detailsModal = document.getElementById('inspectionModal42');
+                const detailsOpened = detailsModal?.hidden === false;
+                detailsModal?.querySelector('[data-confirm-acknowledge]')?.click();
+                const acknowledgeOpened = document.querySelector('[data-acknowledge-modal]')?.hidden === false;
+                const passed = window.testToastMessages.length === 1
+                    && window.testToastMessages[0] === 'New site inspection assigned: Sample Client.'
+                    && activeFormWasPreserved
+                    && document.querySelector('[data-test-unsaved]')?.value === 'Unsaved findings'
+                    && card.length === 1
+                    && !document.querySelector('[data-inspection-empty]')
+                    && detailsOpened
+                    && acknowledgeOpened
+                    && window.testInspectionFetches === 1;
+
+                const result = document.getElementById('testResult');
+                result.textContent = passed ? 'PASS' : 'FAIL';
+                result.dataset.toastCount = String(window.testToastMessages.length);
+                result.dataset.cardCount = String(card.length);
+                result.dataset.detailsOpened = detailsOpened ? '1' : '0';
+                result.dataset.acknowledgeOpened = acknowledgeOpened ? '1' : '0';
+                document.title = passed ? 'PASS' : 'FAIL';
+            }, 400);
+        });
+    </script>
+</body>
+</html>

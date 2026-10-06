@@ -763,6 +763,7 @@ $stmt = $conn->prepare(
      FROM site_inspections si
      INNER JOIN service_inquiries s ON s.id = si.inquiry_id
      WHERE si.engineer_id = ?
+       AND s.archived_at IS NULL
      ORDER BY si.scheduled_at ASC, si.id DESC'
 );
 if ($stmt) {
@@ -824,7 +825,7 @@ require __DIR__ . '/../layout/header.php';
 
         <section class="inspection-panel">
             <?php if (empty($inspections)): ?>
-                <p class="inspection-meta">No site inspections yet.</p>
+                <p class="inspection-meta" data-inspection-empty>No site inspections yet.</p>
             <?php else: ?>
                 <?php foreach ($inspections as $inspection): ?>
                     <?php
@@ -875,7 +876,7 @@ require __DIR__ . '/../layout/header.php';
                         ]];
                     }
                     ?>
-                    <article class="inspection-card">
+                    <article class="inspection-card" data-inspection-card-id="<?php echo $inspectionId; ?>">
                         <div class="inspection-card__head">
                             <div>
                                 <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>

@@ -959,15 +959,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingAcknowledgeForm = null;
     let pendingAcknowledgeButton = null;
 
-    document.querySelectorAll('[data-confirm-acknowledge]').forEach(function(button) {
-        button.addEventListener('click', function (event) {
-            event.preventDefault();
-            pendingAcknowledgeForm = button.closest('form');
-            pendingAcknowledgeButton = button;
-            if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
-            acknowledgeModal.hidden = false;
-            acknowledgeCancelButton?.focus();
-        });
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-confirm-acknowledge]');
+        if (!button) return;
+
+        event.preventDefault();
+        pendingAcknowledgeForm = button.closest('form');
+        pendingAcknowledgeButton = button;
+        if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
+        acknowledgeModal.hidden = false;
+        acknowledgeCancelButton?.focus();
     });
 
     acknowledgeCancelButton?.addEventListener('click', function () {
@@ -1059,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.showToast(payload.message || 'Assignment acknowledged.', 'success', { duration: 4000 });
             }
             if (payload && payload.status === 'Acknowledged') {
-                const card = document.querySelector('[data-confirm-acknowledge]')?.closest('.inspection-card');
+                const card = button.closest('.inspection-card');
                 if (card) {
                     const statusNode = card.querySelector('.inspection-status');
                     if (statusNode) {
@@ -1098,7 +1099,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const rescheduleModal = document.querySelector('[data-engineer-reschedule-modal]');
     const rescheduleReviewModal = document.querySelector('[data-engineer-reschedule-review-modal]');
     const rescheduleForm = document.querySelector('[data-engineer-reschedule-form]');
-    const rescheduleOpenButtons = document.querySelectorAll('[data-engineer-reschedule-open]');
     const rescheduleCancelButton = rescheduleModal?.querySelector('[data-engineer-reschedule-cancel]');
     const rescheduleReviewCancelButton = rescheduleReviewModal?.querySelector('[data-engineer-reschedule-review-cancel]');
     const rescheduleReviewSubmitButton = rescheduleReviewModal?.querySelector('[data-engineer-reschedule-review-submit]');
@@ -1253,46 +1253,47 @@ document.addEventListener('DOMContentLoaded', function () {
         rescheduleReviewCancelButton?.focus();
     };
 
-    rescheduleOpenButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            if (!rescheduleModal || !rescheduleForm) return;
-            rescheduleTrigger = button;
-            rescheduleForm.reset();
-            rescheduleForm.dataset.submitted = '';
-            rescheduleForm.dataset.reviewConfirmed = '';
-            rescheduleForm.elements.inspection_id.value = button.dataset.inspectionId || '';
-            const inspectionIdForDraft = rescheduleForm.elements.inspection_id.value || '';
-            const official = rescheduleModal.querySelector('[data-engineer-reschedule-official]');
-            if (official) official.textContent = button.dataset.officialSchedule || 'Not set';
-            rescheduleForm.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
-                setRescheduleFieldError(field, '');
-                field.dataset.touched = '';
-            });
-            // populate time options based on any preset date
-            refreshTimeOptions();
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-engineer-reschedule-open]');
+        if (!button || !rescheduleModal || !rescheduleForm) return;
 
-            // restore draft if present and server hasn't already recorded submission
-            try {
-                const draftKey = 'reschedule-draft-' + inspectionIdForDraft;
-                const raw = sessionStorage.getItem(draftKey);
-                if (raw && rescheduleModal.dataset.rescheduleSent !== '1') {
-                    const draft = JSON.parse(raw);
-                    if (draft) {
-                        if (draft.date) rescheduleForm.elements.schedule_preferred_date.value = draft.date;
-                        refreshTimeOptions();
-                        if (draft.time) rescheduleForm.elements.schedule_preferred_time.value = draft.time;
-                        if (draft.reason) rescheduleForm.elements.schedule_response_note.value = draft.reason;
-                        // mark touched for validation rules
-                        rescheduleForm.querySelectorAll('textarea, input, select').forEach(function (f) { if (f.value) f.dataset.touched = 'true'; });
-                    }
-                } else if (raw && rescheduleModal.dataset.rescheduleSent === '1') {
-                    sessionStorage.removeItem(draftKey);
-                }
-            } catch (e) { /* ignore */ }
-
-            rescheduleModal.hidden = false;
-            rescheduleForm.elements.schedule_response_note.focus();
+        rescheduleTrigger = button;
+        rescheduleForm.reset();
+        rescheduleForm.dataset.submitted = '';
+        rescheduleForm.dataset.reviewConfirmed = '';
+        rescheduleForm.elements.inspection_id.value = button.dataset.inspectionId || '';
+        const inspectionIdForDraft = rescheduleForm.elements.inspection_id.value || '';
+        const official = rescheduleModal.querySelector('[data-engineer-reschedule-official]');
+        if (official) official.textContent = button.dataset.officialSchedule || 'Not set';
+        rescheduleForm.querySelectorAll('[aria-invalid="true"]').forEach(function (field) {
+            setRescheduleFieldError(field, '');
+            field.dataset.touched = '';
         });
+        refreshTimeOptions();
+
+        try {
+            const draftKey = 'reschedule-draft-' + inspectionIdForDraft;
+            const raw = sessionStorage.getItem(draftKey);
+            if (raw && rescheduleModal.dataset.rescheduleSent !== '1') {
+                const draft = JSON.parse(raw);
+                if (draft) {
+                    if (draft.date) rescheduleForm.elements.schedule_preferred_date.value = draft.date;
+                    refreshTimeOptions();
+                    if (draft.time) rescheduleForm.elements.schedule_preferred_time.value = draft.time;
+                    if (draft.reason) rescheduleForm.elements.schedule_response_note.value = draft.reason;
+                    rescheduleForm.querySelectorAll('textarea, input, select').forEach(function (field) {
+                        if (field.value) field.dataset.touched = 'true';
+                    });
+                }
+            } else if (raw && rescheduleModal.dataset.rescheduleSent === '1') {
+                sessionStorage.removeItem(draftKey);
+            }
+        } catch (error) {
+            // Tuloy lang kapag hindi mabasa ang local draft.
+        }
+
+        rescheduleModal.hidden = false;
+        rescheduleForm.elements.schedule_response_note.focus();
     });
 
     // Manage touched state and validation for reschedule form fields
@@ -1418,24 +1419,26 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.querySelector('[data-inspection-modal-close]')?.focus();
     };
 
-    document.querySelectorAll('[data-inspection-modal-open]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const modal = document.getElementById(button.getAttribute('data-inspection-modal-open'));
-            openInspectionModal(modal);
-        });
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-inspection-modal-open]');
+        if (!button) return;
+
+        const modal = document.getElementById(button.getAttribute('data-inspection-modal-open'));
+        openInspectionModal(modal);
     });
 
-    document.querySelectorAll('.inspection-modal').forEach(function (modal) {
-        const panel = modal.querySelector('.inspection-modal__panel');
-        panel?.addEventListener('scroll', function () {
+    document.addEventListener('scroll', function (event) {
+        const panel = event.target.closest?.('.inspection-modal__panel');
+        if (panel) {
             window.localStorage.setItem(modalScrollKey, String(panel.scrollTop));
-        });
+        }
+    }, true);
 
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal || event.target.closest('[data-inspection-modal-close]')) {
-                closeInspectionModal(modal);
-            }
-        });
+    document.addEventListener('click', function (event) {
+        const modal = event.target.closest('.inspection-modal');
+        if (modal && (event.target === modal || event.target.closest('[data-inspection-modal-close]'))) {
+            closeInspectionModal(modal);
+        }
     });
 
     document.addEventListener('keydown', function (event) {
@@ -1474,6 +1477,139 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.returnValue = 'You have unsaved changes.';
             }
         } catch (err) { /* ignore */ }
+    });
+
+    const inspectionPanel = document.querySelector('.inspection-panel');
+    const inspectionRefreshUrl = new URL(window.location.href);
+    inspectionRefreshUrl.searchParams.delete('inspection_id');
+    let inspectionRefreshInProgress = false;
+    let inspectionRefreshDeferred = false;
+    const pendingInspectionIds = new Set();
+
+    const inspectionRefreshIsBlocked = function () {
+        return Boolean(document.querySelector([
+            '.inspection-modal:not([hidden])',
+            '[data-complete-inspection-modal]:not([hidden])',
+            '[data-acknowledge-modal]:not([hidden])',
+            '[data-engineer-reschedule-modal]:not([hidden])',
+            '[data-engineer-reschedule-review-modal]:not([hidden])',
+        ].join(', ')));
+    };
+
+    const mergeAssignedInspectionCards = function (nextDocument) {
+        const result = { success: false, insertedIds: [], missingIds: [] };
+        if (!inspectionPanel) return result;
+
+        const nextPanel = nextDocument.querySelector('.inspection-panel');
+        if (!nextPanel) return result;
+
+        const nextCards = Array.from(nextPanel.querySelectorAll(':scope > [data-inspection-card-id]'));
+        const currentCardsById = new Map(Array.from(inspectionPanel.querySelectorAll(':scope > [data-inspection-card-id]')).map(function (card) {
+            return [card.dataset.inspectionCardId || '', card];
+        }));
+        const scrollX = window.scrollX;
+        const scrollY = window.scrollY;
+
+        nextCards.forEach(function (nextCard, index) {
+            const inspectionId = nextCard.dataset.inspectionCardId || '';
+            if (inspectionId === '' || currentCardsById.has(inspectionId)) return;
+
+            const importedCard = document.importNode(nextCard, true);
+            const followingCard = nextCards.slice(index + 1).map(function (card) {
+                return currentCardsById.get(card.dataset.inspectionCardId || '');
+            }).find(Boolean);
+            inspectionPanel.insertBefore(importedCard, followingCard || null);
+            currentCardsById.set(inspectionId, importedCard);
+            result.insertedIds.push(inspectionId);
+        });
+
+        pendingInspectionIds.forEach(function (inspectionId) {
+            if (currentCardsById.has(inspectionId)) {
+                pendingInspectionIds.delete(inspectionId);
+            } else {
+                result.missingIds.push(inspectionId);
+            }
+        });
+
+        if (result.insertedIds.length > 0) {
+            inspectionPanel.querySelector(':scope > [data-inspection-empty]')?.remove();
+        }
+        result.success = result.missingIds.length === 0;
+        window.requestAnimationFrame(function () {
+            window.scrollTo(scrollX, scrollY);
+        });
+        return result;
+    };
+
+    const refreshAssignedInspectionCards = function () {
+        if (!inspectionPanel || inspectionRefreshInProgress || pendingInspectionIds.size === 0) return;
+        if (inspectionRefreshIsBlocked()) {
+            inspectionRefreshDeferred = true;
+            return;
+        }
+
+        inspectionRefreshInProgress = true;
+        inspectionRefreshDeferred = false;
+
+        fetch(inspectionRefreshUrl.toString(), {
+            headers: {
+                Accept: 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            cache: 'no-store',
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Inspection list refresh failed.');
+                return response.text();
+            })
+            .then(function (html) {
+                if (inspectionRefreshIsBlocked()) {
+                    inspectionRefreshDeferred = true;
+                    return;
+                }
+                const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                mergeAssignedInspectionCards(nextDocument);
+            })
+            .catch(function () {
+                // Mananatili ang lumang cards. Susubok ulit sa next bell check.
+            })
+            .finally(function () {
+                inspectionRefreshInProgress = false;
+            });
+    };
+
+    if (inspectionPanel) {
+        const modalStateObserver = new MutationObserver(function () {
+            if (inspectionRefreshDeferred && !inspectionRefreshIsBlocked()) {
+                refreshAssignedInspectionCards();
+            }
+        });
+        modalStateObserver.observe(document.querySelector('.inspection-shell') || inspectionPanel, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['hidden'],
+        });
+    }
+
+    document.addEventListener('edge:engineer-notifications-updated', function (event) {
+        const assignmentItems = Array.isArray(event.detail?.assignment_items)
+            ? event.detail.assignment_items
+            : [];
+        const activeAssignmentIds = new Set();
+
+        assignmentItems.forEach(function (item) {
+            const inspectionId = String(Number.parseInt(item?.inspection_id || '0', 10));
+            if (inspectionId === '0') return;
+
+            activeAssignmentIds.add(inspectionId);
+            if (!document.querySelector('[data-inspection-card-id="' + CSS.escape(inspectionId) + '"]')) {
+                pendingInspectionIds.add(inspectionId);
+            }
+        });
+        pendingInspectionIds.forEach(function (inspectionId) {
+            if (!activeAssignmentIds.has(inspectionId)) pendingInspectionIds.delete(inspectionId);
+        });
+        refreshAssignedInspectionCards();
     });
 
     const requestedInspectionId = Number.parseInt(new URLSearchParams(window.location.search).get('inspection_id') || '0', 10);

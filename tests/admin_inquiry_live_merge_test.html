@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Admin inquiry live merge test</title>
+    <script>
+        window.testFetchCount = 0;
+        window.fetch = function () {
+            window.testFetchCount += 1;
+            const html = window.testFetchCount === 1
+                ? '<main><div class="inquiries-shell"></div></main>'
+                : [
+                    '<main><div class="inquiries-shell">',
+                    '<div class="inquiry-list">',
+                    '<article class="inquiry-card" data-inquiry-card-id="42">',
+                    '<button type="button" data-inquiry-modal-open="inquiryModal42">Review Inquiry</button>',
+                    '<div class="inquiry-modal" id="inquiryModal42" data-inquiry-id="42" hidden>',
+                    '<div class="inquiry-modal__panel"></div>',
+                    '</div>',
+                    '</article>',
+                    '</div>',
+                    '</div></main>',
+                ].join('');
+
+            return Promise.resolve(new Response(html, {
+                status: 200,
+                headers: { 'Content-Type': 'text/html' },
+            }));
+        };
+    </script>
+</head>
+<body>
+    <main>
+        <div class="inquiries-shell" data-latest-revision-id="0" data-latest-rejected-id="0">
+            <div class="inquiry-empty">No inquiries found.</div>
+        </div>
+    </main>
+    <output id="testResult">RUNNING</output>
+
+    <script src="../ADMIN/sidebar/inquiries/js/inquiries.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const result = document.getElementById('testResult');
+            const sendUpdate = function (newItems) {
+                document.dispatchEvent(new CustomEvent('edge:admin-inquiry-notifications-updated', {
+                    detail: { latest_id: 42, new_items: newItems },
+                }));
+            };
+
+            sendUpdate([{ id: 42 }]);
+            window.setTimeout(function () {
+                const firstMergeStayedEmpty = !document.querySelector('[data-inquiry-card-id="42"]')
+                    && window.testFetchCount === 1;
+
+                sendUpdate([]);
+                window.setTimeout(function () {
+                    const card = document.querySelector('[data-inquiry-card-id="42"]');
+                    const emptyState = document.querySelector('.inquiries-shell > .inquiry-empty');
+                    card?.querySelector('[data-inquiry-modal-open]')?.click();
+                    const modal = document.getElementById('inquiryModal42');
+                    const passed = firstMergeStayedEmpty
+                        && window.testFetchCount === 2
+                        && Boolean(card)
+                        && !emptyState
+                        && modal?.hidden === false;
+
+                    result.textContent = passed ? 'PASS' : 'FAIL';
+                    result.dataset.fetchCount = String(window.testFetchCount);
+                    result.dataset.cardInserted = card ? '1' : '0';
+                    result.dataset.modalOpened = modal?.hidden === false ? '1' : '0';
+                    document.title = passed ? 'PASS' : 'FAIL';
+                }, 100);
+            }, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1336,6 +1336,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let appliedInquiryLatestId = Array.from(document.querySelectorAll('[data-inquiry-card-id]')).reduce(function (latestId, card) {
         return Math.max(latestId, Number.parseInt(card.dataset.inquiryCardId || '0', 10));
     }, 0);
+    const pendingInquiryCardIds = new Set();
 
     const inquiryRefreshIsBlocked = function () {
         return Boolean(document.querySelector('.inquiry-modal:not([hidden]), .inquiry-archive-modal:not([hidden])'));
@@ -1353,25 +1354,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const currentFiltersExpectNewInquiry = function () {
+        const view = inquiryRefreshUrl.searchParams.get('view') || 'active';
+        const status = inquiryRefreshUrl.searchParams.get('status') || '';
+        const search = (inquiryRefreshUrl.searchParams.get('search') || '').trim();
+        const quotationFilter = inquiryRefreshUrl.searchParams.get('quotation_filter') || '';
+
+        return view === 'active'
+            && search === ''
+            && quotationFilter === ''
+            && (status === '' || status === 'Pending Review');
+    };
+
     const mergeNewInquiryCards = function (nextDocument) {
+        const result = {
+            success: false,
+            insertedIds: [],
+            missingIds: [],
+        };
         if (!inquiryShell) {
-            return;
+            return result;
         }
 
         updateInquiryCounts(nextDocument);
         const nextShell = nextDocument.querySelector('.inquiries-shell');
         const nextList = nextShell?.querySelector(':scope > .inquiry-list');
-        if (!nextList) {
-            return;
+        const nextEmptyState = nextShell?.querySelector(':scope > .inquiry-empty');
+        if (!nextShell || (!nextList && !nextEmptyState)) {
+            return result;
         }
 
         let currentList = inquiryShell.querySelector(':scope > .inquiry-list');
-        const nextCards = Array.from(nextList.querySelectorAll(':scope > [data-inquiry-card-id]'));
-        if (nextCards.length === 0) {
-            return;
-        }
+        const nextCards = nextList
+            ? Array.from(nextList.querySelectorAll(':scope > [data-inquiry-card-id]'))
+            : [];
+        const nextCardsById = new Map(nextCards.map(function (card) {
+            return [card.dataset.inquiryCardId || '', card];
+        }));
 
-        if (!currentList) {
+        if (!currentList && nextCards.length > 0) {
             currentList = document.createElement('div');
             currentList.className = 'inquiry-list';
             const emptyState = inquiryShell.querySelector(':scope > .inquiry-empty');
@@ -1384,31 +1405,56 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const scrollX = window.scrollX;
         const scrollY = window.scrollY;
-        const currentIds = new Set(Array.from(currentList.querySelectorAll(':scope > [data-inquiry-card-id]')).map(function (card) {
+        const currentIds = new Set(Array.from(inquiryShell.querySelectorAll(':scope > .inquiry-list > [data-inquiry-card-id]')).map(function (card) {
             return card.dataset.inquiryCardId || '';
         }));
 
-        nextCards.reverse().forEach(function (nextCard) {
+        nextCards.slice().reverse().forEach(function (nextCard) {
             const inquiryId = nextCard.dataset.inquiryCardId || '';
-            if (inquiryId === '' || currentIds.has(inquiryId)) {
+            if (!currentList || inquiryId === '' || currentIds.has(inquiryId)) {
                 return;
             }
 
             const importedCard = document.importNode(nextCard, true);
             currentList.prepend(importedCard);
             currentIds.add(inquiryId);
+            result.insertedIds.push(inquiryId);
             bindInquiryReviewForms(importedCard);
             bindInquiryArchiveForms(importedCard);
         });
 
+        pendingInquiryCardIds.forEach(function (inquiryId) {
+            if (currentIds.has(inquiryId)) {
+                pendingInquiryCardIds.delete(inquiryId);
+                return;
+            }
+
+            if (nextCardsById.has(inquiryId)) {
+                result.missingIds.push(inquiryId);
+                return;
+            }
+
+            if (currentFiltersExpectNewInquiry()) {
+                result.missingIds.push(inquiryId);
+                return;
+            }
+
+            // Tama ang response, pero hindi pasok ang card sa kasalukuyang filter.
+            pendingInquiryCardIds.delete(inquiryId);
+        });
+
+        result.success = result.missingIds.length === 0;
+
         window.requestAnimationFrame(function () {
             window.scrollTo(scrollX, scrollY);
         });
+
+        return result;
     };
 
     const refreshInquiryListFromCurrentFilters = function (latestId) {
         requestedInquiryLatestId = Math.max(requestedInquiryLatestId, Number.parseInt(latestId || '0', 10));
-        if (!inquiryShell || requestedInquiryLatestId <= appliedInquiryLatestId) {
+        if (!inquiryShell || (requestedInquiryLatestId <= appliedInquiryLatestId && pendingInquiryCardIds.size === 0)) {
             return;
         }
 
@@ -1451,7 +1497,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error('Inquiry list response is invalid.');
                 }
 
-                mergeNewInquiryCards(nextDocument);
+                const mergeResult = mergeNewInquiryCards(nextDocument);
+                if (!mergeResult.success) {
+                    return;
+                }
                 appliedInquiryLatestId = Math.max(appliedInquiryLatestId, refreshThroughId);
                 refreshSucceeded = true;
             })
@@ -1469,12 +1518,14 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('edge:admin-inquiry-notifications-updated', function (event) {
         const latestId = Number.parseInt(event.detail?.latest_id || '0', 10);
         const newItems = Array.isArray(event.detail?.new_items) ? event.detail.new_items : [];
-        const hasMissingCard = newItems.some(function (item) {
+        newItems.forEach(function (item) {
             const inquiryId = String(Number.parseInt(item?.id || '0', 10));
-            return inquiryId !== '0' && !document.querySelector('[data-inquiry-card-id="' + CSS.escape(inquiryId) + '"]');
+            if (inquiryId !== '0' && !document.querySelector('[data-inquiry-card-id="' + CSS.escape(inquiryId) + '"]')) {
+                pendingInquiryCardIds.add(inquiryId);
+            }
         });
 
-        if (latestId > appliedInquiryLatestId || hasMissingCard) {
+        if (latestId > appliedInquiryLatestId || pendingInquiryCardIds.size > 0) {
             refreshInquiryListFromCurrentFilters(latestId);
         }
     });

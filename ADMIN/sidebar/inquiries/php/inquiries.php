@@ -2212,8 +2212,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <?php endforeach; ?>
             </nav>
         <?php endif; ?>
-        </div>
-
         <?php if (empty($inquiryRows)): ?>
             <div class="inquiry-empty">No inquiries found.</div>
         <?php else: ?>

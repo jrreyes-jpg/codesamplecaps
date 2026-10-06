@@ -2575,6 +2575,12 @@ body.inquiry-modal-open {
     font-weight: 800;
 }
 
+.inquiry-modal-panels[inert] form :is(input, select, textarea, button),
+.inquiry-modal-panels[inert] a {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .inquiry-delete-form {
     margin-top: 4px;
 }

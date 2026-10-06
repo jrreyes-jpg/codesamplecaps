@@ -638,7 +638,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const modal = form.closest('.inquiry-modal');
         const draftKey = modal?.dataset.inquiryId ? 'edgeInquiryScheduleDraft:' + modal.dataset.inquiryId : '';
         const submitButton = form.querySelector('[data-schedule-submit]');
+        const engineerInput = form.querySelector('select[name="engineer_id"]');
+        const reasonWrap = form.querySelector('[data-admin-reschedule-reason]');
+        const reasonInput = form.querySelector('textarea[name="reschedule_reason"]');
         const defaultSubmitLabel = submitButton?.textContent || 'Confirm Schedule & Notify Client and Engineer';
+
+        const hasAssignmentChanges = function () {
+            if (!reasonWrap) return false;
+            return (engineerInput?.value || '') !== (form.dataset.originalEngineer || '')
+                || dateInput.value !== (form.dataset.originalDate || '')
+                || timeInput.value !== (form.dataset.originalTime || '');
+        };
+
+        const syncRescheduleReason = function () {
+            if (!reasonWrap || !reasonInput) return;
+            const isRequired = hasAssignmentChanges();
+            reasonWrap.hidden = !isRequired;
+            reasonInput.required = isRequired;
+            if (!isRequired) {
+                reasonInput.setCustomValidity('');
+                reasonInput.classList.remove('is-invalid');
+            }
+        };
 
         const syncInvalidUi = function () {
             if (form.dataset.submitAttempted !== '1') {
@@ -661,6 +682,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (draft.inspection_date) dateInput.value = draft.inspection_date;
                 if (draft.inspection_time) timeInput.value = draft.inspection_time;
                 if (draft.site_notes) form.querySelector('textarea[name="site_notes"]').value = draft.site_notes;
+                if (draft.reschedule_reason && reasonInput) reasonInput.value = draft.reschedule_reason;
             } catch (error) {
                 sessionStorage.removeItem(draftKey);
             }
@@ -822,6 +844,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 inspection_date: dateInput.value,
                 inspection_time: timeInput.value,
                 site_notes: form.querySelector('textarea[name="site_notes"]')?.value || '',
+                reschedule_reason: reasonInput?.value || '',
             };
             sessionStorage.setItem(draftKey, JSON.stringify(draft));
         };
@@ -832,6 +855,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 inspection_date: dateInput.value,
                 inspection_time: timeInput.value,
                 site_notes: form.querySelector('textarea[name="site_notes"]')?.value || '',
+                reschedule_reason: reasonInput?.value.trim() || '',
             });
         };
         const initialScheduleState = getScheduleState();
@@ -851,6 +875,8 @@ document.addEventListener('DOMContentLoaded', function () {
             field.addEventListener('change', saveDraft);
             field.addEventListener('input', syncScheduleSubmitState);
             field.addEventListener('change', syncScheduleSubmitState);
+            field.addEventListener('input', syncRescheduleReason);
+            field.addEventListener('change', syncRescheduleReason);
             field.addEventListener('input', function () {
                 if (form.dataset.submitAttempted === '1') syncInvalidUi();
             });
@@ -870,6 +896,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             form.dataset.submitAttempted = '1';
+            syncRescheduleReason();
             validateScheduleTime();
             if (!form.checkValidity()) {
                 syncInvalidUi();
@@ -950,6 +977,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
         });
+        syncRescheduleReason();
+        syncScheduleSubmitState();
     });
 
     const bindInquiryReviewForm = function (form) {

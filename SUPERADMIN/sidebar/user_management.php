@@ -208,7 +208,7 @@ $messageType = $messageType ?? 'success';
                                                             data-user-blocked-toast="<?php echo htmlspecialchars('Cannot deactivate ' . (string)($user['full_name'] ?? 'this user') . ' yet. Reassign ' . implode(' and ', $deactivationBlockers) . ' first.', ENT_QUOTES, 'UTF-8'); ?>"
                                                         >Cannot Deactivate</button>
                                                     <?php elseif ($status === 'pending_activation'): ?>
-                                                        <form method="POST" class="inline-action-form" data-confirm-message="Deactivate this pending Client account?">
+                                                        <form method="POST" class="inline-action-form" data-account-status-confirm data-user-name="<?php echo htmlspecialchars((string)($user['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                                             <input type="hidden" name="action" value="update_status">
                                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                             <input type="hidden" name="user_id" value="<?php echo $rowId; ?>">
@@ -216,7 +216,7 @@ $messageType = $messageType ?? 'success';
                                                             <button type="submit" class="user-actions-menu__item is-danger">Deactivate</button>
                                                         </form>
                                                     <?php else: ?>
-                                                        <form method="POST" class="inline-action-form" data-confirm-message="<?php echo $status === 'active' ? 'Deactivate this user? They will lose access to login.' : 'Reactivate this user?'; ?>">
+                                                        <form method="POST" class="inline-action-form" data-account-status-confirm data-user-name="<?php echo htmlspecialchars((string)($user['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                                             <input type="hidden" name="action" value="update_status">
                                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                                             <input type="hidden" name="user_id" value="<?php echo $rowId; ?>">
@@ -371,6 +371,20 @@ $messageType = $messageType ?? 'success';
                         <button type="submit" class="btn-primary">Update Password</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div class="modal-backdrop user-create-modal account-status-confirmation" data-account-status-modal hidden>
+            <div class="modal-panel user-create-modal__panel account-status-confirmation__panel" role="dialog" aria-modal="true" aria-labelledby="accountStatusModalTitle" aria-describedby="accountStatusModalMessage">
+                <div class="user-create-modal__header account-status-confirmation__header">
+                    <h2 id="accountStatusModalTitle" class="dashboard-section-title" data-account-status-title>Update Account?</h2>
+                    <button type="button" class="modal-close-button" aria-label="Close account confirmation" data-close-account-status-modal>&times;</button>
+                </div>
+                <p id="accountStatusModalMessage" class="account-status-confirmation__message" data-account-status-message></p>
+                <div class="account-status-confirmation__actions">
+                    <button type="button" class="btn-secondary" data-cancel-account-status>Cancel</button>
+                    <button type="button" class="btn-primary account-status-confirmation__confirm" data-confirm-account-status>Confirm</button>
+                </div>
             </div>
         </div>
     </section>

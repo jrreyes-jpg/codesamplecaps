@@ -236,6 +236,122 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    const accountStatusModal = document.querySelector('[data-account-status-modal]');
+    const accountStatusTitle = accountStatusModal?.querySelector('[data-account-status-title]');
+    const accountStatusMessage = accountStatusModal?.querySelector('[data-account-status-message]');
+    const accountStatusConfirm = accountStatusModal?.querySelector('[data-confirm-account-status]');
+    const accountStatusCloseButtons = accountStatusModal?.querySelectorAll('[data-close-account-status-modal], [data-cancel-account-status]') || [];
+    let pendingAccountStatusForm = null;
+    let accountStatusReturnFocus = null;
+    let accountStatusSubmitting = false;
+
+    const closeAccountStatusModal = function () {
+        if (!accountStatusModal || accountStatusSubmitting) {
+            return;
+        }
+
+        accountStatusModal.hidden = true;
+        accountStatusModal.classList.remove('is-open');
+        document.body.style.overflow = '';
+        pendingAccountStatusForm = null;
+
+        const focusTarget = accountStatusReturnFocus;
+        accountStatusReturnFocus = null;
+        window.setTimeout(() => focusTarget?.focus(), 0);
+    };
+
+    const openAccountStatusModal = function (form) {
+        if (!accountStatusModal || !accountStatusTitle || !accountStatusMessage || !accountStatusConfirm) {
+            return;
+        }
+
+        const nextStatus = form.querySelector('input[name="status"]')?.value || '';
+        const userName = form.getAttribute('data-user-name')?.trim() || 'this user';
+        const isReactivation = nextStatus === 'active';
+
+        pendingAccountStatusForm = form;
+        accountStatusReturnFocus = form.closest('[data-user-actions-menu]')?.querySelector('[data-user-actions-toggle]') || null;
+        accountStatusSubmitting = false;
+        accountStatusTitle.textContent = isReactivation ? 'Reactivate Account?' : 'Deactivate Account?';
+        accountStatusMessage.textContent = isReactivation
+            ? `Reactivate ${userName}\u2019s account? They will be able to log in again.`
+            : `Deactivate ${userName}\u2019s account? They will lose access to the system.`;
+        accountStatusConfirm.textContent = isReactivation ? 'Reactivate' : 'Deactivate';
+        accountStatusConfirm.classList.toggle('is-danger', !isReactivation);
+        accountStatusConfirm.disabled = false;
+        accountStatusCloseButtons.forEach((button) => { button.disabled = false; });
+
+        closeUserActionMenus(null);
+        accountStatusModal.hidden = false;
+        accountStatusModal.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        window.setTimeout(() => accountStatusConfirm.focus(), 50);
+    };
+
+    document.addEventListener('submit', function (event) {
+        const form = event.target.closest('[data-account-status-confirm]');
+        if (!form || form.dataset.accountStatusConfirmed === 'true') {
+            return;
+        }
+
+        event.preventDefault();
+        openAccountStatusModal(form);
+    });
+
+    accountStatusCloseButtons.forEach((button) => button.addEventListener('click', closeAccountStatusModal));
+
+    accountStatusModal?.addEventListener('click', function (event) {
+        if (event.target === accountStatusModal) {
+            closeAccountStatusModal();
+        }
+    });
+
+    accountStatusConfirm?.addEventListener('click', function () {
+        if (!pendingAccountStatusForm || accountStatusSubmitting) {
+            return;
+        }
+
+        accountStatusSubmitting = true;
+        accountStatusConfirm.disabled = true;
+        accountStatusCloseButtons.forEach((button) => { button.disabled = true; });
+        accountStatusConfirm.textContent = 'Processing...';
+        pendingAccountStatusForm.dataset.accountStatusConfirmed = 'true';
+        sessionStorage.removeItem('superadmin_user_toast');
+        pendingAccountStatusForm.requestSubmit();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (!accountStatusModal?.classList.contains('is-open')) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeAccountStatusModal();
+            return;
+        }
+
+        if (event.key !== 'Tab') {
+            return;
+        }
+
+        const focusable = Array.from(accountStatusModal.querySelectorAll('button:not(:disabled)'));
+        if (focusable.length === 0) {
+            event.preventDefault();
+            return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+
     const syncPhoneInput = function (input) {
         input.value = normalizePhMobile(input.value);
     };

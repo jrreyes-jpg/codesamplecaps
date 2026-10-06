@@ -1068,6 +1068,82 @@ body:has([data-user-management-shell]) .user-management-panel {
     display: flex;
 }
 
+.account-status-confirmation {
+    padding: 16px;
+}
+
+.account-status-confirmation__panel {
+    width: min(480px, 100%);
+    max-height: calc(100vh - 32px);
+    padding: 24px;
+    overflow: auto;
+}
+
+.account-status-confirmation__header {
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.account-status-confirmation__header .dashboard-section-title {
+    margin: 0;
+}
+
+.account-status-confirmation__message {
+    margin: 0;
+    color: #475569;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.account-status-confirmation__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.account-status-confirmation__actions .btn-primary,
+.account-status-confirmation__actions .btn-secondary {
+    min-width: 120px;
+}
+
+.account-status-confirmation__confirm.is-danger {
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.account-status-confirmation__confirm.is-danger:hover,
+.account-status-confirmation__confirm.is-danger:focus-visible {
+    border-color: #b91c1c;
+    background: #b91c1c;
+}
+
+.account-status-confirmation__actions button:disabled,
+.account-status-confirmation__header button:disabled {
+    cursor: wait;
+    opacity: 0.68;
+}
+
+@media (max-width: 480px) {
+    .account-status-confirmation__panel {
+        padding: 20px 16px;
+    }
+
+    .account-status-confirmation__actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .account-status-confirmation__actions .btn-primary,
+    .account-status-confirmation__actions .btn-secondary {
+        width: 100%;
+    }
+}
+
 .search-status-badge {
     display: inline-block;
     padding: 4px 8px;
@@ -1653,4 +1729,3 @@ body:has([data-user-management-shell]) .user-management-panel {
         min-width: 0;
     }
 }
-

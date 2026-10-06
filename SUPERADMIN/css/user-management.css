@@ -107,7 +107,7 @@ body:has([data-user-management-shell]) {
 
 body:has([data-user-management-shell]) .main-content {
     display: block;
-    padding: 112px clamp(24px, 3vw, 44px) 40px;
+    padding: 112px 16px 32px;
 }
 
 body:has([data-user-management-shell]) #users.tab-content.active {
@@ -150,8 +150,12 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .main-content.superadmin-user-management-page .user-table-toolbar {
     grid-template-columns: minmax(160px, 0.8fr) minmax(280px, 1.5fr) auto;
-    gap: 12px;
+    gap: 16px;
     padding: 0;
+}
+
+.main-content.superadmin-user-management-page .user-search-field {
+    max-width: none;
 }
 
 .main-content.superadmin-user-management-page .user-filters {
@@ -220,7 +224,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 @media (max-width: 900px) {
     .main-content.superadmin-user-management-page {
-        padding: 96px 14px 20px !important;
+        padding: 96px 16px 20px !important;
     }
 
     .main-content.superadmin-user-management-page .user-management-panel {
@@ -426,8 +430,14 @@ body:has([data-user-management-shell]) .user-management-panel {
     .main-content.superadmin-user-management-page .user-management-shell,
     .main-content.superadmin-user-management-page .user-management-panel {
         margin-top: 0 !important;
-        padding-top: 0;
         transform: none !important;
+    }
+
+    body:has([data-user-management-shell]) #users,
+    body:has([data-user-management-shell]) .user-management-shell,
+    .main-content.superadmin-user-management-page #users,
+    .main-content.superadmin-user-management-page .user-management-shell {
+        padding-top: 0;
     }
 }
 
@@ -1643,5 +1653,4 @@ body:has([data-user-management-shell]) .user-management-panel {
         min-width: 0;
     }
 }
-
 

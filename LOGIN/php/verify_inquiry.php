@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
+require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
@@ -203,7 +204,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         $email = (string)($payload['email'] ?? '');
         $contactNo = normalize_ph_mobile((string)($payload['contact_no'] ?? ''));
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !is_valid_ph_mobile($contactNo)) {
+        if (!inquiry_name_is_valid($clientName)
+            || !filter_var($email, FILTER_VALIDATE_EMAIL)
+            || !is_valid_ph_mobile($contactNo)) {
             verify_inquiry_redirect_home('invalid');
         }
 

@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
+require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
@@ -35,14 +36,8 @@ function normalize_text(?string $value): string
 
 function has_meaningful_letters(string $value, int $minimumLetters = 2): bool
 {
-    preg_match_all('/[A-Za-z]/', $value, $matches);
+    preg_match_all('/\p{L}/u', $value, $matches);
     return count($matches[0]) >= $minimumLetters;
-}
-
-function is_valid_full_name(string $value): bool
-{
-    return (bool)preg_match("/^[A-Za-z .'-]+$/", $value)
-        && has_meaningful_letters($value, 2);
 }
 
 function inquiry_column_exists(mysqli $conn, string $columnName): bool
@@ -93,7 +88,7 @@ if (
 // Isang gamit lang ang token para hindi makapagpadala ng duplicate OTP email.
 unset($_SESSION['inquiry_form_token']);
 
-if ($clientName === '' || !is_valid_full_name($clientName)) {
+if (!inquiry_name_is_valid($clientName)) {
     $errors[] = 'client_name';
 }
 

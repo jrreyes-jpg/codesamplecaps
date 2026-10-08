@@ -530,8 +530,9 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <div class="inquiry-grid inquiry-grid--contact-details" data-inquiry-contact-details>
                 <label>
-                    <span>Contact Person <b class="required-mark">*</b></span>
-                    <input type="text" name="client_name" data-label="Contact Person" required autocomplete="name">
+                    <span>Contact Person’s Full Name <b class="required-mark">*</b></span>
+                    <input id="inquiryContactPerson" type="text" name="client_name" data-label="Contact Person’s Full Name" required maxlength="150" autocomplete="name" placeholder="e.g., Juan Dela Cruz" aria-describedby="inquiryContactPersonHelp">
+                    <small id="inquiryContactPersonHelp" class="field-help">Person we can contact about this request. Enter first name, middle name (optional), last name, and suffix (if any).</small>
                     <small class="field-error"></small>
                 </label>
 

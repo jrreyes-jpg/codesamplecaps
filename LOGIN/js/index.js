@@ -414,7 +414,7 @@ const initInquiryForm = () => {
     };
 
     const hasMeaningfulText = (value, minimumLetters = 2) => {
-        const letters = value.match(/[A-Za-z]/g) || [];
+        const letters = value.match(/\p{L}/gu) || [];
         return letters.length >= minimumLetters;
     };
 
@@ -425,8 +425,13 @@ const initInquiryForm = () => {
             return true;
         }
 
-        if (!/^[A-Za-z .'-]+$/.test(value)) {
-            setFieldError(field, 'Full Name can only use letters, spaces, dot, hyphen, or apostrophe.');
+        if (Array.from(value).length > 150) {
+            setFieldError(field, 'Full name must be 150 characters or less.');
+            return false;
+        }
+
+        if (!/^[\p{L}\p{M} .'\u2019\-]+$/u.test(value)) {
+            setFieldError(field, 'Use letters, spaces, periods, hyphens, or apostrophes only.');
             return false;
         }
 

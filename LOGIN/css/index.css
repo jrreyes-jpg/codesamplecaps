@@ -519,6 +519,20 @@ h4 {
     gap: 14px 16px;
 }
 
+.inquiry-grid--contact-details {
+    align-items: start;
+}
+
+.inquiry-grid--contact-details > label {
+    align-self: start;
+    align-content: start;
+}
+
+.inquiry-grid--contact-details input {
+    height: 48px;
+    min-height: 48px;
+}
+
 .inquiry-form label {
     display: grid;
     gap: 6px;
@@ -724,8 +738,11 @@ h4 {
 }
 
 .field-help {
+    display: block;
     color: #64748b;
     font-weight: 500;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
 }
 
 .field-label-with-info {

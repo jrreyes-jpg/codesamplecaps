@@ -1,0 +1,23 @@
+name: Auto Deploy to InfinityFree
+
+on:
+  push:
+    branches:
+      - main # Palitan ng 'master' kung master ang tawag sa main branch niyo
+
+jobs:
+  web-deploy:
+    name: 🚀 Deploy Website
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v4 # Kinukuha ang pinakabagong code mo
+
+    - name: 📂 Sync files over FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5 # Sikat at ligtas na automation tool
+      with:
+        server: ftpupload.net # Palitan kung iba ang FTP Hostname na binigay ng InfinityFree
+        username: ${{ secrets.FTP_USERNAME }} # Awtomatikong kukunin sa GitHub Secrets
+        password: ${{ secrets.FTP_PASSWORD }} # Awtomatikong kukunin sa GitHub Secrets
+        server-dir: ./htdocs/ # Dito dapat papasok ang files para makita sa live website

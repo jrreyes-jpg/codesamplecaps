@@ -52,6 +52,128 @@ if (!function_exists('user_notifications_create_if_missing')) {
     }
 }
 
+if (!function_exists('user_notifications_active_target_condition')) {
+    function user_notifications_active_target_condition(string $alias = 'un'): string
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $alias)) {
+            $alias = 'un';
+        }
+
+        $inspectionTypes = "'site_inspection_assignment', 'site_inspection_schedule_updated', "
+            . "'client_inspection_reschedule_requested', 'engineer_inspection_reschedule_requested'";
+
+        return "(
+            {$alias}.type NOT IN ({$inspectionTypes}, 'client_quotation_response')
+            OR (
+                {$alias}.type IN ({$inspectionTypes})
+                AND EXISTS (
+                    SELECT 1
+                    FROM site_inspections notification_inspection
+                    INNER JOIN service_inquiries notification_inquiry
+                        ON notification_inquiry.id = notification_inspection.inquiry_id
+                       AND notification_inquiry.archived_at IS NULL
+                    WHERE notification_inspection.id = {$alias}.reference_id
+                )
+            )
+            OR (
+                {$alias}.type = 'client_quotation_response'
+                AND EXISTS (
+                    SELECT 1
+                    FROM inquiry_quotation_drafts notification_quote
+                    INNER JOIN service_inquiries notification_inquiry
+                        ON notification_inquiry.id = notification_quote.inquiry_id
+                       AND notification_inquiry.archived_at IS NULL
+                    WHERE notification_quote.id = {$alias}.reference_id
+                )
+            )
+        )";
+    }
+}
+
+if (!function_exists('user_notifications_retire_for_inquiry')) {
+    function user_notifications_retire_for_inquiry(mysqli $conn, int $inquiryId): bool
+    {
+        if ($inquiryId <= 0 || !user_notifications_table_exists($conn)) {
+            return $inquiryId > 0;
+        }
+
+        $stmt = $conn->prepare(
+            "UPDATE user_notifications un
+             SET un.read_at = COALESCE(un.read_at, NOW())
+             WHERE (
+                un.type IN (
+                    'site_inspection_assignment',
+                    'site_inspection_schedule_updated',
+                    'client_inspection_reschedule_requested',
+                    'engineer_inspection_reschedule_requested'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM site_inspections notification_inspection
+                    WHERE notification_inspection.id = un.reference_id
+                      AND notification_inspection.inquiry_id = ?
+                )
+             ) OR (
+                un.type = 'client_quotation_response'
+                AND EXISTS (
+                    SELECT 1
+                    FROM inquiry_quotation_drafts notification_quote
+                    WHERE notification_quote.id = un.reference_id
+                      AND notification_quote.inquiry_id = ?
+                )
+             )"
+        );
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bind_param('ii', $inquiryId, $inquiryId);
+        return $stmt->execute();
+    }
+}
+
+if (!function_exists('user_notifications_delete_for_inquiry')) {
+    function user_notifications_delete_for_inquiry(mysqli $conn, int $inquiryId): bool
+    {
+        if ($inquiryId <= 0 || !user_notifications_table_exists($conn)) {
+            return $inquiryId > 0;
+        }
+
+        $stmt = $conn->prepare(
+            "DELETE un
+             FROM user_notifications un
+             WHERE (
+                un.type IN (
+                    'site_inspection_assignment',
+                    'site_inspection_schedule_updated',
+                    'client_inspection_reschedule_requested',
+                    'engineer_inspection_reschedule_requested'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM site_inspections notification_inspection
+                    WHERE notification_inspection.id = un.reference_id
+                      AND notification_inspection.inquiry_id = ?
+                )
+             ) OR (
+                un.type = 'client_quotation_response'
+                AND EXISTS (
+                    SELECT 1
+                    FROM inquiry_quotation_drafts notification_quote
+                    WHERE notification_quote.id = un.reference_id
+                      AND notification_quote.inquiry_id = ?
+                )
+             )"
+        );
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bind_param('ii', $inquiryId, $inquiryId);
+        return $stmt->execute();
+    }
+}
+
 if (!function_exists('user_notifications_fetch_unread_state')) {
     function user_notifications_fetch_unread_state(mysqli $conn, int $userId, int $limit = 8): array
     {
@@ -61,7 +183,14 @@ if (!function_exists('user_notifications_fetch_unread_state')) {
         }
 
         $limit = max(1, min(20, $limit));
-        $countStmt = $conn->prepare('SELECT COUNT(*) AS total FROM user_notifications WHERE user_id = ? AND read_at IS NULL');
+        $activeTargetCondition = user_notifications_active_target_condition('un');
+        $countStmt = $conn->prepare(
+            "SELECT COUNT(*) AS total
+             FROM user_notifications un
+             WHERE un.user_id = ?
+               AND un.read_at IS NULL
+               AND {$activeTargetCondition}"
+        );
         if ($countStmt) {
             $countStmt->bind_param('i', $userId);
             $countStmt->execute();
@@ -69,11 +198,13 @@ if (!function_exists('user_notifications_fetch_unread_state')) {
         }
 
         $itemsStmt = $conn->prepare(
-            'SELECT id, type, reference_id, title, message, target_url, created_at
-             FROM user_notifications
-             WHERE user_id = ? AND read_at IS NULL
-             ORDER BY created_at DESC, id DESC
-             LIMIT ?'
+            "SELECT un.id, un.type, un.reference_id, un.title, un.message, un.target_url, un.created_at
+             FROM user_notifications un
+             WHERE un.user_id = ?
+               AND un.read_at IS NULL
+               AND {$activeTargetCondition}
+             ORDER BY un.created_at DESC, un.id DESC
+             LIMIT ?"
         );
         if ($itemsStmt) {
             $itemsStmt->bind_param('ii', $userId, $limit);

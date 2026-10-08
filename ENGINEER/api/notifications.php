@@ -43,7 +43,13 @@ function engineer_notification_latest_id(mysqli $conn, int $userId): int
         return 0;
     }
 
-    $stmt = $conn->prepare('SELECT COALESCE(MAX(id), 0) AS latest_id FROM user_notifications WHERE user_id = ?');
+    $activeTargetCondition = user_notifications_active_target_condition('un');
+    $stmt = $conn->prepare(
+        "SELECT COALESCE(MAX(un.id), 0) AS latest_id
+         FROM user_notifications un
+         WHERE un.user_id = ?
+           AND {$activeTargetCondition}"
+    );
     if (!$stmt) {
         return 0;
     }

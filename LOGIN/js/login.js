@@ -153,6 +153,31 @@ const initLoadingButtons = () => {
     });
 };
 
+const initClientAccountHelp = () => {
+    const helpLink = document.querySelector('[data-client-account-help]');
+
+    if (!helpLink) {
+        return;
+    }
+
+    helpLink.addEventListener('click', (event) => {
+        if (!window.EdgePublicConfirmation) {
+            return;
+        }
+
+        event.preventDefault();
+        window.EdgePublicConfirmation.open({
+            title: 'How to get a Client account',
+            message: 'Submit an inquiry to get started. Client Portal access is provided by Admin once your project is confirmed. Check your email for activation instructions.',
+            cancelLabel: 'Close',
+            confirmLabel: 'Start Inquiry',
+            onConfirm: () => {
+                window.location.assign(helpLink.href);
+            },
+        });
+    });
+};
+
 const initStaleLoginWindowGuard = () => {
     const form = document.querySelector('#loginForm form');
     const email = form?.querySelector('input[name="email"]');
@@ -561,6 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initParticleCanvas();
     initPasswordToggles();
     initLoadingButtons();
+    initClientAccountHelp();
     initLoginToast();
     initStaleLoginWindowGuard();
 

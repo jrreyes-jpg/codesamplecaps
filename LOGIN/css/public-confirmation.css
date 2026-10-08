@@ -13,9 +13,17 @@
     background: rgba(6, 24, 16, 0.66);
 }
 
+body.public-confirmation-open {
+    overflow: hidden;
+}
+
 .public-confirmation-modal__panel {
+    position: relative;
     box-sizing: border-box;
-    width: min(100%, 480px);
+    width: min(100%, 500px);
+    max-height: calc(100vh - 36px);
+    max-height: calc(100svh - 36px);
+    overflow-y: auto;
     padding: clamp(20px, 5vw, 28px);
     border: 1px solid rgba(209, 226, 216, 0.95);
     border-radius: 18px;
@@ -23,10 +31,41 @@
     box-shadow: 0 24px 64px rgba(4, 23, 14, 0.28);
 }
 
+.public-confirmation-modal__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    box-sizing: border-box;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: #eef5f0;
+    color: #365244;
+    font: inherit;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.public-confirmation-modal__close:hover,
+.public-confirmation-modal__close:focus-visible {
+    transform: none;
+    outline: 3px solid rgba(11, 122, 53, 0.18);
+    outline-offset: 2px;
+}
+
 .public-confirmation-modal__panel h2 {
-    margin: 0;
+    min-height: 44px;
+    margin: 0 56px 0 0;
     color: #133b27;
     font-size: clamp(1.12rem, 3.5vw, 1.36rem);
+    line-height: 1.3;
 }
 
 .public-confirmation-modal__panel p {
@@ -86,7 +125,22 @@
 
 @media (max-width: 480px) {
     .public-confirmation-modal {
-        padding: 14px;
+        padding: 16px;
+    }
+
+    .public-confirmation-modal__panel {
+        max-height: calc(100vh - 32px);
+        max-height: calc(100svh - 32px);
+        padding: 20px 18px;
+    }
+
+    .public-confirmation-modal__close {
+        top: 10px;
+        right: 10px;
+    }
+
+    .public-confirmation-modal__panel h2 {
+        margin-right: 52px;
     }
 
     .public-confirmation-modal__actions {

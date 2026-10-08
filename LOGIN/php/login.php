@@ -481,6 +481,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="../css/auth-shared.css">
     <link rel="stylesheet" href="../css/login.css">
+    <link rel="stylesheet" href="../css/public-confirmation.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -590,7 +591,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/forgot.php">Forgot Password?</a>
-                        <a href="/codesamplecaps/LOGIN/php/index.php#contact" class="login-help-text">No account yet? Contact Admin.</a>
+                        <a href="/codesamplecaps/LOGIN/php/index.php?open=inquiry" class="login-help-text" data-client-account-help>No Client account yet? Start an inquiry.</a>
                     </div>
                 </form>
             </div>
@@ -607,6 +608,7 @@ window.lockoutConfig = {
     sessionEndReason: <?php echo $is_inactive_account_notice ? "'inactive'" : 'null'; ?>
 };
 </script>
+    <script src="../js/public-confirmation.js"></script>
     <script src="../js/login.js"></script>
     <script src="../common/js/particles.js"></script>
 </body>

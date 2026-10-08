@@ -59,7 +59,25 @@ const inquiryFormReturnStatuses = new Set([
     'server_error',
 ]);
 
-const shouldAutoOpenInquiryModal = () => inquiryFormReturnStatuses.has(String(window.edgeInquiryStatus || ''));
+const inquiryAutoOpenRequested = () => {
+    const url = new URL(window.location.href);
+    return url.searchParams.get('open') === 'inquiry';
+};
+
+const shouldAutoOpenInquiryModal = () => (
+    inquiryFormReturnStatuses.has(String(window.edgeInquiryStatus || ''))
+    || inquiryAutoOpenRequested()
+);
+
+const consumeInquiryAutoOpenRequest = () => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('open') !== 'inquiry') {
+        return;
+    }
+
+    url.searchParams.delete('open');
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+};
 
 const showInquirySuccessModal = () => {
     const modal = document.createElement('div');
@@ -315,6 +333,7 @@ const initConsultationModal = () => {
 
     if (shouldAutoOpenInquiryModal()) {
         openInquiryModal();
+        consumeInquiryAutoOpenRequest();
     } else {
         closeInquiryModal();
     }

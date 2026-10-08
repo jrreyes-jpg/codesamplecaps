@@ -2517,20 +2517,28 @@ h4 {
     }
 
     .partners-intro {
-        margin-bottom: 1.25rem;
+        margin: 0 auto 1.25rem;
         text-align: center;
     }
 
+    .partners {
+        padding-block: 2.75rem;
+    }
+
+    .partners .section-title {
+        margin-bottom: 1rem;
+    }
+
     .partners-visual {
-        margin-inline: calc(var(--page-x) * -1);
-        border-right: 0;
-        border-left: 0;
-        border-radius: 0;
+        margin-inline: 0;
     }
 
     .partners-visual img {
-        min-height: 210px;
-        object-fit: cover;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        aspect-ratio: auto;
+        object-fit: contain;
         object-position: center;
     }
 
@@ -3149,6 +3157,10 @@ h4 {
     .feature:hover,
     .contact-card:hover,
     .btn:hover {
+        transform: none;
+    }
+
+    .partners-link:hover img {
         transform: none;
     }
 }

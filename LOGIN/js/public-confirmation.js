@@ -7,6 +7,7 @@
     let message = null;
     let cancelButton = null;
     let confirmButton = null;
+    let closeButton = null;
     let current = null;
     let lastFocusedElement = null;
 
@@ -34,6 +35,7 @@
         modal.hidden = true;
         modal.innerHTML = [
             '<div class="public-confirmation-modal__panel" role="dialog" aria-modal="true" aria-labelledby="publicConfirmationTitle">',
+            '<button type="button" class="public-confirmation-modal__close" data-public-confirmation-close aria-label="Close dialog">&times;</button>',
             '<h2 id="publicConfirmationTitle"></h2>',
             '<p data-public-confirmation-message></p>',
             '<div class="public-confirmation-modal__actions">',
@@ -48,8 +50,10 @@
         message = modal.querySelector('[data-public-confirmation-message]');
         cancelButton = modal.querySelector('[data-public-confirmation-cancel]');
         confirmButton = modal.querySelector('[data-public-confirmation-confirm]');
+        closeButton = modal.querySelector('[data-public-confirmation-close]');
 
         cancelButton?.addEventListener('click', close);
+        closeButton?.addEventListener('click', close);
         confirmButton?.addEventListener('click', function () {
             if (!current || current.busy) {
                 return;
@@ -79,6 +83,28 @@
         if (event.key === 'Escape' && current && !current.busy) {
             event.preventDefault();
             close();
+            return;
+        }
+
+        if (event.key === 'Tab' && current && modal) {
+            const focusable = Array.from(modal.querySelectorAll(
+                'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )).filter(function (element) {
+                return element instanceof HTMLElement && element.offsetParent !== null;
+            });
+            if (focusable.length === 0) {
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         }
     });
 

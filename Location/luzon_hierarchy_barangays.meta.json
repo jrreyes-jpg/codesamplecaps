@@ -1,0 +1,7 @@
+{
+    "source": "Philippine Statistics Authority PSGC publication datafile",
+    "source_url": "https://psa.gov.ph/classification/psgc",
+    "dataset_version": "2026-Q2",
+    "dataset_release": "Second Quarter 2026",
+    "status": "bundled_fallback"
+}

@@ -205,7 +205,8 @@ function service_area_hierarchy(): array
     }
 
     $hierarchy = [];
-    $path = dirname(__DIR__) . '/Location/luzon_hierarchy_barangays.csv';
+    require_once __DIR__ . '/service_location_dataset.php';
+    $path = service_location_dataset_path();
     foreach (service_area_read_csv($path) as $row) {
         $region = trim((string)($row['region'] ?? ''));
         $province = trim((string)($row['province'] ?? ''));

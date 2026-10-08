@@ -144,7 +144,8 @@ function service_barangays_hierarchy(mysqli $conn): array
         return $referenceRows;
     }
 
-    $hierarchyPath = dirname(__DIR__) . '/Location/luzon_hierarchy_barangays.csv';
+    require_once __DIR__ . '/service_location_dataset.php';
+    $hierarchyPath = service_location_dataset_path();
     if (is_file($hierarchyPath) && is_readable($hierarchyPath)) {
         $referenceRows = [];
         foreach (service_area_read_csv($hierarchyPath) as $row) {

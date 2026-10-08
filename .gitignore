@@ -6,6 +6,7 @@
 # Runtime files
 storage/sessions/
 storage/logs/
+storage/cache/
 storage/profile_photos/
 uploads/profile_photos/
 DB/backups/

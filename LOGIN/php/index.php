@@ -3,7 +3,9 @@ session_start();
 require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
+require_once __DIR__ . '/../../config/service_location_dataset.php';
 
+service_location_dataset_maybe_refresh();
 $serviceHierarchy = service_area_hierarchy();
 $serviceBarangays = service_barangays_hierarchy($conn);
 

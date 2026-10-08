@@ -12,6 +12,7 @@ $max_attempts = (int)$config->get('LOGIN_MAX_ATTEMPTS', 5);
 $max_ip_attempts = 15;
 $lockout_minutes = (int)$config->get('LOGIN_LOCKOUT_MINUTES', 15);
 $lockout_time = $lockout_minutes * 60;
+$lockout_message = 'Too many failed login attempts. Please try again later.';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
 $ip_only_attempt_key = '__ip_only__';
 
@@ -137,6 +138,7 @@ if ($rendering_inactive_warning) {
 
         // Kapag lock message ito, database time ang kunin para hindi bumalik sa 15:00 sa refresh.
         if ($error_class === 'error-locked' && $lock_type === 'ip') {
+            $error = $lockout_message;
             $ip_attempt_summary = login_get_ip_attempt_summary($conn, $ip_address);
             $remaining_seconds = login_remaining_seconds($ip_attempt_summary['last_attempt'] ?? null, $lockout_time);
 
@@ -148,6 +150,7 @@ if ($rendering_inactive_warning) {
                 $lock_type = '';
             }
         } elseif ($error_class === 'error-locked' && $lock_type === 'email') {
+            $error = $lockout_message;
             $lockedEmail = strtolower(trim((string)($login_flash['email'] ?? '')));
             $attempt = filter_var($lockedEmail, FILTER_VALIDATE_EMAIL)
                 ? login_get_attempt($conn, $lockedEmail, $ip_address)
@@ -182,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !$rendering_inactive_warning) {
         $remaining_seconds = login_remaining_seconds($ip_attempt_summary['last_attempt'] ?? null, $lockout_time);
 
         if ($remaining_seconds > 0) {
-            $error = 'This device has been temporarily locked due to multiple failed login attempts.';
+            $error = $lockout_message;
             $failed_attempts_display = '';
             $error_class = 'error-locked';
             $lock_type = 'ip';
@@ -298,7 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $remaining_seconds = login_remaining_seconds($ip_attempt_summary['last_attempt'] ?? null, $lockout_time);
 
             if ($remaining_seconds > 0) {
-                $error = 'This device has been temporarily locked due to multiple failed login attempts.';
+                $error = $lockout_message;
                 $failed_attempts_display = '';
                 $error_class = 'error-locked';
                 $lock_type = 'ip';
@@ -326,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $remaining_seconds = login_remaining_seconds($ip_attempt_summary['last_attempt'] ?? null, $lockout_time);
 
                     if ($remaining_seconds > 0) {
-                        $error = 'This device has been temporarily locked due to multiple failed login attempts.';
+                        $error = $lockout_message;
                         $failed_attempts_display = '';
                         $error_class = 'error-locked';
                         $lock_type = 'ip';
@@ -347,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $remaining_seconds = login_remaining_seconds($last_attempt, $lockout_time);
 
                     if ($remaining_seconds > 0) {
-                        $error = 'This email is locked. Try again later or contact admin.';
+                        $error = $lockout_message;
                         $failed_attempts_display = '';
                         $error_class = 'error-locked';
                         $lock_type = 'email';
@@ -411,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $remaining_seconds = login_remaining_seconds($ip_attempt_summary['last_attempt'] ?? null, $lockout_time);
 
                             if ($remaining_seconds > 0) {
-                                $error = 'This device has been temporarily locked due to multiple failed login attempts.';
+                                $error = $lockout_message;
                                 $failed_attempts_display = '';
                                 $error_class = 'error-locked';
                                 $lock_type = 'ip';
@@ -422,19 +425,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // Device lock has priority.
                         } elseif ($attempts >= $max_attempts) {
                             $remaining_seconds = $lockout_time;
-                            $error = 'This email is locked. Try again later or contact admin.';
+                            $error = $lockout_message;
                             $failed_attempts_display = '';
                             $error_class = 'error-locked';
                             $lock_type = 'email';
                         } else {
-                            $remaining = $max_attempts - $attempts;
-                            $attempts_left = $remaining;
-
                             $error = 'Invalid email or password.';
-
-                            $failed_attempts_display = "Attempts left for this email: $remaining";
-
-                            $error_class = 'error-attempt-' . $remaining;
+                            $failed_attempts_display = '';
+                            $attempts_left = null;
+                            $error_class = 'error-danger';
                         }
                     }
                 }
@@ -533,12 +532,6 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
 
     <div id="lockoutCountdown" class="lockout-countdown">
         <?php echo sprintf('%02d:%02d', intdiv((int)$remaining_seconds, 60), ((int)$remaining_seconds % 60)); ?>
-    </div>
-
-<?php elseif ($failed_attempts_display !== ''): ?>
-
-    <div class="attempt-status" data-attempts-left="<?php echo htmlspecialchars((string)($attempts_left ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-        <?php echo htmlspecialchars($failed_attempts_display, ENT_QUOTES, 'UTF-8'); ?>
     </div>
 
 <?php endif; ?>

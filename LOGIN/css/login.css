@@ -128,34 +128,16 @@
     right: 12px;
 }
 
-.error-danger {
-    background: #ffe6e6;
-    color: #c80000;
-    border-left-color: #c80000;
-}
-
-.error-attempt-4 {
-    background: #e8f5e9;
-    color: #2E7D32;
-    border-left-color: #2E7D32;
-}
-
-.error-attempt-3 {
-    background: #fff8e1;
-    color: #F9A825;
-    border-left-color: #F9A825;
-}
-
-.error-attempt-2 {
-    background: #fff3e0;
-    color: #EF6C00;
-    border-left-color: #EF6C00;
-}
-
-.error-attempt-1 {
-    background: #ffebee;
-    color: #D32F2F;
-    border-left-color: #D32F2F;
+.error-danger,
+.error-attempt-4,
+.error-attempt-3,
+.error-attempt-2,
+.error-attempt-1,
+.error-locked {
+    background: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #DC2626;
+    border-left-width: 5px;
 }
 
 .error-warning {
@@ -164,48 +146,12 @@
     border-left-color: #ff9800;
 }
 
-.error-locked {
-    background: #ffd6d6;
-    color: #8b0000;
-    border-left-color: #8b0000;
-}
-
 .lockout-countdown {
     margin-top: 8px;
     font-size: 18px;
     font-weight: 800;
-    color: #800000;
+    color: #991B1B;
     letter-spacing: 0;
-}
-
-.attempt-status {
-    margin-top: 6px;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.error-danger .attempt-status {
-    color: #9f1239;
-}
-
-.error-warning .attempt-status {
-    color: #92400e;
-}
-
-.error-attempt-4 .attempt-status {
-    color: #2E7D32;
-}
-
-.error-attempt-3 .attempt-status {
-    color: #F9A825;
-}
-
-.error-attempt-2 .attempt-status {
-    color: #EF6C00;
-}
-
-.error-attempt-1 .attempt-status {
-    color: #D32F2F;
 }
 
 .back-home {

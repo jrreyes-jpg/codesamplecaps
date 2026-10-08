@@ -12,6 +12,7 @@ $max_attempts = (int)$config->get('LOGIN_MAX_ATTEMPTS', 5);
 $max_ip_attempts = 15;
 $lockout_minutes = (int)$config->get('LOGIN_LOCKOUT_MINUTES', 15);
 $lockout_time = $lockout_minutes * 60;
+$lockout_message = 'Too many failed login attempts. Please try again later.';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
 
 function lock_status_json(array $payload): void
@@ -30,7 +31,7 @@ if ((int)$ip_attempt_summary['attempts'] >= $max_ip_attempts) {
             'type' => 'ip',
             'seconds' => $remaining_seconds,
             'unlockAt' => time() + $remaining_seconds,
-            'message' => 'This device has been temporarily locked due to multiple failed login attempts.',
+            'message' => $lockout_message,
         ]);
     }
 
@@ -70,5 +71,5 @@ lock_status_json([
     'type' => 'email',
     'seconds' => $remaining_seconds,
     'unlockAt' => time() + $remaining_seconds,
-    'message' => 'This login is temporarily locked.',
+    'message' => $lockout_message,
 ]);

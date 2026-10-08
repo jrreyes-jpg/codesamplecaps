@@ -472,7 +472,7 @@ const initEmailLockStatus = () => {
                 email.disabled = true;
                 setLoginControls(true);
                 showCountdown(
-                    data.message || 'This device has been temporarily locked due to multiple failed login attempts.',
+                    data.message || 'Too many failed login attempts. Please try again later.',
                     Number(data.seconds) || 0,
                     'ip',
                     Number(data.unlockAt) || 0
@@ -482,7 +482,7 @@ const initEmailLockStatus = () => {
 
             if (data.locked && data.type === 'email') {
                 showCountdown(
-                    data.message || 'This login is temporarily locked.',
+                    data.message || 'Too many failed login attempts. Please try again later.',
                     Number(data.seconds) || 0,
                     'email',
                     Number(data.unlockAt) || 0

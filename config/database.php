@@ -21,6 +21,11 @@ try {
 
     // Set charset
     $conn->set_charset($db_config['charset']);
+
+    // Pareho dapat ang oras ng MySQL at PHP para tama ang OTP expiry.
+    if (!$conn->query("SET time_zone = '+08:00'")) {
+        throw new mysqli_sql_exception('Could not set the database session time zone.');
+    }
 } catch (mysqli_sql_exception $exception) {
     http_response_code(500);
     error_log('Database connection failed: ' . $exception->getMessage());

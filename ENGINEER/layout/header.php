@@ -26,7 +26,7 @@ $allEngineerCssFiles = array_values(array_unique(array_merge($sharedCssFiles, $e
     <?php foreach ($allEngineerCssFiles as $cssFile): ?>
         <link rel="stylesheet" href="<?php echo htmlspecialchars((string)$cssFile, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endforeach; ?>
-    <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 </head>
 <body>
 <?php auth_render_flash_toast(); ?>

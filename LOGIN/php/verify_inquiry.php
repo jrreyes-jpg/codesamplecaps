@@ -258,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Inquiry - Edge Automation</title>
-    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
     <link rel="stylesheet" href="../css/auth-shared.css">
     <link rel="stylesheet" href="../css/verify_inquiry.css">
     <link rel="stylesheet" href="../css/public-confirmation.css">

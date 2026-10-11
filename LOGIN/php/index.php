@@ -23,7 +23,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="stylesheet" href="../css/loader.css">
     <link rel="stylesheet" href="../css/index.css">
     <link rel="stylesheet" href="../css/public-confirmation.css">
-    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 
 </head>
 <body>
@@ -538,7 +538,8 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
                 <label>
                     <span>Company / Organization Name</span>
-                    <input type="text" name="company_name" autocomplete="organization" placeholder="Optional, leave blank if individual client">
+                    <input type="text" name="company_name" autocomplete="organization" placeholder="Company name (optional)" aria-describedby="inquiryCompanyHelp">
+                    <small id="inquiryCompanyHelp" class="field-help">Leave blank if you are an individual client.</small>
                     <small class="field-error"></small>
                 </label>
 
@@ -606,13 +607,13 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <label>
                 <span class="field-label-with-info">
-                    Exact Site Address <b class="required-mark">*</b>
+                    Site Address Details <b class="required-mark">*</b>
                     <span class="field-info-wrap">
-                        <button class="field-info-button js-field-info-button" type="button" aria-label="Site address note">i</button>
-                        <small class="field-tooltip js-field-tooltip">Service area is limited to Luzon only.</small>
+                        <button class="field-info-button js-field-info-button" type="button" aria-label="Site address help" aria-controls="siteAddressHelp" aria-describedby="siteAddressHelp" aria-expanded="false">i</button>
+                        <small id="siteAddressHelp" class="field-tooltip js-field-tooltip" role="tooltip">Enter the address where the service is needed. Add a unit/floor or nearby landmark, if applicable. No need to repeat the location selected above.</small>
                     </span>
                 </span>
-                <textarea name="site_address" data-label="Exact Site Address" rows="3" required placeholder="House/building no., street, gate, floor, or nearby details"></textarea>
+                <textarea name="site_address" data-label="Site Address Details" rows="3" required placeholder="House/building no., street, subdivision or sitio"></textarea>
                 <small class="field-error"></small>
             </label>
 

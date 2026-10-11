@@ -30,7 +30,7 @@ if (!isset($pageStyles) || !is_array($pageStyles)) {
     <?php foreach ($pageStyles as $stylePath): ?>
         <link rel="stylesheet" href="<?php echo htmlspecialchars((string)$stylePath, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endforeach; ?>
-    <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 </head>
 <body>
 <?php auth_render_flash_toast(); ?>

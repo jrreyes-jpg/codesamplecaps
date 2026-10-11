@@ -476,7 +476,7 @@ $email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' &
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edge Automation Portal</title>
-    <link rel="icon" type="image/x-icon" href="../../IMAGES/edge.jpg">
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="../css/auth-shared.css">
     <link rel="stylesheet" href="../css/login.css">

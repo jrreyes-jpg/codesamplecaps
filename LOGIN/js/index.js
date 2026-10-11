@@ -877,6 +877,7 @@ const initInquiryForm = () => {
         const hideFieldTooltips = () => {
             inquiryForm.querySelectorAll('.js-field-tooltip').forEach((tooltip) => {
                 tooltip.classList.remove('is-visible');
+                tooltip.closest('.field-info-wrap')?.querySelector('.js-field-info-button')?.setAttribute('aria-expanded', 'false');
             });
         };
 
@@ -884,6 +885,7 @@ const initInquiryForm = () => {
             hideFieldTooltips();
             hideDateTooltip();
             tooltip?.classList.add('is-visible');
+            tooltip?.closest('.field-info-wrap')?.querySelector('.js-field-info-button')?.setAttribute('aria-expanded', 'true');
         };
 
         dateInfoButton?.addEventListener('click', (event) => {

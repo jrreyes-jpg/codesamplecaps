@@ -51,8 +51,8 @@ $allClientCssFiles = array_values(
 
     <link
         rel="icon"
-        type="image/x-icon"
-        href="/codesamplecaps/IMAGES/edge.jpg"
+        type="image/png"
+        href="/codesamplecaps/IMAGES/edge-favicon.png?v=1"
     >
 </head>
 

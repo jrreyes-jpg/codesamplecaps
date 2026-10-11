@@ -55,7 +55,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <title><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> - Quotation</title>
     <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css">
     <link rel="stylesheet" href="/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiry-quotation-pdf.css">
-    <link rel="icon" type="image/x-icon" href="/codesamplecaps/IMAGES/edge.jpg">
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 </head>
 <body>
     <div class="quote-actions">

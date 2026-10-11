@@ -78,7 +78,9 @@ $headerProfileLinks = [
     ['label' => 'Settings', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/account_settings.php?section=security'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
+ob_start();
 include __DIR__ . '/../SHARED/header/profile/php/profile.php';
+$operationsHeaderProfileHtml = ob_get_clean();
 ?>
 
         <div class="topbar-notifications" data-notification-root>
@@ -150,9 +152,10 @@ include __DIR__ . '/../SHARED/header/profile/php/profile.php';
                 </div>
 
             </div>
-        </div>
+</div>
 
 <?php
+echo $operationsHeaderProfileHtml;
 $operationsHeaderActionsHtml = ob_get_clean();
 $operationsHeaderRole = 'super_admin';
 $operationsHeaderClass = 'global-topbar';

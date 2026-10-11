@@ -124,7 +124,9 @@ if (!function_exists('client_shell_render_topbar')) {
             ],
         ];
 
+        ob_start();
         include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
+        $operationsHeaderProfileHtml = (string)ob_get_clean();
         ?>
         <div class="topbar-notifications" data-notification-root>
             <button
@@ -168,6 +170,7 @@ if (!function_exists('client_shell_render_topbar')) {
         </div>
         <?php
 
+        echo $operationsHeaderProfileHtml;
         $operationsHeaderActionsHtml = (string)ob_get_clean();
         $operationsHeaderRole = 'client';
         $operationsHeaderClass = 'global-topbar';

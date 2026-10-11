@@ -50,7 +50,9 @@ $headerProfileLinks = [
     ['label' => 'Settings', 'href' => '/codesamplecaps/ENGINEER/dashboards/account_settings.php?section=security'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
+ob_start();
 include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
+$operationsHeaderProfileHtml = ob_get_clean();
 ?>
 <div
     class="topbar-notifications"
@@ -105,6 +107,7 @@ include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
     </div>
 </div>
 <?php
+echo $operationsHeaderProfileHtml;
 $operationsHeaderActionsHtml = ob_get_clean();
 $operationsHeaderRole = 'engineer';
 $operationsHeaderClass = 'global-topbar';

@@ -449,7 +449,10 @@ $headerProfileLinks = [
     ['label' => 'Settings', 'href' => '/codesamplecaps/ADMIN/sidebar/dashboard/php/dashboard.php?tab=profile#security-settings'],
     ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
 ];
-include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
+ob_start();
+include __DIR__ . '/../SHARED/header/profile/php/profile.php';
+$operationsHeaderProfileHtml = ob_get_clean();
+?>
 
 <?php $adminInquiryNotificationCsrf = auth_csrf_token('admin_inquiry_notifications'); ?>
 <div
@@ -512,6 +515,7 @@ include __DIR__ . '/../SHARED/header/profile/php/profile.php';?>
 </div>
 
 <?php
+echo $operationsHeaderProfileHtml;
 $operationsHeaderActionsHtml = ob_get_clean();
 $operationsHeaderRole = 'admin';
 $operationsHeaderClass = 'global-topbar';

@@ -175,7 +175,9 @@ if (!function_exists('inventory_clerk_render_header')) {
             ['label' => 'My Profile', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/profile.php'],
             ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
         ];
+        ob_start();
         include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
+        $operationsHeaderProfileHtml = (string)ob_get_clean();
         ?>
         <div class="topbar-notifications" data-notification-root>
             <button id="topbarNotificationToggle" class="topbar-notifications__toggle" type="button" aria-label="Open notifications" aria-controls="topbarNotificationDropdown" aria-expanded="false">
@@ -212,6 +214,7 @@ if (!function_exists('inventory_clerk_render_header')) {
             </div>
         </div>
         <?php
+        echo $operationsHeaderProfileHtml;
         $operationsHeaderActionsHtml = (string)ob_get_clean();
         $operationsHeaderRole = 'inventory_clerk';
         $operationsHeaderClass = 'global-topbar';

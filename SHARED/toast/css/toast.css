@@ -169,6 +169,20 @@
     line-height: 1.5;
 }
 
+.shared-logout-confirm__panel .shared-logout-confirm__error {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border: 1px solid #dc2626;
+    border-radius: 10px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 0.88rem;
+}
+
+.shared-logout-confirm__error[hidden] {
+    display: none;
+}
+
 .shared-logout-confirm__actions {
     display: flex;
     justify-content: flex-end;

@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.addEventListener('beforeunload', function (event) {
-        if (!hasUnsavedMaterialChanges()) {
+        if (window.__edgeLogoutInProgress || !hasUnsavedMaterialChanges()) {
             return;
         }
 

@@ -229,9 +229,12 @@
 .empty-state { padding: 20px; color: #64748b; text-align: center; }
 
 @media (max-width: 768px) {
-    .inventory-clerk-page-body,
+    .main-content > .inventory-clerk-page-body {
+        padding: 0;
+    }
+
     .inventory-clerk-content-shell {
-        padding: 102px 18px 24px;
+        padding: 96px 18px 24px;
     }
 
     .form-panel,

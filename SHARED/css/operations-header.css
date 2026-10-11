@@ -111,6 +111,9 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar) {
         left: 0;
         right: 0;
+        width: 100% !important;
+        max-width: 100vw;
+        box-sizing: border-box;
         min-height: 78px;
         padding: 12px 16px 12px 72px;
         gap: 12px;
@@ -124,12 +127,14 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     :is(.global-topbar__copy strong, .engineer-topbar__brand strong) {
         display: block;
         min-width: 0;
-        max-width: 112px;
-        overflow: hidden;
-        font-size: 0.82rem;
+        max-width: 78px;
+        overflow: visible;
+        font-size: 0.76rem;
         letter-spacing: 0.035em;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        line-height: 1.05;
+        text-transform: uppercase;
+        text-overflow: clip;
+        white-space: normal;
     }
 
     :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
@@ -139,6 +144,20 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
 
     :is(.global-topbar__actions, .engineer-topbar__actions) {
         gap: 10px;
+    }
+
+    /* Pareho ang unang content gap sa lahat ng role sa mobile. */
+    body:has(.operations-topbar) .main-content {
+        padding-top: 96px !important;
+    }
+
+    body:has(.operations-topbar) .sidebar-mobile-toggle {
+        top: 17px;
+        right: auto;
+        left: 12px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
     }
 }
 
@@ -160,11 +179,12 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     :is(.global-topbar__copy strong, .engineer-topbar__brand strong) {
         display: block;
         max-width: 72px;
-        overflow: hidden;
-        font-size: 0.7rem;
+        overflow: visible;
+        font-size: 0.68rem;
         letter-spacing: 0.02em;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        line-height: 1.05;
+        text-overflow: clip;
+        white-space: normal;
     }
 
     :is(.global-topbar__brand-logo, .engineer-topbar__brand img, .operations-topbar__brand-logo) {
@@ -190,7 +210,7 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
         height: 44px;
     }
 
-    /* Operations mobile: EDGE lang para kumasya ang main controls. */
+    /* Compact ang shared controls para buo ang EDGE AUTOMATION. */
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin),
     html.ops-sidebar-shrink-pref :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) {
         padding-right: 6px;
@@ -205,8 +225,8 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__brand-logo {
-        width: 50px;
-        height: 50px;
+        width: 42px;
+        height: 42px;
         box-sizing: border-box;
     }
 
@@ -216,19 +236,13 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__copy strong {
-        max-width: none;
+        max-width: 72px;
         overflow: visible;
-        font-size: 0;
-        letter-spacing: 0;
-    }
-
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__copy strong::after {
-        content: "EDGE";
-        color: #0f172a;
-        font-size: 0.75rem;
+        font-size: 0.68rem;
         font-weight: 800;
-        letter-spacing: 0.04em;
-        line-height: 1;
+        letter-spacing: 0.02em;
+        line-height: 1.05;
+        white-space: normal;
     }
 
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__actions {
@@ -239,8 +253,8 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .topbar-notifications__toggle,
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .topbar-profile__avatar-shell,
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .topbar-profile__avatar-image {
-        width: 50px;
-        height: 50px;
+        width: 44px;
+        height: 44px;
         box-sizing: border-box;
     }
 
@@ -261,34 +275,21 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     /* Ilagay ang menu sa kaliwa para hindi matakpan ang bell at profile. */
-    body:has(:is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin)) .sidebar-mobile-toggle {
-        top: 11px;
+    body:has(.operations-topbar) .sidebar-mobile-toggle {
+        top: 14px;
         right: auto;
-        left: 2px;
-        width: 50px;
-        height: 50px;
+        left: 4px;
+        width: 44px;
+        height: 44px;
         align-items: center;
         justify-content: center;
         gap: 4px;
         padding: 0;
     }
 
-    body:has(:is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin)) .sidebar-mobile-toggle span {
-        width: 24px;
+    body:has(.operations-topbar) .sidebar-mobile-toggle span {
+        width: 22px;
         height: 2px;
-    }
-}
-
-/* Mas maluwag na mobile: puwedeng ipakita ang buong brand name. */
-@media (min-width: 430px) and (max-width: 520px) {
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__copy strong {
-        font-size: 0.74rem;
-        letter-spacing: 0.025em;
-        white-space: nowrap;
-    }
-
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__copy strong::after {
-        content: none;
     }
 }
 
@@ -300,7 +301,7 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
         padding-left: 52px;
     }
 
-    body:has(:is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin)) .sidebar-mobile-toggle {
+    body:has(.operations-topbar) .sidebar-mobile-toggle {
         left: 0;
     }
 }

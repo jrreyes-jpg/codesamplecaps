@@ -1470,6 +1470,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Warn user about unsaved reschedule form changes using native beforeunload prompt
     window.addEventListener('beforeunload', function (e) {
         try {
+            if (window.__edgeLogoutInProgress) return;
             if (!rescheduleForm) return;
             const hasTouched = Array.from(rescheduleForm.querySelectorAll('textarea, input, select')).some(function (f) { return f.dataset.touched === 'true'; });
             if (hasTouched && !rescheduleForm.dataset.submitted) {

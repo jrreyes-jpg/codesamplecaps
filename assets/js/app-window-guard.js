@@ -93,29 +93,13 @@
             });
     };
 
-    const bindLogoutLinks = function () {
-        document.querySelectorAll('a[href*="/codesamplecaps/LOGIN/php/logout.php"]').forEach(function (link) {
-            if (link.dataset.logoutBroadcastBound === '1') {
-                return;
-            }
-
-            link.dataset.logoutBroadcastBound = '1';
-            link.addEventListener('click', broadcastLogout);
-        });
-    };
-
     window.addEventListener('storage', function (event) {
         if (event.key === logoutBroadcastKey && event.newValue) {
             redirectToLoggedOutLogin();
         }
     });
 
-    document.addEventListener('click', function (event) {
-        const logoutLink = event.target.closest('a[href*="/codesamplecaps/LOGIN/php/logout.php"]');
-        if (logoutLink) {
-            broadcastLogout();
-        }
-    }, true);
+    window.addEventListener('edge:logout-complete', broadcastLogout);
 
     window.addEventListener('focus', function () {
         checkSessionStillValid();
@@ -126,6 +110,5 @@
         }
     });
 
-    bindLogoutLinks();
     checkSessionStillValid();
 })();

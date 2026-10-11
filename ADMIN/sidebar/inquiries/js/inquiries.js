@@ -2751,7 +2751,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, true);
 
         window.addEventListener('beforeunload', function (event) {
-            if (quotationSubmitAccepted || quotationLeaveAccepted || !isQuotationDirty()) {
+            if (window.__edgeLogoutInProgress || quotationSubmitAccepted || quotationLeaveAccepted || !isQuotationDirty()) {
                 return;
             }
 
@@ -3070,7 +3070,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     window.addEventListener('beforeunload', function (event) {
-        if (!document.querySelector('.inquiry-modal[data-review-saving="1"], .inquiry-modal[data-inspection-scheduling="1"]')) {
+        if (window.__edgeLogoutInProgress || !document.querySelector('.inquiry-modal[data-review-saving="1"], .inquiry-modal[data-inspection-scheduling="1"]')) {
             return;
         }
         event.preventDefault();

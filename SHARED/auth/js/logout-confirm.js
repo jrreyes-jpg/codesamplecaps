@@ -17,6 +17,7 @@
         '<div class="shared-logout-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="sharedLogoutConfirmTitle">',
         '<h2 id="sharedLogoutConfirmTitle">Log out?</h2>',
         '<p>Are you sure you want to log out of your account?</p>',
+        '<p class="shared-logout-confirm__error" data-logout-confirm-error role="alert" hidden></p>',
         '<div class="shared-logout-confirm__actions">',
         '<button type="button" class="shared-logout-confirm__cancel" data-logout-confirm-cancel>Cancel</button>',
         '<button type="button" class="shared-logout-confirm__submit" data-logout-confirm-submit>Log Out</button>',
@@ -34,8 +35,29 @@
 
     var showModal = function (logoutUrl) {
         pendingLogoutUrl = logoutUrl;
+        var errorBox = modal.querySelector('[data-logout-confirm-error]');
+        errorBox.hidden = true;
+        errorBox.textContent = '';
         modal.hidden = false;
         modal.querySelector('[data-logout-confirm-cancel]')?.focus();
+    };
+
+    var setLoading = function (loading) {
+        var cancelButton = modal.querySelector('[data-logout-confirm-cancel]');
+        var submitButton = modal.querySelector('[data-logout-confirm-submit]');
+        isLoggingOut = loading;
+        cancelButton.disabled = loading;
+        submitButton.disabled = loading;
+        submitButton.textContent = loading ? 'Logging out...' : 'Log Out';
+    };
+
+    var showLogoutError = function () {
+        var errorBox = modal.querySelector('[data-logout-confirm-error]');
+        errorBox.textContent = 'Logout failed. Please check your connection and try again.';
+        errorBox.hidden = false;
+        if (typeof window.showToast === 'function') {
+            window.showToast(errorBox.textContent, 'error');
+        }
     };
 
     var isManualLogoutLink = function (link) {
@@ -72,11 +94,37 @@
             return;
         }
 
-        isLoggingOut = true;
-        modal.querySelector('[data-logout-confirm-cancel]').disabled = true;
-        this.disabled = true;
-        this.textContent = 'Logging out...';
-        window.location.assign(pendingLogoutUrl);
+        var logoutUrl = pendingLogoutUrl;
+        var errorBox = modal.querySelector('[data-logout-confirm-error]');
+        errorBox.hidden = true;
+        errorBox.textContent = '';
+        setLoading(true);
+        window.__edgeLogoutInProgress = true;
+
+        fetch(logoutUrl, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'follow',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then(function (response) {
+                var targetUrl = new URL(response.url || '', window.location.origin);
+                if (!response.ok || targetUrl.pathname !== '/codesamplecaps/LOGIN/php/login.php') {
+                    throw new Error('Logout response was not valid.');
+                }
+
+                window.dispatchEvent(new CustomEvent('edge:logout-complete'));
+                window.location.replace(targetUrl.href);
+            })
+            .catch(function () {
+                window.__edgeLogoutInProgress = false;
+                setLoading(false);
+                showLogoutError();
+                modal.querySelector('[data-logout-confirm-submit]')?.focus();
+            });
     });
 
     modal.addEventListener('click', function (event) {

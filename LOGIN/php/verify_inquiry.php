@@ -64,15 +64,16 @@ $isOtpExpired = $otpExpiresAt->getTimestamp() < $now->getTimestamp();
 $isOtpLocked = (int)($pending['attempts'] ?? 0) >= $maxAttempts;
 $resendCount = (int)($pending['resend_count'] ?? 0);
 $resendLimitReached = $resendCount >= $maxResends;
-$lastResendAt = !empty($pending['last_resend_at'])
-    ? DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string)$pending['last_resend_at'], $timezone)
-    : null;
-$resendCooldownRemaining = $lastResendAt
-    ? max(0, $resendCooldownSeconds - ($now->getTimestamp() - $lastResendAt->getTimestamp()))
+$lastIssuedAtValue = !empty($pending['last_resend_at'])
+    ? (string)$pending['last_resend_at']
+    : (string)($pending['created_at'] ?? '');
+$lastIssuedAt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $lastIssuedAtValue, $timezone);
+$resendCooldownRemaining = $lastIssuedAt
+    ? max(0, $resendCooldownSeconds - ($now->getTimestamp() - $lastIssuedAt->getTimestamp()))
     : 0;
 $verificationUnavailable = $isOtpExpired || $isOtpLocked;
-$resendCooldownUntil = $lastResendAt
-    ? $lastResendAt->modify('+' . $resendCooldownSeconds . ' seconds')
+$resendCooldownUntil = $lastIssuedAt
+    ? $lastIssuedAt->modify('+' . $resendCooldownSeconds . ' seconds')
     : null;
 $otpState = $isOtpLocked ? 'locked' : ($isOtpExpired ? 'expired' : 'active');
 
@@ -105,9 +106,7 @@ if (!$verificationUnavailable && $otpNotice === 'invalid') {
 $requestAction = trim((string)($_POST['action'] ?? 'verify'));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
-    if (!$verificationUnavailable) {
-        verify_inquiry_redirect_verify($token);
-    } elseif ($resendLimitReached) {
+    if ($resendLimitReached) {
         verify_inquiry_redirect_verify($token);
     } elseif ($resendCooldownRemaining > 0) {
         verify_inquiry_redirect_verify($token, 'resend_wait');
@@ -130,11 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                          resend_count = resend_count + 1, last_resend_at = NOW()
                      WHERE id = ? AND verified_at IS NULL
                        AND resend_count < ?
-                       AND (attempts >= ? OR expires_at < NOW())
-                       AND (last_resend_at IS NULL OR last_resend_at <= DATE_SUB(NOW(), INTERVAL 60 SECOND))'
+                       AND COALESCE(last_resend_at, created_at) <= DATE_SUB(NOW(), INTERVAL ' . $resendCooldownSeconds . ' SECOND)'
                 );
                 $pendingId = (int)$pending['id'];
-                $resendUpdate->bind_param('siii', $newOtpHash, $pendingId, $maxResends, $maxAttempts);
+                $resendUpdate->bind_param('sii', $newOtpHash, $pendingId, $maxResends);
                 $resendUpdate->execute();
 
                 if ($resendUpdate->affected_rows !== 1) {
@@ -297,16 +295,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                     </label>
                     <p class="verify-otp-countdown" data-otp-countdown aria-live="polite">Code expires in: --:--</p>
                     <button type="submit" id="verifyInquiryButton"<?php echo $verificationUnavailable ? ' disabled' : ''; ?>><?php echo $isOtpLocked ? 'Verification code locked' : ($isOtpExpired ? 'Verification code expired' : 'Verify and Submit'); ?></button>
-                    <?php if ($verificationUnavailable && !$resendLimitReached): ?>
-                        <div class="verify-resend" aria-live="polite">
-                            <p class="verify-resend__cooldown" data-resend-cooldown-until="<?php echo htmlspecialchars($resendCooldownUntil?->format(DateTimeInterface::ATOM) ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                <?php if ($resendCooldownRemaining > 0): ?>
-                                    Send new code in <?php echo sprintf('%02d:%02d', intdiv($resendCooldownRemaining, 60), $resendCooldownRemaining % 60); ?>
-                                <?php else: ?>
-                                    Request a new verification code.
-                                <?php endif; ?>
-                            </p>
-                            <button type="submit" id="resendInquiryOtpButton" data-action="resend" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>>Send New Code</button>
+                    <?php if (!$resendLimitReached): ?>
+                        <div class="verify-resend">
+                            <button type="submit" id="resendInquiryOtpButton" data-action="resend" data-resend-cooldown-until="<?php echo htmlspecialchars($resendCooldownUntil?->format(DateTimeInterface::ATOM) ?? '', ENT_QUOTES, 'UTF-8'); ?>" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>><?php echo $resendCooldownRemaining > 0 ? 'Resend Code (' . sprintf('%02d:%02d', intdiv($resendCooldownRemaining, 60), $resendCooldownRemaining % 60) . ')' : 'Resend Code'; ?></button>
+                        </div>
+                    <?php else: ?>
+                        <div class="verify-resend-limit">
+                            <?php if (!$verificationUnavailable): ?>
+                                <p>No resend requests remain. You can still use the current code before it expires.</p>
+                            <?php endif; ?>
+                            <a href="/codesamplecaps/LOGIN/php/index.php?open=inquiry#contact">Start a New Inquiry</a>
                         </div>
                     <?php endif; ?>
                     <div class="links">

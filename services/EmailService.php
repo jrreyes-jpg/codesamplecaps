@@ -221,9 +221,10 @@ class EmailService {
                         <p>Use this code to confirm your inquiry request:</p>
                         <p style='font-size:30px;font-weight:800;letter-spacing:6px;color:#0f172a'>{$safeOtp}</p>
                         <p>This verification code expires at {$safeExpiry}.</p>
+                        <p style='margin-top:20px;color:#475569;font-size:14px;line-height:1.5'><strong>This is an automated email.</strong> Please submit inquiries through our website.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Your inquiry verification code is {$otp}. It expires at {$expiryInPhilippineTime}.";
+            $this->mailer->AltBody = "Your inquiry verification code is {$otp}. It expires at {$expiryInPhilippineTime}. This is an automated email. Please submit inquiries through our website.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

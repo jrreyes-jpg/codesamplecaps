@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const verifySentToast = document.getElementById('verifySentToast');
     const countdown = document.querySelector('[data-otp-countdown]');
     const resendButton = document.getElementById('resendInquiryOtpButton');
-    const resendCooldown = document.querySelector('[data-resend-cooldown-until]');
     const expiryTimestamp = Date.parse(verifyInquiryForm?.dataset.otpExpiresAt || '');
     const otpState = verifyInquiryForm?.dataset.otpState || 'active';
     const isVerificationLimitReached = verifyInquiryForm?.dataset.verificationLimitReached === 'true';
@@ -78,19 +77,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const updateResendCooldown = function () {
-        if (!resendCooldown || !resendButton) {
+        if (!resendButton) {
             return;
         }
 
-        const resendUntil = Date.parse(resendCooldown.dataset.resendCooldownUntil || '');
+        const resendUntil = Date.parse(resendButton.dataset.resendCooldownUntil || '');
         if (!Number.isFinite(resendUntil)) {
+            resendButton.textContent = 'Resend Code';
+            resendButton.disabled = isResendingOtp;
             return;
         }
 
         const secondsLeft = Math.max(0, Math.ceil((resendUntil - Date.now()) / 1000));
         if (secondsLeft <= 0) {
             window.clearInterval(resendCooldownTimer);
-            resendCooldown.textContent = 'Request a new verification code.';
+            resendButton.textContent = 'Resend Code';
             if (!isResendingOtp) {
                 resendButton.disabled = false;
             }
@@ -99,11 +100,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
         const seconds = String(secondsLeft % 60).padStart(2, '0');
-        resendCooldown.textContent = `Send new code in ${minutes}:${seconds}`;
+        resendButton.textContent = `Resend Code (${minutes}:${seconds})`;
         resendButton.disabled = true;
     };
 
-    if (resendCooldown && resendButton) {
+    if (resendButton) {
         updateResendCooldown();
         resendCooldownTimer = window.setInterval(updateResendCooldown, 1000);
     }

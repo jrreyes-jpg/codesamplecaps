@@ -16,6 +16,11 @@ function inquiry_otp_resend_cooldown_seconds(): int
     return 60;
 }
 
+function inquiry_otp_validity_seconds(): int
+{
+    return 180;
+}
+
 function inquiry_otp_redirect(string $status, string $token = '', array $extraQuery = []): void
 {
     $query = array_merge(['inquiry' => $status], $extraQuery);

@@ -58,6 +58,7 @@ if (!$otpExpiresAt) {
 $maxAttempts = inquiry_otp_max_attempts();
 $maxResends = inquiry_otp_max_resends();
 $resendCooldownSeconds = inquiry_otp_resend_cooldown_seconds();
+$otpValiditySeconds = inquiry_otp_validity_seconds();
 $now = new DateTimeImmutable('now', $timezone);
 $isOtpExpired = $otpExpiresAt->getTimestamp() < $now->getTimestamp();
 $isOtpLocked = (int)($pending['attempts'] ?? 0) >= $maxAttempts;
@@ -125,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                 $conn->begin_transaction();
                 $resendUpdate = $conn->prepare(
                     'UPDATE pending_service_inquiries
-                     SET otp_hash = ?, attempts = 0, expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE),
+                     SET otp_hash = ?, attempts = 0, expires_at = DATE_ADD(NOW(), INTERVAL ' . $otpValiditySeconds . ' SECOND),
                          resend_count = resend_count + 1, last_resend_at = NOW()
                      WHERE id = ? AND verified_at IS NULL
                        AND resend_count < ?

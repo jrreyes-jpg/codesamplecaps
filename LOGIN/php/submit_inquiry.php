@@ -159,6 +159,7 @@ if ($otherServiceDetails !== '') {
 
 $otp = (string)random_int(100000, 999999);
 $token = bin2hex(random_bytes(32));
+$otpValiditySeconds = inquiry_otp_validity_seconds();
 $payload = [
     'client_name' => $clientName,
     'company_name' => $companyName,
@@ -177,7 +178,7 @@ $payload = [
 
 $stmt = $conn->prepare(
     'INSERT INTO pending_service_inquiries (token, otp_hash, payload_json, expires_at)
-     VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))'
+     VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ' . $otpValiditySeconds . ' SECOND))'
 );
 if (!$stmt) {
     redirect_to_form('server_error');

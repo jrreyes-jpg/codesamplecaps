@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const verifyInquiryAction = document.getElementById('verifyInquiryAction');
     const otpCodeInput = document.querySelector('.js-otp-code');
     const verifySentToast = document.getElementById('verifySentToast');
+    const otpErrorBox = document.querySelector('[data-otp-error]');
     const countdown = document.querySelector('[data-otp-countdown]');
     const resendButton = document.getElementById('resendInquiryOtpButton');
     const expiryTimestamp = Date.parse(verifyInquiryForm?.dataset.otpExpiresAt || '');
@@ -33,18 +34,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (countdown) {
             countdown.textContent = state === 'locked'
                 ? 'Verification code locked.'
-                : 'Verification code expired.';
+                : 'Your code has expired. Request a new code.';
             countdown.classList.remove('is-warning');
             countdown.classList.add('is-expired');
+        }
+        if (state === 'expired' && otpErrorBox && !isVerificationLimitReached) {
+            otpErrorBox.remove();
         }
         if (otpCodeInput) {
             otpCodeInput.disabled = true;
         }
         if (verifyInquiryButton) {
             verifyInquiryButton.disabled = true;
-            verifyInquiryButton.textContent = state === 'locked'
-                ? 'Verification code locked'
-                : 'Verification code expired';
+            verifyInquiryButton.textContent = 'Verify Inquiry';
         }
     };
 

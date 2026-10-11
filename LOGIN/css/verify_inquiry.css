@@ -19,7 +19,7 @@
 .verify-resend {
     display: grid;
     gap: 8px;
-    margin: 2px 0 14px;
+    margin: 12px 0 14px;
     text-align: center;
 }
 
@@ -33,6 +33,21 @@
 
 #resendInquiryOtpButton {
     width: 100%;
+}
+
+#verifyInquiryButton:disabled,
+#resendInquiryOtpButton:disabled {
+    border-color: #cbd5e1;
+    background: #e2e8f0;
+    color: #475569;
+    opacity: 1;
+    box-shadow: none;
+}
+
+#resendInquiryOtpButton:not(:disabled) {
+    border-color: #0f8a43;
+    background: #0f8a43;
+    color: #ffffff;
 }
 
 .verify-resend-limit {

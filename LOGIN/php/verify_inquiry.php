@@ -75,13 +75,12 @@ $verificationUnavailable = $isOtpExpired || $isOtpLocked;
 $resendCooldownUntil = $lastIssuedAt
     ? $lastIssuedAt->modify('+' . $resendCooldownSeconds . ' seconds')
     : null;
-$otpState = $isOtpLocked ? 'locked' : ($isOtpExpired ? 'expired' : 'active');
+$otpState = $isOtpExpired ? 'expired' : ($isOtpLocked ? 'locked' : 'active');
 
 if ($verificationUnavailable && $resendLimitReached) {
     $error = 'Verification limit reached. Please start a new inquiry.';
 } elseif ($isOtpExpired) {
-    $isOtpExpired = true;
-    $error = 'Verification code has expired. Please request a new verification code.';
+    $error = '';
 } elseif ($isOtpLocked) {
     $error = 'Too many incorrect attempts. Please request a new verification code.';
 }
@@ -285,7 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                         <strong>What happens next?</strong>
                         <span>After verification, Admin will review your request and contact you by call or email.</span>
                     </div>
-                    <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                    <?php if ($error): ?><div class="error-box" data-otp-error><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="action" value="verify" id="verifyInquiryAction">
@@ -293,8 +292,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                         <input class="js-otp-code" type="text" name="otp" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder=" " autocomplete="one-time-code" required autofocus<?php echo $verificationUnavailable ? ' disabled' : ''; ?>>
                         <span>6-digit code</span>
                     </label>
-                    <p class="verify-otp-countdown" data-otp-countdown aria-live="polite">Code expires in: --:--</p>
-                    <button type="submit" id="verifyInquiryButton"<?php echo $verificationUnavailable ? ' disabled' : ''; ?>><?php echo $isOtpLocked ? 'Verification code locked' : ($isOtpExpired ? 'Verification code expired' : 'Verify and Submit'); ?></button>
+                    <p class="verify-otp-countdown<?php echo $isOtpExpired ? ' is-expired' : ''; ?>" data-otp-countdown aria-live="polite"><?php echo $isOtpExpired ? 'Your code has expired. Request a new code.' : 'Code expires in: --:--'; ?></p>
+                    <button type="submit" id="verifyInquiryButton"<?php echo $verificationUnavailable ? ' disabled' : ''; ?>>Verify Inquiry</button>
                     <?php if (!$resendLimitReached): ?>
                         <div class="verify-resend">
                             <button type="submit" id="resendInquiryOtpButton" data-action="resend" data-resend-cooldown-until="<?php echo htmlspecialchars($resendCooldownUntil?->format(DateTimeInterface::ATOM) ?? '', ENT_QUOTES, 'UTF-8'); ?>" formnovalidate<?php echo $resendCooldownRemaining > 0 ? ' disabled' : ''; ?>><?php echo $resendCooldownRemaining > 0 ? 'Resend Code (' . sprintf('%02d:%02d', intdiv($resendCooldownRemaining, 60), $resendCooldownRemaining % 60) . ')' : 'Resend Code'; ?></button>

@@ -179,22 +179,18 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 
     :is(.global-topbar, .engineer-topbar) .topbar-notifications__toggle {
-        width: 38px;
-        height: 38px;
+        width: 44px;
+        height: 44px;
         border-radius: 13px;
     }
 
     :is(.global-topbar, .engineer-topbar) .topbar-profile__avatar-shell,
     :is(.global-topbar, .engineer-topbar) .topbar-profile__avatar-image {
-        width: 38px;
-        height: 38px;
+        width: 44px;
+        height: 44px;
     }
 
-    :is(.global-topbar, .engineer-topbar) :is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
-        min-width: 68px;
-    }
-
-    /* Operations mobile: EDGE lang para kumasya ang bell, avatar, at oras. */
+    /* Operations mobile: EDGE lang para kumasya ang main controls. */
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin),
     html.ops-sidebar-shrink-pref :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) {
         padding-right: 6px;
@@ -264,14 +260,6 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
         font-size: 0.62rem;
     }
 
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__clock {
-        min-width: 86px;
-    }
-
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__time {
-        font-size: 0.82rem;
-    }
-
     /* Ilagay ang menu sa kaliwa para hindi matakpan ang bell at profile. */
     body:has(:is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin)) .sidebar-mobile-toggle {
         top: 11px;
@@ -304,20 +292,12 @@ html.ops-sidebar-shrink-pref :is(.global-topbar, .engineer-topbar),
     }
 }
 
-/* Sa sobrang liit na screen, liitan ang oras pero buo pa rin ang AM/PM. */
+/* Sa sobrang liit na screen, bawasan lang ang gilid ng header. */
 @media (max-width: 399px) {
     :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin),
     html.ops-sidebar-shrink-pref :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) {
         padding-right: 2px;
         padding-left: 52px;
-    }
-
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__clock {
-        min-width: 64px;
-    }
-
-    :is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin) .global-topbar__time {
-        font-size: 0.72rem;
     }
 
     body:has(:is(.operations-topbar--admin, .operations-topbar--foreman, .operations-topbar--super_admin)) .sidebar-mobile-toggle {

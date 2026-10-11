@@ -856,6 +856,10 @@ html.ops-sidebar-shrink-pref .dashboard-main {
 
     .sidebar-mobile-toggle {
         display: flex;
+        min-width: 44px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
     }
 }
 

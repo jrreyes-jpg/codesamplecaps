@@ -386,9 +386,9 @@ table {
     .topbar-profile__avatar,
     .topbar-profile__avatar-shell,
     .topbar-profile__avatar-image {
-        width: 38px !important;
-        height: 38px !important;
-        min-height: 38px !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
     }
 
     .btn,

@@ -33,30 +33,8 @@
 }
 
 @media (max-width: 768px) {
-    :is(.global-topbar__date, .engineer-topbar__clock small, .operations-topbar__clock small) {
-        display: none;
-    }
-
+    /* Nasa DOM pa rin ang oras para ligtas ang clock JS, pero tago sa mobile. */
     :is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
-        min-width: auto;
-    }
-
-    :is(.global-topbar__time, .engineer-topbar__clock strong, .operations-topbar__clock strong) {
-        font-size: 0.98rem;
-    }
-}
-
-@media (max-width: 520px) {
-    :is(.global-topbar__clock, .engineer-topbar__clock, .operations-topbar__clock) {
-        min-width: 82px;
-    }
-
-    .global-topbar__clock-label {
         display: none;
-    }
-
-    :is(.global-topbar__time, .engineer-topbar__clock strong, .operations-topbar__clock strong) {
-        font-size: clamp(0.82rem, 2.8vw, 0.98rem);
-        white-space: nowrap;
     }
 }

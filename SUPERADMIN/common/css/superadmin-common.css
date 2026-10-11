@@ -356,11 +356,6 @@ tbody tr:hover {
         height: 50px !important;
         min-height: 50px !important;
     }
-
-    .operations-topbar--super_admin .global-topbar__clock {
-        display: flex !important;
-        min-width: 86px !important;
-    }
 }
 
 @media (max-width: 399px) {
@@ -369,7 +364,4 @@ tbody tr:hover {
         padding-left: 52px !important;
     }
 
-    .operations-topbar--super_admin .global-topbar__clock {
-        min-width: 64px !important;
-    }
 }

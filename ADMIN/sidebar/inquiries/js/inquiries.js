@@ -1062,6 +1062,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (clientReasonWrap && clientReasonField) {
                 const needsReason = status === 'Not Qualified';
                 clientReasonWrap.hidden = !needsReason;
+                clientReasonField.disabled = !needsReason;
                 clientReasonField.required = needsReason;
             }
 

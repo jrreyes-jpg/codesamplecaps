@@ -4,10 +4,12 @@ require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/service_location_dataset.php';
+require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
 
 service_location_dataset_maybe_refresh();
 $serviceHierarchy = service_area_hierarchy();
 $serviceBarangays = service_barangays_hierarchy($conn);
+$preferredInspectionDateRange = inquiry_preferred_date_range();
 
 if (empty($_SESSION['inquiry_form_token'])) {
     $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
@@ -640,9 +642,18 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         </span>
                     </span>
                     <span class="date-input-wrap">
-                        <input type="date" class="js-inspection-date" name="preferred_inspection_date" data-label="Target Inspection Date">
+                        <input
+                            type="date"
+                            class="js-inspection-date"
+                            name="preferred_inspection_date"
+                            data-label="Preferred Inspection Date"
+                            min="<?php echo htmlspecialchars($preferredInspectionDateRange['min'], ENT_QUOTES, 'UTF-8'); ?>"
+                            max="<?php echo htmlspecialchars($preferredInspectionDateRange['max'], ENT_QUOTES, 'UTF-8'); ?>"
+                            aria-describedby="preferredInspectionDateHelp"
+                        >
                         <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
                     </span>
+                    <small id="preferredInspectionDateHelp" class="field-help">Choose a date within the next 14 days, starting tomorrow. Subject to Admin confirmation.</small>
                     <small class="field-error"></small>
                 </label>
             </div>

@@ -1675,13 +1675,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $previousStatus = (string)($current['status'] ?? 'Pending Review');
                     $statusChanged = $previousStatus !== $newStatus;
-                    if ($statusChanged && $newStatus === 'Not Qualified'
-                        && (mb_strlen($clientReviewReason, 'UTF-8') < 5 || mb_strlen($clientReviewReason, 'UTF-8') > 500)) {
-                        $error = 'Enter a brief client-facing reason between 5 and 500 characters.';
+                    $reasonToStore = null;
+                    if ($newStatus === 'Not Qualified') {
+                        $reasonToStore = $statusChanged
+                            ? $clientReviewReason
+                            : trim((string)($current['client_review_reason'] ?? ''));
+                        if (mb_strlen($reasonToStore, 'UTF-8') < 5 || mb_strlen($reasonToStore, 'UTF-8') > 500) {
+                            $error = 'Enter a brief client-facing reason between 5 and 500 characters.';
+                        }
                     }
-                    $reasonToStore = $statusChanged
-                        ? ($newStatus === 'Not Qualified' ? $clientReviewReason : null)
-                        : ($current['client_review_reason'] ?? null);
                 }
 
                 if ($error === '') {
@@ -2532,7 +2534,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <?php if ($currentStatus === 'Pending Review'): ?>
                                                 <label class="inquiry-review-form__client-reason" data-client-reason-field hidden>
                                                     <span>Client-facing Reason</span>
-                                                    <textarea name="client_review_reason" rows="3" minlength="5" maxlength="500" placeholder="Briefly explain why the inquiry is not qualified."></textarea>
+                                                    <textarea name="client_review_reason" rows="3" minlength="5" maxlength="500" placeholder="Briefly explain why the inquiry is not qualified." disabled></textarea>
                                                     <small>This reason is shown to the client. Private Admin Notes stay internal.</small>
                                                 </label>
                                             <?php elseif ($currentStatus === 'Not Qualified' && trim((string)($inquiry['client_review_reason'] ?? '')) !== ''): ?>

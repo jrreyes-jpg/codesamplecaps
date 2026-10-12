@@ -384,17 +384,6 @@ const initInquiryForm = () => {
 
     const phonePattern = /^09\d{9}$/;
     const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    const manilaDateParts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Manila',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).formatToParts(new Date()).reduce((parts, part) => {
-        if (part.type !== 'literal') parts[part.type] = part.value;
-        return parts;
-    }, {});
-    const preferredDateMin = `${manilaDateParts.year}-${manilaDateParts.month}-${manilaDateParts.day}`;
-
     const clearFieldError = (field) => {
         field.classList.remove('is-invalid');
         const error = field.closest('label')?.querySelector('.field-error');
@@ -476,6 +465,8 @@ const initInquiryForm = () => {
         const contactInput = inquiryForm.querySelector('.js-inquiry-contact');
         const clientNameInput = inquiryForm.querySelector('input[name="client_name"]');
         const inspectionDateInput = inquiryForm.querySelector('.js-inspection-date');
+        const preferredDateMin = inspectionDateInput?.min || '';
+        const preferredDateMax = inspectionDateInput?.max || '';
         const datePickerButton = inquiryForm.querySelector('.js-date-picker-button');
         const dateInfoButton = inquiryForm.querySelector('.js-date-info-button');
         const dateTooltip = inquiryForm.querySelector('.js-date-tooltip');
@@ -565,22 +556,20 @@ const initInquiryForm = () => {
 
         normalizeContactNumber(contactInput);
 
-        if (inspectionDateInput) {
-            inspectionDateInput.min = preferredDateMin;
-        }
-
-        const enforcePreferredDateMin = () => {
+        const validatePreferredDateRange = () => {
             if (!inspectionDateInput) {
-                return;
+                return true;
             }
 
-            // Kapag manual edit ang date, ibalik agad sa pinaka-maagang allowed date.
-            if (inspectionDateInput.value && inspectionDateInput.value < preferredDateMin) {
-                inspectionDateInput.value = preferredDateMin;
+            const value = inspectionDateInput.value;
+            if (value !== '' && (value < preferredDateMin || value > preferredDateMax)) {
+                setFieldError(inspectionDateInput, 'Choose a date within the next 14 days, starting tomorrow.');
+                return false;
             }
+
+            clearFieldError(inspectionDateInput);
+            return true;
         };
-
-        enforcePreferredDateMin();
 
         const closeCombobox = (input) => {
             const box = input?.closest('[data-combobox]');
@@ -953,9 +942,9 @@ const initInquiryForm = () => {
                 inspectionDateInput.focus();
             }
         });
-        inspectionDateInput?.addEventListener('input', enforcePreferredDateMin);
+        inspectionDateInput?.addEventListener('input', validatePreferredDateRange);
         inspectionDateInput?.addEventListener('change', () => {
-            enforcePreferredDateMin();
+            validatePreferredDateRange();
             hideDateTooltip();
         });
         inspectionDateInput?.addEventListener('blur', hideDateTooltip);
@@ -1155,7 +1144,6 @@ const restoreInquiryDraft = () => {
                 return;
             }
 
-            enforcePreferredDateMin();
             normalizeContactNumber(contactInput);
             const fields = Array.from(inquiryForm.querySelectorAll('input, select, textarea'));
             let firstInvalidField = null;
@@ -1187,10 +1175,9 @@ const restoreInquiryDraft = () => {
                     firstInvalidField = firstInvalidField || field;
                 }
 
-                if (field.type === 'date' && value !== '' && value < preferredDateMin) {
-                    setFieldError(field, now.getHours() >= 17
-                        ? 'Please choose tomorrow or later because working hours are done today.'
-                        : 'Preferred inspection date cannot be in the past.');
+                if (field === inspectionDateInput && value !== ''
+                    && (value < preferredDateMin || value > preferredDateMax)) {
+                    setFieldError(field, 'Choose a date within the next 14 days, starting tomorrow.');
                     firstInvalidField = firstInvalidField || field;
                 }
 

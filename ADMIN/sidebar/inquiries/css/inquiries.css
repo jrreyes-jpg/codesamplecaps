@@ -1051,6 +1051,10 @@
     grid-area: reason;
 }
 
+.inquiry-review-form__client-reason[hidden] {
+    display: none;
+}
+
 .inquiry-review-form__client-reason textarea {
     min-height: 92px;
 }

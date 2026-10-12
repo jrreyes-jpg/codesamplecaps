@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_name_validation.php';
+require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
@@ -134,11 +135,7 @@ if (
 }
 
 if ($preferredInspectionDate !== '') {
-    $timezone = new DateTimeZone('Asia/Manila');
-    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $preferredInspectionDate, $timezone);
-    $minimumDate = (new DateTimeImmutable('today', $timezone))->setTime(0, 0, 0);
-
-    if (!$date || $date->format('Y-m-d') !== $preferredInspectionDate || $date < $minimumDate) {
+    if (!inquiry_preferred_date_is_allowed($preferredInspectionDate)) {
         $errors[] = 'preferred_inspection_date';
     }
 }

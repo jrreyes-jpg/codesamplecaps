@@ -16,15 +16,23 @@ if (!$quotation) {
 
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $statusIndicator = inquiry_quote_status_indicator($quoteStatus, !empty($quotation['engineer_name']));
-$isFinalized = $quoteStatus === 'accepted' && !empty($quotation['scheduled_at']);
-$showInspectionSchedule = $isFinalized && !empty($quotation['engineer_name']);
+$isFinalClientAccepted = inquiry_quote_is_final_client_accepted($conn, $draftId);
+$showInspectionSchedule = $quoteStatus === 'accepted'
+    && !empty($quotation['scheduled_at'])
+    && !empty($quotation['engineer_name']);
 $statusClass = in_array($quoteStatus, ['accepted', 'approved', 'sent', 'revision_requested', 'rejected'], true)
     ? $quoteStatus
     : 'draft';
-$statusLabel = $isFinalized
-    ? 'Approved / Finalized'
-    : ($quoteStatus === 'sent' ? 'Pending Review' : inquiry_quote_status_label($quoteStatus));
 $isInitialQuotation = empty($quotation['parent_draft_id']) && (int)($quotation['revision_no'] ?? 0) === 0;
+$quotationStageLabel = $isFinalClientAccepted
+    ? 'Final Quotation'
+    : ($isInitialQuotation ? 'Initial Quotation' : 'Revised Quotation');
+$statusLabel = match ($quoteStatus) {
+    'draft' => 'Draft',
+    'sent' => 'Awaiting Client Approval',
+    'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
+    default => inquiry_quote_status_label($quoteStatus),
+};
 $inquiryId = (int)($quotation['inquiry_id'] ?? 0);
 $backToInquiriesParams = [
     'open' => 'inquiryModal' . $inquiryId,
@@ -60,10 +68,12 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 <body>
     <div class="quote-actions">
         <a href="<?php echo htmlspecialchars($backToInquiriesUrl, ENT_QUOTES, 'UTF-8'); ?>">Back to Inquiries</a>
-        <?php if ($quoteStatus === 'draft'): ?>
+        <?php if ($quoteStatus === 'draft' && empty($quotation['inquiry_archived_at'])): ?>
             <a class="quote-edit-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $draftId; ?>">Edit Details</a>
         <?php endif; ?>
-        <button type="button" data-print-quotation>Print / Save as PDF</button>
+        <?php if ($isFinalClientAccepted): ?>
+            <button type="button" data-print-quotation>Print / Save as PDF</button>
+        <?php endif; ?>
     </div>
 
     <main class="public-quote-document public-quote-document--standalone">
@@ -71,6 +81,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             <div class="public-quote-watermark public-quote-watermark--<?php echo htmlspecialchars((string)$statusIndicator['class'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
                 <?php echo htmlspecialchars((string)$statusIndicator['text'], ENT_QUOTES, 'UTF-8'); ?>
             </div>
+        <?php endif; ?>
+        <?php if ($quoteStatus === 'draft'): ?>
+            <p class="public-quote-draft-notice">Draft quotation — for review only.</p>
         <?php endif; ?>
         <header class="public-quote-header">
             <div class="public-quote-brand">
@@ -81,6 +94,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 </div>
             </div>
             <div class="public-quote-meta-box">
+                <span>Stage</span>
+                <strong class="public-quote-stage"><?php echo htmlspecialchars($quotationStageLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <span>Quotation No.</span>
                 <strong><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
                 <small class="public-quote-status public-quote-status--<?php echo $statusClass; ?>">
@@ -199,10 +214,16 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             <div>
                 <strong>Approval</strong>
                 <p>
-                    <?php if ($isFinalized): ?>
-                        Approved by the client. Inspection schedule finalized by Engr. Erika Jeanne P. Jimenez.
+                    <?php if ($isFinalClientAccepted): ?>
+                        Final quotation accepted by the client.
+                    <?php elseif ($quoteStatus === 'accepted'): ?>
+                        Initial quotation accepted. Final quotation export is not yet available.
                     <?php elseif ($quoteStatus === 'sent'): ?>
-                        Pending client review and approval.
+                        Awaiting client approval.
+                    <?php elseif ($quoteStatus === 'revision_requested'): ?>
+                        Client requested a revision. Final quotation export is not available.
+                    <?php elseif ($quoteStatus === 'rejected'): ?>
+                        Client rejected this quotation. Final quotation export is not available.
                     <?php else: ?>
                         Draft quotation. Not yet sent to the client.
                     <?php endif; ?>
@@ -210,6 +231,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             </div>
         </footer>
     </main>
-    <script src="/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiry-quotation-pdf.js"></script>
+    <?php if ($isFinalClientAccepted): ?>
+        <script src="/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiry-quotation-pdf.js"></script>
+    <?php endif; ?>
 </body>
 </html>

@@ -70,10 +70,21 @@ $canRespond = $status === 'sent';
 $hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !empty($quotation['engineer_name']);
 $statusIndicator = $quotation ? inquiry_quote_status_indicator($status, !empty($quotation['engineer_name'])) : null;
 $isApprovedAwaitingSchedule = $status === 'accepted' && !$hasInspectionSchedule;
-$isFinalized = $status === 'accepted' && $hasInspectionSchedule;
 $isInitialQuotation = $quotation
     && empty($quotation['parent_draft_id'])
     && (int)($quotation['revision_no'] ?? 0) === 0;
+$isFinalClientAccepted = $quotation
+    ? inquiry_quote_is_final_client_accepted($conn, (int)$quotation['id'])
+    : false;
+$quotationStageLabel = $isFinalClientAccepted
+    ? 'Final Quotation'
+    : ($isInitialQuotation ? 'Initial Quotation' : 'Revised Quotation');
+$quotationStatusLabel = match ($status) {
+    'draft' => 'Draft',
+    'sent' => 'Awaiting Client Approval',
+    'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
+    default => inquiry_quote_status_label($status),
+};
 $preparerName = trim((string)($quotation['preparer_name'] ?? '')) ?: 'Admin';
 $preparerRole = 'Admin';
 $showPreparerRole = strcasecmp(
@@ -95,11 +106,11 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <link rel="stylesheet" href="/codesamplecaps/LOGIN/css/inquiry_quotation.css">
     <script src="/codesamplecaps/LOGIN/js/inquiry_quotation.js" defer></script>
 </head>
-<body>
-    <?php if ($quotation): ?>
+<body class="<?php echo $isFinalClientAccepted ? 'has-quotation-toolbar' : 'quotation-preview-only'; ?>">
+    <?php if ($quotation && $isFinalClientAccepted): ?>
         <div class="sticky-toolbar">
             <div class="sticky-toolbar__inner">
-                <button type="button" class="sticky-toolbar__download" data-download-review-pdf>Download Quotation PDF</button>
+                <button type="button" class="sticky-toolbar__download" data-print-final-quotation>Print / Save as PDF</button>
             </div>
         </div>
     <?php endif; ?>
@@ -132,14 +143,12 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                             </div>
                         </div>
                         <div class="public-quote-meta-box">
+                            <span>Stage</span>
+                            <strong class="public-quote-stage"><?php echo htmlspecialchars($quotationStageLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
                             <span>Quotation No.</span>
                             <strong><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
                             <small class="public-quote-status public-quote-status--<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>">
-                                <?php echo $isFinalized
-                                    ? 'Approved / Finalized'
-                                    : ($isApprovedAwaitingSchedule
-                                        ? 'Approved - Schedule Pending'
-                                        : htmlspecialchars($status === 'sent' ? 'Pending Review' : inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8')); ?>
+                                <?php echo htmlspecialchars($quotationStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
                             </small>
                         </div>
                     </header>
@@ -239,9 +248,21 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         </div>
                         <div>
                             <strong>Client Status</strong>
-                            <p><?php echo $isFinalized
-                                ? 'Approved and finalized with an inspection schedule.'
-                                : ($isApprovedAwaitingSchedule ? 'Approved. Waiting for the Admin inspection schedule.' : 'Waiting for client review.'); ?></p>
+                            <p>
+                                <?php if ($isFinalClientAccepted): ?>
+                                    Final quotation accepted by the client.
+                                <?php elseif ($isApprovedAwaitingSchedule): ?>
+                                    Initial quotation accepted. Waiting for the Admin inspection schedule.
+                                <?php elseif ($status === 'sent'): ?>
+                                    Awaiting your approval.
+                                <?php elseif ($status === 'revision_requested'): ?>
+                                    Revision requested. Waiting for the Admin update.
+                                <?php elseif ($status === 'rejected'): ?>
+                                    Quotation rejected.
+                                <?php else: ?>
+                                    <?php echo htmlspecialchars($quotationStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                <?php endif; ?>
+                            </p>
                         </div>
                     </footer>
                 </article>
@@ -262,10 +283,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                                 <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject" data-quotation-decision>Reject</button>
                             </div>
                         </form>
-                    <?php elseif ($isFinalized): ?>
+                    <?php elseif ($isFinalClientAccepted): ?>
                         <div class="public-quote-finalized">
-                            <strong>Status: Approved / Finalized</strong>
-                            <button type="button" class="public-quote-button public-quote-button--print" data-print-final-quotation>Print / Save Final PDF</button>
+                            <strong>Status: Accepted Final Quotation</strong>
                         </div>
                     <?php else: ?>
                         <div class="public-quote-empty">

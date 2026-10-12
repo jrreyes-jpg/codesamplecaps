@@ -209,7 +209,8 @@ function inquiry_quote_fetch_full(mysqli $conn, int $draftId): ?array
             inquiry.site_address,
             inquiry.service_category,
             inquiry.description,
-            inquiry.preferred_inspection_date
+            inquiry.preferred_inspection_date,
+            inquiry.archived_at AS inquiry_archived_at
          FROM inquiry_quotation_drafts q
          INNER JOIN service_inquiries inquiry ON inquiry.id = q.inquiry_id
          LEFT JOIN site_inspections si ON si.id = q.inspection_id
@@ -447,6 +448,33 @@ function inquiry_quote_fetch_post_inspection_decision(mysqli $conn, int $inspect
     $stmt->bind_param('i', $inspectionId);
     $stmt->execute();
     return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+function inquiry_quote_is_final_client_accepted(mysqli $conn, int $draftId): bool
+{
+    if ($draftId <= 0 || !inquiry_quote_table_exists($conn, 'inspection_quotation_decisions')) {
+        return false;
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT 1
+         FROM inspection_quotation_decisions decision_record
+         INNER JOIN inquiry_quotation_drafts quotation
+             ON quotation.id = decision_record.final_quotation_draft_id
+         WHERE decision_record.final_quotation_draft_id = ?
+           AND decision_record.revised_quotation_draft_id = ?
+           AND decision_record.decision = 'create_revised_quotation'
+           AND LOWER(quotation.status) = 'accepted'
+           AND quotation.client_decision_at IS NOT NULL
+         LIMIT 1"
+    );
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('ii', $draftId, $draftId);
+    $stmt->execute();
+    return (bool)$stmt->get_result()->fetch_assoc();
 }
 
 function inquiry_quote_create_post_inspection_revision(

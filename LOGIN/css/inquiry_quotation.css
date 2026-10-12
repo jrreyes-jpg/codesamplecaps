@@ -15,7 +15,9 @@
     display: flex;
     width: min(980px, 100%);
     margin: 0 auto;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .sticky-toolbar__download {
@@ -39,7 +41,11 @@
 .public-quote-shell {
     width: min(980px, calc(100% - 32px));
     margin: 0 auto;
-    padding: 84px 0 40px;
+    padding: 32px 0 40px;
+}
+
+.has-quotation-toolbar .public-quote-shell {
+    padding-top: 84px;
 }
 
 .public-quote-card {
@@ -214,6 +220,10 @@
 @media (max-width: 720px) {
     .public-quote-shell {
         width: min(100% - 20px, 980px);
+        padding-top: 20px;
+    }
+
+    .has-quotation-toolbar .public-quote-shell {
         padding-top: 74px;
     }
 

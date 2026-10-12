@@ -128,6 +128,22 @@ body {
     overflow-wrap: anywhere;
 }
 
+.public-quote-stage {
+    color: #0f172a !important;
+    font-size: 0.86rem;
+}
+
+.public-quote-draft-notice {
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #92400e;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
 .public-quote-status {
     justify-self: end;
     width: fit-content;

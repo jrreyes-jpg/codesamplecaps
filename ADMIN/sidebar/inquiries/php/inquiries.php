@@ -2830,6 +2830,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php $isRevisionRequested = in_array($quotationStatus, ['revision_requested', 'for_revision'], true); ?>
                                         <?php $isRejectedQuotation = $quotationStatus === 'rejected'; ?>
                                         <?php
+                                            $isFinalClientAccepted = $postInspectionDecision
+                                                && (string)($postInspectionDecision['decision'] ?? '') === 'create_revised_quotation'
+                                                && (int)($postInspectionDecision['revised_quotation_draft_id'] ?? 0) === (int)$quotationDraft['id']
+                                                && (int)($postInspectionDecision['final_quotation_draft_id'] ?? 0) === (int)$quotationDraft['id']
+                                                && $quotationStatus === 'accepted'
+                                                && !empty($quotationDraft['client_decision_at']);
+                                            $quotationStageLabel = $isFinalClientAccepted
+                                                ? 'Final Quotation'
+                                                : ($isInitialQuotationDraft ? 'Initial Quotation' : 'Revised Quotation');
+                                            $quotationDisplayStatus = match ($quotationStatus) {
+                                                'draft' => 'Draft',
+                                                'sent' => 'Awaiting Client Approval',
+                                                'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
+                                                default => inquiry_center_quotation_status_label((string)$quotationDraft['status']),
+                                            };
                                             $quotationStatusClass = 'status-draft';
                                             if ($quotationStatus === 'sent') {
                                                 $quotationStatusClass = 'status-sent';
@@ -2843,12 +2858,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         ?>
                                         <div class="inquiry-quote-draft">
                                             <div>
-                                                <span><?php echo $isInitialQuotationDraft ? 'Initial Quotation Draft' : 'Revised Quotation Draft'; ?></span>
+                                                <span><?php echo htmlspecialchars($quotationStageLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                                                 <strong><?php echo htmlspecialchars((string)$quotationDraft['quotation_no'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
                                                 <span>Status</span>
-                                                <strong class="status-badge <?php echo $quotationStatusClass; ?>" data-quotation-status-label><?php echo htmlspecialchars(inquiry_center_quotation_status_label((string)$quotationDraft['status']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <strong class="status-badge <?php echo $quotationStatusClass; ?>" data-quotation-status-label><?php echo htmlspecialchars($quotationDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div>
                                                 <span>Total</span>
@@ -2877,7 +2892,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     $quotationPdfUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?' . http_build_query($quotationPdfParams);
                                                 ?>
                                                 <a class="inquiry-quote-pdf-link" href="<?php echo htmlspecialchars($quotationPdfUrl, ENT_QUOTES, 'UTF-8'); ?>">
-                                                    View / Print PDF
+                                                    <?php echo $isFinalClientAccepted ? 'View / Print Final Quotation' : 'Preview Quotation'; ?>
                                                 </a>
                                             </div>
                                         </div>

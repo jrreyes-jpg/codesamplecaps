@@ -1,5 +1,9 @@
 /* Shared quotation paper layout para pareho ang Admin at Client document. */
 
+:root {
+    --quotation-toolbar-background: #064e3b;
+}
+
 * {
     box-sizing: border-box;
 }

@@ -7,7 +7,7 @@
     z-index: 1000;
     width: 100%;
     padding: 12px 20px;
-    background: #222;
+    background: var(--quotation-toolbar-background);
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.24);
 }
 

@@ -139,7 +139,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                             <img src="/codesamplecaps/IMAGES/edge.jpg" alt="Edge Automation logo">
                             <div>
                                 <strong>EDGE AUTOMATION TECHNOLOGY SERVICES, CO.</strong>
-                                <span>Project Management, Asset Tracking, Inventory, and Quotation System</span>
+                                <span>Quotation</span>
                             </div>
                         </div>
                         <div class="public-quote-meta-box">

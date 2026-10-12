@@ -1,6 +1,60 @@
 .shared-account-settings {
     display: grid;
     gap: 20px;
+    min-width: 0;
+}
+
+.main-content.account-settings-content {
+    padding-top: 112px !important;
+}
+
+.account-settings-page {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+
+.account-settings-page__heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.account-settings-page__heading h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+}
+
+.account-settings-page__heading p {
+    margin: 6px 0 0;
+    color: #64748b;
+}
+
+.account-settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.account-settings-tabs a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #334155;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.account-settings-tabs a.is-active {
+    border-color: #15803d;
+    background: #15803d;
+    color: #ffffff;
 }
 
 .account-settings-grid {
@@ -102,8 +156,16 @@
 
 .account-photo-meta {
     min-width: 0;
+    width: 100%;
     display: grid;
     gap: 6px;
+    overflow-wrap: anywhere;
+}
+
+.account-photo-meta input[type="file"] {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 0.88rem;
 }
 
 .account-photo-meta strong {
@@ -174,6 +236,10 @@
 }
 
 @media (max-width: 900px) {
+    .main-content.account-settings-content {
+        padding-top: 118px !important;
+    }
+
     .account-settings-grid {
         grid-template-columns: 1fr;
         gap: 18px;
@@ -190,10 +256,33 @@
         align-items: flex-start;
         flex-direction: column;
     }
+
+    .account-primary-button {
+        width: 100%;
+        min-height: 44px;
+    }
 }
 
 @media (max-width: 520px) {
+    .main-content.account-settings-content {
+        padding-top: 112px !important;
+    }
+
     .account-settings-card {
-        padding: 14px;
+        padding: 16px;
+    }
+
+    .account-form-row {
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+
+    .account-form-group {
+        flex-basis: 100%;
+    }
+
+    .account-settings-tabs a {
+        flex: 1 1 100%;
+        justify-content: center;
     }
 }

@@ -37,6 +37,12 @@ function shared_account_is_strong_password(string $password): bool
         && (bool)preg_match('/[^A-Za-z0-9]/', $password);
 }
 
+function shared_account_supports_profile_photo(mysqli $conn): bool
+{
+    $result = $conn->query("SHOW COLUMNS FROM users LIKE 'profile_photo_path'");
+    return $result instanceof mysqli_result && $result->num_rows > 0;
+}
+
 function shared_account_update_profile(
     mysqli $conn,
     int $userId,
@@ -96,6 +102,9 @@ function shared_account_update_profile(
         : $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ?, phone_normalized = ? WHERE id = ?');
 
     if (!$updateStmt) {
+        if ($uploadedNewPhoto) {
+            profile_photo_delete_reference($newPhotoPath);
+        }
         return ['error' => 'Failed to update your profile.', 'message' => ''];
     }
 
@@ -106,6 +115,9 @@ function shared_account_update_profile(
     }
 
     if (!$updateStmt->execute()) {
+        if ($uploadedNewPhoto) {
+            profile_photo_delete_reference($newPhotoPath);
+        }
         return ['error' => 'Failed to update your profile.', 'message' => ''];
     }
 
@@ -198,4 +210,93 @@ function shared_account_change_password(
     );
 
     return ['error' => '', 'message' => 'Password updated successfully.'];
+}
+
+function shared_account_settings_context(mysqli $conn, array $options): array
+{
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    $expectedRole = (string)($options['role'] ?? '');
+    $csrfScope = (string)($options['csrf_scope'] ?? $expectedRole);
+    $redirectPath = (string)($options['redirect_path'] ?? '');
+    $flashKey = (string)($options['flash_key'] ?? 'shared_account_flash');
+    $defaultName = (string)($options['default_name'] ?? 'User');
+    $defaultPhotoUrl = (string)($options['default_photo_url'] ?? '/codesamplecaps/IMAGES/nodp.jpg');
+    $supportsProfilePhoto = shared_account_supports_profile_photo($conn);
+    $section = (string)($_GET['section'] ?? 'profile');
+    $section = $section === 'security' ? 'security' : 'profile';
+    $message = '';
+    $error = '';
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $action = (string)($_POST['action'] ?? '');
+        if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, $csrfScope)) {
+            $error = 'Your form expired. Please try again.';
+        } elseif ($action === 'update_my_profile') {
+            $profileUpload = isset($_FILES['profile_photo']) && is_array($_FILES['profile_photo'])
+                ? $_FILES['profile_photo']
+                : null;
+            $result = shared_account_update_profile(
+                $conn,
+                $userId,
+                $expectedRole,
+                trim((string)($_POST['full_name'] ?? '')),
+                trim((string)($_POST['email'] ?? '')),
+                trim((string)($_POST['phone'] ?? '')),
+                $profileUpload,
+                $supportsProfilePhoto
+            );
+            $error = (string)$result['error'];
+            if ($error === '') {
+                $_SESSION[$flashKey] = ['type' => 'success', 'text' => (string)$result['message']];
+                header('Location: ' . $redirectPath . '?section=profile');
+                exit;
+            }
+        } elseif ($action === 'change_my_password') {
+            $result = shared_account_change_password(
+                $conn,
+                $userId,
+                $expectedRole,
+                (string)($_POST['current_password'] ?? ''),
+                (string)($_POST['new_password'] ?? ''),
+                (string)($_POST['confirm_password'] ?? ''),
+                $supportsProfilePhoto
+            );
+            $error = (string)$result['error'];
+            if ($error === '') {
+                $_SESSION[$flashKey] = ['type' => 'success', 'text' => (string)$result['message']];
+                header('Location: ' . $redirectPath . '?section=security');
+                exit;
+            }
+        }
+    }
+
+    $flash = $_SESSION[$flashKey] ?? [];
+    unset($_SESSION[$flashKey]);
+    if (($flash['type'] ?? '') === 'success') {
+        $message = (string)($flash['text'] ?? '');
+    } elseif (($flash['type'] ?? '') === 'error' && $error === '') {
+        $error = (string)($flash['text'] ?? '');
+    }
+
+    $currentUser = $userId > 0
+        ? shared_account_find_user($conn, $userId, $supportsProfilePhoto)
+        : null;
+    $photoPath = trim((string)($currentUser['profile_photo_path'] ?? ''));
+    if ($supportsProfilePhoto && $currentUser && $photoPath !== '') {
+        $photoPath = (string)profile_photo_migrate_legacy_reference($conn, $userId, $photoPath);
+    }
+
+    return [
+        'message' => $message,
+        'error' => $error,
+        'csrfToken' => auth_csrf_token($csrfScope),
+        'fullName' => (string)($currentUser['full_name'] ?? ($_SESSION['name'] ?? $defaultName)),
+        'email' => (string)($currentUser['email'] ?? ''),
+        'phone' => (string)($currentUser['phone'] ?? ''),
+        'section' => $section,
+        'photoUrl' => $photoPath !== '' ? profile_photo_public_url($photoPath, $userId) : '',
+        'photoPreviewUrl' => $photoPath !== ''
+            ? profile_photo_public_url($photoPath, $userId)
+            : $defaultPhotoUrl,
+    ];
 }

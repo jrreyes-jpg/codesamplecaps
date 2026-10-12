@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/user_notifications.php';
+require_once __DIR__ . '/../../config/profile_photo_storage.php';
 
 if (!function_exists('client_shell_initial')) {
     function client_shell_initial(string $name): string
@@ -108,8 +109,25 @@ if (!function_exists('client_shell_build_topbar_context')) {
 if (!function_exists('client_shell_render_topbar')) {
     function client_shell_render_topbar(array $context): void
     {
+        global $conn;
+
         $clientName = (string)($context['client_name'] ?? 'Client User');
         $clientInitial = (string)($context['client_initial'] ?? 'C');
+        $clientPhotoUrl = '';
+        $clientUserId = (int)($_SESSION['user_id'] ?? 0);
+        if ($clientUserId > 0 && $conn instanceof mysqli) {
+            $photoStmt = $conn->prepare('SELECT profile_photo_path FROM users WHERE id = ? LIMIT 1');
+            if ($photoStmt) {
+                $photoStmt->bind_param('i', $clientUserId);
+                $photoStmt->execute();
+                $photoRow = $photoStmt->get_result()->fetch_assoc() ?: [];
+                $photoStmt->close();
+                $photoPath = trim((string)($photoRow['profile_photo_path'] ?? ''));
+                if ($photoPath !== '') {
+                    $clientPhotoUrl = profile_photo_public_url($photoPath, $clientUserId);
+                }
+            }
+        }
         $userNotificationUnreadCount = (int)($context['user_notification_unread_count'] ?? 0);
         $userNotificationItems = is_array($context['user_notification_items'] ?? null)
             ? $context['user_notification_items']
@@ -123,10 +141,14 @@ if (!function_exists('client_shell_render_topbar')) {
 
         $headerProfileName = $clientName;
         $headerProfileRole = 'Client';
-        $headerProfilePhotoUrl = '';
+        $headerProfilePhotoUrl = $clientPhotoUrl;
         $headerProfileInitials = $clientInitial;
         $headerProfileAlt = 'Client profile picture';
         $headerProfileLinks = [
+            [
+                'label' => 'Account Settings',
+                'href' => '/codesamplecaps/CLIENT/dashboards/account_settings.php?section=profile',
+            ],
             [
                 'label' => 'Logout',
                 'href' => '/codesamplecaps/LOGIN/php/logout.php',

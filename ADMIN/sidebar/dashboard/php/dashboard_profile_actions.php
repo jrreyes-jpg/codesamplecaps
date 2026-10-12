@@ -76,6 +76,9 @@ function admin_dashboard_handle_update_my_profile(
         : $conn->prepare('UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?');
 
     if (!$stmt) {
+        if ($uploadedNewPhoto) {
+            profile_photo_delete_reference($newPhotoPath);
+        }
         $result['error'] = 'Failed to update your profile.';
         return $result;
     }
@@ -87,6 +90,9 @@ function admin_dashboard_handle_update_my_profile(
     }
 
     if (!$stmt->execute()) {
+        if ($uploadedNewPhoto) {
+            profile_photo_delete_reference($newPhotoPath);
+        }
         $result['error'] = 'Failed to update your profile.';
         return $result;
     }

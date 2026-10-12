@@ -47,7 +47,7 @@ function shared_account_settings_render(array $account): void
                                     <span>JPG, PNG, or WEBP only. Maximum 3MB.</span>
                                     <input type="file" id="profile_photo" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-profile-photo-input>
                                     <small data-profile-photo-state>
-                                        <?php echo ($account['photoUrl'] ?? '') !== '' ? 'Current profile photo ready.' : 'Default profile photo is active.'; ?>
+                                        <?php echo ($account['photoUrl'] ?? '') !== '' ? 'Saved profile photo.' : 'Default profile photo is active.'; ?>
                                     </small>
                                 </div>
                             </div>

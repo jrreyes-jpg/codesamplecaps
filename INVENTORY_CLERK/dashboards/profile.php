@@ -37,6 +37,6 @@ inventory_clerk_render_page(
         '/codesamplecaps/SHARED/account_settings/css/account-settings.css',
         '/codesamplecaps/INVENTORY_CLERK/css/profile.css',
     ],
-    'inventory-clerk-profile-content',
+    'inventory-clerk-profile-content account-settings-content',
     ['/codesamplecaps/SHARED/account_settings/js/account-settings.js']
 );

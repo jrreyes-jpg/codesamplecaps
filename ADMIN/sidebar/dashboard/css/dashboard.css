@@ -38,8 +38,16 @@
 }
 
 .profile-photo-upload__meta {
+    min-width: 0;
+    width: 100%;
     display: grid;
     gap: 6px;
+    overflow-wrap: anywhere;
+}
+
+.profile-photo-upload__meta input[type="file"] {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .profile-photo-upload__meta strong {
@@ -58,6 +66,22 @@
 
 .profile-form-card--security {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 244, 0.88));
+}
+
+.admin-dashboard-content.account-settings-content {
+    padding-top: 112px;
+}
+
+@media (max-width: 900px) {
+    .admin-dashboard-content.account-settings-content {
+        padding-top: 118px;
+    }
+}
+
+@media (max-width: 520px) {
+    .admin-dashboard-content.account-settings-content {
+        padding-top: 112px;
+    }
 }
 
 .btn-primary--dark {
@@ -546,6 +570,11 @@
     .profile-photo-upload {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    #profile .btn-primary {
+        width: 100%;
+        min-height: 44px;
     }
 }
 

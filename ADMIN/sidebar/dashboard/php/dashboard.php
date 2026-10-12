@@ -210,7 +210,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content">
+<main class="main-content admin-dashboard-content<?php echo $activeTab === 'profile' ? ' account-settings-content' : ''; ?>">
 
 
     <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
@@ -393,7 +393,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <span>Preview only while choosing. It will save only after you click Save Profile. JPG, PNG, or WEBP only. Max 3MB.</span>
                                     <input type="file" id="profile_photo" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                                     <small class="profile-photo-upload__state" data-profile-photo-state>
-                                        <?php echo $currentAdminPhotoUrl !== '' ? 'Current profile photo ready.' : 'Default profile photo is active.'; ?>
+                                        <?php echo $currentAdminPhotoUrl !== '' ? 'Saved profile photo.' : 'Default profile photo is active.'; ?>
                                     </small>
                                 </div>
                             </div>

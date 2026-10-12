@@ -17,6 +17,20 @@ if (!function_exists('profile_photo_project_root')) {
 if (!function_exists('profile_photo_system_directory')) {
     function profile_photo_system_directory(): string
     {
+        $configuredDirectory = trim((string)getenv('PROFILE_PHOTO_STORAGE_DIR'));
+        if ($configuredDirectory !== '') {
+            return rtrim($configuredDirectory, "\\/");
+        }
+
+        return profile_photo_project_root()
+            . DIRECTORY_SEPARATOR . 'storage'
+            . DIRECTORY_SEPARATOR . 'profile_photos';
+    }
+}
+
+if (!function_exists('profile_photo_previous_system_directory')) {
+    function profile_photo_previous_system_directory(): string
+    {
         return dirname(__DIR__, 3)
             . DIRECTORY_SEPARATOR . 'userdata'
             . DIRECTORY_SEPARATOR . 'codesamplecaps'
@@ -95,7 +109,13 @@ if (!function_exists('profile_photo_resolve_absolute_path')) {
                 return null;
             }
 
-            return profile_photo_system_directory() . DIRECTORY_SEPARATOR . $fileName;
+            $currentPath = profile_photo_system_directory() . DIRECTORY_SEPARATOR . $fileName;
+            if (is_file($currentPath)) {
+                return $currentPath;
+            }
+
+            $previousPath = profile_photo_previous_system_directory() . DIRECTORY_SEPARATOR . $fileName;
+            return is_file($previousPath) ? $previousPath : $currentPath;
         }
 
         if (!profile_photo_is_legacy_reference($reference)) {
@@ -103,6 +123,47 @@ if (!function_exists('profile_photo_resolve_absolute_path')) {
         }
 
         return profile_photo_project_root() . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $reference);
+    }
+}
+
+if (!function_exists('profile_photo_prepare_storage_directory')) {
+    function profile_photo_prepare_storage_directory(): bool
+    {
+        $directory = profile_photo_system_directory();
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            error_log('Profile photo storage creation failed: ' . $directory);
+            return false;
+        }
+
+        if (!is_writable($directory)) {
+            error_log('Profile photo storage is not writable: ' . $directory);
+            return false;
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('profile_photo_create_file_name')) {
+    function profile_photo_create_file_name(int $userId, string $extension): string
+    {
+        try {
+            $suffix = bin2hex(random_bytes(8));
+        } catch (Throwable $throwable) {
+            $suffix = str_replace('.', '', uniqid('', true));
+        }
+
+        return 'user-' . $userId . '-' . $suffix . '.' . $extension;
+    }
+}
+
+if (!function_exists('profile_photo_delete_reference')) {
+    function profile_photo_delete_reference(?string $reference): void
+    {
+        $path = profile_photo_resolve_absolute_path($reference);
+        if ($path !== null && is_file($path)) {
+            @unlink($path);
+        }
     }
 }
 
@@ -167,8 +228,16 @@ if (!function_exists('profile_photo_cleanup_duplicates')) {
     {
         $patterns = [
             profile_photo_system_directory() . DIRECTORY_SEPARATOR . 'user-' . $userId . '.*',
+            profile_photo_system_directory() . DIRECTORY_SEPARATOR . 'user-' . $userId . '-*.*',
             profile_photo_system_directory() . DIRECTORY_SEPARATOR . 'super-admin-' . $userId . '.*',
         ];
+
+        $previousDirectory = profile_photo_previous_system_directory();
+        if ($previousDirectory !== profile_photo_system_directory()) {
+            $patterns[] = $previousDirectory . DIRECTORY_SEPARATOR . 'user-' . $userId . '.*';
+            $patterns[] = $previousDirectory . DIRECTORY_SEPARATOR . 'user-' . $userId . '-*.*';
+            $patterns[] = $previousDirectory . DIRECTORY_SEPARATOR . 'super-admin-' . $userId . '.*';
+        }
 
         if ($includeLegacy) {
             $patterns[] = profile_photo_legacy_directory() . DIRECTORY_SEPARATOR . 'super-admin-' . $userId . '-*.*';
@@ -232,20 +301,17 @@ if (!function_exists('profile_photo_store_upload')) {
             return ['path' => null, 'error' => 'Profile photo must be 3MB or smaller.'];
         }
 
-        $storageDirectory = profile_photo_system_directory();
-        if (!is_dir($storageDirectory) && !mkdir($storageDirectory, 0775, true) && !is_dir($storageDirectory)) {
-            return ['path' => null, 'error' => 'Unable to prepare the system profile photo folder.'];
+        if (!profile_photo_prepare_storage_directory()) {
+            return ['path' => null, 'error' => 'Could not save your profile photo. Please try again.'];
         }
 
-        $fileName = 'user-' . $userId . '.' . $extension;
+        $storageDirectory = profile_photo_system_directory();
+        $fileName = profile_photo_create_file_name($userId, $extension);
         $destination = $storageDirectory . DIRECTORY_SEPARATOR . $fileName;
 
-        if (is_file($destination) && !@unlink($destination)) {
-            return ['path' => null, 'error' => 'Unable to replace the previous profile photo.'];
-        }
-
         if (!move_uploaded_file($tmpName, $destination)) {
-            return ['path' => null, 'error' => 'Unable to save the profile photo.'];
+            error_log('Profile photo move failed for user ' . $userId . ' to ' . $destination);
+            return ['path' => null, 'error' => 'Could not save your profile photo. Please try again.'];
         }
 
         return [
@@ -283,30 +349,29 @@ if (!function_exists('profile_photo_migrate_legacy_reference')) {
             }
         }
 
-        $storageDirectory = profile_photo_system_directory();
-        if (!is_dir($storageDirectory) && !mkdir($storageDirectory, 0775, true) && !is_dir($storageDirectory)) {
+        if (!profile_photo_prepare_storage_directory()) {
             return $reference;
         }
 
-        $fileName = 'user-' . $userId . '.' . $extension;
+        $storageDirectory = profile_photo_system_directory();
+        $fileName = profile_photo_create_file_name($userId, $extension);
         $destination = $storageDirectory . DIRECTORY_SEPARATOR . $fileName;
 
-        if (is_file($destination) && !@unlink($destination)) {
-            return $reference;
-        }
-
         if (!@copy($source, $destination)) {
+            error_log('Legacy profile photo copy failed for user ' . $userId);
             return $reference;
         }
 
         $storedReference = profile_photo_storage_prefix() . $fileName;
         $stmt = $conn->prepare('UPDATE users SET profile_photo_path = ? WHERE id = ?');
         if (!$stmt) {
+            @unlink($destination);
             return $reference;
         }
 
         $stmt->bind_param('si', $storedReference, $userId);
         if (!$stmt->execute()) {
+            @unlink($destination);
             return $reference;
         }
 

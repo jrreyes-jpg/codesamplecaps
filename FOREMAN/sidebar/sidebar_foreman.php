@@ -102,7 +102,7 @@ $foremanNotifications = $foremanNotifications ?? [
         $headerProfileAlt = 'Foreman profile photo';
         $headerProfileLinks = [
             ['label' => 'Overview', 'href' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php'],
-            ['label' => 'Reset Password', 'href' => '/codesamplecaps/LOGIN/php/forgot.php'],
+            ['label' => 'Account Settings', 'href' => '/codesamplecaps/FOREMAN/dashboards/account_settings.php?section=profile'],
             ['label' => 'Logout', 'href' => '/codesamplecaps/LOGIN/php/logout.php'],
         ];
         include __DIR__ . '/../../SHARED/header/profile/php/profile.php';

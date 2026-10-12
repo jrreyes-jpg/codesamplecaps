@@ -12,7 +12,7 @@ require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
 
-<div class="main-content">
+<div class="main-content account-settings-content">
     <?php include __DIR__ . '/../includes/header.php'; ?>
     <main class="engineer-page-body">
         <?php shared_account_settings_render($account); ?>

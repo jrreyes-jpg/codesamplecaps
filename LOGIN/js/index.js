@@ -1078,6 +1078,7 @@ const restoreInquiryDraft = () => {
                 barangayInput.dataset.comboboxSelectedValue = barangayDraft;
             }
             syncOtherServiceField();
+            validatePreferredDateRange();
 
         };
 
@@ -1120,14 +1121,20 @@ const restoreInquiryDraft = () => {
                 gentlyRevealField(field);
             });
             field.addEventListener('input', () => {
-                if (!['client_name', 'other_service_details', 'description'].includes(field.name)) {
+                if (field === inspectionDateInput) {
+                    validatePreferredDateRange();
+                } else if (!['client_name', 'other_service_details', 'description'].includes(field.name)) {
                     clearFieldError(field);
                 }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
             });
             field.addEventListener('change', () => {
-                clearFieldError(field);
+                if (field === inspectionDateInput) {
+                    validatePreferredDateRange();
+                } else {
+                    clearFieldError(field);
+                }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
             });

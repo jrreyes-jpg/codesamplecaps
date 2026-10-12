@@ -10,6 +10,7 @@ service_location_dataset_maybe_refresh();
 $serviceHierarchy = service_area_hierarchy();
 $serviceBarangays = service_barangays_hierarchy($conn);
 $preferredInspectionDateRange = inquiry_preferred_date_range();
+$inquiryFormScriptVersion = (string)(filemtime(__DIR__ . '/../js/index.js') ?: 1);
 
 if (empty($_SESSION['inquiry_form_token'])) {
     $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
@@ -630,7 +631,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     <label>
                         <span>Service Category <b class="required-mark">*</b></span>
                         <select name="service_category" data-label="Service Category" required>
-                            <option value="">Select service</option>
+                            <option value="" selected disabled>Select service</option>
                             <option>New Automation Installation</option>
                             <option>System Upgrade/Retrofitting</option>
                             <option>Preventive Maintenance</option>
@@ -702,7 +703,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     </script>
     <script src="../js/loader.js" defer></script>
     <script src="../js/public-confirmation.js" defer></script>
-    <script src="../js/index.js" defer></script>
+    <script src="../js/index.js?v=<?php echo rawurlencode($inquiryFormScriptVersion); ?>" defer></script>
 
 </body>
 

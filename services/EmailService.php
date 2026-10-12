@@ -234,7 +234,7 @@ class EmailService {
         }
     }
 
-    public function sendInquiryReviewStatusUpdate(string $recipientEmail, string $recipientName, string $status): bool {
+    public function sendInquiryReviewStatusUpdate(string $recipientEmail, string $recipientName, string $status, string $clientReason = ''): bool {
         try {
             if ($this->error !== '') {
                 return false;
@@ -242,14 +242,14 @@ class EmailService {
 
             $messages = [
                 'Verified Lead' => [
-                    'heading' => 'Your inquiry was reviewed',
-                    'body' => 'Your inquiry has been reviewed and verified by Edge Automation.<br><br>Our team will now proceed with the next step of your request. We will contact you through your registered email or contact number when further information or action is needed.',
-                    'plain' => 'Your inquiry has been reviewed and verified by Edge Automation. Our team will now proceed with the next step of your request. We will contact you through your registered email or contact number when further information or action is needed.',
+                    'heading' => 'Inquiry Qualified',
+                    'body' => 'Your inquiry has been marked as Qualified. Our team will contact you regarding the next step in the quotation process.',
+                    'plain' => 'Your inquiry has been marked as Qualified. Our team will contact you regarding the next step in the quotation process.',
                 ],
                 'Not Qualified' => [
-                    'heading' => 'Your inquiry was reviewed',
-                    'body' => 'Thank you for submitting your inquiry to Edge Automation.<br><br>After reviewing your request, we are unable to proceed with the inquiry at this time.<br><br>If you need clarification or would like to submit a new request with updated information, you may contact Edge Automation.',
-                    'plain' => 'Thank you for submitting your inquiry to Edge Automation. After reviewing your request, we are unable to proceed with the inquiry at this time. If you need clarification or would like to submit a new request with updated information, you may contact Edge Automation.',
+                    'heading' => 'Inquiry Not Qualified',
+                    'body' => 'Your inquiry has been marked as Not Qualified after review.',
+                    'plain' => 'Your inquiry has been marked as Not Qualified after review.',
                 ],
             ];
 
@@ -259,6 +259,13 @@ class EmailService {
 
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
             $content = $messages[$status];
+            $safeReason = htmlspecialchars(trim($clientReason), ENT_QUOTES, 'UTF-8');
+            $reasonHtml = $status === 'Not Qualified' && $safeReason !== ''
+                ? '<p><strong>Reason:</strong> ' . nl2br($safeReason) . '</p>'
+                : '';
+            $reasonPlain = $status === 'Not Qualified' && trim($clientReason) !== ''
+                ? "\n\nReason: " . trim($clientReason)
+                : '';
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
@@ -279,11 +286,14 @@ class EmailService {
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px;color:#0f172a;line-height:1.55'>
                         <p>Hello {$safeName},</p>
                         <p>{$content['body']}</p>
+                        {$reasonHtml}
                         <p>Thank you,<br>Edge Automation</p>
+                        <p style='margin-top:20px;color:#475569;font-size:14px;line-height:1.5'><strong>This is an automated email.</strong> Please submit inquiries through our website.</p>
                     </div>
                 </div>";
             $this->mailer->AltBody = 'Hello ' . ($recipientName !== '' ? $recipientName : 'Client')
-                . ".\n\n" . $content['plain'] . "\n\nThank you,\nEdge Automation";
+                . ".\n\n" . $content['plain'] . $reasonPlain
+                . "\n\nThank you,\nEdge Automation\n\nThis is an automated email. Please submit inquiries through our website.";
             $this->mailer->send();
             return true;
         } catch (Exception $exception) {

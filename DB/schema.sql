@@ -908,6 +908,7 @@ CREATE TABLE `service_inquiries` (
   `preferred_inspection_date` date DEFAULT NULL,
   `status` varchar(50) NOT NULL DEFAULT 'Pending Review',
   `admin_notes` text DEFAULT NULL,
+  `client_review_reason` varchar(500) DEFAULT NULL,
   `reviewed_at` timestamp NULL DEFAULT NULL,
   `viewed_at` timestamp NULL DEFAULT NULL,
   `archived_at` timestamp NULL DEFAULT NULL,

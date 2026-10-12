@@ -989,6 +989,7 @@
     grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
     grid-template-areas:
         "status notes"
+        "reason notes"
         "actions notes";
     gap: 10px;
     align-items: start;
@@ -1043,6 +1044,45 @@
 
 .inquiry-review-form__notes textarea {
     min-height: 132px;
+}
+
+.inquiry-review-form__client-reason,
+.inquiry-review-form__client-reason-output {
+    grid-area: reason;
+}
+
+.inquiry-review-form__client-reason textarea {
+    min-height: 92px;
+}
+
+.inquiry-review-form__client-reason small {
+    display: block;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.inquiry-review-form__client-reason-output {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    background: #fff7ed;
+}
+
+.inquiry-review-form__client-reason-output span {
+    color: #9a3412;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.inquiry-review-form__client-reason-output strong {
+    color: #7c2d12;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
 }
 
 .inquiry-review-form__actions {
@@ -1860,6 +1900,7 @@ body.inquiry-modal-open {
         grid-template-columns: 1fr;
         grid-template-areas:
             "status"
+            "reason"
             "notes"
             "actions";
     }

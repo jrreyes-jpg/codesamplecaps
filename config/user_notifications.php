@@ -63,7 +63,7 @@ if (!function_exists('user_notifications_active_target_condition')) {
             . "'client_inspection_reschedule_requested', 'engineer_inspection_reschedule_requested'";
 
         return "(
-            {$alias}.type NOT IN ({$inspectionTypes}, 'client_quotation_response')
+            {$alias}.type NOT IN ({$inspectionTypes}, 'client_quotation_response', 'client_inquiry_review')
             OR (
                 {$alias}.type IN ({$inspectionTypes})
                 AND EXISTS (
@@ -84,6 +84,15 @@ if (!function_exists('user_notifications_active_target_condition')) {
                         ON notification_inquiry.id = notification_quote.inquiry_id
                        AND notification_inquiry.archived_at IS NULL
                     WHERE notification_quote.id = {$alias}.reference_id
+                )
+            )
+            OR (
+                {$alias}.type = 'client_inquiry_review'
+                AND EXISTS (
+                    SELECT 1
+                    FROM service_inquiries notification_inquiry
+                    WHERE notification_inquiry.id = {$alias}.reference_id
+                      AND notification_inquiry.archived_at IS NULL
                 )
             )
         )";
@@ -121,13 +130,16 @@ if (!function_exists('user_notifications_retire_for_inquiry')) {
                     WHERE notification_quote.id = un.reference_id
                       AND notification_quote.inquiry_id = ?
                 )
+             ) OR (
+                un.type = 'client_inquiry_review'
+                AND un.reference_id = ?
              )"
         );
         if (!$stmt) {
             return false;
         }
 
-        $stmt->bind_param('ii', $inquiryId, $inquiryId);
+        $stmt->bind_param('iii', $inquiryId, $inquiryId, $inquiryId);
         return $stmt->execute();
     }
 }
@@ -163,13 +175,16 @@ if (!function_exists('user_notifications_delete_for_inquiry')) {
                     WHERE notification_quote.id = un.reference_id
                       AND notification_quote.inquiry_id = ?
                 )
+             ) OR (
+                un.type = 'client_inquiry_review'
+                AND un.reference_id = ?
              )"
         );
         if (!$stmt) {
             return false;
         }
 
-        $stmt->bind_param('ii', $inquiryId, $inquiryId);
+        $stmt->bind_param('iii', $inquiryId, $inquiryId, $inquiryId);
         return $stmt->execute();
     }
 }

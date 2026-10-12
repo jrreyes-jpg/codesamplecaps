@@ -95,14 +95,14 @@ function inquiry_center_allowed_next_statuses(string $currentStatus): array
 {
     // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
     $rules = [
-        'Pending Review' => ['Pending Review', 'Verified Lead', 'Not Qualified'],
+        'Pending Review' => ['Verified Lead', 'Not Qualified'],
         // Final na ang review decision. Notes lang ang puwedeng i-save dito.
         'Verified Lead' => ['Verified Lead'],
         'For Inspection' => ['For Inspection', 'Verified Lead'],
         'Not Qualified' => ['Not Qualified'],
     ];
 
-    return $rules[$currentStatus] ?? ['Pending Review'];
+    return $rules[$currentStatus] ?? [];
 }
 
 function inquiry_center_can_change_status(string $currentStatus, string $newStatus): bool
@@ -1653,11 +1653,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $newStatus = trim((string)($_POST['status'] ?? ''));
         $adminNotes = trim((string)($_POST['admin_notes'] ?? ''));
+        $clientReviewReason = trim((string)($_POST['client_review_reason'] ?? ''));
 
         if ($inquiryId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
             $error = 'Invalid inquiry update request.';
         } else {
-            $stmt = $conn->prepare('SELECT status, admin_notes, client_name, email FROM service_inquiries WHERE id = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT status, admin_notes, client_review_reason, client_id, client_name, email, archived_at FROM service_inquiries WHERE id = ? LIMIT 1');
             if (!$stmt) {
                 $error = 'Unable to load inquiry.';
             } else {
@@ -1667,20 +1668,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (!$current) {
                     $error = 'Inquiry not found.';
+                } elseif (!empty($current['archived_at'])) {
+                    $error = 'This inquiry is archived. Restore it before making changes.';
                 } elseif (!inquiry_center_can_change_status((string)($current['status'] ?? 'Pending Review'), $newStatus)) {
                     $error = 'This status change is not allowed for the current inquiry stage.';
                 } else {
+                    $previousStatus = (string)($current['status'] ?? 'Pending Review');
+                    $statusChanged = $previousStatus !== $newStatus;
+                    if ($statusChanged && $newStatus === 'Not Qualified'
+                        && (mb_strlen($clientReviewReason, 'UTF-8') < 5 || mb_strlen($clientReviewReason, 'UTF-8') > 500)) {
+                        $error = 'Enter a brief client-facing reason between 5 and 500 characters.';
+                    }
+                    $reasonToStore = $statusChanged
+                        ? ($newStatus === 'Not Qualified' ? $clientReviewReason : null)
+                        : ($current['client_review_reason'] ?? null);
+                }
+
+                if ($error === '') {
                     $updateStmt = $conn->prepare(
                         'UPDATE service_inquiries
-                         SET status = ?, admin_notes = ?, reviewed_at = NOW()
-                         WHERE id = ?'
+                         SET status = ?, admin_notes = ?, client_review_reason = ?, reviewed_at = NOW()
+                         WHERE id = ? AND status = ?'
                     );
 
                     if (!$updateStmt) {
                         $error = 'Failed to prepare inquiry update.';
                     } else {
-                        $updateStmt->bind_param('ssi', $newStatus, $adminNotes, $inquiryId);
-                        if ($updateStmt->execute()) {
+                        $updateStmt->bind_param('sssis', $newStatus, $adminNotes, $reasonToStore, $inquiryId, $previousStatus);
+                        if ($updateStmt->execute() && $updateStmt->affected_rows === 1) {
                             audit_log_event(
                                 $conn,
                                 (int)($_SESSION['user_id'] ?? 0),
@@ -1690,16 +1705,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 [
                                     'status' => (string)($current['status'] ?? ''),
                                     'admin_notes' => (string)($current['admin_notes'] ?? ''),
+                                    'client_review_reason' => (string)($current['client_review_reason'] ?? ''),
                                 ],
                                 [
                                     'status' => $newStatus,
                                     'admin_notes' => $adminNotes,
+                                    'client_review_reason' => (string)($reasonToStore ?? ''),
                                 ]
                             );
-                            $previousStatus = (string)($current['status'] ?? 'Pending Review');
-                            $shouldNotifyClient = $previousStatus !== $newStatus
+                            $shouldNotifyClient = $previousStatus === 'Pending Review'
                                 && in_array($newStatus, ['Verified Lead', 'Not Qualified'], true);
-                            $notificationFailed = false;
+                            $emailNotificationFailed = false;
+                            $inAppNotificationFailed = false;
+                            $hasLinkedClient = false;
 
                             if ($shouldNotifyClient) {
                                 $emailService = new EmailService();
@@ -1707,22 +1725,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     && $emailService->sendInquiryReviewStatusUpdate(
                                         (string)$current['email'],
                                         (string)($current['client_name'] ?? ''),
-                                        $newStatus
+                                        $newStatus,
+                                        (string)($reasonToStore ?? '')
                                     );
 
                                 if (!$wasSent) {
-                                    $notificationFailed = true;
+                                    $emailNotificationFailed = true;
                                     error_log(
                                         'Inquiry status email failed for inquiry #' . $inquiryId
                                         . ': ' . $emailService->getError()
                                     );
                                 }
+
+                                $linkedClientId = (int)($current['client_id'] ?? 0);
+                                if ($linkedClientId > 0) {
+                                    $clientStmt = $conn->prepare(
+                                        "SELECT id FROM users
+                                         WHERE id = ? AND role = 'client'
+                                           AND status IN ('active', 'pending_activation')
+                                           AND deleted_at IS NULL
+                                         LIMIT 1"
+                                    );
+                                    if ($clientStmt) {
+                                        $clientStmt->bind_param('i', $linkedClientId);
+                                        $clientStmt->execute();
+                                        $hasLinkedClient = (bool)$clientStmt->get_result()->fetch_assoc();
+                                    }
+                                }
+
+                                if ($hasLinkedClient) {
+                                    $notificationTitle = $newStatus === 'Verified Lead'
+                                        ? 'Inquiry Qualified'
+                                        : 'Inquiry Not Qualified';
+                                    $notificationMessage = $newStatus === 'Verified Lead'
+                                        ? 'Your inquiry has been marked as Qualified. Our team will contact you regarding the next step in the quotation process.'
+                                        : 'Your inquiry has been marked as Not Qualified after review. Reason: ' . (string)$reasonToStore;
+                                    $createdNotification = user_notifications_create_if_missing(
+                                        $conn,
+                                        $linkedClientId,
+                                        'client_inquiry_review',
+                                        $inquiryId,
+                                        $notificationTitle,
+                                        $notificationMessage,
+                                        '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
+                                        'client_inquiry_review:' . $linkedClientId . ':' . $inquiryId . ':' . $newStatus
+                                    );
+                                    $inAppNotificationFailed = $createdNotification === null;
+                                }
                             }
 
-                            if ($shouldNotifyClient && !$notificationFailed) {
-                                $successMessage = 'Review saved. Client notified by email.';
-                            } elseif ($shouldNotifyClient) {
+                            if ($shouldNotifyClient && $emailNotificationFailed) {
                                 $successMessage = 'Review saved, but the client email notification could not be sent.';
+                                $_SESSION['inquiry_center_flash_type'] = 'warning';
+                            } elseif ($shouldNotifyClient && $inAppNotificationFailed) {
+                                $successMessage = 'Review saved and email sent, but the Client in-app notification could not be created.';
+                                $_SESSION['inquiry_center_flash_type'] = 'warning';
+                            } elseif ($shouldNotifyClient && $hasLinkedClient) {
+                                $successMessage = 'Review saved. Client notified by email and in-app.';
+                            } elseif ($shouldNotifyClient) {
+                                $successMessage = 'Review saved. Client notified by email.';
                             } elseif ($previousStatus === $newStatus) {
                                 $successMessage = 'Review saved.';
                             } elseif ($newStatus === 'Verified Lead') {
@@ -1750,7 +1811,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             inquiry_center_redirect_to_open_modal($inquiryId, $newStatus, $successMessage, $targetTab);
                         } else {
-                            $error = 'Failed to update inquiry.';
+                            $error = $updateStmt->errno === 0
+                                ? 'The inquiry changed before this review was saved. Please refresh and try again.'
+                                : 'Failed to update inquiry.';
                         }
                     }
                 }
@@ -1872,9 +1935,9 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
         $where[] = inquiry_center_quotation_filter_condition($quotationFilter);
     }
 
-    $sql = 'SELECT id, client_name, company_name, email, contact_no, site_address,
+    $sql = 'SELECT id, client_id, client_name, company_name, email, contact_no, site_address,
                    province, city_municipality, barangay, service_category, description, preferred_inspection_date,
-                   status, admin_notes, reviewed_at, viewed_at, archived_at, archive_reason, created_at
+                   status, admin_notes, client_review_reason, reviewed_at, viewed_at, archived_at, archive_reason, created_at
             FROM service_inquiries';
     if (!empty($where)) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -2444,7 +2507,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             This inquiry is archived. Restore it first before changing status, notes, or inspection schedule.
                                         </div>
                                     <?php else: ?>
-                                        <form method="POST" class="inquiry-review-form">
+                                        <form method="POST" class="inquiry-review-form" data-original-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                             <?php $isFinalReviewDecision = in_array($currentStatus, ['Verified Lead', 'Not Qualified'], true); ?>
@@ -2455,6 +2518,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <output class="inquiry-review-form__status-value inquiry-status" data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(inquiry_center_status_label($currentStatus), ENT_QUOTES, 'UTF-8'); ?></output>
                                                 <?php else: ?>
                                                     <select name="status" required>
+                                                        <?php if ($currentStatus === 'Pending Review'): ?>
+                                                            <option value="" selected disabled>Select review result</option>
+                                                        <?php endif; ?>
                                                         <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
                                                             <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentStatus === $status ? 'selected' : ''; ?>>
                                                                 <?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
@@ -2463,6 +2529,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </select>
                                                 <?php endif; ?>
                                             </label>
+                                            <?php if ($currentStatus === 'Pending Review'): ?>
+                                                <label class="inquiry-review-form__client-reason" data-client-reason-field hidden>
+                                                    <span>Client-facing Reason</span>
+                                                    <textarea name="client_review_reason" rows="3" minlength="5" maxlength="500" placeholder="Briefly explain why the inquiry is not qualified."></textarea>
+                                                    <small>This reason is shown to the client. Private Admin Notes stay internal.</small>
+                                                </label>
+                                            <?php elseif ($currentStatus === 'Not Qualified' && trim((string)($inquiry['client_review_reason'] ?? '')) !== ''): ?>
+                                                <div class="inquiry-review-form__client-reason-output">
+                                                    <span>Client-facing Reason</span>
+                                                    <strong><?php echo nl2br(htmlspecialchars((string)$inquiry['client_review_reason'], ENT_QUOTES, 'UTF-8')); ?></strong>
+                                                </div>
+                                            <?php endif; ?>
                                             <label class="inquiry-review-form__notes">
                                                 <span>Admin Notes</span>
                                                 <textarea name="admin_notes" rows="5" placeholder="Call result, scope clarification, or validation notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>

@@ -110,6 +110,15 @@ $notificationItems = [
             : 'No urgent due date is recorded.',
     ],
 ];
+$userNotificationState = user_notifications_fetch_unread_state($conn, $userId);
+$shellContext = [
+    'client_name' => $clientName,
+    'client_initial' => $clientInitial,
+    'active_project_count' => $activeProjectCount,
+    'notification_items' => $notificationItems,
+    'user_notification_unread_count' => (int)($userNotificationState['unread_count'] ?? 0),
+    'user_notification_items' => $userNotificationState['items'] ?? [],
+];
 
 $clientPageTitle = 'Client Dashboard - Edge Automation';
 $clientCssFiles = [
@@ -122,12 +131,7 @@ require_once __DIR__ . '/../layout/header.php';
 <?php include __DIR__ . '/../sidebar/client_sidebar.php'; ?>
 <main class="main-content" id="mainContent">
     <?php
-    client_shell_render_topbar([
-        'client_name' => $clientName,
-        'client_initial' => $clientInitial,
-        'active_project_count' => $activeProjectCount,
-        'notification_items' => $notificationItems,
-    ]);
+    client_shell_render_topbar($shellContext);
     ?>
 
     <section class="dashboard-overview">

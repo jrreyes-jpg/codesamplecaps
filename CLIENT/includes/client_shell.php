@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../config/user_notifications.php';
+
 if (!function_exists('client_shell_initial')) {
     function client_shell_initial(string $name): string
     {
@@ -16,6 +18,7 @@ if (!function_exists('client_shell_build_topbar_context')) {
         $completedProjectCount = 0;
         $nextDeadline = null;
         $quotationPendingCount = 0;
+        $userNotificationState = user_notifications_fetch_unread_state($conn, $userId);
 
         $projectStatement = $conn->prepare(
             "SELECT
@@ -96,6 +99,8 @@ if (!function_exists('client_shell_build_topbar_context')) {
             'active_project_count' => $activeProjectCount,
             'quotation_pending_count' => $quotationPendingCount,
             'notification_items' => $notificationItems,
+            'user_notification_unread_count' => (int)($userNotificationState['unread_count'] ?? 0),
+            'user_notification_items' => $userNotificationState['items'] ?? [],
         ];
     }
 }
@@ -105,10 +110,14 @@ if (!function_exists('client_shell_render_topbar')) {
     {
         $clientName = (string)($context['client_name'] ?? 'Client User');
         $clientInitial = (string)($context['client_initial'] ?? 'C');
-        $activeProjectCount = (int)($context['active_project_count'] ?? 0);
+        $userNotificationUnreadCount = (int)($context['user_notification_unread_count'] ?? 0);
+        $userNotificationItems = is_array($context['user_notification_items'] ?? null)
+            ? $context['user_notification_items']
+            : [];
         $notificationItems = is_array($context['notification_items'] ?? null)
             ? $context['notification_items']
             : [];
+        $clientNotificationCsrf = auth_csrf_token('client_user_notifications');
 
         ob_start();
 
@@ -128,7 +137,12 @@ if (!function_exists('client_shell_render_topbar')) {
         include __DIR__ . '/../../SHARED/header/profile/php/profile.php';
         $operationsHeaderProfileHtml = (string)ob_get_clean();
         ?>
-        <div class="topbar-notifications" data-notification-root>
+        <div
+            class="topbar-notifications"
+            data-notification-root
+            data-client-notification-endpoint="/codesamplecaps/CLIENT/api/notifications.php"
+            data-client-notification-csrf="<?php echo htmlspecialchars($clientNotificationCsrf, ENT_QUOTES, 'UTF-8'); ?>"
+        >
             <button
                 id="topbarNotificationToggle"
                 class="topbar-notifications__toggle"
@@ -142,17 +156,35 @@ if (!function_exists('client_shell_render_topbar')) {
                         <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
                     </svg>
                 </span>
-                <?php if ($activeProjectCount > 0): ?>
-                    <span class="topbar-notifications__badge"><?php echo $activeProjectCount; ?></span>
-                <?php endif; ?>
+                <span class="topbar-notifications__badge" data-client-notification-badge<?php echo $userNotificationUnreadCount > 0 ? '' : ' hidden'; ?>><?php echo $userNotificationUnreadCount > 99 ? '99+' : $userNotificationUnreadCount; ?></span>
             </button>
 
             <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
                 <div class="topbar-notifications__panel-head">
                     <div>
-                        <strong>Project Updates</strong>
-                        <span><?php echo $activeProjectCount; ?> active item(s)</span>
+                        <strong>Notifications</strong>
+                        <span data-client-notification-count><?php echo $userNotificationUnreadCount; ?> unread</span>
                     </div>
+                </div>
+                <div class="topbar-notifications__section" data-client-notification-list>
+                    <?php if ($userNotificationItems === []): ?>
+                        <div class="topbar-notifications__empty">No unread notifications.</div>
+                    <?php else: ?>
+                        <?php foreach ($userNotificationItems as $notification): ?>
+                            <a
+                                href="<?php echo htmlspecialchars((string)$notification['target_url'], ENT_QUOTES, 'UTF-8'); ?>"
+                                class="notification-item notification-item--info"
+                                data-client-notification-id="<?php echo (int)$notification['id']; ?>"
+                            >
+                                <span class="notification-item__dot"></span>
+                                <div class="notification-item__copy">
+                                    <strong><?php echo htmlspecialchars((string)$notification['title'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                    <span><?php echo htmlspecialchars((string)$notification['message'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <span class="notification-item__time"><?php echo htmlspecialchars(user_notifications_relative_time((string)($notification['created_at'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
                 <div class="topbar-notifications__section">
                     <div class="topbar-notifications__section-title">Recent signals</div>

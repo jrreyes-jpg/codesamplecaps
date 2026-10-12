@@ -532,9 +532,15 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <div class="inquiry-grid inquiry-grid--contact-details" data-inquiry-contact-details>
                 <label>
-                    <span>Contact Person’s Full Name <b class="required-mark">*</b></span>
+                    <span class="field-label-with-info">
+                        Contact Person’s Full Name <b class="required-mark">*</b>
+                        <span class="field-info-wrap">
+                            <button class="field-info-button js-field-info-button" type="button" aria-label="Full name guidance" aria-controls="inquiryContactPersonDetails" aria-describedby="inquiryContactPersonDetails" aria-expanded="false">i</button>
+                            <small id="inquiryContactPersonDetails" class="field-tooltip js-field-tooltip" role="tooltip">Enter first name, middle name (optional), last name, and suffix (if any).</small>
+                        </span>
+                    </span>
                     <input id="inquiryContactPerson" type="text" name="client_name" data-label="Contact Person’s Full Name" required maxlength="150" autocomplete="name" placeholder="e.g., Juan Dela Cruz" aria-describedby="inquiryContactPersonHelp">
-                    <small id="inquiryContactPersonHelp" class="field-help">Person we can contact about this request. Enter first name, middle name (optional), last name, and suffix (if any).</small>
+                    <small id="inquiryContactPersonHelp" class="field-help">Contact person for this request. Enter your full name.</small>
                     <small class="field-error"></small>
                 </label>
 
@@ -619,21 +625,29 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 <small class="field-error"></small>
             </label>
 
-            <div class="inquiry-grid">
-                <label>
-                    <span>Service Category <b class="required-mark">*</b></span>
-                    <select name="service_category" data-label="Service Category" required>
-                        <option value="">Select service</option>
-                        <option>New Automation Installation</option>
-                        <option>System Upgrade/Retrofitting</option>
-                        <option>Preventive Maintenance</option>
-                        <option>Emergency Troubleshooting</option>
-                        <option>Other / Not sure yet</option>
-                    </select>
-                    <small class="field-error"></small>
-                </label>
+            <div class="inquiry-grid inquiry-grid--service-preference">
+                <div class="inquiry-service-group">
+                    <label>
+                        <span>Service Category <b class="required-mark">*</b></span>
+                        <select name="service_category" data-label="Service Category" required>
+                            <option value="">Select service</option>
+                            <option>New Automation Installation</option>
+                            <option>System Upgrade/Retrofitting</option>
+                            <option>Preventive Maintenance</option>
+                            <option>Emergency Troubleshooting</option>
+                            <option>Other / Not sure yet</option>
+                        </select>
+                        <small class="field-error"></small>
+                    </label>
 
-                <label>
+                    <label class="other-service-field is-hidden">
+                        <span>Other Service Details <b class="required-mark">*</b></span>
+                        <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed" disabled>
+                        <small class="field-error"></small>
+                    </label>
+                </div>
+
+                <label class="preferred-inspection-field">
                     <span class="field-label-with-info">
                         Preferred Inspection Date
                         <span class="field-info-wrap">
@@ -653,16 +667,10 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         >
                         <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
                     </span>
-                    <small id="preferredInspectionDateHelp" class="field-help">Choose a date within the next 14 days, starting tomorrow. Subject to Admin confirmation.</small>
+                    <small id="preferredInspectionDateHelp" class="field-help">Optional: tomorrow up to 14 days ahead. Subject to confirmation.</small>
                     <small class="field-error"></small>
                 </label>
             </div>
-
-            <label class="other-service-field is-hidden">
-                <span>Other Service Details <b class="required-mark">*</b></span>
-                <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed">
-                <small class="field-error"></small>
-            </label>
 
             <label class="project-description-field">
                 <span class="field-label-with-info">

@@ -866,7 +866,12 @@ const initInquiryForm = () => {
         const hideFieldTooltips = () => {
             inquiryForm.querySelectorAll('.js-field-tooltip').forEach((tooltip) => {
                 tooltip.classList.remove('is-visible');
-                tooltip.closest('.field-info-wrap')?.querySelector('.js-field-info-button')?.setAttribute('aria-expanded', 'false');
+                const button = tooltip.closest('.field-info-wrap')?.querySelector('.js-field-info-button');
+                button?.setAttribute('aria-expanded', 'false');
+                if (button) {
+                    delete button.dataset.tooltipPinned;
+                    delete button.dataset.tooltipFocusPreview;
+                }
             });
         };
 
@@ -890,18 +895,43 @@ const initInquiryForm = () => {
         });
 
         inquiryForm.querySelectorAll('.js-field-info-button').forEach((button) => {
+            button.addEventListener('focus', () => {
+                const tooltip = button.closest('.field-info-wrap')?.querySelector('.js-field-tooltip');
+                showPinnedTooltip(tooltip);
+                button.dataset.tooltipFocusPreview = '1';
+            });
+
             button.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 const tooltip = button.closest('.field-info-wrap')?.querySelector('.js-field-tooltip');
-                const willShow = !tooltip?.classList.contains('is-visible');
+                const isPinned = button.dataset.tooltipPinned === '1';
 
-                if (willShow) {
+                if (!isPinned) {
                     showPinnedTooltip(tooltip);
+                    button.dataset.tooltipPinned = '1';
+                    delete button.dataset.tooltipFocusPreview;
                 } else {
                     hideFieldTooltips();
                     hideDateTooltip();
                 }
+            });
+
+            button.addEventListener('blur', () => {
+                if (button.dataset.tooltipPinned !== '1') {
+                    hideFieldTooltips();
+                }
+            });
+
+            button.addEventListener('keydown', (event) => {
+                if (event.key !== 'Escape') {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                hideFieldTooltips();
+                hideDateTooltip();
             });
         });
 
@@ -953,6 +983,7 @@ const initInquiryForm = () => {
             const shouldShow = serviceSelect?.value === 'Other / Not sure yet';
             otherServiceField?.classList.toggle('is-hidden', !shouldShow);
             if (otherServiceInput) {
+                otherServiceInput.disabled = !shouldShow;
                 otherServiceInput.required = shouldShow;
                 if (!shouldShow) {
                     otherServiceInput.value = '';

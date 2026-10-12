@@ -523,6 +523,21 @@ h4 {
     align-items: start;
 }
 
+.inquiry-grid--service-preference {
+    align-items: start;
+}
+
+.inquiry-service-group {
+    display: grid;
+    min-width: 0;
+    gap: 14px;
+    align-content: start;
+}
+
+.inquiry-grid--service-preference > .preferred-inspection-field {
+    align-self: start;
+}
+
 .inquiry-grid--contact-details > label {
     align-self: start;
     align-content: start;

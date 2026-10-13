@@ -179,6 +179,7 @@
     const closeButtons = Array.from(modal.querySelectorAll('[data-material-modal-close]'));
     const form = modal.querySelector('[data-material-create-form]');
     const submitButton = modal.querySelector('[data-material-submit]');
+    const clearButton = modal.querySelector('[data-material-clear]');
     const generalError = modal.querySelector('[data-material-general-error]');
     const modalTitle = modal.querySelector('#materialCreateModalTitle');
     const formAction = form ? form.querySelector('[data-material-form-action]') : null;
@@ -203,6 +204,62 @@
     let isSubmitting = false;
 
     const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+    const addDraftFieldNames = ['material_name', 'category', 'unit', 'reorder_level', 'description'];
+    const draftScope = String(modal.dataset.draftScope || 'unknown');
+    const draftKeyPrefix = 'edge:admin:add-material-draft:';
+    const draftScopeMarker = 'edge:admin:add-material-draft-scope';
+    const addDraftKey = draftKeyPrefix + draftScope;
+
+    function isAddMode() {
+        return Boolean(formAction && formAction.value === 'create');
+    }
+
+    function clearStoredAddDraft() {
+        try {
+            window.sessionStorage.removeItem(addDraftKey);
+        } catch (error) {
+            // Tuloy pa rin ang form kapag hindi available ang browser storage.
+        }
+    }
+
+    function prepareDraftStorage() {
+        try {
+            const previousScope = window.sessionStorage.getItem(draftScopeMarker);
+            if (previousScope && previousScope !== draftScope) {
+                window.sessionStorage.removeItem(draftKeyPrefix + previousScope);
+            }
+            window.sessionStorage.setItem(draftScopeMarker, draftScope);
+        } catch (error) {
+            // Tuloy pa rin ang form kapag hindi available ang browser storage.
+        }
+    }
+
+    function saveAddDraft() {
+        if (!isAddMode()) return;
+        const draft = {};
+        let hasValue = false;
+        addDraftFieldNames.forEach(function (name) {
+            const value = fields[name] ? fields[name].value : '';
+            draft[name] = value;
+            if (value.trim() !== '') hasValue = true;
+        });
+        try {
+            if (hasValue) window.sessionStorage.setItem(addDraftKey, JSON.stringify(draft));
+            else window.sessionStorage.removeItem(addDraftKey);
+        } catch (error) {
+            // Nasa form pa rin ang values kahit hindi ma-save sa browser storage.
+        }
+    }
+
+    function readAddDraft() {
+        try {
+            const draft = JSON.parse(window.sessionStorage.getItem(addDraftKey) || 'null');
+            return draft && typeof draft === 'object' ? draft : null;
+        } catch (error) {
+            clearStoredAddDraft();
+            return null;
+        }
+    }
 
     function fieldDescriptionIds(name, includeError) {
         const ids = [];
@@ -274,7 +331,7 @@
                 if (fraction.length > 2) {
                     message = 'For ' + unit + ', use no more than 2 decimal places.';
                 } else if (selectedUnitNeedsWholeNumber() && fraction.replace(/0/g, '') !== '') {
-                    message = 'For ' + unit + ', enter a whole number such as 0, 1, or 2.';
+                    message = 'For ' + unit + ', enter a whole number.';
                 } else if (integer.length > 10 || (integer.length === 10 && integer > '9999999999')) {
                     const maximum = selectedUnitNeedsWholeNumber() ? '9,999,999,999' : '9,999,999,999.99';
                     message = 'Maximum allowed value is ' + maximum + ' ' + unit + '.';
@@ -309,6 +366,34 @@
         }
     }
 
+    function positionTooltip(wrapper) {
+        const button = wrapper.querySelector('button');
+        const tooltip = wrapper.querySelector('[role="tooltip"]');
+        if (!button || !tooltip || !wrapper.classList.contains('is-open')) return;
+
+        const edge = 16;
+        const gap = 8;
+        const buttonRect = button.getBoundingClientRect();
+        const width = Math.min(310, Math.max(180, window.innerWidth - (edge * 2)));
+        tooltip.style.width = width + 'px';
+        tooltip.style.left = Math.max(edge, Math.min(buttonRect.left, window.innerWidth - width - edge)) + 'px';
+        tooltip.style.top = '0px';
+        const tooltipHeight = tooltip.getBoundingClientRect().height;
+        const fitsBelow = buttonRect.bottom + gap + tooltipHeight <= window.innerHeight - edge;
+        const top = fitsBelow
+            ? buttonRect.bottom + gap
+            : Math.max(edge, buttonRect.top - gap - tooltipHeight);
+        tooltip.style.top = top + 'px';
+    }
+
+    function openTooltip(wrapper) {
+        closeTooltips(false);
+        wrapper.classList.add('is-open');
+        const button = wrapper.querySelector('button');
+        if (button) button.setAttribute('aria-expanded', 'true');
+        positionTooltip(wrapper);
+    }
+
     function closeTooltips(returnFocus) {
         tooltipWrappers.forEach(function (wrapper) {
             if (!wrapper.classList.contains('is-open')) return;
@@ -340,6 +425,7 @@
         if (formId) formId.value = isEdit ? String(data.materialId || '') : '';
         if (requestToken) requestToken.value = isEdit ? modal.dataset.updateToken : modal.dataset.createToken;
         if (submitButton) submitButton.textContent = isEdit ? 'Save Changes' : 'Add Material';
+        if (clearButton) clearButton.hidden = isEdit;
 
         if (isEdit) {
             fields.material_name.value = data.materialName || '';
@@ -354,9 +440,8 @@
         updateReorderStep();
     }
 
-    function resetMaterialForm() {
+    function clearAddForm(clearDraft) {
         if (!form) return;
-        form.reset();
         ['material_name', 'reorder_level', 'description'].forEach(function (name) {
             if (fields[name]) fields[name].value = '';
         });
@@ -369,7 +454,39 @@
         Object.keys(fieldErrors).forEach(function (name) { setFieldError(name, ''); });
         if (generalError) generalError.hidden = true;
         closeTooltips(false);
+        configureUnitLock(true);
+        updateReorderStep();
+        if (clearDraft) clearStoredAddDraft();
+    }
+
+    function restoreAddDraft() {
+        const draft = readAddDraft();
+        if (!draft) return;
+
+        ['material_name', 'reorder_level', 'description'].forEach(function (name) {
+            if (fields[name] && typeof draft[name] === 'string') fields[name].value = draft[name];
+        });
+        ['category', 'unit'].forEach(function (name) {
+            if (!fields[name] || typeof draft[name] !== 'string') return;
+            const hasOption = Array.from(fields[name].options).some(function (option) {
+                return !option.disabled && option.value === draft[name];
+            });
+            fields[name].value = hasOption ? draft[name] : '';
+        });
+        updateReorderStep();
+        addDraftFieldNames.forEach(function (name) {
+            if (!fields[name] || fields[name].value.trim() === '') return;
+            fields[name].dataset.materialDirty = 'true';
+            validateField(name);
+        });
+    }
+
+    function resetMaterialForm() {
+        if (!form) return;
+        form.reset();
+        clearAddForm(false);
         closeButtons.forEach(function (button) { button.disabled = false; });
+        if (clearButton) clearButton.disabled = false;
         if (submitButton) submitButton.disabled = false;
         setFormMode('add', {});
     }
@@ -394,15 +511,21 @@
         if (isSubmitting) {
             return;
         }
+        const wasAddMode = isAddMode();
+        if (wasAddMode) saveAddDraft();
         modal.hidden = true;
         document.body.classList.remove('material-create-modal-open');
-        resetMaterialForm();
+        if (!wasAddMode) resetMaterialForm();
         if (returnFocus && typeof returnFocus.focus === 'function') {
             returnFocus.focus();
         }
     }
 
-    openButton.addEventListener('click', function () { openModal(false); });
+    openButton.addEventListener('click', function () {
+        resetMaterialForm();
+        restoreAddDraft();
+        openModal(false);
+    });
     editButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             const menuToggle = button.closest('[data-material-row-menu]')?.querySelector('[data-material-menu-toggle]');
@@ -415,6 +538,13 @@
     closeButtons.forEach(function (button) {
         button.addEventListener('click', closeModal);
     });
+    if (clearButton) {
+        clearButton.addEventListener('click', function () {
+            if (!isAddMode() || isSubmitting) return;
+            clearAddForm(true);
+            panel.focus({ preventScroll: true });
+        });
+    }
 
     modal.addEventListener('click', function (event) {
         if (event.target === modal) {
@@ -463,9 +593,11 @@
                 field.dataset.materialDirty = 'true';
                 if (name === 'unit') {
                     updateReorderStep();
-                    if (fields.reorder_level.hasAttribute('aria-invalid')) validateField('reorder_level');
+                    fields.reorder_level.dataset.materialDirty = 'true';
+                    validateField('reorder_level');
                 }
-                if (field.hasAttribute('aria-invalid')) validateField(name);
+                validateField(name);
+                saveAddDraft();
             });
             field.addEventListener('blur', function () {
                 if (field.dataset.materialDirty === 'true') validateField(name);
@@ -485,9 +617,11 @@
                 return;
             }
             isSubmitting = true;
+            saveAddDraft();
             closeButtons.forEach(function (button) {
                 button.disabled = true;
             });
+            if (clearButton) clearButton.disabled = true;
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.textContent = 'Saving...';
@@ -498,14 +632,18 @@
     tooltipWrappers.forEach(function (wrapper) {
         const button = wrapper.querySelector('button');
         if (!button) return;
+        wrapper.addEventListener('pointerenter', function (event) {
+            if (event.pointerType === 'mouse') openTooltip(wrapper);
+        });
+        wrapper.addEventListener('pointerleave', function (event) {
+            if (event.pointerType === 'mouse' && document.activeElement !== button) closeTooltips(false);
+        });
         button.addEventListener('pointerdown', function () {
             wrapper.dataset.pointerFocus = 'true';
         });
         button.addEventListener('focus', function () {
             if (wrapper.dataset.pointerFocus === 'true') return;
-            closeTooltips(false);
-            wrapper.classList.add('is-open');
-            button.setAttribute('aria-expanded', 'true');
+            openTooltip(wrapper);
         });
         button.addEventListener('blur', function () {
             delete wrapper.dataset.pointerFocus;
@@ -517,15 +655,31 @@
             delete wrapper.dataset.pointerFocus;
             if (event.detail === 0 && wrapper.classList.contains('is-open')) return;
             const willOpen = !wrapper.classList.contains('is-open');
-            closeTooltips(false);
-            wrapper.classList.toggle('is-open', willOpen);
-            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            if (willOpen) openTooltip(wrapper);
+            else closeTooltips(false);
         });
     });
     document.addEventListener('click', function () { closeTooltips(false); });
+    window.addEventListener('resize', function () {
+        tooltipWrappers.forEach(positionTooltip);
+    });
+    modal.addEventListener('scroll', function () {
+        tooltipWrappers.forEach(positionTooltip);
+    }, true);
+    window.addEventListener('edge:logout-complete', function () {
+        clearStoredAddDraft();
+        try {
+            window.sessionStorage.removeItem(draftScopeMarker);
+        } catch (error) {
+            // Wala nang gagawin kapag sarado ang browser storage.
+        }
+    });
 
+    prepareDraftStorage();
+    if (modal.dataset.createSucceeded === 'true') clearStoredAddDraft();
     updateReorderStep();
     if (modal.dataset.autoOpen === 'true') {
+        if (modal.dataset.autoMode === 'add') saveAddDraft();
         openModal(true);
     }
 })();

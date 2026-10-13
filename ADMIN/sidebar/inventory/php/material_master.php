@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $validated['description'],
                     (int)$_SESSION['user_id']
                 );
-                $_SESSION[$materialFlashKey] = ['type' => 'success', 'message' => 'Material updated successfully.'];
+                $_SESSION[$materialFlashKey] = ['type' => 'success', 'action' => 'update', 'message' => 'Material updated successfully.'];
             } else {
                 $code = material_stock_create_material(
                     $conn,
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (float)$validated['reorder'],
                     $validated['description']
                 );
-                $_SESSION[$materialFlashKey] = ['type' => 'success', 'message' => 'Material ' . $code . ' created.'];
+                $_SESSION[$materialFlashKey] = ['type' => 'success', 'action' => 'create', 'message' => 'Material ' . $code . ' created.'];
             }
         } else {
             $materialId = filter_var($materialPostText($_POST['material_id'] ?? ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
@@ -235,6 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $materialFlash = $_SESSION[$materialFlashKey] ?? null;
 unset($_SESSION[$materialFlashKey]);
+$materialCreateSucceeded = is_array($materialFlash) && ($materialFlash['action'] ?? '') === 'create';
 $materialFormState = $_SESSION[$materialFormStateKey] ?? null;
 unset($_SESSION[$materialFormStateKey]);
 $materialFormValues = is_array($materialFormState['values'] ?? null) ? $materialFormState['values'] : [];
@@ -366,7 +367,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         </section>
 
-        <div class="material-create-modal" data-material-modal data-create-token="<?php echo htmlspecialchars($materialCreateRequestToken); ?>" data-update-token="<?php echo htmlspecialchars($materialUpdateRequestToken); ?>" data-auto-mode="<?php echo htmlspecialchars($materialFormMode); ?>" data-auto-material-id="<?php echo $materialFormMaterialId; ?>" <?php echo $materialFormState ? 'data-auto-open="true"' : ''; ?> hidden>
+        <div class="material-create-modal" data-material-modal data-draft-scope="<?php echo (int)$_SESSION['user_id'] . ':' . (int)($_SESSION['logged_in_at'] ?? 0); ?>" data-create-token="<?php echo htmlspecialchars($materialCreateRequestToken); ?>" data-update-token="<?php echo htmlspecialchars($materialUpdateRequestToken); ?>" data-auto-mode="<?php echo htmlspecialchars($materialFormMode); ?>" data-auto-material-id="<?php echo $materialFormMaterialId; ?>" data-create-succeeded="<?php echo $materialCreateSucceeded ? 'true' : 'false'; ?>" <?php echo $materialFormState ? 'data-auto-open="true"' : ''; ?> hidden>
             <section class="material-create-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialCreateModalTitle" tabindex="-1">
                 <div class="material-create-modal__header">
                     <h2 id="materialCreateModalTitle"><?php echo $materialFormMode === 'edit' ? 'Edit Material' : 'Add Material'; ?></h2>
@@ -404,7 +405,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <label for="reorder_level">Low Stock Alert Level</label>
                                 <span class="material-field-info" data-material-tooltip>
                                     <button type="button" aria-label="About Low Stock Alert Level" aria-describedby="materialReorderTooltip" aria-expanded="false">i</button>
-                                    <span id="materialReorderTooltip" role="tooltip">Alerts when on-hand stock reaches this level or lower. Use 0 to alert when stock runs out. Measured units allow up to 9,999,999,999.99 with 2 decimal places. Count units allow up to 9,999,999,999 and use whole numbers.</span>
+                                    <span id="materialReorderTooltip" role="tooltip">Shows a low-stock alert when on-hand stock reaches this quantity or lower.</span>
                                 </span>
                             </div>
                             <input id="reorder_level" name="reorder_level" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" placeholder="e.g., 10" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '')); ?>" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>
@@ -417,8 +418,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
                     <div class="material-create-modal__actions">
-                        <button type="button" class="btn-secondary" data-material-modal-close>Cancel</button>
-                        <button type="submit" class="btn-primary" data-material-submit><?php echo $materialFormMode === 'edit' ? 'Save Changes' : 'Add Material'; ?></button>
+                        <button type="button" class="btn-secondary material-create-modal__clear" data-material-clear<?php echo $materialFormMode === 'edit' ? ' hidden' : ''; ?>>Clear Form</button>
+                        <div class="material-create-modal__actions-end">
+                            <button type="button" class="btn-secondary" data-material-modal-close>Cancel</button>
+                            <button type="submit" class="btn-primary" data-material-submit><?php echo $materialFormMode === 'edit' ? 'Save Changes' : 'Add Material'; ?></button>
+                        </div>
                     </div>
                 </form>
             </section>

@@ -90,7 +90,7 @@ inventory_clerk_render_page('Physical Count', function () use (
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
                             <td data-label="Physical Count">
                                 <label class="sr-only" for="<?php echo $inputId; ?>">Physical count for <?php echo htmlspecialchars((string)$material['material_name']); ?></label>
-                                <input id="<?php echo $inputId; ?>" class="blind-audit-count-input" name="physical_counts[<?php echo (int)$material['id']; ?>]" type="number" min="0" max="9999999999.99" step="<?php echo in_array(strtolower((string)$material['unit']), ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'], true) ? '1' : '0.01'; ?>" inputmode="decimal" placeholder="Enter count" <?php echo $countStorageReady ? '' : 'disabled'; ?>>
+                                <input id="<?php echo $inputId; ?>" class="blind-audit-count-input" name="physical_counts[<?php echo (int)$material['id']; ?>]" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_decimal_max()); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? '1' : '0.01'; ?>" inputmode="decimal" placeholder="Enter count" <?php echo $countStorageReady ? '' : 'disabled'; ?>>
                             </td>
                             <td data-label="Remarks">
                                 <label class="sr-only" for="count_remarks_<?php echo (int)$material['id']; ?>">Remarks for <?php echo htmlspecialchars((string)$material['material_name']); ?></label>

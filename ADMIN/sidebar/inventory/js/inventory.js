@@ -49,6 +49,10 @@
         panel.style.top = top + 'px';
     }
 
+    function rowMenuItems(panel) {
+        return Array.from(panel.querySelectorAll('[role="menuitem"]:not(:disabled)'));
+    }
+
     menuToggles.forEach(function (toggle) {
         toggle.addEventListener('click', function (event) {
             event.stopPropagation();
@@ -60,6 +64,35 @@
             panel.hidden = !willOpen;
             toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             if (willOpen) placeRowMenu(toggle, panel);
+        });
+        toggle.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+            event.preventDefault();
+            const menu = toggle.closest('[data-material-row-menu]');
+            const panel = menu ? menu.querySelector('[data-material-menu-panel]') : null;
+            if (!panel) return;
+            closeRowMenus(toggle);
+            placeRowMenu(toggle, panel);
+            toggle.setAttribute('aria-expanded', 'true');
+            const items = rowMenuItems(panel);
+            const target = event.key === 'ArrowUp' ? items[items.length - 1] : items[0];
+            if (target) target.focus();
+        });
+    });
+
+    document.querySelectorAll('[data-material-menu-panel]').forEach(function (panel) {
+        panel.addEventListener('keydown', function (event) {
+            const items = rowMenuItems(panel);
+            const currentIndex = items.indexOf(document.activeElement);
+            if (items.length === 0 || currentIndex === -1) return;
+            let nextIndex = null;
+            if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+            if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+            if (event.key === 'Home') nextIndex = 0;
+            if (event.key === 'End') nextIndex = items.length - 1;
+            if (nextIndex === null) return;
+            event.preventDefault();
+            items[nextIndex].focus();
         });
     });
 
@@ -147,12 +180,20 @@
     const form = modal.querySelector('[data-material-create-form]');
     const submitButton = modal.querySelector('[data-material-submit]');
     const generalError = modal.querySelector('[data-material-general-error]');
+    const modalTitle = modal.querySelector('#materialCreateModalTitle');
+    const formAction = form ? form.querySelector('[data-material-form-action]') : null;
+    const formId = form ? form.querySelector('[data-material-form-id]') : null;
+    const requestToken = form ? form.querySelector('[data-material-request-token]') : null;
+    const lockedUnit = form ? form.querySelector('[data-material-locked-unit]') : null;
+    const unitLockReason = modal.querySelector('[data-material-unit-lock]');
+    const editButtons = Array.from(document.querySelectorAll('[data-material-edit-open]'));
+    const tooltipWrappers = Array.from(modal.querySelectorAll('[data-material-tooltip]'));
     const fields = form ? {
-        material_name: form.elements.namedItem('material_name'),
-        category: form.elements.namedItem('category'),
-        unit: form.elements.namedItem('unit'),
-        reorder_level: form.elements.namedItem('reorder_level'),
-        description: form.elements.namedItem('description')
+        material_name: form.querySelector('#material_name'),
+        category: form.querySelector('#category'),
+        unit: form.querySelector('#unit'),
+        reorder_level: form.querySelector('#reorder_level'),
+        description: form.querySelector('#description')
     } : {};
     const fieldErrors = {};
     modal.querySelectorAll('[data-material-field-error]').forEach(function (error) {
@@ -165,7 +206,7 @@
 
     function fieldDescriptionIds(name, includeError) {
         const ids = [];
-        if (name === 'reorder_level') ids.push('materialReorderHint');
+        if (name === 'unit' && unitLockReason && !unitLockReason.hidden) ids.push(unitLockReason.id);
         if (includeError && fieldErrors[name]) ids.push(fieldErrors[name].id);
         return ids.join(' ');
     }
@@ -221,18 +262,22 @@
             });
             if (!valid) message = 'Select a unit.';
         } else if (name === 'reorder_level') {
-            if (value === '' || (Number.isFinite(Number(value)) && Number(value) < 0)) {
+            if (value === '' || /^-/.test(value)) {
                 message = 'Enter zero or a positive number.';
-            } else if (!/^\d+(?:\.\d{1,2})?$/.test(value)) {
-                message = 'Enter zero or a positive number with up to 2 decimal places.';
+            } else if (!/^\d+(?:\.\d+)?$/.test(value)) {
+                message = 'Enter a valid number.';
             } else {
-                const number = Number(value);
-                if (!Number.isFinite(number) || number < 0) {
-                    message = 'Enter zero or a positive number.';
-                } else if (number > 9999999999.99) {
-                    message = 'Enter a value not greater than 9,999,999,999.99.';
-                } else if (selectedUnitNeedsWholeNumber() && !Number.isInteger(number)) {
-                    message = 'This unit requires a whole number.';
+                const parts = value.split('.');
+                const fraction = parts[1] || '';
+                const unit = fields.unit.value || 'this unit';
+                const integer = parts[0].replace(/^0+(?=\d)/, '');
+                if (fraction.length > 2) {
+                    message = 'For ' + unit + ', use no more than 2 decimal places.';
+                } else if (selectedUnitNeedsWholeNumber() && fraction.replace(/0/g, '') !== '') {
+                    message = 'For ' + unit + ', enter a whole number such as 0, 1, or 2.';
+                } else if (integer.length > 10 || (integer.length === 10 && integer > '9999999999')) {
+                    const maximum = selectedUnitNeedsWholeNumber() ? '9,999,999,999' : '9,999,999,999.99';
+                    message = 'Maximum allowed value is ' + maximum + ' ' + unit + '.';
                 }
             }
         } else if (name === 'description') {
@@ -258,8 +303,55 @@
 
     function updateReorderStep() {
         if (fields.reorder_level) {
-            fields.reorder_level.step = selectedUnitNeedsWholeNumber() ? '1' : '0.01';
+            const wholeNumber = selectedUnitNeedsWholeNumber();
+            fields.reorder_level.step = wholeNumber ? '1' : '0.01';
+            fields.reorder_level.max = wholeNumber ? '9999999999' : '9999999999.99';
         }
+    }
+
+    function closeTooltips(returnFocus) {
+        tooltipWrappers.forEach(function (wrapper) {
+            if (!wrapper.classList.contains('is-open')) return;
+            wrapper.classList.remove('is-open');
+            const button = wrapper.querySelector('button');
+            if (button) {
+                button.setAttribute('aria-expanded', 'false');
+                if (returnFocus) button.focus();
+            }
+        });
+    }
+
+    function configureUnitLock(isEditable) {
+        if (!fields.unit || !lockedUnit || !unitLockReason) return;
+        fields.unit.disabled = !isEditable;
+        lockedUnit.disabled = isEditable;
+        lockedUnit.value = isEditable ? '' : fields.unit.value;
+        unitLockReason.hidden = isEditable;
+        const hasError = fields.unit.hasAttribute('aria-invalid');
+        const describedBy = fieldDescriptionIds('unit', hasError);
+        if (describedBy) fields.unit.setAttribute('aria-describedby', describedBy);
+        else fields.unit.removeAttribute('aria-describedby');
+    }
+
+    function setFormMode(mode, data) {
+        const isEdit = mode === 'edit';
+        if (modalTitle) modalTitle.textContent = isEdit ? 'Edit Material' : 'Add Material';
+        if (formAction) formAction.value = isEdit ? 'update' : 'create';
+        if (formId) formId.value = isEdit ? String(data.materialId || '') : '';
+        if (requestToken) requestToken.value = isEdit ? modal.dataset.updateToken : modal.dataset.createToken;
+        if (submitButton) submitButton.textContent = isEdit ? 'Save Changes' : 'Add Material';
+
+        if (isEdit) {
+            fields.material_name.value = data.materialName || '';
+            fields.description.value = data.materialDescription || '';
+            fields.category.value = data.materialCategory || '';
+            fields.unit.value = data.materialUnit || '';
+            fields.reorder_level.value = data.materialReorder || '';
+            configureUnitLock(data.unitEditable === 'true');
+        } else {
+            configureUnitLock(true);
+        }
+        updateReorderStep();
     }
 
     function resetMaterialForm() {
@@ -271,13 +363,19 @@
         ['category', 'unit'].forEach(function (name) {
             if (fields[name]) fields[name].selectedIndex = 0;
         });
+        Object.keys(fields).forEach(function (name) {
+            if (fields[name]) delete fields[name].dataset.materialDirty;
+        });
         Object.keys(fieldErrors).forEach(function (name) { setFieldError(name, ''); });
         if (generalError) generalError.hidden = true;
-        updateReorderStep();
+        closeTooltips(false);
+        closeButtons.forEach(function (button) { button.disabled = false; });
+        if (submitButton) submitButton.disabled = false;
+        setFormMode('add', {});
     }
 
-    function openModal(showServerError) {
-        returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : openButton;
+    function openModal(showServerError, preferredReturnFocus) {
+        returnFocus = preferredReturnFocus || (document.activeElement instanceof HTMLElement ? document.activeElement : openButton);
         modal.hidden = false;
         document.body.classList.add('material-create-modal-open');
         window.requestAnimationFrame(function () {
@@ -305,6 +403,15 @@
     }
 
     openButton.addEventListener('click', function () { openModal(false); });
+    editButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const menuToggle = button.closest('[data-material-row-menu]')?.querySelector('[data-material-menu-toggle]');
+            resetMaterialForm();
+            closeRowMenus();
+            setFormMode('edit', button.dataset);
+            openModal(false, menuToggle || button);
+        });
+    });
     closeButtons.forEach(function (button) {
         button.addEventListener('click', closeModal);
     });
@@ -317,7 +424,14 @@
 
     modal.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
+            const hasOpenTooltip = tooltipWrappers.some(function (wrapper) {
+                return wrapper.classList.contains('is-open');
+            });
             event.preventDefault();
+            if (hasOpenTooltip) {
+                closeTooltips(true);
+                return;
+            }
             closeModal();
             return;
         }
@@ -346,11 +460,15 @@
             const field = fields[name];
             const eventName = field instanceof HTMLSelectElement ? 'change' : 'input';
             field.addEventListener(eventName, function () {
+                field.dataset.materialDirty = 'true';
                 if (name === 'unit') {
                     updateReorderStep();
                     if (fields.reorder_level.hasAttribute('aria-invalid')) validateField('reorder_level');
                 }
                 if (field.hasAttribute('aria-invalid')) validateField(name);
+            });
+            field.addEventListener('blur', function () {
+                if (field.dataset.materialDirty === 'true') validateField(name);
             });
         });
 
@@ -372,10 +490,39 @@
             });
             if (submitButton) {
                 submitButton.disabled = true;
-                submitButton.textContent = 'Saving…';
+                submitButton.textContent = 'Saving...';
             }
         });
     }
+
+    tooltipWrappers.forEach(function (wrapper) {
+        const button = wrapper.querySelector('button');
+        if (!button) return;
+        button.addEventListener('pointerdown', function () {
+            wrapper.dataset.pointerFocus = 'true';
+        });
+        button.addEventListener('focus', function () {
+            if (wrapper.dataset.pointerFocus === 'true') return;
+            closeTooltips(false);
+            wrapper.classList.add('is-open');
+            button.setAttribute('aria-expanded', 'true');
+        });
+        button.addEventListener('blur', function () {
+            delete wrapper.dataset.pointerFocus;
+            wrapper.classList.remove('is-open');
+            button.setAttribute('aria-expanded', 'false');
+        });
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            delete wrapper.dataset.pointerFocus;
+            if (event.detail === 0 && wrapper.classList.contains('is-open')) return;
+            const willOpen = !wrapper.classList.contains('is-open');
+            closeTooltips(false);
+            wrapper.classList.toggle('is-open', willOpen);
+            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+    });
+    document.addEventListener('click', function () { closeTooltips(false); });
 
     updateReorderStep();
     if (modal.dataset.autoOpen === 'true') {

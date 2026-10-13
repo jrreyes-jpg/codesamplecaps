@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/audit_log.php';
+require_once __DIR__ . '/material_stock.php';
 
 if (!function_exists('material_physical_count_is_ready')) {
     function material_physical_count_is_ready(mysqli $conn): bool
@@ -147,8 +148,7 @@ if (!function_exists('material_physical_count_submit')) {
                 }
 
                 $countedQuantity = (float)$countData['count'];
-                $wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
-                if (in_array(strtolower((string)$material['unit']), $wholeCountUnits, true) && $countedQuantity !== floor($countedQuantity)) {
+                if (material_stock_unit_requires_whole_number((string)$material['unit']) && $countedQuantity !== floor($countedQuantity)) {
                     throw new RuntimeException('Use a whole number for materials counted by ' . $material['unit'] . '.');
                 }
 

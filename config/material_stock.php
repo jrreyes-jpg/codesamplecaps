@@ -1,5 +1,92 @@
 <?php
 
+require_once __DIR__ . '/audit_log.php';
+
+if (!function_exists('material_stock_whole_count_units')) {
+    function material_stock_whole_count_units(): array
+    {
+        return ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
+    }
+}
+
+if (!function_exists('material_stock_decimal_scale')) {
+    function material_stock_decimal_scale(): int
+    {
+        return 2;
+    }
+}
+
+if (!function_exists('material_stock_decimal_max')) {
+    function material_stock_decimal_max(): string
+    {
+        return '9999999999.99';
+    }
+}
+
+if (!function_exists('material_stock_unit_requires_whole_number')) {
+    function material_stock_unit_requires_whole_number(string $unit): bool
+    {
+        return in_array(strtolower(trim($unit)), material_stock_whole_count_units(), true);
+    }
+}
+
+if (!function_exists('material_stock_threshold_max_for_unit')) {
+    function material_stock_threshold_max_for_unit(string $unit): string
+    {
+        if (material_stock_unit_requires_whole_number($unit)) {
+            return strstr(material_stock_decimal_max(), '.', true) ?: material_stock_decimal_max();
+        }
+
+        return material_stock_decimal_max();
+    }
+}
+
+if (!function_exists('material_stock_threshold_error')) {
+    function material_stock_threshold_error(mixed $input, string $unit): ?string
+    {
+        if (!is_string($input) && !is_numeric($input)) {
+            return 'Enter a valid number.';
+        }
+
+        $raw = trim((string)$input);
+        if ($raw === '') {
+            return 'Enter zero or a positive number.';
+        }
+        if (preg_match('/^-/', $raw) === 1) {
+            return 'Enter zero or a positive number.';
+        }
+        if (preg_match('/^\d+(?:\.\d+)?$/', $raw) !== 1) {
+            return 'Enter a valid number.';
+        }
+
+        [$integerPart, $fractionPart] = array_pad(explode('.', $raw, 2), 2, '');
+        $scale = material_stock_decimal_scale();
+        if (strlen($fractionPart) > $scale) {
+            return 'For ' . $unit . ', use no more than ' . $scale . ' decimal places.';
+        }
+        if (material_stock_unit_requires_whole_number($unit)
+            && $fractionPart !== ''
+            && trim($fractionPart, '0') !== '') {
+            return 'For ' . $unit . ', enter a whole number such as 0, 1, or 2.';
+        }
+
+        $normalizedInteger = ltrim($integerPart, '0');
+        $normalizedInteger = $normalizedInteger === '' ? '0' : $normalizedInteger;
+        $unitMaximum = material_stock_threshold_max_for_unit($unit);
+        $maxInteger = strstr($unitMaximum, '.', true) ?: $unitMaximum;
+        if (strlen($normalizedInteger) > strlen($maxInteger)
+            || (strlen($normalizedInteger) === strlen($maxInteger) && strcmp($normalizedInteger, $maxInteger) > 0)) {
+            $formattedMaximum = number_format(
+                (float)$unitMaximum,
+                material_stock_unit_requires_whole_number($unit) ? 0 : $scale
+            );
+            return 'Maximum allowed value is ' . $formattedMaximum . ' ' . $unit . '.';
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('material_stock_issue_once_token')) {
     function material_stock_issue_once_token(string $scope): string
     {
@@ -371,6 +458,85 @@ if (!function_exists('material_stock_create_material')) {
     }
 }
 
+if (!function_exists('material_stock_update_material')) {
+    function material_stock_update_material(
+        mysqli $conn,
+        int $materialId,
+        string $name,
+        string $category,
+        string $unit,
+        float $reorderLevel,
+        string $description,
+        int $userId
+    ): void {
+        if ($materialId <= 0) {
+            throw new RuntimeException('Material not found. Refresh the report and try again.');
+        }
+
+        $conn->begin_transaction();
+        try {
+            $lock = $conn->prepare(
+                "SELECT id, material_name, description, category, unit, reorder_level, physical_quantity, reserved_quantity
+                 FROM materials
+                 WHERE id = ? AND status = 'active'
+                 FOR UPDATE"
+            );
+            if (!$lock) {
+                throw new RuntimeException('Unable to load the material.');
+            }
+            $lock->bind_param('i', $materialId);
+            $lock->execute();
+            $current = $lock->get_result()->fetch_assoc();
+            if (!$current) {
+                throw new RuntimeException('Material not found. Refresh the report and try again.');
+            }
+
+            if ((string)$current['unit'] !== $unit
+                && ((float)$current['physical_quantity'] !== 0.0
+                    || (float)$current['reserved_quantity'] !== 0.0
+                    || material_stock_has_usage_reference($conn, $materialId, true))) {
+                throw new RuntimeException('Unit cannot be changed because this material has stock or history.');
+            }
+
+            $update = $conn->prepare(
+                'UPDATE materials
+                 SET material_name = ?, description = NULLIF(?, \'\'), category = ?, unit = ?, reorder_level = ?
+                 WHERE id = ? AND status = \'active\''
+            );
+            if (!$update) {
+                throw new RuntimeException('Unable to update the material.');
+            }
+            $update->bind_param('ssssdi', $name, $description, $category, $unit, $reorderLevel, $materialId);
+            if (!$update->execute()) {
+                throw new RuntimeException('Unable to update the material.');
+            }
+
+            $oldValues = [
+                'material_name' => (string)$current['material_name'],
+                'description' => (string)($current['description'] ?? ''),
+                'category' => (string)($current['category'] ?? ''),
+                'unit' => (string)$current['unit'],
+                'reorder_level' => (string)($current['reorder_level'] ?? ''),
+            ];
+            $newValues = [
+                'material_name' => $name,
+                'description' => $description,
+                'category' => $category,
+                'unit' => $unit,
+                'reorder_level' => $reorderLevel,
+            ];
+            if ($oldValues != $newValues) {
+                audit_log_event($conn, $userId, 'material_updated', 'material', $materialId, $oldValues, $newValues);
+            }
+
+            $conn->commit();
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            throw $exception;
+        }
+    }
+}
+
 if (!function_exists('material_stock_material_exists')) {
     function material_stock_material_exists(mysqli $conn, int $materialId): bool
     {
@@ -548,8 +714,7 @@ if (!function_exists('material_stock_add_stock_in')) {
                 throw new RuntimeException('Material not found.');
             }
 
-            $wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'bundle', 'sheet', 'pair', 'tube'];
-            if (in_array((string)$material['unit'], $wholeCountUnits, true) && $quantity !== floor($quantity)) {
+            if (material_stock_unit_requires_whole_number((string)$material['unit']) && $quantity !== floor($quantity)) {
                 throw new RuntimeException('Quantity In must be a whole number for ' . $material['unit'] . '.');
             }
 

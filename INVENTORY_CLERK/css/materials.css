@@ -791,6 +791,55 @@ body.materials-modal-open {
     color: #475569;
 }
 
+.blind-audit-page .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.blind-audit-table th:nth-child(1) { width: 22%; }
+.blind-audit-table th:nth-child(2) { width: 28%; }
+.blind-audit-table th:nth-child(3) { width: 10%; }
+.blind-audit-table th:nth-child(4) { width: 18%; }
+.blind-audit-table th:nth-child(5) { width: 22%; }
+
+.blind-audit-table th:nth-child(1),
+.blind-audit-table td:nth-child(1),
+.blind-audit-table th:nth-child(2),
+.blind-audit-table td:nth-child(2) {
+    text-align: left;
+    white-space: normal;
+}
+
+.blind-audit-count-input,
+.blind-audit-remarks-input {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #172033;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+.blind-audit-count-input:focus,
+.blind-audit-remarks-input:focus {
+    border-color: #0f766e;
+    outline: 3px solid rgba(15, 118, 110, .16);
+}
+
+.blind-audit-actions {
+    margin-top: 16px;
+}
+
 @media (max-width: 768px) {
     .materials-page {
         gap: 14px;
@@ -878,6 +927,21 @@ body.materials-modal-open {
     .materials-modal__panel {
         max-height: calc(100vh - 32px);
         padding: 18px;
+    }
+
+    .blind-audit-table tr {
+        grid-template-columns: 1fr;
+    }
+
+    .blind-audit-table td,
+    .blind-audit-table td:first-child,
+    .blind-audit-table td:last-child {
+        grid-column: 1;
+        text-align: left;
+    }
+
+    .blind-audit-actions .btn-primary {
+        width: 100%;
     }
 }
 

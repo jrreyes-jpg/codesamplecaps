@@ -97,6 +97,31 @@ if (!function_exists('material_stock_fetch_materials')) {
     }
 }
 
+if (!function_exists('material_stock_fetch_project_issued_totals')) {
+    function material_stock_fetch_project_issued_totals(mysqli $conn): array
+    {
+        if (!material_stock_is_ready($conn)) {
+            return [];
+        }
+
+        // Lahat ng project issue mula sa stock movement history.
+        $result = $conn->query(
+            "SELECT material_id, SUM(quantity) AS issued_quantity
+             FROM material_stock_movements
+             WHERE movement_type = 'project_issue'
+             GROUP BY material_id"
+        );
+        $issuedTotals = [];
+        if ($result) {
+            foreach ($result->fetch_all(MYSQLI_ASSOC) as $row) {
+                $issuedTotals[(int)$row['material_id']] = (float)$row['issued_quantity'];
+            }
+        }
+
+        return $issuedTotals;
+    }
+}
+
 if (!function_exists('material_stock_archive_material')) {
     function material_stock_archive_material(mysqli $conn, int $materialId): void
     {
@@ -191,6 +216,11 @@ if (!function_exists('material_stock_has_usage_reference')) {
             'site_inspection_cost_items',
         ];
 
+        $countTable = $conn->query("SHOW TABLES LIKE 'material_physical_counts'");
+        if ($countTable instanceof mysqli_result && $countTable->num_rows === 1) {
+            $tables[] = 'material_physical_counts';
+        }
+
         foreach ($tables as $table) {
             $sql = "SELECT id FROM {$table} WHERE material_id = ? LIMIT 1" . ($forUpdate ? ' FOR UPDATE' : '');
             $stmt = $conn->prepare($sql);
@@ -211,6 +241,10 @@ if (!function_exists('material_stock_has_usage_reference')) {
 if (!function_exists('material_stock_fetch_deletable_material_ids')) {
     function material_stock_fetch_deletable_material_ids(mysqli $conn): array
     {
+        $countTable = $conn->query("SHOW TABLES LIKE 'material_physical_counts'");
+        $countGuard = $countTable instanceof mysqli_result && $countTable->num_rows === 1
+            ? ' AND NOT EXISTS (SELECT 1 FROM material_physical_counts mpc WHERE mpc.material_id = m.id)'
+            : '';
         $result = $conn->query(
             'SELECT m.id
              FROM materials m
@@ -220,6 +254,7 @@ if (!function_exists('material_stock_fetch_deletable_material_ids')) {
                AND NOT EXISTS (SELECT 1 FROM project_material_reservations pmr WHERE pmr.material_id = m.id)
                AND NOT EXISTS (SELECT 1 FROM inquiry_quotation_items iqi WHERE iqi.material_id = m.id)
                AND NOT EXISTS (SELECT 1 FROM site_inspection_cost_items sici WHERE sici.material_id = m.id)'
+            . $countGuard
         );
         if (!$result) {
             return [];

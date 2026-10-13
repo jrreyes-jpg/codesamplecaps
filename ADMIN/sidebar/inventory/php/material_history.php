@@ -55,7 +55,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
             <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
         </nav>
-        <section class="form-panel">
+        <section class="form-panel material-history-panel">
             <div class="material-master-heading">
                 <h1 class="section-title-inline">Consumable Stock History</h1>
                 <?php if ($selectedMaterial): ?><a class="btn-secondary" href="?view=history">Clear Filter</a><?php endif; ?>
@@ -67,7 +67,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </form>
             <?php if (!$selectedMaterial && isset($_GET['material_id']) && $_GET['material_id'] !== ''): ?><div class="alert alert-error">Selected material was not found.</div><?php endif; ?>
             <div class="table-responsive">
-                <table class="data-table material-history-table">
+                <table class="data-table material-history-table mobile-card-table">
                     <thead><tr><th>Date</th><th>Material</th><th>Type</th><th>Qty</th><th>Before</th><th>After</th><th>Recorded By</th><th>Reference / Remarks</th></tr></thead>
                     <tbody>
                     <?php if ($movements === []): ?><tr><td colspan="8" class="empty-state">No consumable stock movement yet.</td></tr><?php endif; ?>

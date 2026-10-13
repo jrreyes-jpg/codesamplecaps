@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../config/profile_photo_storage.php';
 require_once __DIR__ . '/asset_inventory_display.php';
 
 if (!function_exists('inventory_clerk_render_header')) {
-    function inventory_clerk_render_header(mysqli $conn): void
+    function inventory_clerk_render_header(mysqli $conn, bool $hideMaterialStockDetails = false): void
     {
         $userId = (int)($_SESSION['user_id'] ?? 0);
         $name = trim((string)($_SESSION['name'] ?? 'Inventory Clerk'));
@@ -64,7 +64,8 @@ if (!function_exists('inventory_clerk_render_header')) {
              ORDER BY a.asset_name ASC"
         );
 
-        $materialStockAlertResult = $conn->query(
+        if (!$hideMaterialStockDetails) {
+            $materialStockAlertResult = $conn->query(
             "SELECT m.id, m.material_name, m.unit, m.reorder_level,
                     GREATEST(m.physical_quantity - m.reserved_quantity, 0) AS available_quantity,
                     CASE
@@ -85,13 +86,13 @@ if (!function_exists('inventory_clerk_render_header')) {
                     )
                )
              ORDER BY FIELD(alert_status, 'out-of-stock', 'low-stock'), m.material_name ASC"
-        );
-        if ($materialStockAlertResult instanceof mysqli_result) {
-            $materialStockAlerts = $materialStockAlertResult->fetch_all(MYSQLI_ASSOC);
-            $materialStockAlertCount = count($materialStockAlerts);
-        }
+            );
+            if ($materialStockAlertResult instanceof mysqli_result) {
+                $materialStockAlerts = $materialStockAlertResult->fetch_all(MYSQLI_ASSOC);
+                $materialStockAlertCount = count($materialStockAlerts);
+            }
 
-        $materialShortageResult = $conn->query(
+            $materialShortageResult = $conn->query(
             "SELECT p.project_name, m.material_name, m.unit,
                     GREATEST(r.required_quantity - r.reserved_quantity - r.issued_quantity, 0) AS shortage_quantity
              FROM project_material_reservations r
@@ -100,10 +101,11 @@ if (!function_exists('inventory_clerk_render_header')) {
              WHERE r.status = 'active'
                AND r.required_quantity > r.reserved_quantity + r.issued_quantity
              ORDER BY p.created_at ASC, r.id ASC"
-        );
-        if ($materialShortageResult instanceof mysqli_result) {
-            $materialShortages = $materialShortageResult->fetch_all(MYSQLI_ASSOC);
-            $materialShortageCount = count($materialShortages);
+            );
+            if ($materialShortageResult instanceof mysqli_result) {
+                $materialShortages = $materialShortageResult->fetch_all(MYSQLI_ASSOC);
+                $materialShortageCount = count($materialShortages);
+            }
         }
 
         $formatAlertQuantity = static function (float $quantity): string {
@@ -234,7 +236,14 @@ if (!function_exists('inventory_clerk_render_header')) {
     }
 }
 
-function inventory_clerk_render_page(string $pageTitle, callable $renderContent, array $pageStyles = [], string $mainClass = '', array $pageScripts = []): void
+function inventory_clerk_render_page(
+    string $pageTitle,
+    callable $renderContent,
+    array $pageStyles = [],
+    string $mainClass = '',
+    array $pageScripts = [],
+    bool $hideMaterialStockDetails = false
+): void
 {
     global $conn;
     $mainClasses = trim('main-content ' . $mainClass);
@@ -266,7 +275,7 @@ function inventory_clerk_render_page(string $pageTitle, callable $renderContent,
     <div class="container">
         <?php include __DIR__ . '/../sidebar/inventory_clerk_sidebar.php'; ?>
         <div class="<?php echo htmlspecialchars($mainClasses, ENT_QUOTES, 'UTF-8'); ?>">
-            <?php inventory_clerk_render_header($conn); ?>
+            <?php inventory_clerk_render_header($conn, $hideMaterialStockDetails); ?>
             <main class="inventory-clerk-page-body">
                 <?php $renderContent(); ?>
             </main>

@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/asset_master_service.php';
 require_once __DIR__ . '/../../config/asset_category_suggestion_service.php';
 
-require_role('inventory_clerk');
+require_role('admin');
 header('Content-Type: application/json; charset=utf-8');
 
 function asset_category_suggestion_response(bool $success, ?string $category = null): void

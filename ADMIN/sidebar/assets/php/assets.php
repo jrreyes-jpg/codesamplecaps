@@ -3,12 +3,14 @@ require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/asset_stock.php';
 
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions as QRCodeOptions;
 
 require_role('admin');
 $csrfToken = auth_csrf_token('super_admin');
+$assetStockRequestToken = asset_stock_issue_once_token();
 
 $message = '';
 $error = '';
@@ -76,7 +78,12 @@ function generateQRDataUri(string $value): string {
         'imageBase64' => false,
     ];
 
-    return (new QRCode($options))->render($value);
+    try {
+        return (new QRCode($options))->render($value);
+    } catch (Throwable $exception) {
+        error_log('Asset QR preview render failed: ' . $exception->getMessage());
+        return '';
+    }
 }
 
 function buildAssetSerialNumber(int $assetId, string $assetType = ''): string {
@@ -591,6 +598,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'super_admin')) {
         $_SESSION['assets_error'] = 'Security check failed. Please try again.';
+        redirect_assets_page();
+    }
+
+    if (in_array($action, ['stock_in_asset', 'stock_out_asset'], true)) {
+        try {
+            if (!asset_stock_consume_once_token($_POST['stock_request_token'] ?? null)) {
+                throw new RuntimeException('This stock form was already sent. Please try again.');
+            }
+            $result = asset_stock_change(
+                $conn,
+                (int)($_POST['inventory_id'] ?? 0),
+                $action === 'stock_in_asset' ? 'stock_in' : 'stock_out',
+                $_POST['stock_quantity'] ?? '',
+                (string)($_POST['stock_remarks'] ?? ''),
+                (int)($_SESSION['user_id'] ?? 0)
+            );
+            $_SESSION['assets_message'] = ($action === 'stock_in_asset' ? 'Stock In' : 'Stock Out') . ' saved for ' . $result['asset_name'] . '.';
+        } catch (Throwable $exception) {
+            $_SESSION['assets_error'] = $exception->getMessage();
+        }
         redirect_assets_page();
     }
 
@@ -1143,6 +1170,7 @@ if (isset($_SESSION['assets_created_asset_id'])) {
     unset($_SESSION['assets_created_asset_id']);
 }
 
+$showAssetManagementUi = false;
 $view = trim((string)($_GET['view'] ?? ''));
 $isTrashView = $view === 'trash';
 $assets = [];
@@ -1150,6 +1178,7 @@ $createdAssetPreviewRows = [];
 $assetQrGalleryMap = [];
 $assetUnitMetrics = [
     'total_units' => 0,
+    'available_units' => 0,
     'in_use_units' => 0,
     'maintenance_units' => 0,
     'lost_units' => 0,
@@ -1157,6 +1186,7 @@ $assetUnitMetrics = [
 $assetMetricsResult = $conn->query(
     "SELECT
         COUNT(*) AS total_units,
+        SUM(CASE WHEN au.status = 'available' THEN 1 ELSE 0 END) AS available_units,
         SUM(CASE WHEN au.status = 'deployed' THEN 1 ELSE 0 END) AS in_use_units,
         SUM(CASE WHEN au.status = 'maintenance' THEN 1 ELSE 0 END) AS maintenance_units,
         SUM(CASE WHEN au.status = 'lost' THEN 1 ELSE 0 END) AS lost_units
@@ -1213,7 +1243,7 @@ if ($result) {
     }
 }
 
-if ($assets !== []) {
+if ($showAssetManagementUi && $assets !== []) {
     $assetIds = array_values(array_filter(array_map(static fn(array $asset): int => (int)($asset['id'] ?? 0), $assets)));
 
     if ($assetIds !== []) {
@@ -1318,7 +1348,21 @@ if ($createdAssetId > 0) {
 }
 ?>
 <?php
-$adminPageTitle = 'Assets & QR Codes - Admin';
+$assetFilterCounts = [
+    'all' => count($assets),
+    'available' => 0,
+    'in_use' => 0,
+    'maintenance' => 0,
+    'lost' => 0,
+];
+foreach ($assets as $assetRow) {
+    $statusKey = (string)($assetRow['asset_status'] ?? '');
+    if (isset($assetFilterCounts[$statusKey])) {
+        $assetFilterCounts[$statusKey]++;
+    }
+}
+
+$adminPageTitle = 'Inventory Report - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/assets/css/assets.css',
@@ -1332,25 +1376,106 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
     <main class="main-content assets-content">
+        <section class="asset-report-panel" aria-labelledby="inventoryReportTitle">
+            <div class="asset-report-heading">
+                <div>
+                    <h1 id="inventoryReportTitle">Inventory Report</h1>
+                    <p>Reusable equipment only. Total Qty means all non-archived unit records: available, in use, maintenance, and lost. Qty Issued means units currently deployed or in use.</p>
+                </div>
+            </div>
+            <div class="asset-report-note" role="note">
+                Physical-count storage and a matching stock cutoff are not available yet. Physical Count, Variance, and Remarks are not estimated.
+            </div>
+
+            <?php if (count($assets) > 0): ?>
+                <div class="asset-report-controls">
+                    <label class="sr-only" for="assetReportSearch">Search inventory report</label>
+                    <input id="assetReportSearch" type="search" placeholder="Search report..." data-asset-search>
+                </div>
+                <p class="asset-filter-label">Filter by asset status</p>
+                <div class="asset-filter-tabs" role="tablist" aria-label="Filter report by asset status">
+                    <?php foreach (['all' => 'All', 'available' => 'Available', 'in_use' => 'In Use', 'maintenance' => 'Maintenance', 'lost' => 'Lost'] as $filterKey => $filterLabel): ?>
+                        <button type="button" class="asset-filter-tab<?php echo $filterKey === 'all' ? ' is-active' : ''; ?>" data-filter="<?php echo htmlspecialchars($filterKey); ?>">
+                            <span><?php echo htmlspecialchars($filterLabel); ?></span>
+                            <strong><?php echo (int)($assetFilterCounts[$filterKey] ?? 0); ?></strong>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="asset-report-table-wrap">
+                <table class="asset-report-table">
+                    <thead>
+                        <tr><th>Item</th><th>Description</th><th>Total Qty</th><th>Qty Issued</th><th>Physical Count</th><th>Variance</th><th>Remarks</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($assets === []): ?>
+                            <tr><td colspan="7" class="table-empty-cell">No active asset records found.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($assets as $asset): ?>
+                                <?php
+                                $reportDescription = asset_category_label($asset['asset_category'] ?? null);
+                                $assetType = trim((string)($asset['asset_type'] ?? ''));
+                                if ($assetType !== '') {
+                                    $reportDescription .= ' | ' . $assetType;
+                                }
+                                $serialNumber = trim((string)($asset['serial_number'] ?? ''));
+                                if ($serialNumber !== '') {
+                                    $reportDescription .= ' | Code: ' . $serialNumber;
+                                }
+                                ?>
+                                <tr class="asset-table-row" data-asset-status="<?php echo htmlspecialchars((string)($asset['asset_status'] ?? 'available')); ?>" data-asset-search-text="<?php echo htmlspecialchars(strtolower((string)$asset['asset_name'] . ' ' . $reportDescription), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <td data-label="Item"><strong><?php echo htmlspecialchars((string)$asset['asset_name']); ?></strong></td>
+                                    <td data-label="Description"><?php echo htmlspecialchars($reportDescription); ?></td>
+                                    <td data-label="Total Qty"><?php echo (int)($asset['total_units'] ?? 0); ?></td>
+                                    <td data-label="Qty Issued"><?php echo (int)($asset['deployed_units'] ?? 0); ?></td>
+                                    <td data-label="Physical Count"><span class="asset-report-pending">Not yet counted</span></td>
+                                    <td data-label="Variance">&mdash;</td>
+                                    <td data-label="Remarks">&mdash;</td>
+                                </tr>
+                            <?php endforeach; ?>
+                            <tr class="asset-filter-empty" hidden><td colspan="7" class="table-empty-cell">No assets match the selected filter.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php if (count($assets) > 0): ?><nav class="asset-pagination" aria-label="Inventory report pages" data-asset-pagination></nav><?php endif; ?>
+        </section>
+
+        <?php if ($showAssetManagementUi): ?>
+        <nav class="resource-page-tabs" aria-label="Asset sections">
+            <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">Asset Management</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets">Asset Inventory</a>
+            <a href="/codesamplecaps/ADMIN/sidebar/assets/php/asset_stock_history.php">Stock History</a>
+        </nav>
+        <?php if (!$isTrashView): ?>
+            <div class="asset-primary-actions">
+                <button type="button" class="btn-primary" data-add-asset-open>+ Add Asset</button>
+            </div>
+        <?php endif; ?>
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-        <?php if (!$qrLibraryReady): ?><div class="alert alert-error">QR preview/print is temporarily unavailable because Composer packages are incomplete in `vendor/`.</div><?php endif; ?>
+        <?php if (!$qrLibraryReady): ?><div class="alert alert-error">QR preview is currently unavailable. Please try again later.</div><?php endif; ?>
 
-        <section class="metrics-grid">
+        <section class="metrics-grid asset-unit-metrics" aria-label="Active unit summary">
             <div class="metric-card">
-                <span>Tracked Units</span>
+                <span>Total Active Units</span>
                 <strong><?php echo (int)($assetUnitMetrics['total_units'] ?? 0); ?></strong>
             </div>
             <div class="metric-card">
-                <span>In Use</span>
+                <span>Available Units</span>
+                <strong><?php echo (int)($assetUnitMetrics['available_units'] ?? 0); ?></strong>
+            </div>
+            <div class="metric-card">
+                <span>In-Use Units</span>
                 <strong><?php echo (int)($assetUnitMetrics['in_use_units'] ?? 0); ?></strong>
             </div>
             <div class="metric-card">
-                <span>Maintenance</span>
+                <span>Maintenance Units</span>
                 <strong><?php echo (int)($assetUnitMetrics['maintenance_units'] ?? 0); ?></strong>
             </div>
             <div class="metric-card">
-                <span>Loss</span>
+                <span>Lost Units</span>
                 <strong><?php echo (int)($assetUnitMetrics['lost_units'] ?? 0); ?></strong>
             </div>
         </section>
@@ -1369,13 +1494,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
                 <div class="asset-preview-grid">
                     <?php if (!$qrLibraryReady): ?>
-                        <div class="empty-state-solid">QR preview unavailable until vendor packages are restored.</div>
+                        <div class="empty-state-solid">QR preview is currently unavailable. Please try again later.</div>
                     <?php else: ?>
                         <?php foreach ($createdAssetPreviewRows as $previewIndex => $previewRow): ?>
                             <?php $previewQrValue = (string)($previewRow['qr_code_value'] ?? $qrPreview); ?>
+                            <?php $previewQrSource = generateQRDataUri($previewQrValue); ?>
                             <article class="asset-preview-card">
                                 <span class="asset-preview-card__count">#<?php echo $previewIndex + 1; ?></span>
-                                <img class="asset-preview-image" src="<?php echo generateQRDataUri($previewQrValue); ?>" alt="Asset QR preview <?php echo $previewIndex + 1; ?>">
+                                <?php if ($previewQrSource !== ''): ?>
+                                    <img class="asset-preview-image" src="<?php echo htmlspecialchars($previewQrSource); ?>" alt="Asset QR preview <?php echo $previewIndex + 1; ?>">
+                                <?php else: ?>
+                                    <p class="asset-qr-feedback">QR preview is currently unavailable. Please try again later.</p>
+                                <?php endif; ?>
                                 <strong><?php echo htmlspecialchars((string)($previewRow['asset_name'] ?? 'Asset')); ?></strong>
                                 <small><?php echo htmlspecialchars((string)($previewRow['unit_code'] ?? ('Asset ID ' . $createdAssetId))); ?></small>
                             </article>
@@ -1386,8 +1516,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
         <?php if (!$isTrashView): ?>
-        <section class="form-section">
-            <h2 class="dashboard-section-title">Create New Asset</h2>
+        <div class="asset-create-modal" data-add-asset-modal hidden>
+        <div class="asset-create-modal__backdrop" data-add-asset-close></div>
+        <section class="form-section asset-create-modal__panel" role="dialog" aria-modal="true" aria-labelledby="addAssetModalTitle">
+            <div class="asset-create-modal__header"><h2 id="addAssetModalTitle" class="dashboard-section-title">Add Asset</h2><button type="button" class="asset-create-modal__close" aria-label="Close Add Asset" data-add-asset-close>&times;</button></div>
             <form method="POST" class="asset-form">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <input type="hidden" name="action" value="create_asset">
@@ -1442,6 +1574,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <button type="submit" class="btn-primary">Create Asset + Inventory + QR</button>
             </form>
         </section>
+        </div>
         <?php endif; ?>
 
         <?php
@@ -1473,6 +1606,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </div>
             <?php if (!$isTrashView && count($assets) > 0): ?>
+                <div class="asset-search-row"><label class="sr-only" for="assetSearch">Search assets</label><input id="assetSearch" type="search" placeholder="Search assets..." data-asset-search></div>
+            <?php endif; ?>
+            <?php if (!$isTrashView && count($assets) > 0): ?>
+                <p class="asset-filter-label">Filter by asset status</p>
                 <div class="asset-filter-tabs" role="tablist" aria-label="Filter existing assets by status">
                     <button type="button" class="asset-filter-tab is-active" data-filter="all">
                         <span>All</span>
@@ -1526,8 +1663,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 $maintenanceWidth = ($maintenanceUnits / $totalTrackedUnits) * 100;
                                 $lostWidth = ($lostUnits / $totalTrackedUnits) * 100;
                                 ?>
-                                <tr class="asset-table-row" data-asset-status="<?php echo htmlspecialchars((string)($asset['asset_status'] ?? 'available')); ?>">
-                                    <td data-label="ID"><?php echo htmlspecialchars($asset['id']); ?></td>
+                                <tr class="asset-table-row asset-summary-card" data-asset-status="<?php echo htmlspecialchars((string)($asset['asset_status'] ?? 'available')); ?>" data-asset-search-text="<?php echo htmlspecialchars(strtolower((string)$asset['asset_name'] . ' ' . (string)$asset['asset_category'] . ' ' . (string)$asset['serial_number']), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <td data-label="ID"><span class="asset-card-id">Asset #<?php echo htmlspecialchars($asset['id']); ?></span></td>
                                     <td data-label="Asset Information">
                                         <div class="asset-info-card">
                                             <div class="asset-info-card__header">
@@ -1586,14 +1723,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </div>
                                         </div>
                                     </td>
-                                    <td data-label="QR Code">
+                                    <td data-label="QR Code" class="asset-card-qr-message<?php echo (!$isTrashView && !empty($asset['qr_code_value']) && $qrLibraryReady) ? ' is-empty' : ''; ?>">
                                         <div class="asset-qr-actions">
                                             <?php if (!$isTrashView && !empty($asset['qr_code_value'])): ?>
-                                                <?php if ($qrLibraryReady): ?>
-                                                    <button type="button" class="btn-secondary" data-asset-qr-preview="<?php echo (int)$asset['id']; ?>">Preview</button>
-                                                    <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print</a>
-                                                <?php else: ?>
-                                                    <span class="asset-inline-note">QR unavailable</span>
+                                                <?php if (!$qrLibraryReady): ?>
+                                                    <span class="asset-inline-note asset-qr-feedback">QR preview is currently unavailable. Please try again later.</span>
                                                 <?php endif; ?>
                                             <?php elseif ($isTrashView): ?>
                                                 <span class="asset-inline-note">Printing disabled while in trash</span>
@@ -1602,7 +1736,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <?php endif; ?>
                                         </div>
                                     </td>
-                                    <td data-label="Created"><?php echo htmlspecialchars($asset['created_at']); ?></td>
+                                    <td data-label="Created"><span class="asset-card-field-label">Created On</span><time datetime="<?php echo htmlspecialchars((string)$asset['created_at']); ?>"><?php echo htmlspecialchars((string)$asset['created_at']); ?></time></td>
                                     <td data-label="Actions">
                                         <div class="asset-row-actions">
                                             <?php if ($isTrashView): ?>
@@ -1621,6 +1755,37 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <button type="submit" class="btn-danger">Delete Permanently</button>
                                                 </form>
                                             <?php else: ?>
+                                                <div class="asset-card-primary-actions" aria-label="Stock and history actions">
+                                                    <?php if (!empty($asset['qr_code_value']) && $qrLibraryReady): ?>
+                                                        <button type="button" class="btn-secondary" data-asset-qr-preview="<?php echo (int)$asset['id']; ?>">View Units / QR</button>
+                                                        <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print QR</a>
+                                                    <?php endif; ?>
+                                                    <button
+                                                        type="button"
+                                                        class="btn-primary"
+                                                        data-asset-stock-open
+                                                        data-stock-action="stock_in_asset"
+                                                        data-inventory-id="<?php echo (int)$asset['inventory_id']; ?>"
+                                                        data-asset-name="<?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-current-units="<?php echo (int)($asset['inventory_quantity'] ?? 0); ?>"
+                                                        data-available-units="<?php echo $availableUnits; ?>"
+                                                    >Stock In</button>
+                                                    <button
+                                                        type="button"
+                                                        class="btn-secondary"
+                                                        data-asset-stock-open
+                                                        data-stock-action="stock_out_asset"
+                                                        data-inventory-id="<?php echo (int)$asset['inventory_id']; ?>"
+                                                        data-asset-name="<?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-current-units="<?php echo (int)($asset['inventory_quantity'] ?? 0); ?>"
+                                                        data-available-units="<?php echo $availableUnits; ?>"
+                                                        <?php echo $availableUnits <= 0 ? 'disabled' : ''; ?>
+                                                    >Stock Out</button>
+                                                    <a class="asset-link-btn" href="/codesamplecaps/ADMIN/sidebar/assets/php/asset_stock_history.php">History</a>
+                                                </div>
+                                                <details class="asset-manage-details">
+                                                    <summary>Maintenance, Recovery &amp; Archive</summary>
+                                                    <div class="asset-manage-details__content">
                                                 <?php if ($availableUnits > 0): ?>
                                                     <form method="POST" class="asset-inline-form asset-action-form" data-confirm-lost="Mark the selected quantity as lost?">
                                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
@@ -1697,6 +1862,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <button type="submit" class="btn-danger">Delete</button>
                                                     </form>
                                                 </div>
+                                                    </div>
+                                                </details>
                                             <?php endif; ?>
                                         </div>
                                     </td>
@@ -1709,10 +1876,53 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </tbody>
                 </table>
             </div>
+            <?php if (!$isTrashView && count($assets) > 0): ?><nav class="asset-pagination" aria-label="Asset pages" data-asset-pagination></nav><?php endif; ?>
         </section>
+        <?php endif; ?>
     </main>
 </div>
 
+<?php if ($showAssetManagementUi && !$isTrashView): ?>
+<div class="asset-stock-modal" data-asset-stock-modal hidden role="dialog" aria-modal="true" aria-labelledby="assetStockModalTitle">
+    <div class="asset-stock-modal__backdrop" data-asset-stock-close></div>
+    <section class="asset-stock-modal__panel">
+        <div class="asset-stock-modal__header">
+            <div>
+                <h2 id="assetStockModalTitle" data-asset-stock-title>Asset Stock</h2>
+                <p data-asset-stock-name></p>
+            </div>
+            <button type="button" class="asset-stock-modal__close" aria-label="Close asset stock form" data-asset-stock-close>&times;</button>
+        </div>
+        <form method="POST" data-asset-stock-form>
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+            <input type="hidden" name="stock_request_token" value="<?php echo htmlspecialchars($assetStockRequestToken); ?>">
+            <input type="hidden" name="inventory_id" value="" data-asset-stock-inventory-id>
+            <input type="hidden" name="action" value="" data-asset-stock-action>
+            <div class="asset-stock-modal__summary">
+                <div><span>Current Stock</span><strong data-asset-stock-current>0</strong></div>
+                <div><span>Available Units</span><strong data-asset-stock-available>0</strong></div>
+            </div>
+            <div class="asset-stock-modal__fields">
+                <div class="form-group">
+                    <label for="assetStockQuantity">Quantity *</label>
+                    <input id="assetStockQuantity" type="number" name="stock_quantity" min="1" step="1" value="1" required data-asset-stock-quantity>
+                </div>
+                <div class="form-group">
+                    <label for="assetStockRemarks">Reference / Remarks *</label>
+                    <input id="assetStockRemarks" type="text" name="stock_remarks" maxlength="500" required placeholder="Enter reference or remarks">
+                </div>
+            </div>
+            <p class="asset-inline-note" data-asset-stock-note></p>
+            <div class="asset-stock-modal__actions">
+                <button type="button" class="btn-secondary" data-asset-stock-close>Cancel</button>
+                <button type="submit" class="btn-primary" data-asset-stock-submit>Confirm</button>
+            </div>
+        </form>
+    </section>
+</div>
+<?php endif; ?>
+
+<?php if ($showAssetManagementUi): ?>
 <div id="qrModal" class="modal-backdrop asset-qr-modal" hidden>
     <div class="asset-qr-modal__panel">
         <div class="asset-qr-modal__header">
@@ -1723,4 +1933,5 @@ include __DIR__ . '/../../../admin_sidebar.php';
     </div>
 </div>
 <template id="assetQrGalleryData"><?php echo json_encode($assetQrGalleryMap, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></template>
+<?php endif; ?>
 <?php include __DIR__ . '/../../../layout/footer.php'; ?>

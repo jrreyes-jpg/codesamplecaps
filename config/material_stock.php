@@ -1,5 +1,35 @@
 <?php
 
+if (!function_exists('material_stock_issue_once_token')) {
+    function material_stock_issue_once_token(string $scope): string
+    {
+        $scope = preg_replace('/[^a-z0-9_-]/i', '', $scope) ?: 'transaction';
+        $_SESSION['material_stock_once_tokens'][$scope] ??= [];
+        $now = time();
+        foreach ($_SESSION['material_stock_once_tokens'][$scope] as $token => $createdAt) {
+            if (($now - (int)$createdAt) > 1800) {
+                unset($_SESSION['material_stock_once_tokens'][$scope][$token]);
+            }
+        }
+        $token = bin2hex(random_bytes(24));
+        $_SESSION['material_stock_once_tokens'][$scope][$token] = $now;
+        return $token;
+    }
+}
+
+if (!function_exists('material_stock_consume_once_token')) {
+    function material_stock_consume_once_token(string $scope, mixed $token): bool
+    {
+        $scope = preg_replace('/[^a-z0-9_-]/i', '', $scope) ?: 'transaction';
+        $token = is_string($token) ? $token : '';
+        if ($token === '' || empty($_SESSION['material_stock_once_tokens'][$scope][$token])) {
+            return false;
+        }
+        unset($_SESSION['material_stock_once_tokens'][$scope][$token]);
+        return true;
+    }
+}
+
 // Materials lang ito. Hiwalay ang reusable Asset at QR flow.
 
 if (!function_exists('material_stock_is_ready')) {

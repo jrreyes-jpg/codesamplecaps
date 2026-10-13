@@ -9,6 +9,12 @@ require_once __DIR__ . '/../includes/page_shell.php';
 
 require_role('inventory_clerk');
 
+// Read-only asset reference lang para sa Inventory Clerk.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    http_response_code(403);
+    exit('Asset master and asset stock changes are limited to Admin.');
+}
+
 ensure_asset_unit_tracking_schema($conn);
 inventory_clerk_ensure_stock_movement_table($conn);
 $csrfToken = auth_csrf_token('inventory_clerk_add_asset');
@@ -338,8 +344,7 @@ inventory_clerk_render_page(
 
         <section class="form-panel">
             <div class="inventory-page__section-head">
-                <h1 class="section-title-inline">Inventory Items</h1>
-                <button type="button" class="btn-primary inventory-page__add-asset" data-add-asset-open>+ Add Asset</button>
+                <div><h1 class="section-title-inline">Asset Reference</h1><p>Read-only asset and QR unit information.</p></div>
             </div>
             <div class="dashboard-actions">
                 <a href="<?php echo htmlspecialchars($inventoryPageUrl(['filter' => 'all'])); ?>" class="action-chip inventory-filter inventory-filter--all<?php echo $inventoryFilter === 'all' ? ' active-chip' : ''; ?>">All</a>
@@ -432,19 +437,6 @@ inventory_clerk_render_page(
                                         data-maintenance-units="<?php echo $maintenanceUnitCount; ?>"
                                         data-asset-units="<?php echo htmlspecialchars($assetUnitsJson, ENT_QUOTES, 'UTF-8'); ?>"
                                     >View Units</button>
-                                    <button
-                                        type="button"
-                                        class="btn-primary"
-                                        data-asset-stock-in-open
-                                        data-inventory-id="<?php echo (int)$item['id']; ?>"
-                                        data-asset-name="<?php echo htmlspecialchars((string)$item['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-current-units="<?php echo $totalUnitCount; ?>"
-                                    >Stock In</button>
-                                    <?php if ($availableUnitCount > 0): ?>
-                                        <a href="/codesamplecaps/INVENTORY_CLERK/dashboards/stock_out.php" class="btn-secondary">Stock Out</a>
-                                    <?php else: ?>
-                                        <span class="btn-secondary asset-summary-card__action-disabled" aria-disabled="true" title="No available units to stock out.">Stock Out</span>
-                                    <?php endif; ?>
                                 </div>
                             </article>
                     <?php endforeach; ?>
@@ -518,6 +510,7 @@ inventory_clerk_render_page(
             </section>
         </div>
 
+        <?php if (false): // Asset changes are now Admin-only. ?>
         <div class="inventory-stock-in-modal" data-asset-stock-in-modal<?php echo $openStockInModal ? ' data-open="true"' : ''; ?><?php echo $openStockInModal ? '' : ' hidden'; ?> role="dialog" aria-modal="true" aria-labelledby="assetStockInTitle">
             <div class="inventory-stock-in-modal__backdrop" data-asset-stock-in-close></div>
             <section class="inventory-stock-in-modal__panel">
@@ -632,6 +625,7 @@ inventory_clerk_render_page(
                 </form>
             </section>
         </div>
+        <?php endif; ?>
         </div>
 <?php
     },

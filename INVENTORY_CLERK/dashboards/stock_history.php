@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../includes/stock_helpers.php';
 require_once __DIR__ . '/../includes/page_shell.php';
 
+header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_history.php');
+exit;
+
 inventory_clerk_ensure_stock_movement_table($conn);
 
 $movements = [];

@@ -3,8 +3,36 @@ require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/material_stock.php';
+require_once __DIR__ . '/../../../../config/material_detail_suggestion_service.php';
 
 require_role('admin');
+
+$inventoryView = (string)($_GET['view'] ?? 'materials');
+if (!isset($_GET['view']) && isset($_GET['status'])) {
+    $legacyStatus = trim((string)$_GET['status']);
+    $target = '/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets';
+    if ($legacyStatus !== '') {
+        $target .= '&status=' . urlencode($legacyStatus);
+    }
+    header('Location: ' . $target);
+    exit;
+}
+if (!isset($_GET['view']) && $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action'] ?? '', ['create_inventory_item', 'update_inventory_item'], true)) {
+    $inventoryView = 'assets';
+}
+if ($inventoryView === '' || $inventoryView === 'materials') {
+    require __DIR__ . '/material_master.php';
+    exit;
+}
+if ($inventoryView === 'history') {
+    require __DIR__ . '/material_history.php';
+    exit;
+}
+if ($inventoryView !== 'assets') {
+    header('Location: /codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php');
+    exit;
+}
 $csrfToken = auth_csrf_token('super_admin');
 
 function determine_inventory_status_for_page(int $quantity, ?int $minStock): string {
@@ -20,7 +48,7 @@ function determine_inventory_status_for_page(int $quantity, ?int $minStock): str
 }
 
 function redirect_inventory_page(): void {
-    header('Location: /codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets');
     exit();
 }
 
@@ -149,7 +177,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'update_inventory_item') {
         $inventoryId = (int)($_POST['inventory_id'] ?? 0);
-        $quantity = max(0, (int)($_POST['quantity'] ?? 0));
         $minStockRaw = trim((string)($_POST['min_stock'] ?? ''));
         $minStock = $minStockRaw === '' ? null : max(0, (int)$minStockRaw);
 
@@ -159,6 +186,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $beforeUpdate = getInventoryItemSnapshot($conn, $inventoryId);
+        if (!$beforeUpdate) {
+            set_inventory_flash('error', 'Inventory item was not found.');
+            redirect_inventory_page();
+        }
+        $quantity = max(0, (int)$beforeUpdate['quantity']);
         $status = determine_inventory_status_for_page($quantity, $minStock);
         $updateStmt = $conn->prepare(
             'UPDATE inventory
@@ -429,6 +461,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
     <main class="main-content">
         <div class="page-stack">
+            <nav class="resource-page-tabs" aria-label="Asset sections">
+                <a href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">Asset Management</a>
+                <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets">Asset Inventory</a>
+                <a href="/codesamplecaps/ADMIN/sidebar/assets/php/asset_stock_history.php">Stock History</a>
+            </nav>
             <section class="metrics-grid">
                 <div class="metric-card">
                     <span>Inventory Items</span>
@@ -506,11 +543,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <section class="page-stack">
                 <h2 class="section-title-inline">Inventory Items</h2>
                 <div class="dashboard-actions">
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=low-stock" class="action-chip<?php echo $statusFilter === 'low-stock' ? ' active-chip' : ''; ?>">Low Stock</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=out-of-stock" class="action-chip<?php echo $statusFilter === 'out-of-stock' ? ' active-chip' : ''; ?>">Out of Stock</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?status=available" class="action-chip<?php echo $statusFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets" class="action-chip<?php echo $statusFilter === '' ? ' active-chip' : ''; ?>">All</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets&amp;status=attention" class="action-chip<?php echo $statusFilter === 'attention' ? ' active-chip' : ''; ?>">Attention</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets&amp;status=low-stock" class="action-chip<?php echo $statusFilter === 'low-stock' ? ' active-chip' : ''; ?>">Low Stock</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets&amp;status=out-of-stock" class="action-chip<?php echo $statusFilter === 'out-of-stock' ? ' active-chip' : ''; ?>">Out of Stock</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets&amp;status=available" class="action-chip<?php echo $statusFilter === 'available' ? ' active-chip' : ''; ?>">Available</a>
                 </div>
 
                 <?php if (empty($inventoryItems)): ?>
@@ -591,13 +628,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <input type="hidden" name="action" value="update_inventory_item">
                                     <input type="hidden" name="inventory_id" value="<?php echo (int)$item['id']; ?>">
 
-                                    <h4 class="subheading">Update Stock</h4>
+                                    <h4 class="subheading">Update Alert Level</h4>
                                     <div class="form-grid">
-                                        <div class="input-group">
-                                            <label for="quantity-<?php echo (int)$item['id']; ?>">Quantity</label>
-                                            <input type="number" id="quantity-<?php echo (int)$item['id']; ?>" name="quantity" min="0" step="1" value="<?php echo (int)$item['quantity']; ?>" required>
-                                        </div>
-
                                         <div class="input-group">
                                             <label for="min_stock-<?php echo (int)$item['id']; ?>">Min Stock</label>
                                             <input type="number" id="min_stock-<?php echo (int)$item['id']; ?>" name="min_stock" min="0" step="1" value="<?php echo $item['min_stock'] !== null ? (int)$item['min_stock'] : ''; ?>">
@@ -605,7 +637,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     </div>
 
                                     <div class="form-actions">
-                                        <button type="submit" class="btn-primary">Save Stock</button>
+                                        <button type="submit" class="btn-primary">Save Alert Level</button>
                                     </div>
                                 </form>
                             </article>

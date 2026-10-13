@@ -99,7 +99,13 @@ if (!function_exists('shared_sidebar_has_active_children')) {
     <span></span>
 </button>
 
-<nav class="sidebar sidebar--<?php echo htmlspecialchars($sharedSidebarRoleKey, ENT_QUOTES, 'UTF-8'); ?>" id="sidebar" data-shared-sidebar>
+<nav
+    class="sidebar sidebar--<?php echo htmlspecialchars($sharedSidebarRoleKey, ENT_QUOTES, 'UTF-8'); ?>"
+    id="sidebar"
+    data-shared-sidebar
+    data-sidebar-role="<?php echo htmlspecialchars($sharedSidebarRoleKey, ENT_QUOTES, 'UTF-8'); ?>"
+    data-sidebar-user-id="<?php echo (int)($_SESSION['user_id'] ?? 0); ?>"
+>
     <div class="brand-block">
         <button class="sidebar-toggle" type="button" aria-label="Collapse menu" aria-expanded="true" data-sidebar-toggle>
             <span class="sidebar-toggle-icon" aria-hidden="true">
@@ -124,7 +130,10 @@ if (!function_exists('shared_sidebar_has_active_children')) {
                     : shared_sidebar_is_active($item, $sharedSidebarPath, $sharedSidebarCurrent);
             ?>
             <?php if ($hasChildren): ?>
-                <li class="nav-menu-group<?php echo $hasActiveChild ? ' is-open has-active-child' : ''; ?><?php echo $hasCollapsedContextChildren ? ' nav-menu-group--collapsed-context' : ''; ?>">
+                <li
+                    class="nav-menu-group<?php echo $hasActiveChild ? ' is-open has-active-child' : ''; ?><?php echo $hasCollapsedContextChildren ? ' nav-menu-group--collapsed-context' : ''; ?>"
+                    data-sidebar-group-key="<?php echo htmlspecialchars((string)($item['module'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                >
                     <button
                         class="menu-link menu-link--button menu-link--group-toggle<?php echo $hasActiveChild ? ' active-link' : ''; ?>"
                         type="button"

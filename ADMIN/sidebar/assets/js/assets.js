@@ -87,25 +87,46 @@
         var filterTabs = Array.from(document.querySelectorAll('.asset-filter-tab'));
         var assetRows = Array.from(document.querySelectorAll('.asset-table-row'));
         var filterEmptyRow = document.querySelector('.asset-filter-empty');
+        var searchInput = document.querySelector('[data-asset-search]');
+        var pagination = document.querySelector('[data-asset-pagination]');
+        var activeFilter = 'all';
+        var activePage = 1;
+        var pageSize = 8;
 
-        if (filterTabs.length === 0 || assetRows.length === 0) {
+        if (assetRows.length === 0) {
             return;
         }
 
-        var applyAssetFilter = function (filterValue) {
-            var visibleRows = 0;
+        var applyAssetFilter = function () {
+            var query = String(searchInput?.value || '').trim().toLowerCase();
+            var matchingRows = assetRows.filter(function (row) {
+                var rowStatus = row.getAttribute('data-asset-status') || 'available';
+                var searchText = row.getAttribute('data-asset-search-text') || '';
+                return (activeFilter === 'all' || rowStatus === activeFilter) && (query === '' || searchText.indexOf(query) !== -1);
+            });
+            var totalPages = Math.max(1, Math.ceil(matchingRows.length / pageSize));
+            activePage = Math.min(activePage, totalPages);
 
             assetRows.forEach(function (row) {
-                var rowStatus = row.getAttribute('data-asset-status') || 'available';
-                var isVisible = filterValue === 'all' || rowStatus === filterValue;
-                row.hidden = !isVisible;
-                if (isVisible) {
-                    visibleRows += 1;
-                }
+                row.hidden = true;
             });
+            matchingRows.slice((activePage - 1) * pageSize, activePage * pageSize).forEach(function (row) { row.hidden = false; });
 
             if (filterEmptyRow) {
-                filterEmptyRow.hidden = visibleRows !== 0;
+                filterEmptyRow.hidden = matchingRows.length !== 0;
+            }
+            if (pagination) {
+                pagination.innerHTML = '';
+                if (totalPages > 1) {
+                    for (var page = 1; page <= totalPages; page += 1) {
+                        var button = document.createElement('button');
+                        button.type = 'button';
+                        button.textContent = String(page);
+                        button.className = 'asset-pagination__button' + (page === activePage ? ' is-active' : '');
+                        button.dataset.page = String(page);
+                        pagination.appendChild(button);
+                    }
+                }
             }
         };
 
@@ -115,8 +136,113 @@
                     button.classList.remove('is-active');
                 });
                 tab.classList.add('is-active');
-                applyAssetFilter(tab.getAttribute('data-filter') || 'all');
+                activeFilter = tab.getAttribute('data-filter') || 'all';
+                activePage = 1;
+                applyAssetFilter();
             });
+        });
+
+        searchInput?.addEventListener('input', function () {
+            activePage = 1;
+            applyAssetFilter();
+        });
+        pagination?.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-page]');
+            if (!button) return;
+            activePage = Number(button.dataset.page || 1);
+            applyAssetFilter();
+        });
+        applyAssetFilter();
+    };
+
+    var setupAddAssetModal = function () {
+        var modal = document.querySelector('[data-add-asset-modal]');
+        var opener = document.querySelector('[data-add-asset-open]');
+        if (!modal || !opener) return;
+        var previousFocus = null;
+        var closeModal = function () {
+            modal.hidden = true;
+            document.body.classList.remove('asset-modal-open');
+            previousFocus?.focus();
+        };
+        opener.addEventListener('click', function () {
+            previousFocus = document.activeElement;
+            modal.hidden = false;
+            document.body.classList.add('asset-modal-open');
+            modal.querySelector('input, select, button')?.focus();
+        });
+        modal.querySelectorAll('[data-add-asset-close]').forEach(function (button) { button.addEventListener('click', closeModal); });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) closeModal();
+        });
+        modal.querySelector('.asset-create-modal__panel')?.addEventListener('click', function (event) { event.stopPropagation(); });
+    };
+
+    var setupAssetStockModal = function () {
+        var modal = document.querySelector('[data-asset-stock-modal]');
+        var form = modal?.querySelector('[data-asset-stock-form]');
+        if (!modal || !form) return;
+
+        var title = modal.querySelector('[data-asset-stock-title]');
+        var assetName = modal.querySelector('[data-asset-stock-name]');
+        var actionInput = modal.querySelector('[data-asset-stock-action]');
+        var inventoryInput = modal.querySelector('[data-asset-stock-inventory-id]');
+        var quantityInput = modal.querySelector('[data-asset-stock-quantity]');
+        var currentUnits = modal.querySelector('[data-asset-stock-current]');
+        var availableUnits = modal.querySelector('[data-asset-stock-available]');
+        var note = modal.querySelector('[data-asset-stock-note]');
+        var submitButton = modal.querySelector('[data-asset-stock-submit]');
+        var closeControls = Array.from(modal.querySelectorAll('[data-asset-stock-close]'));
+        var previousFocus = null;
+        var submitting = false;
+
+        var closeModal = function () {
+            if (submitting) return;
+            modal.hidden = true;
+            document.body.classList.remove('asset-modal-open');
+            previousFocus?.focus();
+        };
+
+        document.querySelectorAll('[data-asset-stock-open]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var action = button.getAttribute('data-stock-action') || '';
+                var isStockOut = action === 'stock_out_asset';
+                previousFocus = button;
+                actionInput.value = action;
+                inventoryInput.value = button.getAttribute('data-inventory-id') || '';
+                quantityInput.value = '1';
+                quantityInput.max = isStockOut ? (button.getAttribute('data-available-units') || '1') : '';
+                title.textContent = isStockOut ? 'Stock Out Asset' : 'Stock In Asset';
+                assetName.textContent = button.getAttribute('data-asset-name') || 'Asset';
+                currentUnits.textContent = button.getAttribute('data-current-units') || '0';
+                availableUnits.textContent = button.getAttribute('data-available-units') || '0';
+                note.textContent = isStockOut
+                    ? 'Stock Out uses available units only. In-use, maintenance, and lost units stay protected.'
+                    : 'New physical unit records and QR values will use the existing asset rules.';
+                submitButton.textContent = isStockOut ? 'Confirm Stock Out' : 'Confirm Stock In';
+                submitButton.classList.toggle('btn-danger', isStockOut);
+                submitButton.classList.toggle('btn-primary', !isStockOut);
+                modal.hidden = false;
+                document.body.classList.add('asset-modal-open');
+                quantityInput.focus();
+            });
+        });
+
+        closeControls.forEach(function (control) { control.addEventListener('click', closeModal); });
+        modal.querySelector('.asset-stock-modal__panel')?.addEventListener('click', function (event) { event.stopPropagation(); });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) closeModal();
+        });
+        form.addEventListener('submit', function (event) {
+            if (submitting) {
+                event.preventDefault();
+                return;
+            }
+            submitting = true;
+            modal.setAttribute('aria-busy', 'true');
+            closeControls.forEach(function (control) { control.disabled = true; });
+            submitButton.disabled = true;
+            submitButton.textContent = actionInput.value === 'stock_out_asset' ? 'Saving Stock Out...' : 'Saving Stock In...';
         });
     };
 
@@ -201,23 +327,25 @@
             var galleryItems = qrGalleryMap[String(assetId)] || qrGalleryMap[assetId] || [];
 
             if (galleryItems.length === 0) {
-                return;
+                modalContent.innerHTML = '<p class="asset-qr-feedback">QR preview is currently unavailable. Please try again later.</p>';
+            } else {
+                modalContent.innerHTML = galleryItems.map(function (item, index) {
+                    var safeLabel = escapeHtml(item.label || 'Asset QR');
+                    var safeScanValue = escapeHtml(item.scan_value || '');
+                    var safeSrc = String(item.src || '').replace(/"/g, '&quot;');
+
+                    return [
+                        '<article class="asset-preview-card">',
+                        '<span class="asset-preview-card__count">#' + (index + 1) + '</span>',
+                        safeSrc
+                            ? '<img class="asset-preview-image" src="' + safeSrc + '" alt="' + safeLabel + '">'
+                            : '<p class="asset-qr-feedback">QR preview is currently unavailable. Please try again later.</p>',
+                        '<strong>' + safeLabel + '</strong>',
+                        '<small class="asset-qr-modal__scan">' + safeScanValue + '</small>',
+                        '</article>',
+                    ].join('');
+                }).join('');
             }
-
-            modalContent.innerHTML = galleryItems.map(function (item, index) {
-                var safeLabel = escapeHtml(item.label || 'Asset QR');
-                var safeScanValue = escapeHtml(item.scan_value || '');
-                var safeSrc = String(item.src || '').replace(/"/g, '&quot;');
-
-                return [
-                    '<article class="asset-preview-card">',
-                    '<span class="asset-preview-card__count">#' + (index + 1) + '</span>',
-                    '<img class="asset-preview-image" src="' + safeSrc + '" alt="' + safeLabel + '">',
-                    '<strong>' + safeLabel + '</strong>',
-                    '<small class="asset-qr-modal__scan">' + safeScanValue + '</small>',
-                    '</article>',
-                ].join('');
-            }).join('');
 
             modal.hidden = false;
             modal.classList.add('is-open');
@@ -249,6 +377,8 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         setupStockDefaults();
+        setupAddAssetModal();
+        setupAssetStockModal();
         setupAssetFilters();
         setupAssetActions();
         setupDistributionBars();

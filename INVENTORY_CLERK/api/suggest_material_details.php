@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/material_detail_suggestion_service.php';
 
-require_role('inventory_clerk');
+require_role('admin');
 header('Content-Type: application/json; charset=utf-8');
 
 function material_detail_suggestion_response(bool $success, array $data = []): void

@@ -1,6 +1,13 @@
 <?php
 require_once __DIR__ . '/../includes/stock_helpers.php';
 require_once __DIR__ . '/../includes/asset_stock_in_service.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    http_response_code(403);
+    exit('Asset Stock In is limited to Admin.');
+}
+header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php');
+exit;
 require_once __DIR__ . '/../includes/page_shell.php';
 
 $csrfToken = auth_csrf_token('inventory_clerk_stock_in');

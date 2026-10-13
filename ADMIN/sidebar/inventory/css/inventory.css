@@ -1,0 +1,42 @@
+.material-master-form-grid {
+    align-items: start;
+}
+
+.material-master-description {
+    grid-column: 1 / -1;
+}
+
+.material-master-heading,
+.material-master-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.material-master-table td:first-child small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+}
+
+.material-master-actions {
+    justify-content: flex-start;
+}
+
+.material-master-actions form {
+    margin: 0;
+}
+
+@media (max-width: 700px) {
+    .material-master-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .material-master-actions button,
+    .material-master-actions form {
+        width: 100%;
+    }
+}

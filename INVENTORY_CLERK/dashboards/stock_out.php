@@ -2,6 +2,13 @@
 require_once __DIR__ . '/../includes/stock_helpers.php';
 require_once __DIR__ . '/../includes/page_shell.php';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    http_response_code(403);
+    exit('Asset Stock Out is not available to Inventory Clerk.');
+}
+header('Location: /codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php');
+exit;
+
 $csrfToken = auth_csrf_token('inventory_clerk_stock_out');
 inventory_clerk_ensure_stock_movement_table($conn);
 ensure_asset_unit_tracking_schema($conn);

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/page_shell.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 
 $csrfToken = auth_csrf_token('inventory_clerk_material_stock_in');
+$stockInRequestToken = material_stock_issue_once_token('material_stock_in');
 $flashKey = 'inventory_clerk_material_stock_flash';
 
 function inventory_clerk_material_stock_in_display_quantity(float $quantity, string $unit): string
@@ -27,6 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'inventory_clerk_material_stock_in')) {
             throw new RuntimeException('Security check failed. Please try again.');
+        }
+        if (!material_stock_consume_once_token('material_stock_in', $_POST['stock_request_token'] ?? null)) {
+            throw new RuntimeException('This Stock In form was already sent. Please try again.');
+        }
+        if ($submittedRemarks === '') {
+            throw new RuntimeException('Receipt reference or remarks is required.');
         }
         $savedStockIn = material_stock_add_stock_in($conn, $submittedMaterialId, $submittedQuantity, $submittedRemarks ?: null, (int)$_SESSION['user_id']);
         $_SESSION[$flashKey] = [
@@ -78,12 +85,13 @@ if (!$selectedMaterialIsActive) {
     $flash = ['type' => 'error', 'title' => 'Cannot add stock', 'message' => 'Selected material is unavailable for Stock In.'];
 }
 ?>
-<?php inventory_clerk_render_page('Material Stock In', function () use ($flash, $csrfToken, $materials, $selectedMaterialId, $formValues): void { ?>
+<?php inventory_clerk_render_page('Material Stock In', function () use ($flash, $csrfToken, $stockInRequestToken, $materials, $selectedMaterialId, $formValues): void { ?>
 <div class="page-stack material-stock-in-page">
     <section class="form-panel">
         <h1 class="section-title-inline">Material Stock In</h1>
         <form method="POST" class="material-stock-in-form" data-material-stock-in-form novalidate>
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+            <input type="hidden" name="stock_request_token" value="<?php echo htmlspecialchars($stockInRequestToken); ?>">
             <div class="form-grid">
                 <div class="input-group">
                     <label for="material_id">Material</label>
@@ -101,8 +109,8 @@ if (!$selectedMaterialIsActive) {
                     <span class="material-stock-in-field-error" data-material-stock-in-error aria-live="polite"><?php echo !empty($flash['quantity_error']) ? htmlspecialchars((string)$flash['message']) : ''; ?></span>
                 </div>
                 <div class="input-group">
-                    <label for="remarks">Remarks (Optional)</label>
-                    <input id="remarks" name="remarks" maxlength="2000" value="<?php echo htmlspecialchars((string)$formValues['remarks']); ?>">
+                    <label for="remarks">Receipt Reference / Remarks</label>
+                    <input id="remarks" name="remarks" maxlength="2000" required value="<?php echo htmlspecialchars((string)$formValues['remarks']); ?>" placeholder="Delivery receipt, supplier, or note">
                     <span class="material-stock-in-field-error" aria-hidden="true"></span>
                 </div>
             </div>

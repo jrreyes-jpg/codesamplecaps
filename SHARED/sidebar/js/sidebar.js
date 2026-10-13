@@ -9,7 +9,44 @@
     var scrollStorageKey = 'edge.operations.sidebar.scroll';
     var pendingActiveKey = 'edge.operations.sidebar.pendingActive';
     var legacyKeys = ['engineer.sidebar.shrink', 'edgeSidebarCollapsed'];
+    var persistentAdminGroups = ['client_requests', 'resources'];
     var scrollSaveTimer = null;
+
+    var isPersistentAdminGroup = function (sidebar, group) {
+        return sidebar?.getAttribute('data-sidebar-role') === 'admin'
+            && persistentAdminGroups.indexOf(group?.getAttribute('data-sidebar-group-key') || '') !== -1;
+    };
+
+    var adminGroupStorageKey = function (sidebar, group) {
+        var userId = sidebar?.getAttribute('data-sidebar-user-id') || '0';
+        var groupKey = group?.getAttribute('data-sidebar-group-key') || '';
+        return 'edge.sidebar.groups.admin.' + userId + '.' + groupKey;
+    };
+
+    var readAdminGroupState = function (sidebar, group) {
+        if (!isPersistentAdminGroup(sidebar, group)) {
+            return null;
+        }
+
+        try {
+            var saved = window.localStorage.getItem(adminGroupStorageKey(sidebar, group));
+            return saved === null ? null : saved === '1';
+        } catch (error) {
+            return null;
+        }
+    };
+
+    var persistAdminGroupState = function (sidebar, group, isOpen) {
+        if (!isPersistentAdminGroup(sidebar, group)) {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(adminGroupStorageKey(sidebar, group), isOpen ? '1' : '0');
+        } catch (error) {
+            // Gagana pa rin ang toggle kahit blocked ang browser storage.
+        }
+    };
 
     var readStoredState = function () {
         try {
@@ -256,7 +293,9 @@
         sidebar.querySelectorAll('.nav-menu-group').forEach(function (group) {
             var hasActiveChild = !isSidebarCollapsedDesktop(sidebar)
                 && Boolean(group.querySelector('.menu-submenu .menu-link.active-link'));
-            setGroupOpenState(group, hasActiveChild);
+            var savedState = readAdminGroupState(sidebar, group);
+            var shouldOpen = savedState === null ? hasActiveChild : savedState;
+            setGroupOpenState(group, !isSidebarCollapsedDesktop(sidebar) && shouldOpen);
         });
     };
 
@@ -305,6 +344,7 @@
             mobileToggle.classList.toggle('active', Boolean(isOpen));
             mobileToggle.setAttribute('aria-expanded', String(Boolean(isOpen)));
             if (isOpen) {
+                initializeSidebarGroups(sidebar);
                 restoreAfterLayout();
             }
         });
@@ -366,15 +406,17 @@
                     }
                     setGroupOpenState(group, shouldOpenCollapsed);
                     group.classList.toggle('is-flyout-open', shouldOpenCollapsed);
+                    persistAdminGroupState(sidebar, group, shouldOpenCollapsed);
                     return;
                 }
 
                 var shouldOpen = toggle.getAttribute('aria-expanded') !== 'true';
                 group.classList.remove('is-flyout-open');
-                if (shouldOpen) {
+                if (shouldOpen && !isPersistentAdminGroup(sidebar, group)) {
                     closeOtherGroups(sidebar, group);
                 }
                 setGroupOpenState(group, shouldOpen);
+                persistAdminGroupState(sidebar, group, shouldOpen);
                 saveSidebarScroll(sidebar);
                 keepActiveItemVisible(sidebar);
             });

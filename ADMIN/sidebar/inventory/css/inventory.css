@@ -1,3 +1,19 @@
+.inventory-main-content {
+    padding-top: 112px;
+}
+
+.inventory-page-stack {
+    display: grid;
+    min-width: 0;
+    gap: 24px;
+    align-items: start;
+}
+
+.inventory-page-tabs {
+    justify-content: center;
+    margin: 0;
+}
+
 .material-master-form-grid {
     align-items: start;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -38,6 +54,11 @@
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 16px;
+}
+
+.inventory-report-heading .section-title-inline,
+.material-history-panel .section-title-inline {
+    margin: 0;
 }
 
 .inventory-report-heading p {
@@ -342,9 +363,58 @@ body.material-create-modal-open {
     overflow: visible;
 }
 
+.material-history-page .material-history-panel {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 24px;
+    overflow: visible;
+}
+
+.material-history-panel .material-master-heading {
+    margin-bottom: 18px;
+}
+
 .material-history-filter {
+    grid-template-columns: minmax(220px, 460px) auto;
     align-items: end;
-    margin: 16px 0;
+    gap: 16px;
+    margin: 0 0 20px;
+}
+
+.material-history-filter .input-group {
+    min-width: 0;
+}
+
+.material-history-filter label {
+    display: block;
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.material-history-filter select {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 38px 9px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    background-color: #fff;
+    color: #0f172a;
+    font: inherit;
+}
+
+.material-history-filter select:focus {
+    border-color: #15803d;
+    outline: 3px solid rgba(21, 128, 61, .15);
+}
+
+.material-history-filter .form-actions {
+    margin: 0;
+}
+
+.material-history-filter .btn-secondary {
+    min-height: 44px;
 }
 
 .material-history-page .table-responsive {
@@ -353,9 +423,52 @@ body.material-create-modal-open {
     -webkit-overflow-scrolling: touch;
 }
 
+.material-history-table {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: collapse;
+}
+
+.material-history-table th,
+.material-history-table td {
+    padding: 12px 14px;
+    vertical-align: top;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.material-history-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.material-history-table td {
+    border-top: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: .82rem;
+    line-height: 1.45;
+}
+
+.material-history-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+@media (max-width: 900px) and (min-width: 769px) {
+    .inventory-main-content {
+        padding-top: 118px;
+    }
+}
+
 @media (max-width: 768px) {
-    .material-master-table {
+    .material-master-table,
+    .material-history-table {
         min-width: 0;
+    }
+
+    .inventory-page-stack {
+        gap: 18px;
     }
 }
 
@@ -436,6 +549,11 @@ body.material-create-modal-open {
         flex-direction: column;
     }
 
+    .material-master-heading .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+
     .material-master-actions button,
     .material-master-actions form {
         width: 100%;
@@ -457,6 +575,21 @@ body.material-create-modal-open {
 
     .material-master-page .inventory-report-panel {
         padding: 16px;
+    }
+
+    .material-history-page .material-history-panel {
+        padding: 16px;
+    }
+
+    .material-history-filter {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .material-history-filter .form-actions,
+    .material-history-filter .btn-secondary {
+        width: 100%;
     }
 
     .material-master-table td {

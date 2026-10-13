@@ -155,9 +155,9 @@ $adminJsFiles = [
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content">
-    <div class="page-stack material-master-page">
-        <nav class="resource-page-tabs" aria-label="Inventory sections">
+<main class="main-content inventory-main-content">
+    <div class="page-stack inventory-page-stack material-master-page">
+        <nav class="resource-page-tabs inventory-page-tabs" aria-label="Inventory sections">
             <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
             <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
         </nav>

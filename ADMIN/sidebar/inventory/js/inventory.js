@@ -146,18 +146,149 @@
     const closeButtons = Array.from(modal.querySelectorAll('[data-material-modal-close]'));
     const form = modal.querySelector('[data-material-create-form]');
     const submitButton = modal.querySelector('[data-material-submit]');
+    const generalError = modal.querySelector('[data-material-general-error]');
+    const fields = form ? {
+        material_name: form.elements.namedItem('material_name'),
+        category: form.elements.namedItem('category'),
+        unit: form.elements.namedItem('unit'),
+        reorder_level: form.elements.namedItem('reorder_level'),
+        description: form.elements.namedItem('description')
+    } : {};
+    const fieldErrors = {};
+    modal.querySelectorAll('[data-material-field-error]').forEach(function (error) {
+        fieldErrors[error.dataset.materialFieldError] = error;
+    });
     let returnFocus = openButton;
     let isSubmitting = false;
 
     const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
-    function openModal() {
+    function fieldDescriptionIds(name, includeError) {
+        const ids = [];
+        if (name === 'reorder_level') ids.push('materialReorderHint');
+        if (includeError && fieldErrors[name]) ids.push(fieldErrors[name].id);
+        return ids.join(' ');
+    }
+
+    function setFieldError(name, message) {
+        const field = fields[name];
+        const error = fieldErrors[name];
+        if (!field || !error) return;
+        const hasError = message !== '';
+        error.textContent = message;
+        error.hidden = !hasError;
+        if (hasError) {
+            field.setAttribute('aria-invalid', 'true');
+        } else {
+            field.removeAttribute('aria-invalid');
+        }
+        const describedBy = fieldDescriptionIds(name, hasError);
+        if (describedBy) {
+            field.setAttribute('aria-describedby', describedBy);
+        } else {
+            field.removeAttribute('aria-describedby');
+        }
+    }
+
+    function selectedUnitNeedsWholeNumber() {
+        const option = fields.unit && fields.unit.selectedOptions ? fields.unit.selectedOptions[0] : null;
+        return Boolean(option && option.dataset.wholeNumber === 'true');
+    }
+
+    function validateField(name) {
+        const field = fields[name];
+        if (!field) return true;
+        const value = field.value.trim();
+        let message = '';
+
+        if (name === 'material_name') {
+            const normalized = value.replace(/\s+/gu, ' ');
+            if (normalized === '') {
+                message = 'Enter a material name.';
+            } else if (Array.from(normalized).length > 180) {
+                message = 'Material name must be 180 characters or less.';
+            } else if (!/[\p{L}\p{N}]/u.test(normalized) || /\p{C}/u.test(normalized)) {
+                message = 'Enter a valid material name.';
+            }
+        } else if (name === 'category') {
+            const valid = Array.from(field.options).some(function (option) {
+                return !option.disabled && option.value === value;
+            });
+            if (!valid) message = 'Select a category.';
+        } else if (name === 'unit') {
+            const valid = Array.from(field.options).some(function (option) {
+                return !option.disabled && option.value === value;
+            });
+            if (!valid) message = 'Select a unit.';
+        } else if (name === 'reorder_level') {
+            if (value === '' || (Number.isFinite(Number(value)) && Number(value) < 0)) {
+                message = 'Enter zero or a positive number.';
+            } else if (!/^\d+(?:\.\d{1,2})?$/.test(value)) {
+                message = 'Enter zero or a positive number with up to 2 decimal places.';
+            } else {
+                const number = Number(value);
+                if (!Number.isFinite(number) || number < 0) {
+                    message = 'Enter zero or a positive number.';
+                } else if (number > 9999999999.99) {
+                    message = 'Enter a value not greater than 9,999,999,999.99.';
+                } else if (selectedUnitNeedsWholeNumber() && !Number.isInteger(number)) {
+                    message = 'This unit requires a whole number.';
+                }
+            }
+        } else if (name === 'description') {
+            if (Array.from(field.value).length > 255) {
+                message = 'Description must be 255 characters or less.';
+            } else if (/\p{C}/u.test(field.value.replace(/[\r\n\t]/gu, ''))) {
+                message = 'Description contains invalid characters.';
+            }
+        }
+
+        setFieldError(name, message);
+        return message === '';
+    }
+
+    function validateForm() {
+        const order = ['material_name', 'category', 'unit', 'reorder_level', 'description'];
+        let firstInvalid = null;
+        order.forEach(function (name) {
+            if (!validateField(name) && !firstInvalid) firstInvalid = fields[name];
+        });
+        return firstInvalid;
+    }
+
+    function updateReorderStep() {
+        if (fields.reorder_level) {
+            fields.reorder_level.step = selectedUnitNeedsWholeNumber() ? '1' : '0.01';
+        }
+    }
+
+    function resetMaterialForm() {
+        if (!form) return;
+        form.reset();
+        ['material_name', 'reorder_level', 'description'].forEach(function (name) {
+            if (fields[name]) fields[name].value = '';
+        });
+        ['category', 'unit'].forEach(function (name) {
+            if (fields[name]) fields[name].selectedIndex = 0;
+        });
+        Object.keys(fieldErrors).forEach(function (name) { setFieldError(name, ''); });
+        if (generalError) generalError.hidden = true;
+        updateReorderStep();
+    }
+
+    function openModal(showServerError) {
         returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : openButton;
         modal.hidden = false;
         document.body.classList.add('material-create-modal-open');
-        const firstField = modal.querySelector('input:not([type="hidden"]), select, textarea');
         window.requestAnimationFrame(function () {
-            (firstField || panel).focus();
+            const firstInvalid = showServerError ? form.querySelector('[aria-invalid="true"]') : null;
+            const target = firstInvalid || (showServerError ? generalError : null) || panel;
+            if (target) {
+                target.focus({ preventScroll: true });
+                if (showServerError && target !== panel) {
+                    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+            }
         });
     }
 
@@ -167,12 +298,13 @@
         }
         modal.hidden = true;
         document.body.classList.remove('material-create-modal-open');
+        resetMaterialForm();
         if (returnFocus && typeof returnFocus.focus === 'function') {
             returnFocus.focus();
         }
     }
 
-    openButton.addEventListener('click', openModal);
+    openButton.addEventListener('click', function () { openModal(false); });
     closeButtons.forEach(function (button) {
         button.addEventListener('click', closeModal);
     });
@@ -210,9 +342,28 @@
     });
 
     if (form) {
+        Object.keys(fields).forEach(function (name) {
+            const field = fields[name];
+            const eventName = field instanceof HTMLSelectElement ? 'change' : 'input';
+            field.addEventListener(eventName, function () {
+                if (name === 'unit') {
+                    updateReorderStep();
+                    if (fields.reorder_level.hasAttribute('aria-invalid')) validateField('reorder_level');
+                }
+                if (field.hasAttribute('aria-invalid')) validateField(name);
+            });
+        });
+
         form.addEventListener('submit', function (event) {
             if (isSubmitting) {
                 event.preventDefault();
+                return;
+            }
+            const firstInvalid = validateForm();
+            if (firstInvalid) {
+                event.preventDefault();
+                firstInvalid.focus({ preventScroll: true });
+                firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
                 return;
             }
             isSubmitting = true;
@@ -221,12 +372,13 @@
             });
             if (submitButton) {
                 submitButton.disabled = true;
-                submitButton.textContent = 'Adding...';
+                submitButton.textContent = 'Saving…';
             }
         });
     }
 
+    updateReorderStep();
     if (modal.dataset.autoOpen === 'true') {
-        openModal();
+        openModal(true);
     }
 })();

@@ -21,12 +21,23 @@ function material_detail_suggestion_units(): array
     return ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter', 'bundle', 'sheet', 'pair', 'tube'];
 }
 
+function material_detail_normalize_name(string $name): string
+{
+    return preg_replace('/\s+/u', ' ', trim($name)) ?? '';
+}
+
+function material_detail_name_identity(string $name): string
+{
+    $name = material_detail_normalize_name($name);
+    return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+}
+
 function material_detail_suggestion_valid_name(string $name): bool
 {
-    $name = preg_replace('/\s+/', ' ', trim($name)) ?? '';
+    $name = material_detail_normalize_name($name);
     return $name !== ''
-        && preg_match('/^[\p{L}\p{N}\s\-\/\.\(\)&]+$/u', $name) === 1
-        && preg_match('/\p{L}/u', $name) === 1;
+        && preg_match('/[\p{L}\p{N}]/u', $name) === 1
+        && preg_match('/\p{C}/u', $name) === 0;
 }
 
 function material_detail_suggestion_response_text(array $response): string

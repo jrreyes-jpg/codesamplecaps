@@ -4,12 +4,7 @@ $currentFile = basename($currentPath);
 
 $isOverview = in_array($currentFile, ['overview.php', 'engineer_dashboard.php'], true);
 $isProjects = $currentFile === 'projects.php';
-$isProcurement = $currentFile === 'procurement.php';
 $isInspections = $currentFile === 'site_inspections.php';
-$isQuotations = $currentFile === 'quotations.php';
-$isReports = $currentFile === 'reports.php';
-$isTasks = $currentFile === 'tasks.php';
-$isUpdates = $currentFile === 'progress_updates.php';
 ?>
 <?php auth_render_back_button_logout_script(); ?>
 <script>
@@ -71,24 +66,6 @@ $isUpdates = $currentFile === 'progress_updates.php';
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/tasks.php" class="menu-link<?php echo $isTasks ? ' active-link' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M8 7h10"></path>
-                            <path d="M8 12h10"></path>
-                            <path d="M8 17h10"></path>
-                            <path d="M4.5 7h.01"></path>
-                            <path d="M4.5 12h.01"></path>
-                            <path d="M4.5 17h.01"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Tasks</span>
-                </span>
-                <span class="menu-text">My Tasks</span>
-            </a>
-        </li>
-        <li>
             <a href="/codesamplecaps/ENGINEER/dashboards/projects.php" class="menu-link<?php echo $isProjects ? ' active-link' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
@@ -103,23 +80,6 @@ $isUpdates = $currentFile === 'progress_updates.php';
             </a>
         </li>
         <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/procurement.php" class="menu-link<?php echo $isProcurement ? ' active-link' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M4 7h16"></path>
-                            <path d="M6 7V5.5A1.5 1.5 0 0 1 7.5 4h9A1.5 1.5 0 0 1 18 5.5V7"></path>
-                            <path d="M6 7v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7"></path>
-                            <path d="M9 12h6"></path>
-                            <path d="M9 16h4"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Proc</span>
-                </span>
-                <span class="menu-text">Procurement</span>
-            </a>
-        </li>
-        <li>
             <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="menu-link<?php echo $isInspections ? ' active-link' : ''; ?>">
                 <span class="menu-visual" aria-hidden="true">
                     <span class="menu-icon">
@@ -131,52 +91,6 @@ $isUpdates = $currentFile === 'progress_updates.php';
                     <span class="menu-mini-label">Site</span>
                 </span>
                 <span class="menu-text">Site Inspections</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/quotations.php" class="menu-link<?php echo $isQuotations ? ' active-link' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M7 4h10"></path>
-                            <path d="M7 8h10"></path>
-                            <path d="M7 12h6"></path>
-                            <path d="M6 20h12a2 2 0 0 0 2-2V6l-4-4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Quote</span>
-                </span>
-                <span class="menu-text">Quotations</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/reports.php" class="menu-link<?php echo $isReports ? ' active-link' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M5 19h14"></path>
-                            <path d="M7 16V9"></path>
-                            <path d="M12 16V5"></path>
-                            <path d="M17 16v-4"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Report</span>
-                </span>
-                <span class="menu-text">Reports</span>
-            </a>
-        </li>
-        <li>
-            <a href="/codesamplecaps/ENGINEER/dashboards/progress_updates.php" class="menu-link<?php echo $isUpdates ? ' active-link' : ''; ?>">
-                <span class="menu-visual" aria-hidden="true">
-                    <span class="menu-icon">
-                        <svg class="menu-icon-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                            <path d="M12 6v6l4 2"></path>
-                            <path d="M21 12a9 9 0 1 1-3-6.7"></path>
-                        </svg>
-                    </span>
-                    <span class="menu-mini-label">Update</span>
-                </span>
-                <span class="menu-text">Progress Updates</span>
             </a>
         </li>
         <li>

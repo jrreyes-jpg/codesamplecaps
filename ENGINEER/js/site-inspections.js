@@ -216,11 +216,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const shortage = required - available;
         feedback.classList.add('is-shortage');
-        feedback.textContent = `Stock shortage: ${availableLabel} available, ${requiredLabel} needed.`;
-        return;
-        feedback.textContent = `Insufficient stock — Available: ${availableLabel} • Required: ${requiredLabel} • Short by: ${formatMaterialQuantity(shortage)} ${unit}`;
+        feedback.textContent = available <= 0
+            ? 'Out of stock — procurement needed.'
+            : `Stock shortage: ${availableLabel} available, ${requiredLabel} needed.`;
     };
 
     const assetRequirementHasMeaningfulData = function (row) {

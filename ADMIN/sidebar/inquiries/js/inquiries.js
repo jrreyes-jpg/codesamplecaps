@@ -760,9 +760,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const syncDateAvailability = function () {
             const earliestDate = getEarliestScheduleDate();
-            dateInput.min = earliestDate;
+            const latestDate = addDaysToDate(getManilaNow().date, 14);
+            const originalDate = form.dataset.originalDate || '';
+            const keepExistingDate = originalDate !== ''
+                && dateInput.value === originalDate
+                && (originalDate < earliestDate || originalDate > latestDate);
+            dateInput.min = keepExistingDate ? '' : earliestDate;
+            dateInput.max = keepExistingDate ? '' : latestDate;
 
-            if (dateInput.value && dateInput.value < earliestDate) {
+            if (!keepExistingDate && dateInput.value && (dateInput.value < earliestDate || dateInput.value > latestDate)) {
                 dateInput.value = '';
                 timeInput.value = '';
             }
@@ -795,6 +801,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const now = getManilaNow();
             return dateInput.value < getEarliestScheduleDate()
+                || dateInput.value > addDaysToDate(getManilaNow().date, 14)
                 || (dateInput.value === now.date && timeValueToMinutes(timeInput.value) < now.minutes + inspectionLeadMinutes);
         };
 

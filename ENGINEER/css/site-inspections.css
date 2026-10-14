@@ -888,6 +888,10 @@ body.inspection-modal-open {
     color: #991b1b;
 }
 
+.inspection-detail__multiline {
+    white-space: pre-wrap;
+}
+
 .inspection-email-reminder {
     margin: 0;
     padding: 10px 12px;

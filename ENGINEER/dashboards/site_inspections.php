@@ -835,6 +835,12 @@ require __DIR__ . '/../layout/header.php';
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
                     $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
+                    $currentScheduleReason = site_inspection_current_admin_reschedule_reason(
+                        $conn,
+                        $inspectionId,
+                        (int)($inspection['engineer_id'] ?? $userId),
+                        (string)($inspection['scheduled_at'] ?? '')
+                    );
                     $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
@@ -909,7 +915,12 @@ require __DIR__ . '/../layout/header.php';
                                     <div class="inspection-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail inspection-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail inspection-detail--wide"><span>Admin Notes</span><strong><?php echo htmlspecialchars((string)($inspection['site_notes'] ?: 'None'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <?php if (trim((string)($inspection['site_notes'] ?? '')) !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
+                                    <?php if ($currentScheduleReason !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <p class="inspection-description"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
@@ -1178,7 +1189,7 @@ require __DIR__ . '/../layout/header.php';
             <div class="inspection-confirm-modal__panel inspection-reschedule-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerRescheduleTitle">
                 <button type="button" class="inspection-modal__close" data-engineer-reschedule-close aria-label="Close schedule change form">&times;</button>
                 <h2 id="engineerRescheduleTitle">Request a Schedule Change</h2>
-                <p class="inspection-reschedule-modal__notice">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved.</p>
+                <p class="inspection-reschedule-modal__notice">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved. Choose an available time at least 1 hour from now, within the next 14 days.</p>
                 <p class="inspection-reschedule-modal__official"><span>Current official schedule</span><strong data-engineer-reschedule-official></strong></p>
                 <form method="POST" data-engineer-reschedule-form novalidate>
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -1190,7 +1201,7 @@ require __DIR__ . '/../layout/header.php';
                     </label>
                     <div class="inspection-reschedule-fields">
                         <label class="inspection-reschedule-field">Preferred new date
-                            <input type="date" name="schedule_preferred_date" min="<?php echo (new DateTimeImmutable('today', site_inspection_timezone()))->format('Y-m-d'); ?>" required data-engineer-reschedule-date>
+                            <input type="date" name="schedule_preferred_date" min="<?php echo (new DateTimeImmutable('today', site_inspection_timezone()))->format('Y-m-d'); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required data-engineer-reschedule-date>
                             <small data-engineer-reschedule-error="date" hidden></small>
                         </label>
                         <label class="inspection-reschedule-field">Preferred new time

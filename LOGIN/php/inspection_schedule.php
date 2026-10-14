@@ -155,6 +155,14 @@ $rescheduleStateMessage = $clientResponse === 'reschedule_requested'
     ? 'Your reschedule request has been sent to Admin. Your current inspection schedule remains unchanged while your request is being reviewed.'
     : 'A schedule change was requested. Admin will send a new official schedule for confirmation.';
 $scheduleText = $inspection ? site_inspection_format_datetime((string)$inspection['scheduled_at']) . ' PHT' : '';
+$currentScheduleReason = $inspection
+    ? site_inspection_current_admin_reschedule_reason(
+        $conn,
+        (int)$inspection['id'],
+        (int)$inspection['engineer_id'],
+        (string)$inspection['scheduled_at']
+    )
+    : '';
 $preferredScheduleText = $inspection && !empty($inspection['client_schedule_preferred_at'])
     ? site_inspection_format_datetime((string)$inspection['client_schedule_preferred_at']) . ' PHT'
     : '';
@@ -188,6 +196,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
             <div><span>Assigned Engineer</span><strong><?php echo htmlspecialchars((string)$inspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
             <div class="schedule-details__time"><span>Official Schedule</span><strong data-schedule-official-schedule><?php echo htmlspecialchars($scheduleText, ENT_QUOTES, 'UTF-8'); ?></strong></div>
             <div><span>Schedule Status</span><strong><?php echo htmlspecialchars($scheduleStatusText, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <?php if ($currentScheduleReason !== ''): ?><div class="schedule-details__wide"><span>Schedule Change Reason</span><strong><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div><?php endif; ?>
             <?php if ($siteAddress !== ''): ?><div class="schedule-details__wide"><span>Site Address</span><strong><?php echo htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div><?php endif; ?>
         </section>
         <?php if ($clientResponse === 'confirmed' && !$isWaitingForAdmin): ?>
@@ -219,7 +228,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
             <form method="post" class="schedule-reschedule-form schedule-modal__request-form" data-schedule-reschedule-form hidden novalidate>
                 <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="request_reschedule">
-                <p id="scheduleRequestDescription" class="schedule-reschedule-form__description">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved.</p>
+                <p id="scheduleRequestDescription" class="schedule-reschedule-form__description">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved. Choose an available time at least 1 hour from now, within the next 14 days.</p>
                 <p class="schedule-reschedule-form__official"><span>Current official schedule</span><?php echo htmlspecialchars($scheduleText, ENT_QUOTES, 'UTF-8'); ?></p>
                 <label><span class="schedule-field-label">Reason for Request <b class="schedule-required-mark" aria-hidden="true">*</b></span>
                     <textarea name="reason" required minlength="5" maxlength="2000" placeholder="Please explain why you need to change the schedule." aria-describedby="scheduleReasonError"></textarea>
@@ -227,7 +236,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
                 </label>
                 <div class="schedule-reschedule-form__dates">
                     <label class="schedule-date-field"><span class="schedule-field-label">Preferred New Date <b class="schedule-required-mark" aria-hidden="true">*</b></span>
-                        <input type="date" name="preferred_date" required min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" aria-describedby="scheduleDateHelp scheduleDateError">
+                        <input type="date" name="preferred_date" required min="<?php echo (new DateTimeImmutable('today', $timeZone))->format('Y-m-d'); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" aria-describedby="scheduleDateHelp scheduleDateError">
                         <span class="schedule-field-feedback">
                             <small id="scheduleDateHelp" class="schedule-field-helper">Select your preferred date.</small>
                             <small id="scheduleDateError" data-field-error="preferred_date"></small>

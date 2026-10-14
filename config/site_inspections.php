@@ -41,6 +41,18 @@ function site_inspection_minimum_lead_minutes(): int
     return 60;
 }
 
+function site_inspection_schedule_window_days(): int
+{
+    return 14;
+}
+
+function site_inspection_latest_schedule_date(?DateTimeImmutable $now = null): string
+{
+    $now = $now ?: new DateTimeImmutable('now', site_inspection_timezone());
+
+    return $now->setTime(0, 0)->modify('+' . site_inspection_schedule_window_days() . ' days')->format('Y-m-d');
+}
+
 function site_inspection_available_time_slots(): array
 {
     $slots = [];
@@ -72,12 +84,65 @@ function site_inspection_validate_start(string $date, string $time, ?DateTimeImm
     }
 
     $now = $now ?: new DateTimeImmutable('now', $timezone);
+    if ($candidate->format('Y-m-d') > site_inspection_latest_schedule_date($now)) {
+        return ['valid' => false, 'message' => 'Please choose a schedule within the next 14 days.', 'datetime' => null];
+    }
     $minimum = $now->setTime((int)$now->format('H'), (int)$now->format('i'))->modify('+' . site_inspection_minimum_lead_minutes() . ' minutes');
     if ($candidate < $minimum) {
         return ['valid' => false, 'message' => 'Please choose a schedule at least 1 hour from now.', 'datetime' => null];
     }
 
     return ['valid' => true, 'message' => '', 'datetime' => $candidate];
+}
+
+function site_inspection_current_admin_reschedule_reason(
+    mysqli $conn,
+    int $inspectionId,
+    int $engineerId,
+    string $scheduledAt
+): string {
+    static $cache = [];
+    $cacheKey = $inspectionId . ':' . $engineerId . ':' . $scheduledAt;
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    $cache[$cacheKey] = '';
+    if (!function_exists('audit_log_table_exists') || !audit_log_table_exists($conn)) {
+        return $cache[$cacheKey];
+    }
+    $stmt = $conn->prepare(
+        "SELECT new_values
+         FROM audit_logs
+         WHERE entity_type = 'site_inspection'
+           AND entity_id = ?
+           AND action = 'reschedule_site_inspection'
+         ORDER BY id DESC"
+    );
+    if (!$stmt) {
+        return $cache[$cacheKey];
+    }
+
+    $stmt->bind_param('i', $inspectionId);
+    $stmt->execute();
+    $rows = $stmt->get_result();
+    while ($row = $rows->fetch_assoc()) {
+        $values = json_decode((string)($row['new_values'] ?? ''), true);
+        if (!is_array($values)
+            || (int)($values['engineer_id'] ?? 0) !== $engineerId
+            || (string)($values['scheduled_at'] ?? '') !== $scheduledAt) {
+            continue;
+        }
+
+        $reason = trim((string)($values['reschedule_reason'] ?? ''));
+        if ($reason !== '') {
+            $cache[$cacheKey] = $reason;
+        }
+        break;
+    }
+    $stmt->close();
+
+    return $cache[$cacheKey];
 }
 
 function site_inspection_engineer_has_conflict(

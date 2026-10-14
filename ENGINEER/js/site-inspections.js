@@ -1129,6 +1129,11 @@ document.addEventListener('DOMContentLoaded', function () {
         placeholder.selected = true;
         rescheduleTimeSelect.appendChild(placeholder);
         if (!dateVal) { rescheduleTimeSelect.disabled = true; setRescheduleFieldError(rescheduleTimeSelect, ''); return; }
+        if (rescheduleDateField.max && dateVal > rescheduleDateField.max) {
+            rescheduleTimeSelect.disabled = true;
+            setRescheduleFieldError(rescheduleTimeSelect, 'Choose a date within the next 14 days.');
+            return;
+        }
         rescheduleTimeSelect.disabled = false;
         const slots = Object.entries(availableTimeSlots);
         const nowMs = Date.now();
@@ -1269,6 +1274,11 @@ document.addEventListener('DOMContentLoaded', function () {
             setRescheduleFieldError(field, '');
             field.dataset.touched = '';
         });
+
+        if (!firstInvalid && date.max && date.value > date.max) {
+            setRescheduleFieldError(date, 'Choose a date within the next 14 days.');
+            firstInvalid = date;
+        }
         refreshTimeOptions();
 
         try {

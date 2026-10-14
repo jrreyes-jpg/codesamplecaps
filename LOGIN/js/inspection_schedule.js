@@ -209,8 +209,14 @@ const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
         return Date.parse(date + 'T' + time + ':00+08:00');
     };
 
+    const addCalendarDays = function (date, days) {
+        const parts = date.split('-').map(Number);
+        return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days)).toISOString().slice(0, 10);
+    };
+
     const isTimeAvailable = function (date, time, now) {
         if (!date || !time) return false;
+        if (date > addCalendarDays(now.date, 14)) return false;
         if (date > now.date) return true;
         if (date < now.date) return false;
         return selectedTimeTimestamp(date, time) >= now.timestamp + (60 * 60 * 1000);
@@ -236,8 +242,10 @@ const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
         const minimumDate = todayHasAvailableTime
             ? now.date
             : manilaParts(now.timestamp + (24 * 60 * 60 * 1000)).date;
+        const maximumDate = addCalendarDays(now.date, 14);
 
         date.min = minimumDate;
+        date.max = maximumDate;
         if (date.value && date.value < minimumDate) {
             date.value = '';
         }
@@ -303,6 +311,9 @@ setFieldError(reason, message);
         let valid = true;
         if (!date.value) {
             setFieldError(date, 'Choose a preferred date.');
+            valid = false;
+        } else if (date.value > addCalendarDays(now.date, 14)) {
+            setFieldError(date, 'Choose a date within the next 14 days.');
             valid = false;
         } else {
             setFieldError(date, '');

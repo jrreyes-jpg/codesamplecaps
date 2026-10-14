@@ -447,7 +447,8 @@ class EmailService {
         string $siteAddress,
         string $siteNotes = '',
         string $scheduleLink = '',
-        bool $isUpdated = false
+        bool $isUpdated = false,
+        string $rescheduleReason = ''
     ): bool {
         try {
             if ($this->error !== '') {
@@ -459,10 +460,12 @@ class EmailService {
             $safeSchedule = htmlspecialchars($inspectionSchedule, ENT_QUOTES, 'UTF-8');
             $safeEngineer = htmlspecialchars($engineerName, ENT_QUOTES, 'UTF-8');
             $safeAddress = htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8');
-            $siteNotesHtml = $siteNotes !== ''
-                ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
+            // Internal Site Notes are for Admin and the assigned Engineer only.
+            $rescheduleReason = trim($rescheduleReason);
+            $rescheduleReasonHtml = $rescheduleReason !== ''
+                ? '<p><strong>Schedule Change Reason:</strong><br>' . nl2br(htmlspecialchars($rescheduleReason, ENT_QUOTES, 'UTF-8')) . '</p>'
                 : '';
-            $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
+            $rescheduleReasonText = $rescheduleReason !== '' ? "\nSchedule Change Reason: {$rescheduleReason}" : '';
             $safeScheduleLink = htmlspecialchars($scheduleLink, ENT_QUOTES, 'UTF-8');
             $scheduleCta = $scheduleLink !== ''
                 ? "<p><a href='{$safeScheduleLink}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>" . ($isUpdated ? 'Review Updated Schedule' : 'Review Inspection Schedule') . '</a></p>'
@@ -485,12 +488,12 @@ class EmailService {
                         <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
                         <p><strong>Assigned Engineer:</strong> {$safeEngineer}</p>
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
-                        {$siteNotesHtml}
+                        {$rescheduleReasonHtml}
                         {$scheduleCta}
                         <p>Our team will contact you if more details are needed.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$recipientName},\n\nYour site inspection has been scheduled by Edge Automation. Please review and confirm the schedule.\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$siteNotesText}";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\nYour site inspection has been scheduled by Edge Automation. Please review and confirm the schedule.\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {
@@ -511,7 +514,8 @@ class EmailService {
         string $clientEmail,
         string $siteNotes = '',
         bool $isUpdated = false,
-        string $inspectionUrl = ''
+        string $inspectionUrl = '',
+        string $rescheduleReason = ''
     ): bool {
         try {
             if ($this->error !== '') {
@@ -529,6 +533,11 @@ class EmailService {
                 ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
                 : '';
             $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
+            $rescheduleReason = trim($rescheduleReason);
+            $rescheduleReasonHtml = $rescheduleReason !== ''
+                ? '<p><strong>Schedule Change Reason:</strong><br>' . nl2br(htmlspecialchars($rescheduleReason, ENT_QUOTES, 'UTF-8')) . '</p>'
+                : '';
+            $rescheduleReasonText = $rescheduleReason !== '' ? "\nSchedule Change Reason: {$rescheduleReason}" : '';
             $safeInspectionUrl = htmlspecialchars($inspectionUrl, ENT_QUOTES, 'UTF-8');
             $inspectionCta = $inspectionUrl !== '' ? "<p><a href='{$safeInspectionUrl}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:bold'>Open Site Inspection</a></p>" : '';
 
@@ -551,10 +560,11 @@ class EmailService {
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         <p><strong>Contact Number:</strong> {$safeContact}<br><strong>Client Email:</strong> {$safeClientEmail}</p>
                         {$siteNotesHtml}
+                        {$rescheduleReasonHtml}
                         {$inspectionCta}
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$engineerName},\n\nYou have a new site inspection assignment. Please check your Engineer dashboard for the full details.\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nContact Number: {$contactNumber}\nClient Email: {$clientEmail}{$siteNotesText}";
+            $this->mailer->AltBody = "Hello {$engineerName},\n\nYou have a new site inspection assignment. Please check your Engineer dashboard for the full details.\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nContact Number: {$contactNumber}\nClient Email: {$clientEmail}{$siteNotesText}{$rescheduleReasonText}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

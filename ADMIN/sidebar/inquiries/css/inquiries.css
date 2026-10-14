@@ -2663,6 +2663,21 @@ body.inquiry-modal-open {
     line-height: 1.4;
 }
 
+.inquiry-schedule-guidance {
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.inquiry-schedule-guidance[data-state="error"] {
+    color: #b91c1c;
+}
+
+.inquiry-schedule-guidance[data-state="ready"] {
+    color: #166534;
+}
+
 .inquiry-archive-output {
     display: grid;
     gap: 10px;

@@ -1275,10 +1275,6 @@ document.addEventListener('DOMContentLoaded', function () {
             field.dataset.touched = '';
         });
 
-        if (!firstInvalid && date.max && date.value > date.max) {
-            setRescheduleFieldError(date, 'Choose a date within the next 14 days.');
-            firstInvalid = date;
-        }
         refreshTimeOptions();
 
         try {

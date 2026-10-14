@@ -2813,7 +2813,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <label>
                                                     <span>Inspection Time</span>
                                                     <select class="js-admin-inspection-time" name="inspection_time" required>
-                                                        <option value="">Select time</option>
+                                                        <option value="" disabled <?php echo !$inspectionTimestamp ? 'selected' : ''; ?>>Select time</option>
                                                         <?php foreach (site_inspection_available_time_slots() as $timeValue => $timeLabel): ?>
                                                             <option value="<?php echo $timeValue; ?>" <?php echo $inspectionTimestamp && date('H:i', $inspectionTimestamp) === $timeValue ? 'selected' : ''; ?>><?php echo $timeLabel; ?></option>
                                                         <?php endforeach; ?>
@@ -2833,6 +2833,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <small id="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?>">Explain why the schedule or assigned engineer is changing. This will be shared with the Client and Engineer.</small>
                                                     <small class="inquiry-schedule-field-feedback" id="admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>" data-admin-reschedule-reason-feedback hidden aria-live="polite"></small>
                                                 </label>
+                                            <?php endif; ?>
+                                            <?php if ($latestInspection): ?>
+                                                <small class="inquiry-schedule-guidance" data-admin-reschedule-guidance aria-live="polite" hidden></small>
                                             <?php endif; ?>
                                             <div class="inquiry-review-actions">
                                                 <button type="submit" class="btn-primary" data-schedule-submit <?php echo empty($engineers) || $latestInspection ? 'disabled' : ''; ?>><?php echo $scheduleSubmitLabel; ?></button>

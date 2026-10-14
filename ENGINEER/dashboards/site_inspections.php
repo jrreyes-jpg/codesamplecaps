@@ -251,7 +251,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $preferredDate = trim((string)($_POST['schedule_preferred_date'] ?? ''));
         $preferredTime = trim((string)($_POST['schedule_preferred_time'] ?? ''));
         $preferredAt = ($preferredDate !== '' && $preferredTime !== '') ? $preferredDate . ' ' . $preferredTime . ':00' : null;
-        if (in_array($currentStatus, ['Ongoing', 'Completed', 'Submitted'], true) || mb_strlen($reason) < 5) {
+        $reasonWithoutWhitespace = preg_replace('/\s+/u', '', $reason) ?? '';
+        if (in_array($currentStatus, ['Ongoing', 'Completed', 'Submitted'], true) || mb_strlen($reasonWithoutWhitespace, 'UTF-8') < 5) {
             $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
         } elseif ($preferredDate === '' || $preferredTime === '') {
             $error = 'Choose a preferred new date and time.';

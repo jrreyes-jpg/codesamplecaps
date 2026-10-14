@@ -219,8 +219,9 @@ document.addEventListener('DOMContentLoaded', function () {
         appendMonitorDetail(summary, 'Assigned Engineer', inspection.engineer);
         appendMonitorDetail(summary, 'Current Phase', inspection.status);
         appendMonitorDetail(summary, 'Official Schedule', inspection.scheduled_at);
-        appendMonitorDetail(summary, 'Actual Started', inspection.started_at);
-        appendMonitorDetail(summary, 'Latest Recorded Activity', inspection.latest_activity);
+        if (inspection.started_at && inspection.started_at !== 'Not set') {
+            appendMonitorDetail(summary, 'Actual Started', inspection.started_at);
+        }
         inspectionMonitorContent.appendChild(summary);
 
         if (inspection.hold_reason) {
@@ -243,6 +244,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const timelineList = document.createElement('div');
         (inspection.timeline || []).forEach(function (step) {
             const row = document.createElement('div');
+            const hasTime = step.at && step.at !== 'Not set';
+            row.dataset.phase = step.label;
+            row.classList.toggle('is-current', step.label === inspection.status);
+            row.classList.toggle('is-complete', hasTime && step.label !== inspection.status);
             const label = document.createElement('strong');
             const time = document.createElement('span');
             label.textContent = step.label;
@@ -253,16 +258,12 @@ document.addEventListener('DOMContentLoaded', function () {
         timeline.append(timelineTitle, timelineList);
         inspectionMonitorContent.appendChild(timeline);
 
-        const report = document.createElement('section');
-        report.className = 'inspection-monitor-modal__report';
-        const reportTitle = document.createElement('strong');
-        reportTitle.textContent = 'Submitted Report';
-        report.appendChild(reportTitle);
-        if (!inspection.report) {
-            const empty = document.createElement('p');
-            empty.textContent = 'No submitted inspection report yet.';
-            report.appendChild(empty);
-        } else {
+        if (inspection.report) {
+            const report = document.createElement('section');
+            report.className = 'inspection-monitor-modal__report';
+            const reportTitle = document.createElement('strong');
+            reportTitle.textContent = 'Submitted Report';
+            report.appendChild(reportTitle);
             const findings = document.createElement('p');
             findings.textContent = inspection.report.findings || 'No findings provided.';
             report.appendChild(findings);
@@ -281,8 +282,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 empty.textContent = 'No submitted material recommendations.';
                 report.appendChild(empty);
             }
+            inspectionMonitorContent.appendChild(report);
         }
-        inspectionMonitorContent.appendChild(report);
     };
 
     const setInspectionMonitorFeedback = function (message, isError) {
@@ -1954,11 +1955,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!data.success || !data.inspection) return;
                 const isInitialLoad = modal.dataset.inspectionResponsePollReady !== '1';
                 const isFinal = data.inspection.final === true;
+                const previousResponses = {};
+                ['client', 'engineer'].forEach(function (party) {
+                    previousResponses[party] = modal.querySelector('[data-schedule-response-party="' + party + '"]')?.dataset.scheduleResponse || '';
+                });
                 applyFinalScheduleLock(modal, isFinal, String(data.inspection.phase || 'Assigned'));
                 ['client', 'engineer'].forEach(function (party) {
                     const response = data.inspection[party] || {};
                     const badge = modal.querySelector('[data-schedule-response-party="' + party + '"]');
-                    const previousResponse = badge?.dataset.scheduleResponse || '';
+                    const previousResponse = previousResponses[party];
                     if (badge) {
                         badge.dataset.scheduleResponse = String(response.response || 'not_scheduled');
                         badge.textContent = response.label || 'Not Scheduled';
@@ -1966,7 +1971,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!isFinal) {
                         updateInspectionResponseNote(modal, party, data.inspection.scheduled ? String(response.note || '') : '');
                     }
-                    if (!isInitialLoad && previousResponse !== String(response.response || 'not_scheduled')) {
+                    if (!isInitialLoad && previousResponse !== '' && previousResponse !== String(response.response || 'not_scheduled')) {
                         showLiveInquiryToast(
                             (party === 'client' ? 'Client' : 'Engineer') + ' schedule response: ' + (response.label || 'Not Scheduled') + '.',
                             inquiryId,

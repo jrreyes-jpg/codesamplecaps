@@ -2483,13 +2483,59 @@ body.inquiry-modal-open {
     min-width: 0;
     padding: 8px;
     border-radius: 9px;
-    background: #ffffff;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
 .inspection-monitor-modal__timeline strong {
     display: block;
-    color: #166534;
+    color: #64748b;
     font-size: 0.78rem;
+}
+
+.inspection-monitor-modal__timeline .is-complete {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.inspection-monitor-modal__timeline .is-complete strong {
+    color: #166534;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Acknowledged"] {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Acknowledged"] strong {
+    color: #1d4ed8;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Ongoing"] {
+    border-color: #fed7aa;
+    background: #fff7ed;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Ongoing"] strong {
+    color: #9a3412;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Completed"] {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Completed"] strong {
+    color: #166534;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] {
+    border-color: #ddd6fe;
+    background: #f5f3ff;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] strong {
+    color: #6d28d9;
 }
 
 .inspection-monitor-modal__materials {

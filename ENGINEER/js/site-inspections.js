@@ -358,6 +358,18 @@ document.addEventListener('DOMContentLoaded', function () {
             || (row.querySelector('input[name="quantity[]"]')?.value || '') !== '1';
     };
 
+    // Magtanong lang kapag may kumpletong cost item na mabubura.
+    const costingRowHasCompletedData = function (row) {
+        const name = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
+        const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
+        const unit = row.querySelector('select[name="unit[]"]')?.value || '';
+        const unitCost = row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
+
+        return name !== ''
+            && isValidQuantityText(quantity, unit)
+            && isValidCostText(unitCost);
+    };
+
     const resetRowForType = function (row) {
         row.querySelector('input[name="inventory_id[]"]').value = '';
         row.querySelector('select[name="material_id[]"]').value = '';
@@ -707,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             };
-            if (rowHasMeaningfulData(row)) {
+            if (costingRowHasCompletedData(row)) {
                 typeField.value = previousType;
                 openInspectionActionConfirm({
                     trigger: typeField,

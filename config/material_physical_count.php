@@ -154,7 +154,8 @@ if (!function_exists('material_physical_count_submit')) {
 
                 $totalQuantity = (float)$material['physical_quantity'];
                 $reservedQuantity = (float)$material['reserved_quantity'];
-                $expectedQuantity = $totalQuantity - $reservedQuantity;
+                // Simple audit: ihambing ang bilang ng Clerk sa system stock.
+                $expectedQuantity = $totalQuantity;
                 $insertStmt->bind_param(
                     'iddddi',
                     $materialId,

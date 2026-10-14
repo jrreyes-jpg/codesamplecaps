@@ -3,6 +3,9 @@ require_once __DIR__ . '/../includes/stock_helpers.php';
 require_once __DIR__ . '/../includes/page_shell.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 
+http_response_code(403);
+exit('Material Stock In is managed by Admin.');
+
 $csrfToken = auth_csrf_token('inventory_clerk_material_stock_in');
 $stockInRequestToken = material_stock_issue_once_token('material_stock_in');
 $flashKey = 'inventory_clerk_material_stock_flash';

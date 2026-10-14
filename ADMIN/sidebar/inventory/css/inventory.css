@@ -56,6 +56,21 @@
     margin-bottom: 16px;
 }
 
+.inventory-report-heading__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.admin-material-stock-in-panel {
+    width: min(100%, 760px);
+}
+
+.admin-material-stock-in-panel .form-actions {
+    justify-content: flex-start;
+}
+
 .inventory-report-heading .section-title-inline,
 .material-history-panel .section-title-inline {
     margin: 0;
@@ -715,8 +730,14 @@ body.material-create-modal-open {
     }
 
     .inventory-report-heading .btn-primary,
+    .inventory-report-heading__actions,
+    .inventory-report-heading__actions > a,
     .inventory-report-search {
         width: 100%;
+    }
+
+    .inventory-report-heading__actions {
+        justify-content: stretch;
     }
 
     .material-master-page .inventory-report-panel {

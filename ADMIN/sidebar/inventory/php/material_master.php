@@ -247,7 +247,6 @@ $materialCreateRequestToken = material_stock_issue_once_token('admin_material_cr
 $materialUpdateRequestToken = material_stock_issue_once_token('admin_material_update');
 $materials = material_stock_fetch_materials($conn, 'active');
 $latestPhysicalCounts = material_physical_count_fetch_latest($conn);
-$projectIssuedTotals = material_stock_fetch_project_issued_totals($conn);
 $deletableMaterialIds = array_fill_keys(material_stock_fetch_deletable_material_ids($conn), true);
 $materialFormUnitEditable = $materialFormMode !== 'edit' || isset($deletableMaterialIds[$materialFormMaterialId]);
 $displayMaterialQuantity = static function (float $quantity): string {
@@ -284,7 +283,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div>
                     <h1 class="section-title-inline">Inventory Report</h1>
                 </div>
-                <button type="button" class="btn-primary" data-material-modal-open>+ Add Material</button>
+                <div class="inventory-report-heading__actions">
+                    <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/material_stock_in.php">Stock In</a>
+                    <button type="button" class="btn-primary" data-material-modal-open>+ Add Material</button>
+                </div>
             </div>
             <div class="inventory-report-search">
                 <label class="sr-only" for="inventoryReportSearch">Search inventory report</label>
@@ -292,30 +294,28 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
             <div class="table-responsive">
                 <table class="data-table material-master-table mobile-card-table">
-                    <thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>Total Qty</th><th>Qty Issued</th><th>Physical Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
+                    <thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>System Stock</th><th>Clerk Physical Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
                     <tbody>
-                    <?php if ($materials === []): ?><tr><td colspan="9" class="empty-state">No active materials yet.</td></tr><?php endif; ?>
+                    <?php if ($materials === []): ?><tr><td colspan="8" class="empty-state">No active materials yet.</td></tr><?php endif; ?>
                     <?php foreach ($materials as $material): ?>
                         <?php
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
-                        $issuedQuantity = $projectIssuedTotals[(int)$material['id']] ?? 0.0;
                         $variance = $latestCount === null
                             ? null
-                            : (float)$latestCount['counted_quantity'] - (float)$latestCount['expected_quantity_snapshot'];
+                            : (float)$latestCount['counted_quantity'] - (float)$latestCount['total_quantity_snapshot'];
                         $isShortage = $variance !== null && $variance < -0.005;
                         ?>
                         <tr class="<?php echo $isShortage ? 'material-master-row--shortage' : ''; ?>" data-inventory-report-row>
                             <td data-label="Item"><strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$material['material_code']); ?></small></td>
                             <td data-label="Description" class="material-report-description"><?php echo htmlspecialchars(trim((string)$material['description']) ?: '—'); ?></td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
-                            <td data-label="Total Qty" class="material-master-number"><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></td>
-                            <td data-label="Qty Issued" class="material-master-number"><?php echo htmlspecialchars($displayMaterialQuantity($issuedQuantity)); ?></td>
-                            <td data-label="Physical Count" class="material-master-count">
+                            <td data-label="System Stock" class="material-master-number"><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></td>
+                            <td data-label="Clerk Physical Count" class="material-master-count">
                                 <?php if ($latestCount === null): ?>
                                     <span class="material-audit-pending">Not yet counted</span>
                                 <?php else: ?>
                                     <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$latestCount['counted_quantity'])); ?></strong>
-                                    <small>Expected at count: <?php echo htmlspecialchars($displayMaterialQuantity((float)$latestCount['expected_quantity_snapshot'])); ?></small>
+                                    <small>System stock at count: <?php echo htmlspecialchars($displayMaterialQuantity((float)$latestCount['total_quantity_snapshot'])); ?></small>
                                     <small>
                                         By <?php echo htmlspecialchars(trim((string)$latestCount['counted_by_name']) ?: 'Inventory Clerk'); ?>
                                         &middot; <?php echo htmlspecialchars((string)$latestCount['counted_at']); ?>
@@ -361,7 +361,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    <tr data-inventory-report-empty hidden><td colspan="9" class="empty-state">No matching materials.</td></tr>
+                    <tr data-inventory-report-empty hidden><td colspan="8" class="empty-state">No matching materials.</td></tr>
                     </tbody>
                 </table>
             </div>

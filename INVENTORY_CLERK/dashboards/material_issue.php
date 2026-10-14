@@ -3,6 +3,9 @@ require_once __DIR__ . '/../includes/stock_helpers.php';
 require_once __DIR__ . '/../includes/page_shell.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 
+http_response_code(403);
+exit('Material Issue is not part of the current inventory flow.');
+
 $csrfToken = auth_csrf_token('inventory_clerk_material_issue');
 $issueRequestToken = material_stock_issue_once_token('material_issue');
 $flashKey = 'inventory_clerk_material_issue_flash';

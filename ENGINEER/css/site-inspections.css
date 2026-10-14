@@ -342,6 +342,25 @@
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
 }
 
+
+.inspection-action-confirm__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.inspection-action-confirm__head .inspection-modal__close {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+}
+
+[data-inspection-action-confirm-modal] .inspection-modal__close:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, 0.35);
+    outline-offset: 2px;
+}
+
 .inspection-confirm-modal__panel h2 {
     margin: 0;
     color: #0f172a;
@@ -901,6 +920,10 @@ body.inspection-modal-open {
     font-weight: 800;
 }
 
+.inspection-action-confirm__reason[hidden] {
+    display: none !important;
+}
+
 .inspection-action-confirm__reason textarea {
     width: 100%;
     min-height: 88px;
@@ -1004,5 +1027,28 @@ body.inspection-modal-open {
 
     .inspection-reschedule-modal .inspection-confirm-modal__actions button {
         width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .inspection-confirm-modal {
+        padding: 12px;
+    }
+
+    .inspection-confirm-modal__panel,
+    .inspection-reschedule-modal__panel {
+        width: 100%;
+        max-height: calc(100vh - 24px);
+        padding: 18px 16px;
+        overflow-y: auto;
+    }
+
+    .inspection-confirm-modal:not(.inspection-reschedule-modal) .inspection-confirm-modal__actions {
+        flex-direction: column;
+    }
+
+    .inspection-confirm-modal:not(.inspection-reschedule-modal) .inspection-confirm-modal__actions button {
+        width: 100%;
+        min-height: 44px;
     }
 }

@@ -977,7 +977,7 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionActionConfirmMessage.textContent = options.message;
         inspectionActionConfirmSubmit.textContent = options.confirm;
         if (inspectionActionConfirmReasonWrap) {
-            inspectionActionConfirmReasonWrap.hidden = !options.requiresReason;
+            inspectionActionConfirmReasonWrap.hidden = !Boolean(options.requiresReason);
         }
         if (inspectionActionConfirmReason) {
             inspectionActionConfirmReason.value = '';
@@ -1636,7 +1636,7 @@ document.addEventListener('DOMContentLoaded', function () {
             openInspectionActionConfirm({
                 trigger: button,
                 title: 'Start Inspection?',
-                message: 'This will mark the inspection as Ongoing.',
+                message: 'This will save the start time and unlock the inspection findings and costing form.',
                 confirm: 'Start Inspection',
                 onConfirm: function () {
                     return requestWorkflowTransition(form, button);

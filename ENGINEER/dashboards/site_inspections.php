@@ -1271,8 +1271,10 @@ require __DIR__ . '/../layout/header.php';
 
         <div class="inspection-confirm-modal" data-inspection-action-confirm-modal hidden>
             <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionActionConfirmTitle">
-                <button type="button" class="inspection-modal__close" data-inspection-action-confirm-close aria-label="Close confirmation">&times;</button>
-                <h2 id="inspectionActionConfirmTitle" data-inspection-action-confirm-title></h2>
+                <div class="inspection-action-confirm__head">
+                    <h2 id="inspectionActionConfirmTitle" data-inspection-action-confirm-title></h2>
+                    <button type="button" class="inspection-modal__close" data-inspection-action-confirm-close aria-label="Close confirmation">&times;</button>
+                </div>
                 <p data-inspection-action-confirm-message></p>
                 <label class="inspection-action-confirm__reason" data-inspection-action-confirm-reason-wrap hidden>
                     <span>Hold Reason</span>

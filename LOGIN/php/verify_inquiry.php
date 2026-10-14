@@ -306,6 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                             <a href="/codesamplecaps/LOGIN/php/index.php?open=inquiry#contact">Start a New Inquiry</a>
                         </div>
                     <?php endif; ?>
+                    <p class="verify-email-reminder">Can’t find the OTP email? Check your Spam/Junk folder. If it is still missing, use Resend Code when it becomes available.</p>
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/index.php" id="backToHomeLink">Back to Home</a>
                     </div>

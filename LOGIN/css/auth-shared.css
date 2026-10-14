@@ -303,6 +303,15 @@ button:hover{
     font-size: 13px;
 }
 
+.verify-email-reminder {
+    margin: 14px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+}
+
 .verify-code-field {
     min-height: 58px;
     margin: 18px 0;

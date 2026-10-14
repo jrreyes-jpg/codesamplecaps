@@ -888,6 +888,18 @@ body.inspection-modal-open {
     color: #991b1b;
 }
 
+.inspection-email-reminder {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid #dbe5df;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: .88rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
 .inspection-button-spinner {
     display: inline-block;
     width: 12px;

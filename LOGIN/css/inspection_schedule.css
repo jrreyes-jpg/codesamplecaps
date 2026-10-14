@@ -134,6 +134,14 @@ body.is-schedule-modal-open { overflow: hidden; }
 .schedule-alert--error,
 .schedule-alert--error { background: #fee2e2; color: #991b1b; }
 
+.schedule-email-reminder {
+    margin: 0 28px 20px;
+    color: #64748b;
+    font-size: .86rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
 .schedule-modal[hidden] { display: none; }
 .schedule-modal { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; isolation: isolate; padding: 16px; }
 .schedule-modal__backdrop { position: absolute; z-index: 0; inset: 0; background: rgba(15, 23, 42, .58); cursor: pointer; }
@@ -164,6 +172,7 @@ body.is-schedule-modal-open { overflow: hidden; }
     .schedule-actions,
     .schedule-response-state,
     .schedule-alert { margin-inline: 18px; }
+    .schedule-email-reminder { margin-inline: 18px; }
     .schedule-details,
     .schedule-reschedule-form__dates { grid-template-columns: 1fr; }
     .schedule-details > div,

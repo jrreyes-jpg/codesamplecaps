@@ -822,6 +822,7 @@ require __DIR__ . '/../layout/header.php';
             <div class="inspection-flash success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
         <?php if ($error): ?><div class="inspection-flash error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+        <p class="inspection-email-reminder">New assignments and schedule updates are sent to your registered email. Check your registered email inbox, including the Spam/Junk folder.</p>
 
         <section class="inspection-panel">
             <?php if (empty($inspections)): ?>

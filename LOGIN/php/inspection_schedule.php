@@ -181,6 +181,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
     <?php else: ?>
         <?php if ($message): ?><p class="schedule-alert schedule-alert--success" role="status" data-schedule-server-message data-schedule-message-type="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
         <?php if ($error): ?><p class="schedule-alert schedule-alert--error" role="alert" data-schedule-server-message data-schedule-message-type="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+        <p class="schedule-email-reminder">Schedule updates are sent to your registered email. Check your registered email inbox, including the Spam/Junk folder.</p>
         <section class="schedule-details" aria-label="Inspection details">
             <div><span>Client</span><strong><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
             <div><span>Service</span><strong><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>

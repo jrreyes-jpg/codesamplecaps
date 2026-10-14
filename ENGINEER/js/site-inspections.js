@@ -115,6 +115,14 @@ document.addEventListener('DOMContentLoaded', function () {
         saveButton.classList.toggle('is-disabled', !isDirty);
         saveButton.setAttribute('aria-disabled', isDirty ? 'false' : 'true');
 
+        const completeButton = form.closest('.inspection-modal')?.querySelector('[data-complete-inspection]');
+        if (completeButton) {
+            const canComplete = completeButton.getAttribute('data-complete-ready') === 'true' && !isDirty;
+            completeButton.disabled = !canComplete;
+            completeButton.setAttribute('aria-disabled', canComplete ? 'false' : 'true');
+            completeButton.title = canComplete ? '' : 'Save valid Engineer Findings and report changes first.';
+        }
+
         if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
             console.debug('Inspection draft snapshots', {
                 baseline: form.dataset.savedSnapshot || '',
@@ -979,6 +987,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         modal.querySelectorAll('[data-inspection-tab-panel]').forEach(function (panel) {
             panel.hidden = panel.getAttribute('data-inspection-tab-panel') !== nextTab;
+        });
+        modal.querySelectorAll('[data-inspection-report-actions]').forEach(function (actions) {
+            actions.hidden = nextTab !== 'report';
         });
     });
 

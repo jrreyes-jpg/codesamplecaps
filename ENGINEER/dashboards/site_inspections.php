@@ -218,7 +218,7 @@ function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $eng
         ? 'hold_reason, held_at, resumed_at,'
         : 'NULL AS hold_reason, NULL AS held_at, NULL AS resumed_at,';
     $stmt = $conn->prepare(
-        "SELECT status, admin_review_status, admin_remarks, created_at, acknowledged_at, started_at, {$holdSelect} completed_at, submitted_at, client_schedule_response, engineer_schedule_response
+        "SELECT status, admin_review_status, admin_remarks, engineer_findings, created_at, acknowledged_at, started_at, {$holdSelect} completed_at, submitted_at, client_schedule_response, engineer_schedule_response
          FROM site_inspections
          WHERE id = ? AND engineer_id = ?
          LIMIT 1"
@@ -391,6 +391,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
         } elseif ($workflowAction === 'start' && (string)($inspectionState['engineer_schedule_response'] ?? '') === 'reschedule_requested') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
+        } elseif ($workflowAction === 'complete'
+            && !engineer_inspection_has_meaningful_findings((string)($inspectionState['engineer_findings'] ?? ''))) {
+            $error = 'Save valid Engineer Findings before marking the inspection completed.';
         } elseif (site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
             if ($workflowAction === 'acknowledge') {
                 $confirmSchedule = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'confirmed', engineer_schedule_response_note = NULL, engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NOW() WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
@@ -928,6 +931,7 @@ require __DIR__ . '/../layout/header.php';
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $canEditCosting = in_array($inspectionStatus, ['Ongoing', 'Completed'], true);
                     $canSubmitToAdmin = $inspectionStatus === 'Completed';
+                    $hasSavedValidFindings = engineer_inspection_has_meaningful_findings((string)($inspection['engineer_findings'] ?? ''));
                     $workflowAction = match ($inspectionStatus) {
                         'Assigned' => 'acknowledge',
                         'Acknowledged' => 'start',
@@ -1017,9 +1021,31 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endforeach; ?>
                                 </div>
 
-                                <div class="inspection-tabs" role="tablist" aria-label="Site inspection sections">
-                                    <button type="button" class="inspection-tabs__button is-active" role="tab" aria-selected="true" aria-controls="inspectionDetails<?php echo $inspectionId; ?>" id="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab="details">Details</button>
-                                    <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report">Inspection Report</button>
+                                <div class="inspection-tab-toolbar">
+                                    <div class="inspection-tabs" role="tablist" aria-label="Site inspection sections">
+                                        <button type="button" class="inspection-tabs__button is-active" role="tab" aria-selected="true" aria-controls="inspectionDetails<?php echo $inspectionId; ?>" id="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab="details">Details</button>
+                                        <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report">Inspection Report</button>
+                                    </div>
+                                    <div class="inspection-report-actions" data-inspection-report-actions hidden>
+                                        <?php if ($inspectionStatus === 'Ongoing'): ?>
+                                            <form method="POST">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                                <input type="hidden" name="workflow_action" value="hold">
+                                                <button type="button" class="btn-secondary" data-workflow-transition>Put On Hold</button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <?php if ($workflowAction !== ''): ?>
+                                            <form method="POST">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                                <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <button type="button" class="btn-primary" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedValidFindings ? 'true' : 'false') . '"' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?> <?php echo $workflowAction === 'complete' && !$hasSavedValidFindings ? 'disabled aria-disabled="true" title="Save valid Engineer Findings first."' : ''; ?>>
+                                                    <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
 
                                 <section class="inspection-tab-panel" id="inspectionDetails<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="details">
@@ -1064,25 +1090,6 @@ require __DIR__ . '/../layout/header.php';
 
                                 <section class="inspection-tab-panel" id="inspectionReport<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="report" hidden>
                                 <div class="inspection-status-action">
-                                    <?php if ($inspectionStatus === 'Ongoing'): ?>
-                                        <form method="POST" class="inspection-status-action">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
-                                            <input type="hidden" name="workflow_action" value="hold">
-                                            <button type="button" class="btn-secondary" data-workflow-transition>Put On Hold</button>
-                                        </form>
-                                    <?php endif; ?>
-                                    <?php if ($workflowAction !== ''): ?>
-                                        <form method="POST" class="inspection-status-action">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
-                                            <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <button type="button" class="btn-primary" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?>>
-                                                <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-
                                     <?php if ((string)($inspection['engineer_schedule_response'] ?? 'pending') === 'reschedule_requested'): ?>
                                         <section class="inspection-schedule-pending" aria-live="polite">
                                             <strong>Pending Admin Review</strong>

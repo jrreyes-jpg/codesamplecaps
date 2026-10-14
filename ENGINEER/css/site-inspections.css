@@ -223,6 +223,24 @@
     border-bottom: 1px solid #dbe4ee;
 }
 
+.inspection-tab-toolbar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.inspection-report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.inspection-report-actions form {
+    margin: 0;
+}
+
 .inspection-tabs__button {
     min-height: 42px;
     padding: 9px 14px;
@@ -322,7 +340,7 @@
 
 .inspection-modal__panel {
     width: min(1080px, calc(100vw - 48px));
-    max-height: min(84vh, 760px);
+    height: min(84vh, 760px);
     overflow-x: hidden;
     overflow-y: auto;
     display: grid;
@@ -864,7 +882,6 @@ body.inspection-modal-open {
 .material-stock-feedback {
     position: static;
     grid-column: 1 / -1;
-    left: 126px;
     min-width: 0;
     font-size: 0.74rem;
     font-weight: 800;
@@ -1179,6 +1196,15 @@ body.inspection-modal-open {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .inspection-tab-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .inspection-report-actions {
+        justify-content: flex-start;
+    }
+
     .inspection-client-details__grid {
         grid-template-columns: 1fr;
     }
@@ -1228,6 +1254,12 @@ body.inspection-modal-open {
         flex: 1 1 0;
         padding-inline: 8px;
         font-size: 0.84rem;
+    }
+
+    .inspection-report-actions,
+    .inspection-report-actions form,
+    .inspection-report-actions button {
+        width: 100%;
     }
 
     .inspection-workflow {

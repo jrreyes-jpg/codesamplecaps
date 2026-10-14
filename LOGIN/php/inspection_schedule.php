@@ -46,12 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = (string)$inspection['status'];
     $clientResponse = (string)($inspection['client_schedule_response'] ?? 'pending');
     $engineerResponse = (string)($inspection['engineer_schedule_response'] ?? 'pending');
-    $isClosed = in_array($status, ['Ongoing', 'Completed', 'Submitted'], true);
+    $isClosed = in_array($status, ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true);
     $hasRescheduleRequest = $clientResponse === 'reschedule_requested' || $engineerResponse === 'reschedule_requested';
     if ($isClosed) $reply(false, 'This inspection schedule can no longer be changed.');
     if ($clientResponse !== 'pending' || $hasRescheduleRequest) $reply(false, 'This schedule response is already recorded or is waiting for Admin review.');
 
     if ($action === 'confirm') {
+        if ($clientResponse !== 'pending') $reply(false, 'This schedule response is already recorded or is waiting for Admin review.');
         $update = $conn->prepare(
             "UPDATE site_inspections
              SET client_schedule_response = 'confirmed', client_schedule_response_note = NULL,
@@ -148,7 +149,7 @@ $error = (string)($_GET['error'] ?? '');
 $timeZone = site_inspection_timezone();
 $clientResponse = (string)($inspection['client_schedule_response'] ?? 'pending');
 $engineerResponse = (string)($inspection['engineer_schedule_response'] ?? 'pending');
-$isWorkflowLocked = $inspection && in_array((string)$inspection['status'], ['Ongoing', 'Completed', 'Submitted'], true);
+$isWorkflowLocked = $inspection && in_array((string)$inspection['status'], ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true);
 $isWaitingForAdmin = $inspection && ($clientResponse === 'reschedule_requested' || $engineerResponse === 'reschedule_requested');
 $rescheduleStateTitle = $clientResponse === 'reschedule_requested' ? 'Pending Admin Review' : 'Schedule Under Review';
 $rescheduleStateMessage = $clientResponse === 'reschedule_requested'

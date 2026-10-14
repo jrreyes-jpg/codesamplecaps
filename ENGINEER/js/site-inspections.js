@@ -955,6 +955,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionActionConfirmModal = document.querySelector('[data-inspection-action-confirm-modal]');
     const inspectionActionConfirmTitle = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-title]');
     const inspectionActionConfirmMessage = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-message]');
+    const inspectionActionConfirmReasonWrap = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason-wrap]');
+    const inspectionActionConfirmReason = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason]');
+    const inspectionActionConfirmReasonError = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason-error]');
     const inspectionActionConfirmCancel = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-cancel]');
     const inspectionActionConfirmSubmit = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-submit]');
     let pendingInspectionActionConfirm = null;
@@ -973,10 +976,21 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionActionConfirmTitle.textContent = options.title;
         inspectionActionConfirmMessage.textContent = options.message;
         inspectionActionConfirmSubmit.textContent = options.confirm;
+        if (inspectionActionConfirmReasonWrap) {
+            inspectionActionConfirmReasonWrap.hidden = !options.requiresReason;
+        }
+        if (inspectionActionConfirmReason) {
+            inspectionActionConfirmReason.value = '';
+            inspectionActionConfirmReason.setAttribute('aria-invalid', 'false');
+        }
+        if (inspectionActionConfirmReasonError) {
+            inspectionActionConfirmReasonError.textContent = '';
+            inspectionActionConfirmReasonError.hidden = true;
+        }
         inspectionActionConfirmSubmit.disabled = false;
         inspectionActionConfirmCancel.disabled = false;
         inspectionActionConfirmModal.hidden = false;
-        inspectionActionConfirmCancel.focus();
+        (options.requiresReason ? inspectionActionConfirmReason : inspectionActionConfirmCancel)?.focus();
     };
 
     inspectionActionConfirmCancel?.addEventListener('click', function () {
@@ -988,15 +1002,32 @@ document.addEventListener('DOMContentLoaded', function () {
     inspectionActionConfirmModal?.addEventListener('click', function (event) {
         if (event.target === inspectionActionConfirmModal) closeInspectionActionConfirm(true);
     });
+    inspectionActionConfirmReason?.addEventListener('input', function () {
+        inspectionActionConfirmReason.setAttribute('aria-invalid', 'false');
+        if (inspectionActionConfirmReasonError) {
+            inspectionActionConfirmReasonError.textContent = '';
+            inspectionActionConfirmReasonError.hidden = true;
+        }
+    });
     inspectionActionConfirmSubmit?.addEventListener('click', function () {
         const action = pendingInspectionActionConfirm;
         if (!action || inspectionActionConfirmModal?.dataset.submitting === 'true') return;
+        const reason = inspectionActionConfirmReason?.value.trim() || '';
+        if (action.requiresReason && reason.replace(/\s+/g, '') === '') {
+            inspectionActionConfirmReason?.setAttribute('aria-invalid', 'true');
+            if (inspectionActionConfirmReasonError) {
+                inspectionActionConfirmReasonError.textContent = 'Enter a hold reason.';
+                inspectionActionConfirmReasonError.hidden = false;
+            }
+            inspectionActionConfirmReason?.focus();
+            return;
+        }
         inspectionActionConfirmModal.dataset.submitting = 'true';
         inspectionActionConfirmCancel.disabled = true;
         inspectionActionConfirmSubmit.disabled = true;
         inspectionActionConfirmSubmit.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Processing...';
         Promise.resolve()
-            .then(function () { return action.onConfirm(); })
+            .then(function () { return action.onConfirm(reason); })
             .then(function (success) {
                 if (success !== false) {
                     inspectionActionConfirmModal.hidden = true;
@@ -1015,7 +1046,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Tab' || !inspectionActionConfirmModal || inspectionActionConfirmModal.hidden) return;
-        const controls = Array.from(inspectionActionConfirmModal.querySelectorAll('button:not([disabled])'));
+        const controls = Array.from(inspectionActionConfirmModal.querySelectorAll('button:not([disabled]), textarea:not([disabled])'))
+            .filter(function (control) { return !control.closest('[hidden]'); });
         if (controls.length === 0) return;
         const first = controls[0];
         const last = controls[controls.length - 1];
@@ -1083,13 +1115,14 @@ document.addEventListener('DOMContentLoaded', function () {
         actionButton.toggleAttribute('data-complete-inspection', nextAction[0] === 'complete');
     };
 
-    const requestWorkflowTransition = function (form, button) {
+    const requestWorkflowTransition = function (form, button, holdReason) {
         const action = form.elements.workflow_action?.value || '';
         const originalLabel = button.dataset.originalLabel || button.textContent.trim();
         const data = new URLSearchParams();
         data.append('csrf_token', form.elements.csrf_token?.value || '');
         data.append('inspection_id', String(form.elements.inspection_id?.value || ''));
         data.append('workflow_action', action);
+        if (holdReason) data.append('hold_reason', holdReason);
         form.dataset.isTransitioning = 'true';
         button.disabled = true;
         button.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Updating...';
@@ -1605,6 +1638,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 title: 'Start Inspection?',
                 message: 'This will mark the inspection as Ongoing.',
                 confirm: 'Start Inspection',
+                onConfirm: function () {
+                    return requestWorkflowTransition(form, button);
+                },
+            });
+            return;
+        }
+
+        if (action === 'hold') {
+            openInspectionActionConfirm({
+                trigger: button,
+                title: 'Put Inspection On Hold?',
+                message: 'Add a reason. Admin will see this while the inspection is on hold.',
+                confirm: 'Put On Hold',
+                requiresReason: true,
+                onConfirm: function (reason) {
+                    return requestWorkflowTransition(form, button, reason);
+                },
+            });
+            return;
+        }
+
+        if (action === 'resume') {
+            openInspectionActionConfirm({
+                trigger: button,
+                title: 'Resume Inspection?',
+                message: 'This will return the inspection to Ongoing.',
+                confirm: 'Resume Inspection',
                 onConfirm: function () {
                     return requestWorkflowTransition(form, button);
                 },

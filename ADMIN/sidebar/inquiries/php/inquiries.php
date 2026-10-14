@@ -143,6 +143,11 @@ function inquiry_center_inspection_schedule_is_locked(?array $inspection): bool
         || in_array((string)($inspection['status'] ?? ''), ['Ongoing', 'Completed', 'Submitted'], true);
 }
 
+function inquiry_center_inspection_schedule_is_confirmation_locked(?array $inspection): bool
+{
+    return site_inspection_schedule_is_confirmation_locked($inspection);
+}
+
 function inquiry_center_schedule_notification_hash(int $engineerId, string $scheduledAt, string $siteNotes): string
 {
     $normalizedNotes = preg_replace('/\r\n?|\n/', "\n", trim($siteNotes)) ?? '';
@@ -531,6 +536,89 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
 $csrfToken = inquiry_center_csrf_token();
 $isAjaxRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor_inspection') {
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store');
+
+    $inspectionId = (int)($_GET['inspection_id'] ?? 0);
+    $holdSelect = site_inspection_hold_columns_ready($conn)
+        ? 'si.hold_reason, si.held_at,'
+        : 'NULL AS hold_reason, NULL AS held_at,';
+    $response = ['success' => false, 'message' => 'Inspection monitoring data was not found.'];
+
+    if ($inspectionId > 0) {
+        $stmt = $conn->prepare(
+            "SELECT si.id, si.status, si.scheduled_at, si.created_at, si.acknowledged_at,
+                    si.started_at, {$holdSelect} si.completed_at, si.submitted_at, si.updated_at,
+                    si.engineer_findings, si.risk_notes, si.client_requests, u.full_name AS engineer_name
+             FROM site_inspections si
+             INNER JOIN users u ON u.id = si.engineer_id
+             WHERE si.id = ?
+             LIMIT 1"
+        );
+        if ($stmt) {
+            $stmt->bind_param('i', $inspectionId);
+            $stmt->execute();
+            $inspection = $stmt->get_result()->fetch_assoc() ?: null;
+            if ($inspection) {
+                $report = null;
+                if (!empty($inspection['submitted_at'])) {
+                    $costStmt = $conn->prepare(
+                        'SELECT item_type, item_name, quantity, unit, notes
+                         FROM site_inspection_cost_items
+                         WHERE inspection_id = ?
+                         ORDER BY id ASC'
+                    );
+                    $items = [];
+                    if ($costStmt) {
+                        $costStmt->bind_param('i', $inspectionId);
+                        $costStmt->execute();
+                        $items = $costStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    }
+                    $report = [
+                        'findings' => (string)($inspection['engineer_findings'] ?? ''),
+                        'risk_notes' => (string)($inspection['risk_notes'] ?? ''),
+                        'client_requests' => (string)($inspection['client_requests'] ?? ''),
+                        'materials' => array_map(static fn(array $item): array => [
+                            'type' => ucfirst((string)($item['item_type'] ?? 'Material')),
+                            'name' => (string)($item['item_name'] ?? ''),
+                            'quantity' => rtrim(rtrim(number_format((float)($item['quantity'] ?? 0), 2), '0'), '.'),
+                            'unit' => (string)($item['unit'] ?? ''),
+                            'remarks' => (string)($item['notes'] ?? ''),
+                        ], $items),
+                    ];
+                }
+
+                $response = [
+                    'success' => true,
+                    'inspection' => [
+                        'engineer' => (string)($inspection['engineer_name'] ?? 'Not set'),
+                        'status' => (string)($inspection['status'] ?? 'Assigned'),
+                        'scheduled_at' => site_inspection_format_datetime($inspection['scheduled_at'] ?? null),
+                        'started_at' => site_inspection_format_datetime($inspection['started_at'] ?? null),
+                        'latest_activity' => site_inspection_format_datetime($inspection['updated_at'] ?? null),
+                        'hold_reason' => (string)($inspection['status'] ?? '') === 'On Hold'
+                            ? (string)($inspection['hold_reason'] ?? '')
+                            : '',
+                        'held_at' => site_inspection_format_datetime($inspection['held_at'] ?? null),
+                        'timeline' => [
+                            ['label' => 'Assigned', 'at' => site_inspection_format_datetime($inspection['created_at'] ?? null)],
+                            ['label' => 'Acknowledged', 'at' => site_inspection_format_datetime($inspection['acknowledged_at'] ?? null)],
+                            ['label' => 'Ongoing', 'at' => site_inspection_format_datetime($inspection['started_at'] ?? null)],
+                            ['label' => 'Completed', 'at' => site_inspection_format_datetime($inspection['completed_at'] ?? null)],
+                            ['label' => 'Submitted', 'at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null)],
+                        ],
+                        'report' => $report,
+                    ],
+                ];
+            }
+        }
+    }
+
+    echo json_encode($response);
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_quotation_status') {
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store');
@@ -629,13 +717,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_in
     $inquiryId = (int)($_GET['inquiry_id'] ?? 0);
     $response = [
         'scheduled' => false,
+        'final' => false,
         'client' => ['response' => 'not_scheduled', 'label' => 'Not Scheduled', 'note' => ''],
         'engineer' => ['response' => 'not_scheduled', 'label' => 'Not Scheduled', 'note' => ''],
     ];
 
     if ($inquiryId > 0) {
         $stmt = $conn->prepare(
-            'SELECT scheduled_at, client_schedule_response, client_schedule_response_note,
+            'SELECT scheduled_at, status, client_schedule_response, client_schedule_response_note,
                     client_schedule_responded_at, engineer_schedule_response,
                     engineer_schedule_response_note, engineer_schedule_responded_at
              FROM site_inspections
@@ -652,6 +741,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_in
                 $engineerResponse = (string)($inspectionResponse['engineer_schedule_response'] ?? 'pending');
                 $response = [
                     'scheduled' => true,
+                    'final' => $clientResponse === 'confirmed' && $engineerResponse === 'confirmed',
+                    'phase' => (string)($inspectionResponse['status'] ?? 'Assigned'),
                     'client' => [
                         'response' => $clientResponse,
                         'label' => site_inspection_schedule_response_label($clientResponse),
@@ -1350,6 +1441,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $existingStmt = $conn->prepare(
                 'SELECT id, status, engineer_id, scheduled_at, site_notes, acknowledged_at, started_at, completed_at, submitted_at,
+                        client_schedule_response, engineer_schedule_response,
                         client_schedule_notified_at, engineer_schedule_notified_at, schedule_notified_at, schedule_notification_hash
                  FROM site_inspections
                  WHERE inquiry_id = ?
@@ -1371,6 +1463,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($error === '' && $existingInspectionId > 0 && inquiry_center_inspection_schedule_is_locked($existingInspection)) {
                 $error = 'The inspection already started. Engineer, date, and time can no longer be changed.';
+            }
+            if ($error === '' && $existingInspectionId > 0
+                && inquiry_center_inspection_schedule_is_confirmation_locked($existingInspection)) {
+                $error = 'The Client and Engineer have confirmed this schedule. The schedule is now final.';
             }
             if ($error === '' && site_inspection_engineer_has_conflict(
                 $conn,
@@ -2016,6 +2112,9 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 }
 
 $inspectionByInquiry = [];
+$inspectionHoldSelect = site_inspection_hold_columns_ready($conn)
+    ? 'si.hold_reason, si.held_at, si.resumed_at,'
+    : 'NULL AS hold_reason, NULL AS held_at, NULL AS resumed_at,';
 $inspectionResult = $conn->query(
     "SELECT
         si.id,
@@ -2038,6 +2137,7 @@ $inspectionResult = $conn->query(
         si.created_at,
         si.acknowledged_at,
         si.started_at,
+        {$inspectionHoldSelect}
         si.completed_at,
         si.submitted_at,
         si.admin_review_status,
@@ -2612,26 +2712,39 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     $engineerScheduleResponseLabel = $engineerScheduleResponse === 'not_scheduled'
                                         ? 'Not Scheduled'
                                         : site_inspection_schedule_response_label($engineerScheduleResponse);
+                                    $latestInspectionStatus = $latestInspection
+                                        ? (string)($latestInspection['status'] ?? 'Assigned')
+                                        : 'Not Scheduled';
+                                    $scheduleIsFinal = $hasOfficialInspectionSchedule
+                                        && $clientScheduleResponse === 'confirmed'
+                                        && $engineerScheduleResponse === 'confirmed';
                                     ?>
                                     <div class="inquiry-details-grid inquiry-schedule-responses">
-                                        <div class="inquiry-detail">
-                                            <span>Client Schedule Response</span>
-                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="client" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                        </div>
-                                        <div class="inquiry-detail">
-                                            <span>Engineer Schedule Response</span>
-                                            <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="engineer" data-schedule-response="<?php echo htmlspecialchars($engineerScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($engineerScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                        </div>
-                                        <?php if ($hasOfficialInspectionSchedule && !empty($latestInspection['client_schedule_response_note'])): ?>
+                                        <?php if ($scheduleIsFinal): ?>
+                                            <div class="inquiry-schedule-final" data-schedule-final-badge><strong>Schedule Final</strong></div>
+                                            <div class="inquiry-inspection-phase" data-inspection-phase-card>
+                                                <span>Engineer Phase</span>
+                                                <strong class="inquiry-status" data-inspection-phase data-phase="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="inquiry-detail">
+                                                <span>Client Schedule Response</span>
+                                                <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="client" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                            <div class="inquiry-detail">
+                                                <span>Engineer Schedule Response</span>
+                                                <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="engineer" data-schedule-response="<?php echo htmlspecialchars($engineerScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($engineerScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!$scheduleIsFinal && $hasOfficialInspectionSchedule && !empty($latestInspection['client_schedule_response_note'])): ?>
                                             <div class="inquiry-detail inquiry-detail--wide" data-schedule-response-note-card="client"><span>Client Request</span><strong data-schedule-response-note="client"><?php echo htmlspecialchars((string)$latestInspection['client_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
-                                        <?php if ($hasOfficialInspectionSchedule && !empty($latestInspection['engineer_schedule_response_note'])): ?>
+                                        <?php if (!$scheduleIsFinal && $hasOfficialInspectionSchedule && !empty($latestInspection['engineer_schedule_response_note'])): ?>
                                             <div class="inquiry-detail inquiry-detail--wide" data-schedule-response-note-card="engineer"><span>Engineer Request</span><strong data-schedule-response-note="engineer"><?php echo htmlspecialchars((string)$latestInspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
                                     </div>
                                     <?php if ($latestInspection): ?>
                                         <?php
-                                        $latestInspectionStatus = (string)($latestInspection['status'] ?? 'Assigned');
                                         $currentScheduleReason = site_inspection_current_admin_reschedule_reason(
                                             $conn,
                                             (int)$latestInspection['id'],
@@ -2641,7 +2754,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         ?>
                                         <div class="inquiry-details-grid">
                                             <div class="inquiry-detail"><span>Assigned Engineer</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div class="inquiry-detail"><span>Inspection Date &amp; Time</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail inquiry-detail--monitor"><span>Inspection Date &amp; Time</span><div class="inquiry-detail__action-line"><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>">Monitor Inspection</button></div></div>
                                             <?php if (trim((string)($latestInspection['site_notes'] ?? '')) !== ''): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Site Notes</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$latestInspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                             <?php endif; ?>
@@ -2649,7 +2762,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Schedule Change Reason</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                             <?php endif; ?>
                                         </div>
-
                                         <?php if (!empty($latestInspection['submitted_at'])): ?>
                                             <?php
                                             $inspectionReviewStatus = (string)($latestInspection['admin_review_status'] ?? 'Pending');
@@ -2673,7 +2785,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span class="inquiry-status" data-status="<?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                                                 </div>
 
-                                                <div class="inquiry-details-grid submitted-inspection-report__details">
+                                                <div class="inquiry-details-grid submitted-inspection-report__details" hidden>
                                                     <div class="inquiry-detail"><span>Scheduled</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                     <div class="inquiry-detail"><span>Actual Started</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['started_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                     <div class="inquiry-detail"><span>Actual Completed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['completed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
@@ -2684,7 +2796,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <div class="inquiry-detail"><span>Client Requests</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['client_requests'] ?: 'None'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                                 </div>
 
-                                                <div class="submitted-inspection-timeline" aria-label="Inspection status timeline">
+                                                <div class="submitted-inspection-timeline" aria-label="Inspection status timeline" hidden>
                                                     <?php foreach ($inspectionTimeline as $timelineStatus => $timelineTime): ?>
                                                         <div class="submitted-inspection-timeline__step <?php echo $timelineTime ? 'is-done' : ''; ?>">
                                                             <strong><?php echo htmlspecialchars($timelineStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -2693,7 +2805,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <?php endforeach; ?>
                                                 </div>
 
-                                                <div class="inquiry-costing-table submitted-inspection-costing">
+                                                <div class="inquiry-costing-table submitted-inspection-costing" hidden>
                                                     <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--head">
                                                         <span>Type</span>
                                                         <span>Item / Labor</span>
@@ -2715,7 +2827,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
-                                                <div class="submitted-inspection-report__total">
+                                                <div class="submitted-inspection-report__total" hidden>
                                                     <span>Grand Total</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
@@ -2760,6 +2872,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <?php $inspectionScheduleLocked = inquiry_center_inspection_schedule_is_locked($latestInspection); ?>
+                                        <?php $scheduleConfirmationLocked = inquiry_center_inspection_schedule_is_confirmation_locked($latestInspection); ?>
+                                        <?php $scheduleReadOnly = $inspectionScheduleLocked || $scheduleConfirmationLocked; ?>
                                         <?php
                                             $currentScheduleHash = $latestInspection
                                                 ? inquiry_center_schedule_notification_hash(
@@ -2782,7 +2896,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php if ($inspectionScheduleLocked): ?>
                                             <div class="inquiry-empty">The inspection already started. Engineer, date, and time can no longer be changed.</div>
                                         <?php endif; ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo !$canScheduleInspection || $inspectionScheduleLocked || !empty($inquiry['archived_at']) ? 'hidden' : ''; ?>>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo !$canScheduleInspection || $scheduleReadOnly || !empty($inquiry['archived_at']) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
@@ -2794,7 +2908,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <label>
                                                     <span>Engineer</span>
                                                     <select name="engineer_id" required>
-                                                        <option value="">Select engineer</option>
+                                                        <option value="" disabled <?php echo !$latestInspection ? 'selected' : ''; ?>>Select engineer</option>
                                                         <?php foreach ($engineers as $engineer): ?>
                                                             <option value="<?php echo (int)$engineer['id']; ?>" <?php echo (int)($latestInspection['engineer_id'] ?? 0) === (int)$engineer['id'] ? 'selected' : ''; ?>>
                                                                 <?php echo htmlspecialchars((string)$engineer['full_name'], ENT_QUOTES, 'UTF-8'); ?>

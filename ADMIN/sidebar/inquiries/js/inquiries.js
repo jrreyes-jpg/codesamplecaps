@@ -172,6 +172,196 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(prerequisiteNotice);
 
+    const inspectionMonitorModal = document.createElement('div');
+    inspectionMonitorModal.className = 'inspection-monitor-modal';
+    inspectionMonitorModal.hidden = true;
+    inspectionMonitorModal.innerHTML = [
+        '<div class="inspection-monitor-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionMonitorTitle">',
+        '<div class="inspection-monitor-modal__head">',
+        '<h3 id="inspectionMonitorTitle">Inspection Monitoring</h3>',
+        '<button type="button" class="inquiry-modal__close" data-inspection-monitor-close aria-label="Close inspection monitoring">&times;</button>',
+        '</div>',
+        '<p class="inspection-monitor-modal__feedback" data-inspection-monitor-feedback hidden aria-live="polite"></p>',
+        '<div class="inspection-monitor-modal__content" data-inspection-monitor-content></div>',
+        '<div class="inspection-monitor-modal__actions">',
+        '<span data-inspection-monitor-refreshed>Not refreshed yet.</span>',
+        '<button type="button" class="btn-secondary" data-inspection-monitor-refresh>Refresh</button>',
+        '<button type="button" class="btn-primary" data-inspection-monitor-close>Close</button>',
+        '</div>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(inspectionMonitorModal);
+
+    const inspectionMonitorContent = inspectionMonitorModal.querySelector('[data-inspection-monitor-content]');
+    const inspectionMonitorFeedback = inspectionMonitorModal.querySelector('[data-inspection-monitor-feedback]');
+    const inspectionMonitorRefresh = inspectionMonitorModal.querySelector('[data-inspection-monitor-refresh]');
+    const inspectionMonitorRefreshed = inspectionMonitorModal.querySelector('[data-inspection-monitor-refreshed]');
+    let inspectionMonitorId = 0;
+    let inspectionMonitorTrigger = null;
+    let inspectionMonitorRefreshing = false;
+
+    const appendMonitorDetail = function (grid, label, value) {
+        const item = document.createElement('div');
+        item.className = 'inspection-monitor-modal__detail';
+        const title = document.createElement('span');
+        const text = document.createElement('strong');
+        title.textContent = label;
+        text.textContent = value || 'Not set';
+        item.append(title, text);
+        grid.appendChild(item);
+    };
+
+    const renderInspectionMonitor = function (inspection) {
+        if (!inspectionMonitorContent) return;
+        inspectionMonitorContent.replaceChildren();
+        const summary = document.createElement('div');
+        summary.className = 'inspection-monitor-modal__grid';
+        appendMonitorDetail(summary, 'Assigned Engineer', inspection.engineer);
+        appendMonitorDetail(summary, 'Current Phase', inspection.status);
+        appendMonitorDetail(summary, 'Official Schedule', inspection.scheduled_at);
+        appendMonitorDetail(summary, 'Actual Started', inspection.started_at);
+        appendMonitorDetail(summary, 'Latest Recorded Activity', inspection.latest_activity);
+        inspectionMonitorContent.appendChild(summary);
+
+        if (inspection.hold_reason) {
+            const hold = document.createElement('section');
+            hold.className = 'inspection-monitor-modal__hold';
+            const title = document.createElement('strong');
+            const reason = document.createElement('p');
+            const when = document.createElement('span');
+            title.textContent = 'Hold Reason';
+            reason.textContent = inspection.hold_reason;
+            when.textContent = 'Put on hold: ' + (inspection.held_at || 'Not set');
+            hold.append(title, reason, when);
+            inspectionMonitorContent.appendChild(hold);
+        }
+
+        const timeline = document.createElement('section');
+        timeline.className = 'inspection-monitor-modal__timeline';
+        const timelineTitle = document.createElement('strong');
+        timelineTitle.textContent = 'Progress Timeline';
+        const timelineList = document.createElement('div');
+        (inspection.timeline || []).forEach(function (step) {
+            const row = document.createElement('div');
+            const label = document.createElement('strong');
+            const time = document.createElement('span');
+            label.textContent = step.label;
+            time.textContent = step.at;
+            row.append(label, time);
+            timelineList.appendChild(row);
+        });
+        timeline.append(timelineTitle, timelineList);
+        inspectionMonitorContent.appendChild(timeline);
+
+        const report = document.createElement('section');
+        report.className = 'inspection-monitor-modal__report';
+        const reportTitle = document.createElement('strong');
+        reportTitle.textContent = 'Submitted Report';
+        report.appendChild(reportTitle);
+        if (!inspection.report) {
+            const empty = document.createElement('p');
+            empty.textContent = 'No submitted inspection report yet.';
+            report.appendChild(empty);
+        } else {
+            const findings = document.createElement('p');
+            findings.textContent = inspection.report.findings || 'No findings provided.';
+            report.appendChild(findings);
+            const materials = inspection.report.materials || [];
+            if (materials.length) {
+                const list = document.createElement('div');
+                list.className = 'inspection-monitor-modal__materials';
+                materials.forEach(function (item) {
+                    const row = document.createElement('div');
+                    row.textContent = [item.type, item.name, item.quantity + ' ' + item.unit, item.remarks || 'No remarks'].join(' | ');
+                    list.appendChild(row);
+                });
+                report.appendChild(list);
+            } else {
+                const empty = document.createElement('p');
+                empty.textContent = 'No submitted material recommendations.';
+                report.appendChild(empty);
+            }
+        }
+        inspectionMonitorContent.appendChild(report);
+    };
+
+    const setInspectionMonitorFeedback = function (message, isError) {
+        if (!inspectionMonitorFeedback) return;
+        inspectionMonitorFeedback.textContent = message || '';
+        inspectionMonitorFeedback.hidden = !message;
+        inspectionMonitorFeedback.classList.toggle('is-error', Boolean(isError));
+    };
+
+    const refreshInspectionMonitor = function () {
+        if (!inspectionMonitorId || inspectionMonitorRefreshing) return;
+        inspectionMonitorRefreshing = true;
+        inspectionMonitorRefresh.disabled = true;
+        inspectionMonitorRefresh.textContent = 'Refreshing...';
+        setInspectionMonitorFeedback('', false);
+        const url = new URL(window.location.href);
+        url.searchParams.set('action', 'monitor_inspection');
+        url.searchParams.set('inspection_id', String(inspectionMonitorId));
+        fetch(url.toString(), { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (response) { return response.json().then(function (data) { return { response: response, data: data }; }); })
+            .then(function (result) {
+                if (!result.response.ok || result.data.success !== true) throw new Error(result.data.message || 'Unable to refresh inspection monitoring.');
+                renderInspectionMonitor(result.data.inspection);
+                inspectionMonitorRefreshed.textContent = 'Last refreshed: ' + new Date().toLocaleString();
+            })
+            .catch(function (error) {
+                setInspectionMonitorFeedback(error.message || 'Unable to refresh inspection monitoring. Previous data is still shown.', true);
+            })
+            .finally(function () {
+                inspectionMonitorRefreshing = false;
+                inspectionMonitorRefresh.disabled = false;
+                inspectionMonitorRefresh.textContent = 'Refresh';
+            });
+    };
+
+    const closeInspectionMonitor = function () {
+        if (inspectionMonitorRefreshing) return;
+        inspectionMonitorModal.hidden = true;
+        inspectionMonitorTrigger?.focus();
+    };
+
+    document.addEventListener('click', function (event) {
+        const openButton = event.target.closest('[data-inspection-monitor-open]');
+        if (openButton) {
+            inspectionMonitorId = Number.parseInt(openButton.dataset.inspectionId || '0', 10);
+            if (!inspectionMonitorId) return;
+            inspectionMonitorTrigger = openButton;
+            inspectionMonitorModal.hidden = false;
+            inspectionMonitorModal.querySelector('[data-inspection-monitor-close]')?.focus();
+            refreshInspectionMonitor();
+            return;
+        }
+        if (event.target === inspectionMonitorModal || event.target.closest('[data-inspection-monitor-close]')) {
+            closeInspectionMonitor();
+        }
+    });
+    inspectionMonitorRefresh?.addEventListener('click', refreshInspectionMonitor);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !inspectionMonitorModal.hidden) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeInspectionMonitor();
+            return;
+        }
+        if (event.key === 'Tab' && !inspectionMonitorModal.hidden) {
+            const controls = Array.from(inspectionMonitorModal.querySelectorAll('button:not([disabled])'));
+            if (!controls.length) return;
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    });
+
     const showConfirm = function (form, message, details, labels = {}) {
         pendingConfirmForm = form;
         form.dataset.confirmationMode = labels.mode || 'submit';
@@ -1710,6 +1900,36 @@ document.addEventListener('DOMContentLoaded', function () {
         if (value) value.textContent = note;
     };
 
+    const applyFinalScheduleLock = function (modal, isFinal, phase) {
+        if (!modal || !isFinal) return;
+        const scheduleForm = modal.querySelector('[data-inquiry-inspection-form]');
+        if (scheduleForm) scheduleForm.hidden = true;
+        const responseGrid = modal.querySelector('.inquiry-schedule-responses');
+        if (!responseGrid) return;
+        let phaseBadge = responseGrid.querySelector('[data-inspection-phase]');
+        if (!phaseBadge) {
+            responseGrid.replaceChildren();
+            const finalBadge = document.createElement('div');
+            finalBadge.className = 'inquiry-schedule-final';
+            finalBadge.dataset.scheduleFinalBadge = 'true';
+            const finalValue = document.createElement('strong');
+            finalValue.textContent = 'Schedule Final';
+            finalBadge.append(finalValue);
+            const phaseCard = document.createElement('div');
+            phaseCard.className = 'inquiry-inspection-phase';
+            phaseCard.dataset.inspectionPhaseCard = 'true';
+            const phaseLabel = document.createElement('span');
+            phaseLabel.textContent = 'Engineer Phase';
+            phaseBadge = document.createElement('strong');
+            phaseBadge.className = 'inquiry-status';
+            phaseBadge.dataset.inspectionPhase = 'true';
+            phaseCard.append(phaseLabel, phaseBadge);
+            responseGrid.append(finalBadge, phaseCard);
+        }
+        phaseBadge.dataset.phase = phase || 'Assigned';
+        phaseBadge.textContent = phase || 'Assigned';
+    };
+
     const pollInspectionScheduleResponse = function () {
         if (inspectionResponsePollInProgress || document.hidden) return;
         const modal = document.querySelector('.inquiry-modal:not([hidden])[data-inquiry-id]');
@@ -1733,6 +1953,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (data) {
                 if (!data.success || !data.inspection) return;
                 const isInitialLoad = modal.dataset.inspectionResponsePollReady !== '1';
+                const isFinal = data.inspection.final === true;
+                applyFinalScheduleLock(modal, isFinal, String(data.inspection.phase || 'Assigned'));
                 ['client', 'engineer'].forEach(function (party) {
                     const response = data.inspection[party] || {};
                     const badge = modal.querySelector('[data-schedule-response-party="' + party + '"]');
@@ -1741,7 +1963,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         badge.dataset.scheduleResponse = String(response.response || 'not_scheduled');
                         badge.textContent = response.label || 'Not Scheduled';
                     }
-                    updateInspectionResponseNote(modal, party, data.inspection.scheduled ? String(response.note || '') : '');
+                    if (!isFinal) {
+                        updateInspectionResponseNote(modal, party, data.inspection.scheduled ? String(response.note || '') : '');
+                    }
                     if (!isInitialLoad && previousResponse !== String(response.response || 'not_scheduled')) {
                         showLiveInquiryToast(
                             (party === 'client' ? 'Client' : 'Engineer') + ' schedule response: ' + (response.label || 'Not Scheduled') + '.',

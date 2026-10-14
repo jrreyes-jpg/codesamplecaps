@@ -120,6 +120,11 @@
     color: #1d4ed8;
 }
 
+.inspection-status[data-status="On Hold"] {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
 .inspection-status[data-status="Completed"] {
     background: #ede9fe;
     color: #6d28d9;
@@ -886,6 +891,39 @@ body.inspection-modal-open {
 .inspection-flash.error {
     background: #fee2e2;
     color: #991b1b;
+}
+
+.inspection-action-confirm__reason {
+    display: grid;
+    gap: 7px;
+    margin-top: 14px;
+    color: #334155;
+    font-weight: 800;
+}
+
+.inspection-action-confirm__reason textarea {
+    width: 100%;
+    min-height: 88px;
+    resize: vertical;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font: inherit;
+}
+
+.inspection-action-confirm__reason textarea[aria-invalid="true"] {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+.inspection-action-confirm__reason small {
+    color: #b91c1c;
+    font-size: 0.8rem;
+}
+
+.inspection-detail--hold {
+    border-color: rgba(234, 88, 12, 0.35);
+    background: #fff7ed;
 }
 
 .inspection-detail__multiline {

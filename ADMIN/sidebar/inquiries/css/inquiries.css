@@ -859,6 +859,11 @@
     color: #1d4ed8 !important;
 }
 
+.inquiry-status[data-status="On Hold"] {
+    background: #fff7ed !important;
+    color: #9a3412 !important;
+}
+
 .inquiry-status[data-status="Completed"] {
     background: #ede9fe !important;
     color: #6d28d9 !important;
@@ -982,6 +987,85 @@
     color: #0f172a;
     line-height: 1.35;
     overflow-wrap: anywhere;
+}
+
+.inquiry-schedule-final {
+    display: flex;
+    align-items: center;
+}
+
+.inquiry-schedule-final strong {
+    display: inline-block;
+    width: fit-content;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.inquiry-inspection-phase {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+}
+
+.inquiry-inspection-phase > span {
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.inquiry-inspection-phase [data-phase="Assigned"] {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.inquiry-inspection-phase [data-phase="Acknowledged"] {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.inquiry-inspection-phase [data-phase="Ongoing"] {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.inquiry-inspection-phase [data-phase="On Hold"] {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.inquiry-inspection-phase [data-phase="Completed"] {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inquiry-inspection-phase [data-phase="Submitted"] {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.inquiry-detail__action-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 2px;
+}
+
+.inquiry-detail__action-line strong {
+    margin-top: 0;
+}
+
+.inquiry-detail__action-line .btn-secondary {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    font-size: 0.8rem;
 }
 
 .inquiry-review-form {
@@ -1111,6 +1195,10 @@
     border-radius: 14px;
     background: #ffffff;
     color: #0f172a;
+}
+
+.inquiry-schedule-form[hidden] {
+    display: none !important;
 }
 
 .inquiry-schedule-retry-form {
@@ -2267,6 +2355,179 @@ body.inquiry-modal-open {
 .inquiry-quote-draft strong {
     color: #0f172a;
     overflow-wrap: anywhere;
+}
+
+.inspection-monitor-modal[hidden] {
+    display: none;
+}
+
+.inspection-monitor-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5400;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.58);
+}
+
+.inspection-monitor-modal__panel {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    width: min(760px, calc(100vw - 40px));
+    max-height: min(760px, calc(100vh - 40px));
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.3);
+}
+
+.inspection-monitor-modal__head,
+.inspection-monitor-modal__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.inspection-monitor-modal__head h3 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.inspection-monitor-modal__actions {
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.inspection-monitor-modal__actions span {
+    margin-right: auto;
+    color: #64748b;
+    font-size: 0.82rem;
+}
+
+.inspection-monitor-modal__content {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px;
+}
+
+.inspection-monitor-modal__feedback {
+    margin: 12px 18px 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.inspection-monitor-modal__feedback.is-error {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.inspection-monitor-modal__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.inspection-monitor-modal__detail,
+.inspection-monitor-modal__hold,
+.inspection-monitor-modal__timeline,
+.inspection-monitor-modal__report {
+    min-width: 0;
+    margin-top: 14px;
+    padding: 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 13px;
+    background: #f8fafc;
+}
+
+.inspection-monitor-modal__grid .inspection-monitor-modal__detail {
+    margin-top: 0;
+}
+
+.inspection-monitor-modal__detail span,
+.inspection-monitor-modal__hold span,
+.inspection-monitor-modal__timeline span {
+    display: block;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.inspection-monitor-modal__detail strong,
+.inspection-monitor-modal__hold p,
+.inspection-monitor-modal__report p,
+.inspection-monitor-modal__materials div {
+    overflow-wrap: anywhere;
+}
+
+.inspection-monitor-modal__hold {
+    border-color: #fed7aa;
+    background: #fff7ed;
+}
+
+.inspection-monitor-modal__timeline > div {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.inspection-monitor-modal__timeline > div > div {
+    min-width: 0;
+    padding: 8px;
+    border-radius: 9px;
+    background: #ffffff;
+}
+
+.inspection-monitor-modal__timeline strong {
+    display: block;
+    color: #166534;
+    font-size: 0.78rem;
+}
+
+.inspection-monitor-modal__materials {
+    display: grid;
+    gap: 7px;
+    margin-top: 10px;
+}
+
+.inspection-monitor-modal__materials div {
+    padding: 9px;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 0.86rem;
+}
+
+@media (max-width: 640px) {
+    .inspection-monitor-modal {
+        padding: 12px;
+    }
+
+    .inspection-monitor-modal__panel {
+        width: 100%;
+        max-height: calc(100vh - 24px);
+    }
+
+    .inspection-monitor-modal__grid,
+    .inspection-monitor-modal__timeline > div {
+        grid-template-columns: 1fr;
+    }
+
+    .inspection-monitor-modal__actions > :is(button, span) {
+        width: 100%;
+    }
+
+    .inspection-monitor-modal__actions span {
+        margin-right: 0;
+    }
 }
 
 .inquiry-quote-draft > div:first-child strong {

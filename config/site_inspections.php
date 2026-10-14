@@ -193,6 +193,47 @@ if (!function_exists('site_inspection_statuses')) {
     }
 }
 
+if (!function_exists('site_inspection_schedule_is_confirmation_locked')) {
+    function site_inspection_schedule_is_confirmation_locked(?array $inspection): bool
+    {
+        if (!$inspection) {
+            return false;
+        }
+
+        // Responses are reset whenever Admin saves a real schedule change.
+        return (string)($inspection['client_schedule_response'] ?? '') === 'confirmed'
+            && (string)($inspection['engineer_schedule_response'] ?? '') === 'confirmed';
+    }
+}
+
+if (!function_exists('site_inspection_hold_columns_ready')) {
+    function site_inspection_hold_columns_ready(mysqli $conn): bool
+    {
+        static $ready = null;
+        if ($ready !== null) {
+            return $ready;
+        }
+
+        $ready = false;
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) AS column_count
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'site_inspections'
+               AND COLUMN_NAME IN ('hold_reason', 'held_at', 'resumed_at')"
+        );
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $ready = (int)($row['column_count'] ?? 0) === 3;
+        $stmt->close();
+
+        return $ready;
+    }
+}
+
 if (!function_exists('site_inspection_next_status')) {
     function site_inspection_next_status(string $status): ?string
     {
@@ -211,6 +252,56 @@ if (!function_exists('site_inspection_can_transition')) {
     function site_inspection_can_transition(string $currentStatus, string $targetStatus): bool
     {
         return site_inspection_next_status($currentStatus) === $targetStatus;
+    }
+}
+
+if (!function_exists('site_inspection_can_hold')) {
+    function site_inspection_can_hold(string $status, string $action): bool
+    {
+        return ($action === 'hold' && $status === 'Ongoing')
+            || ($action === 'resume' && $status === 'On Hold');
+    }
+}
+
+if (!function_exists('site_inspection_set_hold_state')) {
+    function site_inspection_set_hold_state(
+        mysqli $conn,
+        int $inspectionId,
+        int $engineerId,
+        string $action,
+        string $reason = ''
+    ): bool {
+        if (!in_array($action, ['hold', 'resume'], true) || !site_inspection_hold_columns_ready($conn)) {
+            return false;
+        }
+
+        if ($action === 'hold') {
+            $stmt = $conn->prepare(
+                "UPDATE site_inspections
+                 SET status = 'On Hold', hold_reason = ?, held_at = NOW()
+                 WHERE id = ? AND engineer_id = ? AND status = 'Ongoing'"
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sii', $reason, $inspectionId, $engineerId);
+        } else {
+            $stmt = $conn->prepare(
+                "UPDATE site_inspections
+                 SET status = 'Ongoing', resumed_at = NOW()
+                 WHERE id = ? AND engineer_id = ? AND status = 'On Hold'"
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('ii', $inspectionId, $engineerId);
+        }
+
+        $stmt->execute();
+        $changed = $stmt->affected_rows === 1;
+        $stmt->close();
+
+        return $changed;
     }
 }
 

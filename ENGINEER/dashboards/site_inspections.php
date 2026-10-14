@@ -203,11 +203,14 @@ function engineer_owns_inspection(mysqli $conn, int $inspectionId, int $engineer
 
 function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $engineerId): array
 {
+    $holdSelect = site_inspection_hold_columns_ready($conn)
+        ? 'hold_reason, held_at, resumed_at,'
+        : 'NULL AS hold_reason, NULL AS held_at, NULL AS resumed_at,';
     $stmt = $conn->prepare(
-        'SELECT status, admin_review_status, admin_remarks, created_at, acknowledged_at, started_at, completed_at, submitted_at, client_schedule_response, engineer_schedule_response
+        "SELECT status, admin_review_status, admin_remarks, created_at, acknowledged_at, started_at, {$holdSelect} completed_at, submitted_at, client_schedule_response, engineer_schedule_response
          FROM site_inspections
          WHERE id = ? AND engineer_id = ?
-         LIMIT 1'
+         LIMIT 1"
     );
     if (!$stmt) {
         return [];
@@ -252,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $preferredTime = trim((string)($_POST['schedule_preferred_time'] ?? ''));
         $preferredAt = ($preferredDate !== '' && $preferredTime !== '') ? $preferredDate . ' ' . $preferredTime . ':00' : null;
         $reasonWithoutWhitespace = preg_replace('/\s+/u', '', $reason) ?? '';
-        if (in_array($currentStatus, ['Ongoing', 'Completed', 'Submitted'], true) || mb_strlen($reasonWithoutWhitespace, 'UTF-8') < 5) {
+        if (in_array($currentStatus, ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true) || mb_strlen($reasonWithoutWhitespace, 'UTF-8') < 5) {
             $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
         } elseif ($preferredDate === '' || $preferredTime === '') {
             $error = 'Choose a preferred new date and time.';
@@ -317,6 +320,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $message = 'Reschedule request sent to Admin.';
             }
+        }
+    } elseif (in_array($workflowAction, ['hold', 'resume'], true)) {
+        $holdReason = trim((string)($_POST['hold_reason'] ?? ''));
+        $meaningfulHoldReason = preg_replace('/\s+/u', '', $holdReason) ?? '';
+
+        if (!site_inspection_hold_columns_ready($conn)) {
+            $error = 'On Hold setup is not ready. Please apply the site inspection hold migration first.';
+        } elseif (!site_inspection_can_hold($currentStatus, $workflowAction)) {
+            $error = 'This inspection cannot be updated right now. Please refresh the page.';
+        } elseif ($workflowAction === 'hold' && ($meaningfulHoldReason === '' || mb_strlen($holdReason, 'UTF-8') > 2000)) {
+            $error = 'Enter a valid hold reason before putting the inspection on hold.';
+        } elseif (site_inspection_set_hold_state($conn, $inspectionId, $userId, $workflowAction, $holdReason)) {
+            audit_log_event(
+                $conn,
+                $userId,
+                $workflowAction === 'hold' ? 'hold_site_inspection' : 'resume_site_inspection',
+                'site_inspection',
+                $inspectionId,
+                ['status' => $currentStatus],
+                $workflowAction === 'hold'
+                    ? ['status' => 'On Hold', 'hold_reason' => $holdReason]
+                    : ['status' => 'Ongoing']
+            );
+            $message = $workflowAction === 'hold'
+                ? 'Inspection put on hold.'
+                : 'Inspection resumed.';
+        } else {
+            $error = 'Inspection status was not changed. Please refresh the page.';
+        }
+
+        if ($isAjaxRequest) {
+            $freshInspectionState = engineer_get_inspection_state($conn, $inspectionId, $userId);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'success' => $error === '',
+                'message' => $error !== '' ? $error : $message,
+                'status' => $error === '' ? (string)($freshInspectionState['status'] ?? '') : 'error',
+                'inspection_id' => $inspectionId,
+            ]);
+            exit;
         }
     } elseif ($workflowAction !== '') {
         $targetStatus = $workflowTargets[$workflowAction] ?? '';
@@ -753,8 +796,11 @@ if ($assetRequirementsReady) {
 }
 
 $inspections = [];
+$inspectionHoldSelect = site_inspection_hold_columns_ready($conn)
+    ? 'si.hold_reason, si.held_at, si.resumed_at,'
+    : 'NULL AS hold_reason, NULL AS held_at, NULL AS resumed_at,';
 $stmt = $conn->prepare(
-    'SELECT
+    "SELECT
         si.id,
         si.scheduled_at,
         si.site_notes,
@@ -765,6 +811,7 @@ $stmt = $conn->prepare(
         si.engineer_schedule_preferred_at,
         si.acknowledged_at,
         si.started_at,
+        {$inspectionHoldSelect}
         si.completed_at,
         si.submitted_at,
         si.admin_review_status,
@@ -788,7 +835,7 @@ $stmt = $conn->prepare(
      INNER JOIN service_inquiries s ON s.id = si.inquiry_id
      WHERE si.engineer_id = ?
        AND s.archived_at IS NULL
-     ORDER BY si.scheduled_at ASC, si.id DESC'
+     ORDER BY si.scheduled_at ASC, si.id DESC"
 );
 if ($stmt) {
     $stmt->bind_param('i', $userId);
@@ -877,12 +924,14 @@ require __DIR__ . '/../layout/header.php';
                         'Assigned' => 'acknowledge',
                         'Acknowledged' => 'start',
                         'Ongoing' => 'complete',
+                        'On Hold' => 'resume',
                         default => '',
                     };
                     $workflowActionLabel = match ($inspectionStatus) {
                         'Assigned' => 'Acknowledge Assignment',
                         'Acknowledged' => 'Start Inspection',
                         'Ongoing' => 'Mark Inspection Completed',
+                        'On Hold' => 'Resume Inspection',
                         default => '',
                     };
                     $statusTimes = [
@@ -943,6 +992,11 @@ require __DIR__ . '/../layout/header.php';
                                     <?php if ($currentScheduleReason !== ''): ?>
                                         <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                     <?php endif; ?>
+                                    <?php if ($inspectionStatus === 'On Hold'): ?>
+                                        <div class="inspection-detail inspection-detail--wide inspection-detail--hold"><span>Hold Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)($inspection['hold_reason'] ?: 'Not set'), ENT_QUOTES, 'UTF-8')); ?></strong><small>Put on hold: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['held_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small></div>
+                                    <?php elseif (!empty($inspection['resumed_at'])): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Last Resumed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['resumed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <p class="inspection-description"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
@@ -970,6 +1024,14 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
 
                                 <div class="inspection-status-action">
+                                    <?php if ($inspectionStatus === 'Ongoing'): ?>
+                                        <form method="POST" class="inspection-status-action">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                            <input type="hidden" name="workflow_action" value="hold">
+                                            <button type="button" class="btn-secondary" data-workflow-transition>Put On Hold</button>
+                                        </form>
+                                    <?php endif; ?>
                                     <?php if ($workflowAction !== ''): ?>
                                         <form method="POST" class="inspection-status-action">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -990,7 +1052,7 @@ require __DIR__ . '/../layout/header.php';
                                             <button type="button" class="btn-secondary" disabled>Request Pending</button>
                                         </section>
                                     <?php elseif (in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)
-                                       && (string)($inspection['engineer_schedule_response'] ?? 'pending') !== 'reschedule_requested'
+                                       && (string)($inspection['engineer_schedule_response'] ?? 'pending') === 'pending'
                                         && (string)($inspection['client_schedule_response'] ?? 'pending') !== 'reschedule_requested'): ?>
                                         <button type="button" class="btn-secondary inspection-schedule-change-button"
                                             data-engineer-reschedule-open
@@ -1212,6 +1274,11 @@ require __DIR__ . '/../layout/header.php';
                 <button type="button" class="inspection-modal__close" data-inspection-action-confirm-close aria-label="Close confirmation">&times;</button>
                 <h2 id="inspectionActionConfirmTitle" data-inspection-action-confirm-title></h2>
                 <p data-inspection-action-confirm-message></p>
+                <label class="inspection-action-confirm__reason" data-inspection-action-confirm-reason-wrap hidden>
+                    <span>Hold Reason</span>
+                    <textarea rows="3" maxlength="2000" data-inspection-action-confirm-reason aria-describedby="inspectionActionConfirmReasonError"></textarea>
+                    <small id="inspectionActionConfirmReasonError" data-inspection-action-confirm-reason-error hidden aria-live="polite"></small>
+                </label>
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-inspection-action-confirm-cancel>Cancel</button>
                     <button type="button" class="btn-primary" data-inspection-action-confirm-submit></button>

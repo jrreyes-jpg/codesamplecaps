@@ -250,9 +250,38 @@ button:hover{
 }
 
 .verify-inquiry-brand {
+    position: relative;
     background:
         linear-gradient(180deg, rgba(255,255,255,0.10), transparent),
         #285a43;
+}
+
+.verify-brand-home-link {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 999px;
+    background: rgba(15, 44, 33, 0.28);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 750;
+    text-decoration: none;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+
+.verify-brand-home-link:hover,
+.verify-brand-home-link:focus-visible {
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    outline: none;
+    text-decoration: none;
+    transform: translateY(-1px);
 }
 
 .verify-inquiry-brand p {
@@ -283,24 +312,6 @@ button:hover{
     color: #66746f;
     font-size: 14px;
     line-height: 1.55;
-}
-
-.verify-next-step {
-    display: grid;
-    gap: 5px;
-    margin: -8px 0 18px;
-    padding: 13px 15px;
-    border: 1px solid rgba(15, 118, 110, 0.22);
-    border-radius: 12px;
-    background: #ecfdf5;
-    color: #166534;
-    font-size: 14px;
-    line-height: 1.45;
-}
-
-.verify-next-step strong {
-    color: #064e3b;
-    font-size: 13px;
 }
 
 .verify-email-reminder {
@@ -421,7 +432,12 @@ button:hover{
 @media(max-width:900px) {
     .verify-inquiry-brand {
         display: flex;
-        padding: 28px 20px;
+        padding: 64px 20px 28px;
+    }
+
+    .verify-brand-home-link {
+        top: 16px;
+        left: 16px;
     }
 
     .verify-inquiry-logo {

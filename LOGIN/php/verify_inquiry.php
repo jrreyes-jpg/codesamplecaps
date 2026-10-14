@@ -269,6 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
     <?php endif; ?>
     <div class="container verify-inquiry-shell">
         <div class="left-panel verify-inquiry-brand">
+            <a class="verify-brand-home-link" href="/codesamplecaps/LOGIN/php/index.php">&larr; Back to Home</a>
             <div class="logo verify-inquiry-logo">
                 <img src="../../IMAGES/edge.jpg" alt="Edge Automation logo">
             </div>
@@ -280,10 +281,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                 <form method="POST" id="verifyInquiryForm" data-otp-expires-at="<?php echo htmlspecialchars($otpExpiresAt->format(DateTimeInterface::ATOM), ENT_QUOTES, 'UTF-8'); ?>" data-otp-state="<?php echo htmlspecialchars($otpState, ENT_QUOTES, 'UTF-8'); ?>" data-verification-limit-reached="<?php echo ($verificationUnavailable && $resendLimitReached) ? 'true' : 'false'; ?>">
                     <h2>Verify Inquiry</h2>
                     <p class="auth-helper-text">We sent a 6-digit code to your email. Enter it here to submit your inquiry.</p>
-                    <div class="verify-next-step" aria-label="What happens next">
-                        <strong>What happens next?</strong>
-                        <span>After verification, Admin will review your request and contact you by call or email.</span>
-                    </div>
                     <?php if ($error): ?><div class="error-box" data-otp-error><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <?php if ($message): ?><div class="success-box"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
@@ -306,10 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
                             <a href="/codesamplecaps/LOGIN/php/index.php?open=inquiry#contact">Start a New Inquiry</a>
                         </div>
                     <?php endif; ?>
-                    <p class="verify-email-reminder">Can’t find the OTP email? Check your Spam/Junk folder. If it is still missing, use Resend Code when it becomes available.</p>
-                    <div class="links">
-                        <a href="/codesamplecaps/LOGIN/php/index.php" id="backToHomeLink">Back to Home</a>
-                    </div>
+                    <p class="verify-email-reminder">Did not get the code? Check Spam or Junk. You can resend when the timer ends.</p>
                 </form>
             </div>
         </div>

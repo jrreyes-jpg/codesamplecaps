@@ -89,7 +89,7 @@ const showInquirySuccessModal = () => {
         '<div class="inquiry-success-modal__card">',
         '<div class="inquiry-success-modal__icon" aria-hidden="true">✓</div>',
         '<h2 id="inquirySuccessTitle">Inquiry Sent</h2>',
-        '<p>Please wait for our call or email. Admin will review your request first.</p>',
+        '<p><strong>What happens next?</strong><br>Admin will review your request and contact you by call or email.</p>',
         '<button type="button" class="btn btn-primary" data-inquiry-success-close>Back to Home</button>',
         '</div>',
     ].join('');

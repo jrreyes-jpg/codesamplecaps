@@ -159,14 +159,15 @@
 
 .inspection-workflow {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
 }
 
 .inspection-workflow__step {
-    padding: 10px;
+    min-width: 0;
+    padding: 8px 10px;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #f8fafc;
     color: #64748b;
 }
@@ -178,11 +179,13 @@
 
 .inspection-workflow__step span {
     font-weight: 900;
+    font-size: 0.82rem;
 }
 
 .inspection-workflow__step small {
-    margin-top: 4px;
-    font-size: 0.72rem;
+    margin-top: 2px;
+    font-size: 0.68rem;
+    overflow-wrap: anywhere;
 }
 
 .inspection-workflow__step.is-done {
@@ -340,6 +343,98 @@
     border-radius: 18px;
     background: #ffffff;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.inspection-client-details {
+    grid-column: 1 / -1;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.inspection-client-details summary,
+.inspection-disclosure summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px;
+    cursor: pointer;
+    color: #166534;
+    font-size: 0.86rem;
+    font-weight: 900;
+}
+
+.inspection-client-details summary::-webkit-details-marker,
+.inspection-disclosure summary::-webkit-details-marker {
+    display: none;
+}
+
+.inspection-client-details summary::after,
+.inspection-disclosure summary::after {
+    content: '+';
+    flex: 0 0 auto;
+    color: #166534;
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.inspection-client-details[open] summary::after,
+.inspection-disclosure[open] summary::after {
+    content: '−';
+}
+
+.inspection-client-details__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 11px 11px;
+}
+
+.inspection-client-details__grid > div {
+    min-width: 0;
+}
+
+.inspection-client-details__grid span {
+    display: block;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.inspection-client-details__grid strong {
+    display: block;
+    margin-top: 3px;
+    color: #0f172a;
+    overflow-wrap: anywhere;
+}
+
+.inspection-disclosure {
+    border: 1px solid rgba(22, 101, 52, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.inspection-disclosure summary span {
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-align: right;
+}
+
+.inspection-disclosure > .costing-rows,
+.inspection-disclosure > .asset-requirements,
+.inspection-disclosure > .inspection-costing-notes {
+    margin: 0 11px 11px;
+}
+
+.inspection-disclosure--notes {
+    border-color: #dbe4ee;
+}
+
+.inspection-costing-notes--optional {
+    padding: 0;
 }
 
 
@@ -1005,6 +1100,10 @@ body.inspection-modal-open {
     }
 
     .inspection-workflow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .inspection-client-details__grid {
         grid-template-columns: 1fr;
     }
 
@@ -1031,6 +1130,22 @@ body.inspection-modal-open {
 }
 
 @media (max-width: 560px) {
+    .inspection-workflow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .inspection-workflow__step {
+        padding: 8px;
+    }
+
+    .inspection-disclosure summary {
+        align-items: flex-start;
+    }
+
+    .inspection-disclosure summary span {
+        max-width: 55%;
+    }
+
     .inspection-confirm-modal {
         padding: 12px;
     }

@@ -914,9 +914,6 @@ require __DIR__ . '/../layout/header.php';
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
                         : $inspectionStatus;
-                    $inspectionStatuses = site_inspection_statuses();
-                    $currentStatusIndex = array_search($inspectionStatus, $inspectionStatuses, true);
-                    $currentStatusIndex = $currentStatusIndex === false ? -1 : $currentStatusIndex;
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $canEditCosting = in_array($inspectionStatus, ['Ongoing', 'Completed'], true);
                     $canSubmitToAdmin = $inspectionStatus === 'Completed';
@@ -941,6 +938,19 @@ require __DIR__ . '/../layout/header.php';
                         'Completed' => $inspection['completed_at'] ?? null,
                         'Submitted' => $inspection['submitted_at'] ?? null,
                     ];
+                    // Simple lang ang progress na kailangan makita ng Engineer.
+                    $engineerProgressSteps = [
+                        ['label' => 'Assigned', 'time' => $statusTimes['Acknowledged'] ?? $statusTimes['Assigned']],
+                        ['label' => 'Ongoing', 'time' => $statusTimes['Ongoing']],
+                        ['label' => 'Completed', 'time' => $statusTimes['Completed']],
+                        ['label' => 'Submitted', 'time' => $statusTimes['Submitted']],
+                    ];
+                    $engineerProgressIndex = match ($inspectionStatus) {
+                        'Ongoing', 'On Hold' => 1,
+                        'Completed' => 2,
+                        'Submitted' => 3,
+                        default => 0,
+                    };
                     if (empty($costItems)) {
                         $costItems = [[
                             'item_type' => 'material',
@@ -982,10 +992,15 @@ require __DIR__ . '/../layout/header.php';
 
                                 <div class="inspection-grid">
                                     <div class="inspection-detail"><span>Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail inspection-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <details class="inspection-client-details inspection-detail--wide">
+                                        <summary>View Client Details</summary>
+                                        <div class="inspection-client-details__grid">
+                                            <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        </div>
+                                    </details>
                                     <?php if (trim((string)($inspection['site_notes'] ?? '')) !== ''): ?>
                                         <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                     <?php endif; ?>
@@ -1010,15 +1025,17 @@ require __DIR__ . '/../layout/header.php';
                                 <?php endif; ?>
 
                                 <div class="inspection-workflow" aria-label="Inspection progress">
-                                    <?php foreach ($inspectionStatuses as $statusIndex => $statusLabel): ?>
+                                    <?php foreach ($engineerProgressSteps as $statusIndex => $progressStep): ?>
                                         <?php
-                                        $stepClass = $statusIndex < $currentStatusIndex
+                                        $stepClass = $statusIndex < $engineerProgressIndex
                                             ? 'is-done'
-                                            : ($statusIndex === $currentStatusIndex ? 'is-current' : '');
+                                            : ($statusIndex === $engineerProgressIndex ? 'is-current' : '');
                                         ?>
-                                        <div class="inspection-workflow__step <?php echo $stepClass; ?>">
-                                            <span><?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <small><?php echo htmlspecialchars(site_inspection_format_datetime($statusTimes[$statusLabel] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
+                                        <div class="inspection-workflow__step <?php echo $stepClass; ?>"<?php echo $statusIndex === $engineerProgressIndex ? ' aria-current="step"' : ''; ?>>
+                                            <span><?php echo htmlspecialchars($progressStep['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <?php if (!empty($progressStep['time'])): ?>
+                                                <small><?php echo htmlspecialchars(site_inspection_format_datetime($progressStep['time']), ENT_QUOTES, 'UTF-8'); ?></small>
+                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -1082,16 +1099,24 @@ require __DIR__ . '/../layout/header.php';
                                     <span>Engineer Findings <b>*</b></span>
                                     <textarea name="engineer_findings" rows="3" minlength="10" placeholder="Actual problem found, site condition, and recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </label>
-                                <label>
-                                    <span>Risk / Safety Notes</span>
-                                    <textarea name="risk_notes" rows="2" placeholder="Access issue, electrical risk, working height, downtime risk..." <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['risk_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                </label>
-                                <label>
-                                    <span>Client Requests</span>
-                                    <textarea name="client_requests" rows="2" placeholder="Preferred schedule, brand request, special instruction..." <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['client_requests'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                </label>
                             </div>
 
+                            <details class="inspection-disclosure inspection-disclosure--notes"<?php echo (trim((string)($inspection['risk_notes'] ?? '')) !== '' || trim((string)($inspection['client_requests'] ?? '')) !== '') ? ' open' : ''; ?>>
+                                <summary>Additional Notes (Optional)</summary>
+                                <div class="inspection-costing-notes inspection-costing-notes--optional">
+                                    <label>
+                                        <span>Risk / Safety Notes</span>
+                                        <textarea name="risk_notes" rows="2" placeholder="Access issue, electrical risk, working height, downtime risk..." <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['risk_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    </label>
+                                    <label>
+                                        <span>Client Requests</span>
+                                        <textarea name="client_requests" rows="2" placeholder="Preferred schedule, brand request, special instruction..." <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['client_requests'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    </label>
+                                </div>
+                            </details>
+
+                            <details class="inspection-disclosure"<?php echo !empty($costItemsByInspection[$inspectionId]) ? ' open' : ''; ?>>
+                                <summary>Cost Items <span>Materials, labor, and estimated costs</span></summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($costItems as $item): ?>
                                     <div class="costing-row">
@@ -1156,7 +1181,10 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 <?php endforeach; ?>
                             </div>
+                            </details>
 
+                            <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?>>
+                                <summary>Asset Requirements <span>Optional reusable company assets</span></summary>
                             <section class="asset-requirements" data-asset-requirements>
                                 <div class="asset-requirements__head">
                                     <div>
@@ -1225,6 +1253,7 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </section>
+                            </details>
 
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">

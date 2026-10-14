@@ -1087,15 +1087,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const steps = Array.from(card.querySelectorAll('.inspection-workflow__step'));
-        const currentIndex = steps.findIndex(function (step) {
-            return step.querySelector('span')?.textContent.trim() === status;
-        });
+        const progressIndexByStatus = {
+            Assigned: 0,
+            Acknowledged: 0,
+            Ongoing: 1,
+            'On Hold': 1,
+            Completed: 2,
+            Submitted: 3,
+        };
+        const currentIndex = progressIndexByStatus[status] ?? -1;
         steps.forEach(function (step, index) {
             step.classList.toggle('is-done', currentIndex > index);
             step.classList.toggle('is-current', currentIndex === index);
             const label = step.querySelector('span')?.textContent.trim() || '';
-            const timestamp = payload.timestamps?.[label] || '';
-            if (timestamp) step.querySelector('small').textContent = timestamp;
+            const timestampKey = label === 'Assigned' && status === 'Acknowledged' ? 'Acknowledged' : label;
+            const timestamp = payload.timestamps?.[timestampKey] || '';
+            if (timestamp) {
+                let timeNode = step.querySelector('small');
+                if (!timeNode) {
+                    timeNode = document.createElement('small');
+                    step.appendChild(timeNode);
+                }
+                timeNode.textContent = timestamp;
+            }
         });
 
         const actionButton = form.querySelector('[data-workflow-transition]');

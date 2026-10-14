@@ -1389,8 +1389,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hasNotesChanges = $existingInspectionId > 0
                 && trim((string)($existingInspection['site_notes'] ?? '')) !== $siteNotes;
             $hasScheduleChanges = $hasAssignmentChanges || $hasNotesChanges;
-            if ($error === '' && $existingInspectionId > 0 && $hasAssignmentChanges && mb_strlen($rescheduleReason, 'UTF-8') < 5) {
-                $error = 'Add a reschedule reason with at least 5 characters.';
+            $reasonWithoutWhitespace = preg_replace('/\s+/u', '', $rescheduleReason) ?? '';
+            if ($error === '' && $existingInspectionId > 0 && !$hasAssignmentChanges) {
+                // Notes lang ay hindi reschedule. Gamitin ang hiwalay na retry kung email lang ang kulang.
+                $error = 'Change the Engineer, inspection date, or time before updating the schedule.';
+            } elseif ($error === '' && $existingInspectionId > 0
+                && (mb_strlen($reasonWithoutWhitespace, 'UTF-8') < 5 || mb_strlen($rescheduleReason, 'UTF-8') > 1000)) {
+                $error = 'Enter a reschedule reason with at least 5 non-space characters.';
             }
             $storedNotificationHash = trim((string)($existingInspection['schedule_notification_hash'] ?? ''));
             $needsScheduleNotification = $hasAssignmentChanges
@@ -2777,7 +2782,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php if ($inspectionScheduleLocked): ?>
                                             <div class="inquiry-empty">The inspection already started. Engineer, date, and time can no longer be changed.</div>
                                         <?php endif; ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo !$canScheduleInspection || $inspectionScheduleLocked || !empty($inquiry['archived_at']) ? 'hidden' : ''; ?>>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo !$canScheduleInspection || $inspectionScheduleLocked || !empty($inquiry['archived_at']) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
@@ -2816,6 +2821,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <input type="hidden" class="js-admin-scheduled-at" name="scheduled_at">
                                                 </label>
                                             </div>
+                                            <small class="inquiry-schedule-field-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>
                                             <label>
                                                 <span>Site Notes (Optional)</span>
                                                 <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
@@ -2823,12 +2829,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <?php if ($latestInspection): ?>
                                                 <label data-admin-reschedule-reason hidden>
                                                     <span>Reschedule Reason</span>
-                                                    <textarea name="reschedule_reason" rows="2" minlength="5" maxlength="1000" placeholder="Explain why the Engineer, date, or time is changing."></textarea>
-                                                    <small>Explain why the schedule or assigned engineer is changing. This will be shared with the Client and Engineer.</small>
+                                                    <textarea name="reschedule_reason" rows="2" minlength="5" maxlength="1000" placeholder="Explain why the Engineer, date, or time is changing." disabled aria-describedby="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?> admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>"></textarea>
+                                                    <small id="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?>">Explain why the schedule or assigned engineer is changing. This will be shared with the Client and Engineer.</small>
+                                                    <small class="inquiry-schedule-field-feedback" id="admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>" data-admin-reschedule-reason-feedback hidden aria-live="polite"></small>
                                                 </label>
                                             <?php endif; ?>
                                             <div class="inquiry-review-actions">
-                                                <button type="submit" class="btn-primary" data-schedule-submit <?php echo empty($engineers) || $isScheduleConfirmed ? 'disabled' : ''; ?>><?php echo $scheduleSubmitLabel; ?></button>
+                                                <button type="submit" class="btn-primary" data-schedule-submit <?php echo empty($engineers) || $latestInspection ? 'disabled' : ''; ?>><?php echo $scheduleSubmitLabel; ?></button>
                                             </div>
                                         </form>
                                         <?php if (empty($inquiry['archived_at']) && $latestInspection && !$isScheduleConfirmed && !$inspectionScheduleLocked): ?>

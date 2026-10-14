@@ -664,24 +664,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const engineerInput = form.querySelector('select[name="engineer_id"]');
         const reasonWrap = form.querySelector('[data-admin-reschedule-reason]');
         const reasonInput = form.querySelector('textarea[name="reschedule_reason"]');
+        const reasonFeedback = form.querySelector('[data-admin-reschedule-reason-feedback]');
+        const scheduleFeedback = form.querySelector('[data-admin-schedule-feedback]');
+        const hasExistingSchedule = form.dataset.hasExistingSchedule === '1';
+        const initialSubmitDisabled = Boolean(submitButton?.disabled);
         const defaultSubmitLabel = submitButton?.textContent || 'Confirm Schedule & Notify Client and Engineer';
 
         const hasAssignmentChanges = function () {
-            if (!reasonWrap) return false;
             return (engineerInput?.value || '') !== (form.dataset.originalEngineer || '')
                 || dateInput.value !== (form.dataset.originalDate || '')
                 || timeInput.value !== (form.dataset.originalTime || '');
-        };
-
-        const syncRescheduleReason = function () {
-            if (!reasonWrap || !reasonInput) return;
-            const isRequired = hasAssignmentChanges();
-            reasonWrap.hidden = !isRequired;
-            reasonInput.required = isRequired;
-            if (!isRequired) {
-                reasonInput.setCustomValidity('');
-                reasonInput.classList.remove('is-invalid');
-            }
         };
 
         const syncInvalidUi = function () {
@@ -815,6 +807,80 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
+        const scheduleValidationMessage = function () {
+            if (!engineerInput?.value) return 'Select an Engineer.';
+            if (!dateInput.value) return 'Choose an inspection date.';
+            if (!dateInput.checkValidity()) return 'Choose a valid inspection date.';
+            if (!timeInput.value) return 'Choose an available inspection time.';
+            if (isInvalidSelectedTime()) return 'Choose a time at least 1 hour from now, within the next 14 days.';
+            return '';
+        };
+
+        const setFeedback = function (element, message) {
+            if (!element) return;
+            element.textContent = message;
+            element.hidden = message === '';
+        };
+
+        const wasScheduleFieldEdited = function () {
+            return engineerInput?.dataset.touched === '1'
+                || dateInput.dataset.touched === '1'
+                || timeInput.dataset.touched === '1';
+        };
+
+        const validRescheduleReason = function () {
+            const value = reasonInput?.value || '';
+            const withoutWhitespace = value.replace(/\s+/gu, '');
+            if (withoutWhitespace.length < 5) {
+                return 'Enter a reschedule reason with at least 5 non-space characters.';
+            }
+            if (value.length > 1000) {
+                return 'Reschedule reason must not exceed 1000 characters.';
+            }
+            return '';
+        };
+
+        const syncRescheduleControls = function (forceFeedback) {
+            if (!submitButton || form.dataset.submitting === '1') {
+                return;
+            }
+
+            validateScheduleTime();
+            if (!hasExistingSchedule) {
+                submitButton.disabled = initialSubmitDisabled;
+                return;
+            }
+
+            const changed = hasAssignmentChanges();
+            const scheduleMessage = changed ? scheduleValidationMessage() : '';
+            const hasValidScheduleChange = changed && scheduleMessage === '';
+            const showScheduleMessage = changed && scheduleMessage !== ''
+                && (forceFeedback || wasScheduleFieldEdited());
+            setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');
+
+            if (reasonWrap && reasonInput) {
+                reasonWrap.hidden = !hasValidScheduleChange;
+                reasonInput.disabled = !hasValidScheduleChange;
+                reasonInput.required = hasValidScheduleChange;
+
+                if (!hasValidScheduleChange) {
+                    reasonInput.setCustomValidity('');
+                    reasonInput.classList.remove('is-invalid');
+                    setFeedback(reasonFeedback, '');
+                } else {
+                    const reasonMessage = validRescheduleReason();
+                    reasonInput.setCustomValidity(reasonMessage);
+                    const showReasonMessage = reasonMessage !== ''
+                        && (forceFeedback || reasonInput.dataset.touched === '1' || reasonInput.value !== '');
+                    reasonInput.classList.toggle('is-invalid', showReasonMessage);
+                    setFeedback(reasonFeedback, showReasonMessage ? reasonMessage : '');
+                }
+            }
+
+            const reasonMessage = hasValidScheduleChange && reasonInput ? validRescheduleReason() : 'Missing reason.';
+            submitButton.disabled = !hasValidScheduleChange || reasonMessage !== '';
+        };
+
         const hideDatePickerState = function () {
             dateInput.dataset.pickerOpen = '0';
             dateButton?.classList.remove('is-active');
@@ -881,34 +947,17 @@ document.addEventListener('DOMContentLoaded', function () {
             sessionStorage.setItem(draftKey, JSON.stringify(draft));
         };
 
-        const getScheduleState = function () {
-            return JSON.stringify({
-                engineer_id: form.querySelector('select[name="engineer_id"]')?.value || '',
-                inspection_date: dateInput.value,
-                inspection_time: timeInput.value,
-                site_notes: form.querySelector('textarea[name="site_notes"]')?.value || '',
-                reschedule_reason: reasonInput?.value.trim() || '',
-            });
-        };
-        const initialScheduleState = getScheduleState();
-        const syncScheduleSubmitState = function () {
-            if (!submitButton || form.dataset.submitting === '1') {
-                return;
-            }
-
-            const isConfirmed = form.dataset.scheduleConfirmed === '1';
-            if (isConfirmed) {
-                submitButton.disabled = getScheduleState() === initialScheduleState;
-            }
-        };
-
         form.querySelectorAll('select, input, textarea').forEach(function (field) {
             field.addEventListener('input', saveDraft);
             field.addEventListener('change', saveDraft);
-            field.addEventListener('input', syncScheduleSubmitState);
-            field.addEventListener('change', syncScheduleSubmitState);
-            field.addEventListener('input', syncRescheduleReason);
-            field.addEventListener('change', syncRescheduleReason);
+            field.addEventListener('input', function () {
+                field.dataset.touched = '1';
+                syncRescheduleControls(false);
+            });
+            field.addEventListener('change', function () {
+                field.dataset.touched = '1';
+                syncRescheduleControls(false);
+            });
             field.addEventListener('input', function () {
                 if (form.dataset.submitAttempted === '1') syncInvalidUi();
             });
@@ -928,8 +977,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             form.dataset.submitAttempted = '1';
-            syncRescheduleReason();
-            validateScheduleTime();
+            syncRescheduleControls(true);
             if (!form.checkValidity()) {
                 syncInvalidUi();
                 form.reportValidity();
@@ -954,7 +1002,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     submitButton.replaceChildren(spinner, label);
                 }
                 setInspectionSchedulingState(modal, true);
-                if (draftKey) sessionStorage.removeItem(draftKey);
                 delete form.dataset.confirmed;
                 event.preventDefault();
 
@@ -977,6 +1024,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
                         setInspectionSchedulingState(modal, false);
+                        if (draftKey) sessionStorage.removeItem(draftKey);
                         window.location.assign(result.data.redirect || window.location.href);
                     })
                     .catch(function (error) {
@@ -987,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             submitButton.classList.remove('inquiry-send-button--loading');
                             submitButton.textContent = defaultSubmitLabel;
                         }
-                        syncScheduleSubmitState();
+                        syncRescheduleControls(true);
                         if (typeof window.showToast === 'function') {
                             window.showToast(error.message || 'Unable to save the inspection schedule.', 'error');
                         } else {
@@ -1009,8 +1057,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
         });
-        syncRescheduleReason();
-        syncScheduleSubmitState();
+        syncRescheduleControls(false);
     });
 
     const bindInquiryReviewForm = function (form) {

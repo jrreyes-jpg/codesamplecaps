@@ -2656,6 +2656,13 @@ body.inquiry-modal-open {
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
 }
 
+.inquiry-schedule-field-feedback {
+    color: #b91c1c;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
 .inquiry-archive-output {
     display: grid;
     gap: 10px;

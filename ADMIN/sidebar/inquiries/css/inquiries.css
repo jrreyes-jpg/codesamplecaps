@@ -2176,6 +2176,28 @@ body.inquiry-modal-open {
     color: #0f172a;
 }
 
+.submitted-inspection-report__states {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.inspection-stock-alert {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 1px solid #fdba74;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #b45309;
+    font-size: 0.8rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
 .submitted-inspection-timeline {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2276,6 +2298,15 @@ body.inquiry-modal-open {
 }
 
 @media (max-width: 900px) {
+    .submitted-inspection-report__head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .submitted-inspection-report__states {
+        justify-content: flex-start;
+    }
+
     .submitted-inspection-timeline,
     .submitted-inspection-costing__row {
         grid-template-columns: 1fr;

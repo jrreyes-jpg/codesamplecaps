@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         feedback.classList.add('is-shortage');
         feedback.textContent = available <= 0
-            ? 'Out of stock — procurement needed.'
+            ? 'Out of stock'
             : `Stock shortage: ${availableLabel} available, ${requiredLabel} needed.`;
     };
 

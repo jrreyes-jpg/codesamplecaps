@@ -2169,10 +2169,19 @@ if ($inspectionResult) {
 }
 
 $costItemsByInspection = [];
+$inspectionCostingHasMaterials = inquiry_center_has_table($conn, 'materials');
+$inspectionCostingMaterialSelect = $inspectionCostingHasMaterials
+    ? ', GREATEST(COALESCE(m.physical_quantity, 0) - COALESCE(m.reserved_quantity, 0), 0) AS material_available'
+    : ', NULL AS material_available';
+$inspectionCostingMaterialJoin = $inspectionCostingHasMaterials
+    ? ' LEFT JOIN materials m ON m.id = ci.material_id'
+    : '';
 $costingResult = $conn->query(
-    "SELECT inspection_id, item_type, item_name, quantity, unit, unit_cost, line_total, notes
-     FROM site_inspection_cost_items
-     ORDER BY id ASC"
+    "SELECT ci.inspection_id, ci.item_type, ci.material_id, ci.item_name, ci.quantity, ci.unit, ci.unit_cost, ci.line_total, ci.notes
+     {$inspectionCostingMaterialSelect}
+     FROM site_inspection_cost_items ci
+     {$inspectionCostingMaterialJoin}
+     ORDER BY ci.id ASC"
 );
 if ($costingResult) {
     while ($costItem = $costingResult->fetch_assoc()) {
@@ -2432,6 +2441,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
+                    <?php
+                        $hasOutOfStockInspectionMaterial = false;
+                        foreach ($latestCostItems as $latestCostItem) {
+                            $isLinkedMaterial = strtolower((string)($latestCostItem['item_type'] ?? '')) === 'material'
+                                && (int)($latestCostItem['material_id'] ?? 0) > 0;
+                            if ($isLinkedMaterial
+                                && ($latestCostItem['material_available'] ?? null) !== null
+                                && (float)$latestCostItem['material_available'] <= 0) {
+                                $hasOutOfStockInspectionMaterial = true;
+                                break;
+                            }
+                        }
+                    ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $originalQuotation = $originalQuotationByInquiry[(int)$inquiry['id']] ?? $quotationDraft; ?>
@@ -2787,7 +2809,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <span>Submitted Inspection Report</span>
                                                         <h3><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
                                                     </div>
-                                                    <span class="inquiry-status" data-status="<?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    <div class="submitted-inspection-report__states">
+                                                        <?php if ($hasOutOfStockInspectionMaterial): ?>
+                                                            <span class="inspection-stock-alert">Out of stock</span>
+                                                        <?php endif; ?>
+                                                        <span class="inquiry-status" data-status="<?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    </div>
                                                 </div>
 
                                                 <div class="inquiry-details-grid submitted-inspection-report__details" hidden>

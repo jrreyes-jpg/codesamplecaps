@@ -1548,6 +1548,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $scheduleForEmail = $scheduleDateTime->format('l, F j, Y, g:i A') . ' (PHT)';
                     $clientScheduleLink = $clientScheduleToken !== '' ? site_inspection_schedule_public_link($clientScheduleToken) : '';
                     $isScheduleUpdate = $existingInspectionId > 0 && $hasAssignmentChanges;
+                    $isEngineerReassignment = $isScheduleUpdate
+                        && (int)($existingInspection['engineer_id'] ?? 0) !== $engineerId;
 
                     // Para lang ito sa unang assignment. Walang reschedule notification dito.
                     if ($existingInspectionId <= 0 && $savedInspectionId > 0 && $notificationInquiry && $notificationEngineer) {
@@ -1609,7 +1611,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $siteNotes,
                             $isScheduleUpdate,
                             site_inspection_engineer_link($savedInspectionId),
-                            $isScheduleUpdate ? $rescheduleReason : ''
+                            $isScheduleUpdate ? $rescheduleReason : '',
+                            $isEngineerReassignment
                         );
                         if ($engineerEmailSent) {
                             $markEngineer = $conn->prepare('UPDATE site_inspections SET engineer_schedule_notified_at = NOW() WHERE id = ? AND engineer_schedule_notified_at IS NULL');

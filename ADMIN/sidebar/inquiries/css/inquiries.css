@@ -1107,19 +1107,8 @@
     gap: 10px;
     margin-top: 12px;
     padding: 14px;
-    border: 1px solid rgba(20, 83, 45, 0.26);
+    border: 1px solid #e2e8f0;
     border-radius: 14px;
-    background: linear-gradient(135deg, #14532d, #166534);
-    color: #ffffff;
-}
-
-.inquiry-schedule-form label,
-.inquiry-schedule-form > strong,
-.inquiry-schedule-form small {
-    color: #f0fdf4;
-}
-
-.inquiry-schedule-form :is(input, select, textarea) {
     background: #ffffff;
     color: #0f172a;
 }
@@ -2608,12 +2597,6 @@ body.inquiry-modal-open {
     gap: 8px;
     color: #0f172a;
     font-weight: 700;
-}
-
-.inquiry-schedule-form label,
-.inquiry-schedule-form > strong,
-.inquiry-schedule-form small {
-    color: #f0fdf4;
 }
 
 .inquiry-archive-form select {

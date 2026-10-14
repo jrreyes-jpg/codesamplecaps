@@ -14,6 +14,7 @@ define('AUTH_REQUIRED_ROLE', 'engineer');
 require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/site_inspections.php';
+require_once __DIR__ . '/../../config/inquiry_quotation_module.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/user_notifications.php';
 require_once __DIR__ . '/../../config/material_stock.php';
@@ -816,6 +817,7 @@ $inspectionHoldSelect = site_inspection_hold_columns_ready($conn)
 $stmt = $conn->prepare(
     "SELECT
         si.id,
+        si.inquiry_id,
         si.scheduled_at,
         si.site_notes,
         si.status,
@@ -882,6 +884,43 @@ if ($costResult) {
     }
 }
 
+$initialQuotationsByInquiry = [];
+$initialQuotationItemsByInquiry = [];
+if (!empty($inspections)
+    && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')
+    && inquiry_quote_table_exists($conn, 'inquiry_quotation_items')) {
+    $initialQuoteResult = $conn->query(
+        "SELECT q.id, q.inquiry_id, q.quotation_no, q.subtotal, q.grand_total
+         FROM inquiry_quotation_drafts q
+         INNER JOIN (
+            SELECT inquiry_id, MAX(id) AS id
+            FROM inquiry_quotation_drafts
+            WHERE parent_draft_id IS NULL
+              AND revision_no = 0
+              AND LOWER(status) = 'accepted'
+            GROUP BY inquiry_id
+         ) accepted_initial ON accepted_initial.id = q.id"
+    );
+
+    foreach ($initialQuoteResult?->fetch_all(MYSQLI_ASSOC) ?: [] as $initialQuote) {
+        $inquiryId = (int)$initialQuote['inquiry_id'];
+        $initialQuotationsByInquiry[$inquiryId] = $initialQuote;
+        $itemStmt = $conn->prepare(
+            'SELECT item_type, item_name, quantity, unit, unit_cost, line_total
+             FROM inquiry_quotation_items
+             WHERE draft_id = ?
+             ORDER BY id ASC'
+        );
+        if (!$itemStmt) {
+            continue;
+        }
+        $draftId = (int)$initialQuote['id'];
+        $itemStmt->bind_param('i', $draftId);
+        $itemStmt->execute();
+        $initialQuotationItemsByInquiry[$inquiryId] = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+}
+
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
@@ -914,6 +953,8 @@ require __DIR__ . '/../layout/header.php';
                 <?php foreach ($inspections as $inspection): ?>
                     <?php
                     $inspectionId = (int)$inspection['id'];
+                    $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
+                    $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
@@ -1040,7 +1081,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                                                 <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <button type="button" class="btn-primary" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedValidFindings ? 'true' : 'false') . '"' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?> <?php echo $workflowAction === 'complete' && !$hasSavedValidFindings ? 'disabled aria-disabled="true" title="Save valid Engineer Findings first."' : ''; ?>>
+                                                <button type="button" class="btn-primary<?php echo $workflowAction === 'complete' && !$hasSavedValidFindings ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedValidFindings ? 'true' : 'false') . '" aria-disabled="' . ($hasSavedValidFindings ? 'false' : 'true') . '" title="' . ($hasSavedValidFindings ? '' : 'Check the missing report fields first.') . '"' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?>>
                                                     <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                                 </button>
                                             </form>
@@ -1110,6 +1151,39 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endif; ?>
                                 </div>
 
+                                <?php if ($initialQuotation): ?>
+                                    <details class="inspection-disclosure inspection-initial-quotation" open>
+                                        <summary>
+                                            Initial Quotation
+                                            <span><?php echo htmlspecialchars((string)$initialQuotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars(engineer_format_money((float)$initialQuotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </summary>
+                                        <div class="inspection-initial-quotation__body">
+                                            <p>Admin reference only. Add the actual site costs below.</p>
+                                            <?php if ($initialQuotationItems): ?>
+                                                <div class="inspection-initial-quotation__table-wrap">
+                                                    <table>
+                                                        <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr></thead>
+                                                        <tbody>
+                                                            <?php foreach ($initialQuotationItems as $initialItem): ?>
+                                                                <tr>
+                                                                    <td><?php echo htmlspecialchars(ucfirst((string)$initialItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars((string)$initialItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars((string)$initialItem['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars((string)$initialItem['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            <?php else: ?>
+                                                <p class="inspection-initial-quotation__empty">No initial quotation items were saved.</p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </details>
+                                <?php endif; ?>
+
                                 <?php if ($canEditCosting): ?><form method="POST" class="inspection-costing-form" data-costing-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
@@ -1173,10 +1247,11 @@ require __DIR__ . '/../layout/header.php';
                                                         data-available="<?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         <?php echo (int)($item['material_id'] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>
                                                     >
-                                                        <?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?> — <?php echo htmlspecialchars(number_format((float)$material['available_quantity'], 2), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?> available
+                                                        <?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
+                                            <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                         </label>
                                         <label>
                                             <span>Item / Labor</span>
@@ -1207,10 +1282,14 @@ require __DIR__ . '/../layout/header.php';
                                         <?php if ($canEditCosting): ?>
                                             <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
                                         <?php endif; ?>
-                                        <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
+                            <?php if ($canEditCosting): ?>
+                                <div class="inspection-section-action">
+                                    <button type="button" class="btn-secondary" data-add-costing-row>Add Cost Item</button>
+                                </div>
+                            <?php endif; ?>
                             </details>
 
                             <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?>>
@@ -1275,17 +1354,16 @@ require __DIR__ . '/../layout/header.php';
                                         </template>
                                     <?php endif; ?>
                                 <?php endif; ?>
+                                <?php if ($canEditCosting && $assetRequirementsReady): ?>
+                                    <div class="inspection-section-action">
+                                        <button type="button" class="btn-secondary" data-add-asset-requirement>Add Asset Requirement</button>
+                                    </div>
+                                <?php endif; ?>
                             </section>
                             </details>
 
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
-                                    <div class="inspection-actions__group">
-                                        <button type="button" class="btn-secondary" data-add-costing-row>Add Cost Item</button>
-                                        <?php if ($assetRequirementsReady): ?>
-                                            <button type="button" class="btn-secondary" data-add-asset-requirement>Add Asset Requirement</button>
-                                        <?php endif; ?>
-                                    </div>
                                     <div class="inspection-actions__group inspection-actions__group--save">
                                         <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
                                         <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
@@ -1295,7 +1373,9 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 </div>
                             <?php endif; ?>
-                                </form><?php endif; ?>
+                                </form><?php elseif ($inspectionStatus === 'On Hold'): ?>
+                                    <p class="inspection-submit-note inspection-submit-note--waiting">Inspection is on hold. Resume to edit this report.</p>
+                                <?php endif; ?>
                                 </section>
                             </div>
                         </div>

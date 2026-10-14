@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const completeButton = form.closest('.inspection-modal')?.querySelector('[data-complete-inspection]');
         if (completeButton) {
             const canComplete = completeButton.getAttribute('data-complete-ready') === 'true' && !isDirty;
-            completeButton.disabled = !canComplete;
+            completeButton.classList.toggle('is-locked', !canComplete);
             completeButton.setAttribute('aria-disabled', canComplete ? 'false' : 'true');
             completeButton.title = canComplete ? '' : 'Save valid Engineer Findings and report changes first.';
         }
@@ -584,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const quantityValue = Number(quantityText || 0);
             const unitValue = unit?.value.trim() || '';
             const unitCostText = unitCost?.value.trim() || '';
-            const rowHasValue = nameValue !== '' || quantityText !== '' || unitCostText !== '';
+            const rowHasValue = rowHasMeaningfulData(row);
 
             if (!rowHasValue) {
                 return;
@@ -972,16 +972,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('[data-costing-form]').forEach(bindCostingForm);
 
-    document.addEventListener('click', function (event) {
-        const tab = event.target.closest('[data-inspection-tab]');
-        if (!tab) return;
-
-        const modal = tab.closest('.inspection-modal');
-        const nextTab = tab.getAttribute('data-inspection-tab');
+    const activateInspectionTab = function (modal, nextTab) {
         if (!modal || !nextTab) return;
 
         modal.querySelectorAll('[data-inspection-tab]').forEach(function (button) {
-            const isActive = button === tab;
+            const isActive = button.getAttribute('data-inspection-tab') === nextTab;
             button.classList.toggle('is-active', isActive);
             button.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
@@ -991,6 +986,13 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.querySelectorAll('[data-inspection-report-actions]').forEach(function (actions) {
             actions.hidden = nextTab !== 'report';
         });
+    };
+
+    document.addEventListener('click', function (event) {
+        const tab = event.target.closest('[data-inspection-tab]');
+        if (!tab) return;
+
+        activateInspectionTab(tab.closest('.inspection-modal'), tab.getAttribute('data-inspection-tab'));
     });
 
     const inspectionActionConfirmModal = document.querySelector('[data-inspection-action-confirm-modal]');
@@ -1683,6 +1685,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!form || form.dataset.isTransitioning === 'true') return;
 
         if (action === 'complete') {
+            const modal = button.closest('.inspection-modal');
+            const costingForm = modal?.querySelector('[data-costing-form]');
+            const findings = costingForm?.querySelector('textarea[name="engineer_findings"]');
+            activateInspectionTab(modal, 'report');
+            const reportIsValid = costingForm ? validateCosting(costingForm, false) : false;
+            const findingsAreValid = hasMeaningfulFindings(findings?.value || '');
+
+            if (!reportIsValid || !findingsAreValid || button.getAttribute('data-complete-ready') !== 'true' || (costingForm && isFormDirty(costingForm))) {
+                if (!findingsAreValid && findings) {
+                    setFieldError(findings, 'Enter at least 3 words and 20 characters.');
+                }
+                showCostingError(costingForm, 'Fix and save the highlighted report fields before completing.');
+                (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.focus();
+                return;
+            }
             openCompletionModal(form, button);
             return;
         }

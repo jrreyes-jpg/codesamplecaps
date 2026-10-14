@@ -975,6 +975,11 @@ body.inspection-modal-open {
     font-weight: 900;
 }
 
+.costing-row label span b,
+.inspection-costing-notes label span b {
+    color: #dc2626;
+}
+
 .costing-row input,
 .costing-row select {
     width: 100%;

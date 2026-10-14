@@ -1225,7 +1225,7 @@ require __DIR__ . '/../layout/header.php';
                                 <?php foreach ($costItems as $item): ?>
                                     <div class="costing-row">
                                         <label>
-                                            <span>Type</span>
+                                            <span>Type <b aria-hidden="true">*</b></span>
                                             <select name="item_type[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
                                                 <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
@@ -1254,15 +1254,15 @@ require __DIR__ . '/../layout/header.php';
                                             <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                         </label>
                                         <label>
-                                            <span>Item / Labor</span>
+                                            <span>Item / Labor <b aria-hidden="true">*</b></span>
                                             <input type="text" name="item_name[]" placeholder="Item or labor name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
-                                            <span>Qty</span>
+                                            <span>Qty <b aria-hidden="true">*</b></span>
                                             <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
-                                            <span>Unit</span>
+                                            <span>Unit <b aria-hidden="true">*</b></span>
                                             <select name="unit[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <?php foreach (['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter', 'hour', 'day', 'trip'] as $unitOption): ?>
                                                     <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? 'unit') === $unitOption ? 'selected' : ''; ?>>
@@ -1272,7 +1272,7 @@ require __DIR__ . '/../layout/header.php';
                                             </select>
                                         </label>
                                         <label>
-                                            <span>Estimated Unit Cost (PHP)</span>
+                                            <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
                                             <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>

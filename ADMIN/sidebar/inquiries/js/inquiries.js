@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const label = document.createElement('strong');
             const time = document.createElement('span');
             label.textContent = step.label;
-            time.textContent = step.at;
+            time.textContent = hasTime ? step.at : '';
             row.append(label, time);
             timelineList.appendChild(row);
         });

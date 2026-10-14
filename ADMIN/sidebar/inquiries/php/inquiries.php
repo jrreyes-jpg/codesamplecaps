@@ -561,6 +561,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
             $stmt->execute();
             $inspection = $stmt->get_result()->fetch_assoc() ?: null;
             if ($inspection) {
+                $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
+                $monitorPhase = match ($inspectionStatus) {
+                    'Assigned', 'Acknowledged' => 'Assigned',
+                    'On Hold' => 'Ongoing',
+                    default => $inspectionStatus,
+                };
                 $report = null;
                 if (!empty($inspection['submitted_at'])) {
                     $costStmt = $conn->prepare(
@@ -593,7 +599,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                     'success' => true,
                     'inspection' => [
                         'engineer' => (string)($inspection['engineer_name'] ?? 'Not set'),
-                        'status' => (string)($inspection['status'] ?? 'Assigned'),
+                        'status' => $monitorPhase,
                         'scheduled_at' => site_inspection_format_datetime($inspection['scheduled_at'] ?? null),
                         'started_at' => site_inspection_format_datetime($inspection['started_at'] ?? null),
                         'latest_activity' => site_inspection_format_datetime($inspection['updated_at'] ?? null),
@@ -602,8 +608,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                             : '',
                         'held_at' => site_inspection_format_datetime($inspection['held_at'] ?? null),
                         'timeline' => [
-                            ['label' => 'Assigned', 'at' => site_inspection_format_datetime($inspection['created_at'] ?? null)],
-                            ['label' => 'Acknowledged', 'at' => site_inspection_format_datetime($inspection['acknowledged_at'] ?? null)],
+                            ['label' => 'Assigned', 'at' => site_inspection_format_datetime($inspection['acknowledged_at'] ?? $inspection['created_at'] ?? null)],
                             ['label' => 'Ongoing', 'at' => site_inspection_format_datetime($inspection['started_at'] ?? null)],
                             ['label' => 'Completed', 'at' => site_inspection_format_datetime($inspection['completed_at'] ?? null)],
                             ['label' => 'Submitted', 'at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null)],
@@ -2893,9 +2898,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 ? 'Update Schedule & Notify Client and Engineer'
                                                 : 'Confirm Schedule & Notify Client and Engineer';
                                         ?>
-                                        <?php if ($inspectionScheduleLocked): ?>
-                                            <div class="inquiry-empty">The inspection already started. Engineer, date, and time can no longer be changed.</div>
-                                        <?php endif; ?>
                                         <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo !$canScheduleInspection || $scheduleReadOnly || !empty($inquiry['archived_at']) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">

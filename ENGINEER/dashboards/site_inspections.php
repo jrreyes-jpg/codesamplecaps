@@ -57,6 +57,17 @@ function engineer_inspection_valid_unit_cost(string $value): bool
     return preg_match('/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/', $value) === 1 && (float)$value > 0;
 }
 
+function engineer_inspection_has_meaningful_findings(string $value): bool
+{
+    $value = trim($value);
+    if (mb_strlen($value, 'UTF-8') < 20) {
+        return false;
+    }
+
+    $words = preg_split('/\s+/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    return count($words) >= 3;
+}
+
 function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId): ?array
 {
     $stmt = $conn->prepare('SELECT material_name, unit FROM materials WHERE id = ? AND status = \'active\' LIMIT 1');
@@ -579,7 +590,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
 
-        if ($error === '' && empty($rows)) {
+        if ($error === '' && $costingAction === 'submit_to_admin' && empty($rows)) {
             $error = 'Please add at least one costing item.';
         }
 
@@ -588,8 +599,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '' && $costingAction === 'submit_to_admin') {
-            if (mb_strlen($engineerFindings, 'UTF-8') < 10) {
-                $error = 'Please add engineer findings before submitting to Admin.';
+            if (!engineer_inspection_has_meaningful_findings($engineerFindings)) {
+                $error = 'Engineer Findings needs at least 3 words and 20 characters before submitting.';
             } elseif (!$hasMaterial) {
                 $error = 'Please add at least one material item before submitting.';
             } elseif (!$hasLabor) {
@@ -990,40 +1001,6 @@ require __DIR__ . '/../layout/header.php';
                                     <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
                                 </div>
 
-                                <div class="inspection-grid">
-                                    <div class="inspection-detail"><span>Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <details class="inspection-client-details inspection-detail--wide">
-                                        <summary>View Client Details</summary>
-                                        <div class="inspection-client-details__grid">
-                                            <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'N/A'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        </div>
-                                    </details>
-                                    <?php if (trim((string)($inspection['site_notes'] ?? '')) !== ''): ?>
-                                        <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
-                                    <?php endif; ?>
-                                    <?php if ($currentScheduleReason !== ''): ?>
-                                        <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
-                                    <?php endif; ?>
-                                    <?php if ($inspectionStatus === 'On Hold'): ?>
-                                        <div class="inspection-detail inspection-detail--wide inspection-detail--hold"><span>Hold Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)($inspection['hold_reason'] ?: 'Not set'), ENT_QUOTES, 'UTF-8')); ?></strong><small>Put on hold: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['held_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small></div>
-                                    <?php elseif (!empty($inspection['resumed_at'])): ?>
-                                        <div class="inspection-detail inspection-detail--wide"><span>Last Resumed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['resumed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <?php endif; ?>
-                                </div>
-
-                                <p class="inspection-description"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
-
-                                <?php if (!empty($inspection['admin_remarks'])): ?>
-                                    <div class="inspection-admin-remarks" data-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <strong>Admin Remarks / Reason for Return</strong>
-                                        <p><?php echo nl2br(htmlspecialchars((string)$inspection['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
-                                        <small>Reviewed: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
-                                    </div>
-                                <?php endif; ?>
-
                                 <div class="inspection-workflow" aria-label="Inspection progress">
                                     <?php foreach ($engineerProgressSteps as $statusIndex => $progressStep): ?>
                                         <?php
@@ -1040,6 +1017,52 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endforeach; ?>
                                 </div>
 
+                                <div class="inspection-tabs" role="tablist" aria-label="Site inspection sections">
+                                    <button type="button" class="inspection-tabs__button is-active" role="tab" aria-selected="true" aria-controls="inspectionDetails<?php echo $inspectionId; ?>" id="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab="details">Details</button>
+                                    <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report">Inspection Report</button>
+                                </div>
+
+                                <section class="inspection-tab-panel" id="inspectionDetails<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="details">
+                                <div class="inspection-grid">
+                                    <div class="inspection-detail"><span>Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-client-details inspection-detail--wide">
+                                        <div class="inspection-client-details__grid">
+                                            <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        </div>
+                                    </div>
+                                    <?php if (trim((string)($inspection['site_notes'] ?? '')) !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
+                                    <?php if ($currentScheduleReason !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
+                                    <?php if ($inspectionStatus === 'On Hold'): ?>
+                                        <div class="inspection-detail inspection-detail--wide inspection-detail--hold"><span>Hold Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)($inspection['hold_reason'] ?: 'Not set'), ENT_QUOTES, 'UTF-8')); ?></strong><small>Put on hold: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['held_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small></div>
+                                    <?php elseif (!empty($inspection['resumed_at'])): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Last Resumed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['resumed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if (trim((string)$inspection['description']) !== ''): ?>
+                                    <div class="inspection-description">
+                                        <span>Project Description</span>
+                                        <p><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($inspection['admin_remarks'])): ?>
+                                    <div class="inspection-admin-remarks" data-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <strong>Admin Remarks / Reason for Return</strong>
+                                        <p><?php echo nl2br(htmlspecialchars((string)$inspection['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
+                                        <small>Reviewed: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
+                                    </div>
+                                <?php endif; ?>
+                                </section>
+
+                                <section class="inspection-tab-panel" id="inspectionReport<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="report" hidden>
                                 <div class="inspection-status-action">
                                     <?php if ($inspectionStatus === 'Ongoing'): ?>
                                         <form method="POST" class="inspection-status-action">
@@ -1097,7 +1120,7 @@ require __DIR__ . '/../layout/header.php';
                             <div class="inspection-costing-notes">
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
-                                    <textarea name="engineer_findings" rows="3" minlength="10" placeholder="Actual problem found, site condition, and recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    <textarea name="engineer_findings" rows="3" minlength="20" placeholder="Actual problem found, site condition, and recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </label>
                             </div>
 
@@ -1186,13 +1209,6 @@ require __DIR__ . '/../layout/header.php';
                             <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?>>
                                 <summary>Asset Requirements <span>Optional reusable company assets</span></summary>
                             <section class="asset-requirements" data-asset-requirements>
-                                <div class="asset-requirements__head">
-                                    <div>
-                                        <strong>Asset Requirements</strong>
-                                        <p>Reusable company assets required for the project. Not included in costing.</p>
-                                    </div>
-                                </div>
-
                                 <?php if (!$assetRequirementsReady): ?>
                                     <p class="inspection-submit-note inspection-submit-note--waiting">Asset Requirements setup is not ready yet. Please apply the required database migration.</p>
                                 <?php else: ?>
@@ -1257,18 +1273,23 @@ require __DIR__ . '/../layout/header.php';
 
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
-                                    <button type="button" class="btn-secondary" data-add-costing-row>Add item</button>
-                                    <?php if ($assetRequirementsReady): ?>
-                                        <button type="button" class="btn-secondary" data-add-asset-requirement>+ Add Asset Requirement</button>
-                                    <?php endif; ?>
-                                    <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
-                                    <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
-                                    <?php if ($canSubmitToAdmin): ?>
-                                        <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing>Submit to Admin</button>
-                                    <?php endif; ?>
+                                    <div class="inspection-actions__group">
+                                        <button type="button" class="btn-secondary" data-add-costing-row>Add Cost Item</button>
+                                        <?php if ($assetRequirementsReady): ?>
+                                            <button type="button" class="btn-secondary" data-add-asset-requirement>Add Asset Requirement</button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="inspection-actions__group inspection-actions__group--save">
+                                        <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
+                                        <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
+                                        <?php if ($canSubmitToAdmin): ?>
+                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing>Submit to Admin</button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                                 </form><?php endif; ?>
+                                </section>
                             </div>
                         </div>
                     </article>

@@ -210,6 +210,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const shortage = required - available;
         feedback.classList.add('is-shortage');
+        feedback.textContent = `Stock shortage: ${availableLabel} available, ${requiredLabel} needed.`;
+        return;
         feedback.textContent = `Insufficient stock — Available: ${availableLabel} • Required: ${requiredLabel} • Short by: ${formatMaterialQuantity(shortage)} ${unit}`;
     };
 
@@ -289,6 +291,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!rowsBox || !template) {
             return null;
         }
+
+        rowsBox.closest('details')?.setAttribute('open', '');
 
         const row = template.content.firstElementChild.cloneNode(true);
         if (data) {
@@ -480,6 +484,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) > 0;
     };
 
+    const hasMeaningfulFindings = function (value) {
+        const text = String(value || '').trim();
+        return Array.from(text).length >= 20 && text.split(/\s+/).filter(Boolean).length >= 3;
+    };
+
     const costErrorMessage = function (value) {
         const number = Number(value);
         if (/^(?:0|[1-9]\d*)\.\d{3,}$/.test(value)) {
@@ -509,6 +518,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!rowsBox || !firstRow) {
             return null;
         }
+
+        rowsBox.closest('details')?.setAttribute('open', '');
 
         const row = firstRow.cloneNode(true);
         row.querySelectorAll('input').forEach(function (field) {
@@ -629,13 +640,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        if (!hasAnyRow) {
+        if (requireFinal && !hasAnyRow) {
             firstInvalid = firstInvalid || form.querySelector('input[name="item_name[]"]');
             setFieldError(firstInvalid, 'Add at least one material or labor row.');
         }
 
-        if (requireFinal && findings && findings.value.trim().length < 10) {
-            setFieldError(findings, 'Engineer Findings is required before submitting.');
+        if (requireFinal && findings && !hasMeaningfulFindings(findings.value)) {
+            setFieldError(findings, 'Enter at least 3 words and 20 characters.');
             firstInvalid = firstInvalid || findings;
         }
 
@@ -662,6 +673,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (firstInvalid) {
             showCostingError(form, 'Please fix the highlighted fields below.');
+            firstInvalid.closest('details')?.setAttribute('open', '');
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof firstInvalid.focus === 'function') {
                 firstInvalid.focus();
@@ -951,6 +963,24 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.querySelectorAll('[data-costing-form]').forEach(bindCostingForm);
+
+    document.addEventListener('click', function (event) {
+        const tab = event.target.closest('[data-inspection-tab]');
+        if (!tab) return;
+
+        const modal = tab.closest('.inspection-modal');
+        const nextTab = tab.getAttribute('data-inspection-tab');
+        if (!modal || !nextTab) return;
+
+        modal.querySelectorAll('[data-inspection-tab]').forEach(function (button) {
+            const isActive = button === tab;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        modal.querySelectorAll('[data-inspection-tab-panel]').forEach(function (panel) {
+            panel.hidden = panel.getAttribute('data-inspection-tab-panel') !== nextTab;
+        });
+    });
 
     const inspectionActionConfirmModal = document.querySelector('[data-inspection-action-confirm-modal]');
     const inspectionActionConfirmTitle = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-title]');

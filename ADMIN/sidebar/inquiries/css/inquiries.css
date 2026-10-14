@@ -2474,7 +2474,7 @@ body.inquiry-modal-open {
 
 .inspection-monitor-modal__timeline > div {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin-top: 10px;
 }
@@ -2500,15 +2500,6 @@ body.inquiry-modal-open {
 
 .inspection-monitor-modal__timeline .is-complete strong {
     color: #166534;
-}
-
-.inspection-monitor-modal__timeline .is-current[data-phase="Acknowledged"] {
-    border-color: #bfdbfe;
-    background: #eff6ff;
-}
-
-.inspection-monitor-modal__timeline .is-current[data-phase="Acknowledged"] strong {
-    color: #1d4ed8;
 }
 
 .inspection-monitor-modal__timeline .is-current[data-phase="Ongoing"] {

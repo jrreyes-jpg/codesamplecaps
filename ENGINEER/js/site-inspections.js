@@ -264,13 +264,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelector('[data-remove-asset-requirement]')?.addEventListener('click', function () {
-            if (assetRequirementHasMeaningfulData(row)
-                && !window.confirm('Remove asset requirement?\n\nThis will remove the selected asset requirement.')) {
+            const removeRow = function () {
+                row.remove();
+                saveFormDraft(form);
+                updateSaveDraftState(form);
+            };
+            if (assetRequirementHasMeaningfulData(row)) {
+                openInspectionActionConfirm({
+                    trigger: this,
+                    title: 'Remove Asset Requirement?',
+                    message: 'This will remove the selected asset requirement.',
+                    confirm: 'Remove',
+                    onConfirm: removeRow,
+                });
                 return;
             }
-            row.remove();
-            saveFormDraft(form);
-            updateSaveDraftState(form);
+            removeRow();
         });
     };
 
@@ -671,17 +680,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
         typeField?.addEventListener('change', function () {
             const nextType = typeField.value;
-            if (rowHasMeaningfulData(row)
-                && !window.confirm('Change cost type?\n\nChanging the type will clear the current row details. Continue?')) {
+            const applyTypeChange = function () {
+                typeField.value = nextType;
+                previousType = nextType;
+                resetRowForType(row);
+                syncTotal(form);
+                saveFormDraft(form);
+                updateSaveDraftState(form);
+            };
+            if (rowHasMeaningfulData(row)) {
                 typeField.value = previousType;
+                openInspectionActionConfirm({
+                    trigger: typeField,
+                    title: 'Change Cost Type?',
+                    message: 'Changing the type will clear the current row details.',
+                    confirm: 'Change Type',
+                    onConfirm: applyTypeChange,
+                });
                 return;
             }
-
-            previousType = nextType;
-            resetRowForType(row);
-            syncTotal(form);
-            saveFormDraft(form);
-            updateSaveDraftState(form);
+            applyTypeChange();
         });
 
         row.querySelectorAll('[data-costing-decimal]').forEach(function (field) {
@@ -768,30 +786,41 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelector('[data-remove-costing-row]')?.addEventListener('click', function () {
-            if (rowHasMeaningfulData(row)
-                && !window.confirm('Remove costing item?\n\nThis will remove the current costing row and its entered details.')) {
+            const removeRow = function () {
+                const rows = form.querySelectorAll('.costing-row');
+                if (rows.length <= 1) {
+                    row.querySelectorAll('input').forEach(function (field) {
+                        field.value = field.name === 'quantity[]' ? '1' : '';
+                    });
+                    row.querySelectorAll('select').forEach(function (field) {
+                        field.selectedIndex = 0;
+                    });
+                } else {
+                    row.remove();
+                }
+                syncTotal(form);
+                saveFormDraft(form);
+                updateSaveDraftState(form);
+            };
+            if (rowHasMeaningfulData(row)) {
+                openInspectionActionConfirm({
+                    trigger: this,
+                    title: 'Remove Costing Item?',
+                    message: 'This will remove the current costing row and its entered details.',
+                    confirm: 'Remove',
+                    onConfirm: removeRow,
+                });
                 return;
             }
-
-            const rows = form.querySelectorAll('.costing-row');
-            if (rows.length <= 1) {
-                row.querySelectorAll('input').forEach(function (field) {
-                    field.value = field.name === 'quantity[]' ? '1' : '';
-                });
-                row.querySelectorAll('select').forEach(function (field) {
-                    field.selectedIndex = 0;
-                });
-            } else {
-                row.remove();
-            }
-
-            syncTotal(form);
-            saveFormDraft(form);
-            updateSaveDraftState(form);
+            removeRow();
         });
     };
 
-    document.querySelectorAll('[data-costing-form]').forEach(function (form) {
+    const bindCostingForm = function (form) {
+        if (!form || form.dataset.costingHandlersBound === '1') {
+            return;
+        }
+        form.dataset.costingHandlersBound = '1';
         form.querySelectorAll('.costing-row').forEach(function (row) {
             bindRow(form, row);
         });
@@ -830,37 +859,42 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form.querySelector('[data-clear-costing-form]')?.addEventListener('click', function () {
-            if (!window.confirm('Clear all unsaved costing inputs?')) {
-                return;
-            }
-
-            window.localStorage.removeItem(storageKeyForForm(form));
-            form.querySelectorAll('textarea').forEach(function (field) {
-                field.value = '';
-            });
-            form.querySelectorAll('.costing-row').forEach(function (row, index) {
-                if (index > 0) {
-                    row.remove();
-                    return;
-                }
-
-                row.querySelectorAll('input').forEach(function (field) {
-                    field.value = field.name === 'quantity[]' ? '1' : '';
+            const clearForm = function () {
+                window.localStorage.removeItem(storageKeyForForm(form));
+                form.querySelectorAll('textarea').forEach(function (field) {
+                    field.value = '';
                 });
-                row.querySelectorAll('select').forEach(function (field) {
-                    field.selectedIndex = 0;
+                form.querySelectorAll('.costing-row').forEach(function (row, index) {
+                    if (index > 0) {
+                        row.remove();
+                        return;
+                    }
+
+                    row.querySelectorAll('input').forEach(function (field) {
+                        field.value = field.name === 'quantity[]' ? '1' : '';
+                    });
+                    row.querySelectorAll('select').forEach(function (field) {
+                        field.selectedIndex = 0;
+                    });
                 });
+                form.querySelector('[data-asset-requirement-rows]')?.replaceChildren();
+                clearCostingError(form);
+                form.querySelectorAll('.costing-field-error, .is-invalid').forEach(function (field) {
+                    field.classList?.remove('is-invalid');
+                    if (field.classList?.contains('costing-field-error')) {
+                        field.remove();
+                    }
+                });
+                syncTotal(form);
+                updateSaveDraftState(form);
+            };
+            openInspectionActionConfirm({
+                trigger: this,
+                title: 'Clear Unsaved Costing?',
+                message: 'This will clear all unsaved costing inputs.',
+                confirm: 'Clear Form',
+                onConfirm: clearForm,
             });
-            form.querySelector('[data-asset-requirement-rows]')?.replaceChildren();
-            clearCostingError(form);
-            form.querySelectorAll('.costing-field-error, .is-invalid').forEach(function (field) {
-                field.classList?.remove('is-invalid');
-                if (field.classList?.contains('costing-field-error')) {
-                    field.remove();
-                }
-            });
-            syncTotal(form);
-            updateSaveDraftState(form);
         });
 
         form.addEventListener('submit', function (event) {
@@ -885,8 +919,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (isFinalSubmit && !window.confirm('Submit this costing to Admin for review?')) {
+            if (isFinalSubmit && form.dataset.submitConfirmed !== 'true') {
                 event.preventDefault();
+                openInspectionActionConfirm({
+                    trigger: event.submitter,
+                    title: 'Submit Inspection to Admin?',
+                    message: 'This will submit the completed inspection and costing to Admin for review.',
+                    confirm: 'Submit to Admin',
+                    onConfirm: function () {
+                        form.dataset.submitConfirmed = 'true';
+                        submitCostingToAdmin(form, event.submitter);
+                    },
+                });
                 return;
             }
 
@@ -904,7 +948,246 @@ document.addEventListener('DOMContentLoaded', function () {
 
         syncTotal(form);
         updateSaveDraftState(form);
+    };
+
+    document.querySelectorAll('[data-costing-form]').forEach(bindCostingForm);
+
+    const inspectionActionConfirmModal = document.querySelector('[data-inspection-action-confirm-modal]');
+    const inspectionActionConfirmTitle = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-title]');
+    const inspectionActionConfirmMessage = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-message]');
+    const inspectionActionConfirmCancel = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-cancel]');
+    const inspectionActionConfirmSubmit = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-submit]');
+    let pendingInspectionActionConfirm = null;
+
+    const closeInspectionActionConfirm = function (returnFocus) {
+        if (!inspectionActionConfirmModal || inspectionActionConfirmModal.dataset.submitting === 'true') return;
+        const trigger = pendingInspectionActionConfirm?.trigger;
+        inspectionActionConfirmModal.hidden = true;
+        pendingInspectionActionConfirm = null;
+        if (returnFocus) trigger?.focus();
+    };
+
+    const openInspectionActionConfirm = function (options) {
+        if (!inspectionActionConfirmModal || inspectionActionConfirmModal.dataset.submitting === 'true') return;
+        pendingInspectionActionConfirm = options;
+        inspectionActionConfirmTitle.textContent = options.title;
+        inspectionActionConfirmMessage.textContent = options.message;
+        inspectionActionConfirmSubmit.textContent = options.confirm;
+        inspectionActionConfirmSubmit.disabled = false;
+        inspectionActionConfirmCancel.disabled = false;
+        inspectionActionConfirmModal.hidden = false;
+        inspectionActionConfirmCancel.focus();
+    };
+
+    inspectionActionConfirmCancel?.addEventListener('click', function () {
+        closeInspectionActionConfirm(true);
     });
+    inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-close]')?.addEventListener('click', function () {
+        closeInspectionActionConfirm(true);
+    });
+    inspectionActionConfirmModal?.addEventListener('click', function (event) {
+        if (event.target === inspectionActionConfirmModal) closeInspectionActionConfirm(true);
+    });
+    inspectionActionConfirmSubmit?.addEventListener('click', function () {
+        const action = pendingInspectionActionConfirm;
+        if (!action || inspectionActionConfirmModal?.dataset.submitting === 'true') return;
+        inspectionActionConfirmModal.dataset.submitting = 'true';
+        inspectionActionConfirmCancel.disabled = true;
+        inspectionActionConfirmSubmit.disabled = true;
+        inspectionActionConfirmSubmit.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Processing...';
+        Promise.resolve()
+            .then(function () { return action.onConfirm(); })
+            .then(function (success) {
+                if (success !== false) {
+                    inspectionActionConfirmModal.hidden = true;
+                    pendingInspectionActionConfirm = null;
+                }
+            })
+            .finally(function () {
+                if (!inspectionActionConfirmModal.hidden) {
+                    inspectionActionConfirmCancel.disabled = false;
+                    inspectionActionConfirmSubmit.disabled = false;
+                    inspectionActionConfirmSubmit.textContent = action.confirm;
+                }
+                inspectionActionConfirmModal.dataset.submitting = '';
+            });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab' || !inspectionActionConfirmModal || inspectionActionConfirmModal.hidden) return;
+        const controls = Array.from(inspectionActionConfirmModal.querySelectorAll('button:not([disabled])'));
+        if (controls.length === 0) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+
+    const parseInspectionJsonResponse = function (response, fallbackMessage) {
+        return response.text().then(function (text) {
+            let payload = {};
+            try {
+                payload = text ? JSON.parse(text) : {};
+            } catch (error) {
+                throw new Error('The server returned an invalid response. Please try again.');
+            }
+            if (!response.ok || payload.success !== true) {
+                throw new Error(payload.message || fallbackMessage);
+            }
+            return payload;
+        });
+    };
+
+    const applyWorkflowFallback = function (form, payload) {
+        const card = form.closest('.inspection-card');
+        const status = payload?.status || '';
+        if (!card || !status) return;
+
+        const statusNode = card.querySelector('.inspection-status');
+        if (statusNode) {
+            statusNode.dataset.status = status;
+            statusNode.textContent = status;
+        }
+
+        const steps = Array.from(card.querySelectorAll('.inspection-workflow__step'));
+        const currentIndex = steps.findIndex(function (step) {
+            return step.querySelector('span')?.textContent.trim() === status;
+        });
+        steps.forEach(function (step, index) {
+            step.classList.toggle('is-done', currentIndex > index);
+            step.classList.toggle('is-current', currentIndex === index);
+            const label = step.querySelector('span')?.textContent.trim() || '';
+            const timestamp = payload.timestamps?.[label] || '';
+            if (timestamp) step.querySelector('small').textContent = timestamp;
+        });
+
+        const actionButton = form.querySelector('[data-workflow-transition]');
+        const actionField = form.elements.workflow_action;
+        const nextAction = {
+            Acknowledged: ['start', 'Start Inspection'],
+            Ongoing: ['complete', 'Mark Inspection Completed'],
+        }[status];
+        if (!nextAction) {
+            form.remove();
+            return;
+        }
+        actionField.value = nextAction[0];
+        actionButton.textContent = nextAction[1];
+        actionButton.disabled = false;
+        actionButton.removeAttribute('data-confirm-acknowledge');
+        actionButton.toggleAttribute('data-complete-inspection', nextAction[0] === 'complete');
+    };
+
+    const requestWorkflowTransition = function (form, button) {
+        const action = form.elements.workflow_action?.value || '';
+        const originalLabel = button.dataset.originalLabel || button.textContent.trim();
+        const data = new URLSearchParams();
+        data.append('csrf_token', form.elements.csrf_token?.value || '');
+        data.append('inspection_id', String(form.elements.inspection_id?.value || ''));
+        data.append('workflow_action', action);
+        form.dataset.isTransitioning = 'true';
+        button.disabled = true;
+        button.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Updating...';
+
+        return fetch(form.getAttribute('action') || window.location.href, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: data.toString(),
+        })
+            .then(function (response) {
+                return parseInspectionJsonResponse(response, 'Unable to update the inspection. Please try again.');
+            })
+            .then(function (payload) {
+                return refreshInspectionCard(String(payload.inspection_id || form.elements.inspection_id?.value || ''), true)
+                    .catch(function () {
+                        applyWorkflowFallback(form, payload);
+                        return null;
+                    })
+                    .then(function () {
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(payload.message || 'Inspection updated.', 'success', { duration: 4000 });
+                        }
+                        return true;
+                    });
+            })
+            .catch(function (error) {
+                // Check the server state first. A lost connection may still have saved the action.
+                return refreshInspectionCard(String(form.elements.inspection_id?.value || ''), true)
+                    .catch(function () { return null; })
+                    .then(function () {
+                        if (button.isConnected) {
+                            button.disabled = false;
+                            button.textContent = originalLabel;
+                        }
+                        form.dataset.isTransitioning = '';
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(error.message || 'Unable to update the inspection. Please try again.', 'error', { duration: 8000 });
+                        }
+                        return false;
+                    });
+            });
+    };
+
+    const submitCostingToAdmin = function (form, button) {
+        const originalLabel = button?.textContent.trim() || 'Submit to Admin';
+        const data = new FormData(form);
+        data.set('costing_action', 'submit_to_admin');
+        form.dataset.isSaving = 'true';
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting...';
+        }
+
+        return fetch(form.getAttribute('action') || window.location.href, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: data,
+        })
+            .then(function (response) {
+                return parseInspectionJsonResponse(response, 'Unable to submit the inspection to Admin. Please try again.');
+            })
+            .then(function (payload) {
+                return refreshInspectionCard(String(payload.inspection_id || form.querySelector('input[name="inspection_id"]')?.value || ''), true)
+                    .catch(function () { return null; })
+                    .then(function () {
+                        window.localStorage.removeItem(storageKeyForForm(form));
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(payload.message || 'Costing submitted to Admin.', 'success', { duration: 4000 });
+                        }
+                        return true;
+                    });
+            })
+            .catch(function (error) {
+                return refreshInspectionCard(String(form.querySelector('input[name="inspection_id"]')?.value || ''), true)
+                    .catch(function () { return null; })
+                    .then(function () {
+                        if (button?.isConnected) {
+                            button.disabled = false;
+                            button.textContent = originalLabel;
+                        }
+                        form.dataset.isSaving = 'false';
+                        form.dataset.submitConfirmed = '';
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(error.message || 'Unable to submit the inspection to Admin. Please try again.', 'error', { duration: 8000 });
+                        }
+                        return false;
+                    });
+            });
+    };
 
     const completionModal = document.querySelector('[data-complete-inspection-modal]');
     const completionCancelButton = completionModal?.querySelector('[data-complete-inspection-cancel]');
@@ -947,10 +1230,22 @@ document.addEventListener('DOMContentLoaded', function () {
         completionCancelButton.disabled = true;
         completionConfirmButton.disabled = true;
         completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Marking as completed...';
+        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Mark Inspection Completed';
         pendingCompletionButton.disabled = true;
         pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Marking as completed...';
-        pendingCompletionForm.dataset.completeConfirmed = 'true';
-        pendingCompletionForm.requestSubmit();
+        requestWorkflowTransition(pendingCompletionForm, pendingCompletionButton).then(function (success) {
+            if (success) {
+                completionModal.hidden = true;
+                completionModal.dataset.isCompleting = '';
+                pendingCompletionForm = null;
+                pendingCompletionButton = null;
+                return;
+            }
+            completionModal.dataset.isCompleting = '';
+            completionCancelButton.disabled = false;
+            completionConfirmButton.disabled = false;
+            completionConfirmButton.textContent = 'Mark as Completed';
+        });
     });
 
     const acknowledgeModal = document.querySelector('[data-acknowledge-modal]');
@@ -1000,99 +1295,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     acknowledgeConfirmButton?.addEventListener('click', function () {
         if (!pendingAcknowledgeForm || !pendingAcknowledgeButton || acknowledgeModal.dataset.isAcknowledging === 'true') return;
-
-        const form = pendingAcknowledgeForm;
-        const button = pendingAcknowledgeButton;
-        const requestUrl = form.getAttribute('action') || window.location.href;
-        const formData = new URLSearchParams();
-        formData.append('csrf_token', form.elements.csrf_token?.value || '');
-        formData.append('inspection_id', String(form.elements.inspection_id?.value || ''));
-        formData.append('workflow_action', 'acknowledge');
-
         acknowledgeModal.dataset.isAcknowledging = 'true';
         acknowledgeCancelButton.disabled = true;
         acknowledgeConfirmButton.disabled = true;
-        button.dataset.originalLabel = button.textContent.trim() || 'Acknowledge Assignment';
         acknowledgeConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
-        button.disabled = true;
-        button.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
-        form.dataset.acknowledgeConfirmed = 'true';
-
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(function () {
-            controller.abort();
-        }, 15000);
-
-        fetch(requestUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            signal: controller.signal,
-            body: formData.toString()
-        }).then(async function (response) {
-            const responseText = await response.text();
-            let payload = {};
-            if (responseText) {
-                try {
-                    payload = JSON.parse(responseText);
-                } catch (error) {
-                    throw new Error('The server returned an invalid response. Please try again.');
-                }
-            }
-
-            if (!response.ok) {
-                throw new Error((payload && payload.message) || 'Unable to acknowledge assignment. Please try again.');
-            }
-
-            if (!payload || payload.success !== true) {
-                throw new Error((payload && payload.message) || 'Unable to acknowledge assignment. Please try again.');
-            }
-
-            acknowledgeModal.hidden = true;
-            pendingAcknowledgeForm = null;
-            pendingAcknowledgeButton = null;
-            acknowledgeModal.dataset.isAcknowledging = '';
-            if (typeof window.showToast === 'function') {
-                window.showToast(payload.message || 'Assignment acknowledged.', 'success', { duration: 4000 });
-            }
-            if (payload && payload.status === 'Acknowledged') {
-                const card = button.closest('.inspection-card');
-                if (card) {
-                    const statusNode = card.querySelector('.inspection-status');
-                    if (statusNode) {
-                        statusNode.setAttribute('data-status', 'Acknowledged');
-                        statusNode.textContent = 'Acknowledged';
-                    }
-                    const actionButton = card.querySelector('[data-confirm-acknowledge]');
-                    if (actionButton) {
-                        actionButton.disabled = true;
-                        actionButton.textContent = 'Acknowledged';
-                    }
-                }
-            }
-            return payload;
-        }).catch(function (error) {
-            const message = error && error.name === 'AbortError'
-                ? 'The server did not respond in time. Please try again.'
-                : (error && error.message) || 'Unable to acknowledge assignment. Please try again.';
-            acknowledgeModal.hidden = false;
-            if (typeof window.showToast === 'function') {
-                window.showToast(message, 'error', { duration: 8000 });
+        requestWorkflowTransition(pendingAcknowledgeForm, pendingAcknowledgeButton).then(function (success) {
+            if (success) {
+                acknowledgeModal.hidden = true;
+                pendingAcknowledgeForm = null;
+                pendingAcknowledgeButton = null;
+                acknowledgeModal.dataset.isAcknowledging = '';
+                return;
             }
             resetAcknowledgeLoadingState(false);
-            if (pendingAcknowledgeForm && pendingAcknowledgeButton) {
-                pendingAcknowledgeButton.disabled = false;
-            }
-        }).finally(function () {
-            window.clearTimeout(timeoutId);
-            if (acknowledgeModal && acknowledgeModal.dataset.isAcknowledging === '') {
-                acknowledgeCancelButton.disabled = false;
-                acknowledgeConfirmButton.disabled = false;
-            }
         });
     });
 
@@ -1372,36 +1587,29 @@ document.addEventListener('DOMContentLoaded', function () {
         rescheduleForm.requestSubmit();
     });
 
-    document.querySelectorAll('[data-confirm-inspection-transition]').forEach(function (button) {
-        button.closest('form')?.addEventListener('submit', function (event) {
-            const form = event.currentTarget;
-            if (button.hasAttribute('data-complete-inspection')) {
-                if (form.dataset.completeConfirmed === 'true') {
-                    return;
-                }
-                event.preventDefault();
-                openCompletionModal(form, button);
-                return;
-            }
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-workflow-transition]');
+        if (!button || button.hasAttribute('data-confirm-acknowledge')) return;
+        const form = button.closest('form');
+        const action = form?.elements.workflow_action?.value || '';
+        if (!form || form.dataset.isTransitioning === 'true') return;
 
-            // Use custom acknowledge modal instead of native confirm
-            if (button.hasAttribute('data-confirm-acknowledge')) {
-                if (form.dataset.acknowledgeConfirmed === 'true') return;
-                event.preventDefault();
-                // reuse the same flow as clicking the acknowledge button
-                pendingAcknowledgeForm = button.closest('form');
-                pendingAcknowledgeButton = button;
-                if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
-                acknowledgeModal.hidden = false;
-                acknowledgeCancelButton?.focus();
-                return;
-            }
+        if (action === 'complete') {
+            openCompletionModal(form, button);
+            return;
+        }
 
-            const actionLabel = button.getAttribute('data-confirm-inspection-transition') || 'update this inspection';
-            if (!window.confirm(`${actionLabel}?`)) {
-                event.preventDefault();
-            }
-        });
+        if (action === 'start') {
+            openInspectionActionConfirm({
+                trigger: button,
+                title: 'Start Inspection?',
+                message: 'This will mark the inspection as Ongoing.',
+                confirm: 'Start Inspection',
+                onConfirm: function () {
+                    return requestWorkflowTransition(form, button);
+                },
+            });
+        }
     });
 
     const closeInspectionModal = function (modal) {
@@ -1469,6 +1677,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 acknowledgeModal.hidden = true;
                 return;
             }
+            if (inspectionActionConfirmModal && !inspectionActionConfirmModal.hidden) {
+                event.preventDefault();
+                closeInspectionActionConfirm(true);
+                return;
+            }
             document.querySelectorAll('.inspection-modal:not([hidden])').forEach(closeInspectionModal);
         }
     });
@@ -1492,6 +1705,55 @@ document.addEventListener('DOMContentLoaded', function () {
     let inspectionRefreshInProgress = false;
     let inspectionRefreshDeferred = false;
     const pendingInspectionIds = new Set();
+
+    const refreshInspectionCard = function (inspectionId, keepModalOpen) {
+        if (!inspectionPanel || !inspectionId) {
+            return Promise.reject(new Error('Inspection card is not available.'));
+        }
+
+        const currentCard = inspectionPanel.querySelector('[data-inspection-card-id="' + CSS.escape(String(inspectionId)) + '"]');
+        if (!currentCard) {
+            return Promise.reject(new Error('Inspection card is not available.'));
+        }
+
+        const currentModal = currentCard.querySelector('.inspection-modal');
+        const keepOpen = Boolean(keepModalOpen && currentModal && !currentModal.hidden);
+        const savedScrollTop = currentModal?.querySelector('.inspection-modal__panel')?.scrollTop || 0;
+
+        return fetch(inspectionRefreshUrl.toString(), {
+            headers: {
+                Accept: 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            cache: 'no-store',
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Inspection details refresh failed.');
+                return response.text();
+            })
+            .then(function (html) {
+                const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                const nextCard = nextDocument.querySelector('[data-inspection-card-id="' + CSS.escape(String(inspectionId)) + '"]');
+                if (!nextCard) throw new Error('Updated inspection details were not found.');
+
+                const importedCard = document.importNode(nextCard, true);
+                currentCard.replaceWith(importedCard);
+                bindCostingForm(importedCard.querySelector('[data-costing-form]'));
+
+                if (keepOpen) {
+                    const nextModal = importedCard.querySelector('.inspection-modal');
+                    const nextPanel = nextModal?.querySelector('.inspection-modal__panel');
+                    if (nextModal) {
+                        nextModal.hidden = false;
+                        document.body.classList.add('inspection-modal-open');
+                        window.localStorage.setItem(activeModalKey, nextModal.id);
+                    }
+                    if (nextPanel) nextPanel.scrollTop = savedScrollTop;
+                }
+
+                return importedCard;
+            });
+    };
 
     const inspectionRefreshIsBlocked = function () {
         return Boolean(document.querySelector([

@@ -204,7 +204,7 @@ function engineer_owns_inspection(mysqli $conn, int $inspectionId, int $engineer
 function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $engineerId): array
 {
     $stmt = $conn->prepare(
-        'SELECT status, admin_review_status, admin_remarks, submitted_at, client_schedule_response, engineer_schedule_response
+        'SELECT status, admin_review_status, admin_remarks, created_at, acknowledged_at, started_at, completed_at, submitted_at, client_schedule_response, engineer_schedule_response
          FROM site_inspections
          WHERE id = ? AND engineer_id = ?
          LIMIT 1'
@@ -365,12 +365,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($isAjaxRequest) {
+            $freshInspectionState = $inspectionId > 0
+                ? engineer_get_inspection_state($conn, $inspectionId, $userId)
+                : [];
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode([
                 'success' => $error === '',
                 'message' => $error !== '' ? $error : $message,
-                'status' => $error === '' ? ($workflowAction === 'acknowledge' ? $savedStatus : $targetStatus) : 'error',
-                'acknowledged_at' => $savedAcknowledgedAt,
+                'status' => $error === '' ? (string)($freshInspectionState['status'] ?? ($workflowAction === 'acknowledge' ? $savedStatus : $targetStatus)) : 'error',
+                'timestamps' => [
+                    'Assigned' => site_inspection_format_datetime($freshInspectionState['created_at'] ?? null),
+                    'Acknowledged' => site_inspection_format_datetime($freshInspectionState['acknowledged_at'] ?? $savedAcknowledgedAt),
+                    'Ongoing' => site_inspection_format_datetime($freshInspectionState['started_at'] ?? null),
+                    'Completed' => site_inspection_format_datetime($freshInspectionState['completed_at'] ?? null),
+                    'Submitted' => site_inspection_format_datetime($freshInspectionState['submitted_at'] ?? null),
+                ],
                 'inspection_id' => $inspectionId,
             ]);
             exit;
@@ -688,6 +697,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    if ($isAjaxRequest && $workflowAction === '' && $scheduleResponseAction === '') {
+        $freshInspectionState = $inspectionId > 0
+            ? engineer_get_inspection_state($conn, $inspectionId, $userId)
+            : [];
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'success' => $error === '',
+            'message' => $error !== '' ? $error : $message,
+            'status' => $error === '' ? (string)($freshInspectionState['status'] ?? $currentStatus) : 'error',
+            'inspection_id' => $inspectionId,
+        ]);
+        exit;
+    }
 }
 
 $materialOptions = material_stock_fetch_active_materials($conn);
@@ -952,7 +975,7 @@ require __DIR__ . '/../layout/header.php';
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                                             <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <button type="submit" class="btn-primary" data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?>>
+                                                <button type="button" class="btn-primary" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?>>
                                                 <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </button>
                                         </form>
@@ -1180,6 +1203,18 @@ require __DIR__ . '/../layout/header.php';
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-acknowledge-cancel>Cancel</button>
                     <button type="button" class="btn-primary" data-acknowledge-confirm>Acknowledge Assignment</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="inspection-confirm-modal" data-inspection-action-confirm-modal hidden>
+            <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionActionConfirmTitle">
+                <button type="button" class="inspection-modal__close" data-inspection-action-confirm-close aria-label="Close confirmation">&times;</button>
+                <h2 id="inspectionActionConfirmTitle" data-inspection-action-confirm-title></h2>
+                <p data-inspection-action-confirm-message></p>
+                <div class="inspection-confirm-modal__actions">
+                    <button type="button" class="btn-secondary" data-inspection-action-confirm-cancel>Cancel</button>
+                    <button type="button" class="btn-primary" data-inspection-action-confirm-submit></button>
                 </div>
             </div>
         </div>

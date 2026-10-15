@@ -1092,6 +1092,24 @@
     font-size: 0.8rem;
 }
 
+@media (max-width: 640px) {
+    .inquiry-detail__action-line .btn-secondary {
+        width: 100%;
+        min-height: 40px;
+    }
+
+    .inquiry-schedule-editor summary {
+        min-height: 42px;
+        box-sizing: border-box;
+    }
+
+    .inquiry-schedule-editor .inquiry-review-actions,
+    .inquiry-schedule-editor .inquiry-review-actions .btn-primary,
+    .inquiry-schedule-editor .inquiry-schedule-retry-form .btn-secondary {
+        width: 100%;
+    }
+}
+
 .inquiry-review-form {
     display: grid;
     grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
@@ -1223,6 +1241,36 @@
 
 .inquiry-schedule-form[hidden] {
     display: none !important;
+}
+
+.inquiry-schedule-editor {
+    margin-top: 10px;
+    border: 1px solid #dbe5f1;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.inquiry-schedule-editor[hidden] {
+    display: none;
+}
+
+.inquiry-schedule-editor summary {
+    padding: 10px 12px;
+    color: #166534;
+    cursor: pointer;
+    font-size: .86rem;
+    font-weight: 800;
+    list-style-position: inside;
+}
+
+.inquiry-schedule-editor[open] summary {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.inquiry-schedule-editor .inquiry-schedule-form {
+    margin-top: 0;
+    border: 0;
+    border-radius: 0 0 12px 12px;
 }
 
 .inquiry-schedule-retry-form {

@@ -2783,10 +2783,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         ?>
                                         <div class="inquiry-details-grid">
                                             <div class="inquiry-detail"><span>Assigned Engineer</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div class="inquiry-detail inquiry-detail--monitor"><span>Inspection Date &amp; Time</span><div class="inquiry-detail__action-line"><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>">Monitor Inspection</button></div></div>
-                                            <?php if (trim((string)($latestInspection['site_notes'] ?? '')) !== ''): ?>
-                                                <div class="inquiry-detail inquiry-detail--wide"><span>Site Notes</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$latestInspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
-                                            <?php endif; ?>
+                                            <div class="inquiry-detail inquiry-detail--monitor"><span>Inspection Date &amp; Time</span><div class="inquiry-detail__action-line"><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Monitor Inspection</button></div></div>
                                             <?php if ($currentScheduleReason !== ''): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Schedule Change Reason</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                             <?php endif; ?>
@@ -2926,14 +2923,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             $scheduleSubmitLabel = $latestInspection && $isScheduleConfirmed
                                                 ? 'Update Schedule & Notify Client and Engineer'
                                                 : 'Confirm Schedule & Notify Client and Engineer';
+                                            $showScheduleEditor = $latestInspection
+                                                && !$scheduleReadOnly
+                                                && empty($inquiry['archived_at'])
+                                                && $canScheduleInspection;
                                         ?>
+                                        <?php if ($showScheduleEditor): ?>
+                                            <details class="inquiry-schedule-editor" data-inspection-schedule-editor>
+                                                <summary>Change Schedule</summary>
+                                        <?php endif; ?>
                                         <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo !$canScheduleInspection || $scheduleReadOnly || !empty($inquiry['archived_at']) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <strong><?php echo $latestInspection ? 'Update Inspection Schedule' : 'Set Inspection Schedule'; ?></strong>
-                                            <?php if ($isScheduleConfirmed): ?>
-                                                <span class="inquiry-schedule-confirmed">Schedule Confirmed</span>
+                                            <?php if (!$showScheduleEditor): ?>
+                                                <strong>Set Inspection Schedule</strong>
                                             <?php endif; ?>
                                             <div class="inquiry-schedule-grid">
                                                 <label>
@@ -2967,15 +2971,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </label>
                                             </div>
                                             <small class="inquiry-schedule-field-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>
-                                            <label>
-                                                <span>Site Notes (Optional)</span>
-                                                <textarea name="site_notes" rows="2" placeholder="Gate pass, contact person, tools needed..."><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                            </label>
+                                            <textarea name="site_notes" hidden><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             <?php if ($latestInspection): ?>
                                                 <label data-admin-reschedule-reason hidden>
                                                     <span>Reschedule Reason</span>
                                                     <textarea name="reschedule_reason" rows="2" minlength="5" maxlength="1000" placeholder="Explain why the Engineer, date, or time is changing." disabled aria-describedby="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?> admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>"></textarea>
-                                                    <small id="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?>">Explain why the schedule or assigned engineer is changing. This will be shared with the Client and Engineer.</small>
+                                                    <small id="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?>">Required for a schedule change. Shared with the Client and Engineer.</small>
                                                     <small class="inquiry-schedule-field-feedback" id="admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>" data-admin-reschedule-reason-feedback hidden aria-live="polite"></small>
                                                 </label>
                                             <?php endif; ?>
@@ -2995,6 +2996,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <input type="hidden" name="notification_hash" value="<?php echo htmlspecialchars($currentScheduleHash, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <button type="submit" class="btn-secondary">Retry Notifications</button>
                                             </form>
+                                        <?php endif; ?>
+                                        <?php if ($showScheduleEditor): ?>
+                                            </details>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </section>

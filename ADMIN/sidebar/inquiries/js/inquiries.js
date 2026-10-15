@@ -1905,6 +1905,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!modal || !isFinal) return;
         const scheduleForm = modal.querySelector('[data-inquiry-inspection-form]');
         if (scheduleForm) scheduleForm.hidden = true;
+        const scheduleEditor = scheduleForm?.closest('[data-inspection-schedule-editor]');
+        if (scheduleEditor) scheduleEditor.hidden = true;
+        modal.querySelector('[data-inspection-monitor-open]')?.removeAttribute('hidden');
         const responseGrid = modal.querySelector('.inquiry-schedule-responses');
         if (!responseGrid) return;
         let phaseBadge = responseGrid.querySelector('[data-inspection-phase]');

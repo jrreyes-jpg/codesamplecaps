@@ -394,7 +394,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
             <div class="quotation-create-heading">
                 <div>
-                    <span class="reports-kicker<?php echo $isEditMode ? '' : ' quotation-create-status'; ?>"><?php echo $isEditMode ? $quotationDisplayLabel : 'Verified Lead'; ?></span>
+                    <?php if ($isEditMode): ?>
+                        <span class="reports-kicker"><?php echo $quotationDisplayLabel; ?></span>
+                    <?php endif; ?>
                     <h1><?php echo $isEditMode ? ($isInitialQuotationDraft ? 'Edit Initial Quotation' : 'Edit Revised Quotation') : 'Create Initial Quotation'; ?></h1>
                     <?php if ($isEditMode): ?>
                         <p>Update the draft scope costs before approval and sending.</p>
@@ -407,10 +409,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
 
             <div class="quotation-create-client-grid">
-                <div><span>Contact Person</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                <?php if (trim((string)$inquiry['company_name']) !== ''): ?>
-                    <div><span>Company / Organization</span><strong><?php echo htmlspecialchars((string)$inquiry['company_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                <?php endif; ?>
+                <div><span>Client</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php if (trim((string)$inquiry['company_name']) !== ''): ?><small><?php echo htmlspecialchars((string)$inquiry['company_name'], ENT_QUOTES, 'UTF-8'); ?></small><?php endif; ?></div>
                 <div><span>Service</span><strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                 <div><span>Location</span><strong><?php echo htmlspecialchars(trim((string)$inquiry['site_address'] . ', ' . (string)$inquiry['barangay'] . ', ' . (string)$inquiry['city_municipality'] . ', ' . (string)$inquiry['province'], ' ,'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
             </div>
@@ -430,8 +429,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-section-head">
                     <div>
                         <h2>Cost Breakdown</h2>
-                        <p>Billable materials, labor, services, and other project costs included in the quotation.</p>
                     </div>
+                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Item</button>
                 </div>
 
                 <div class="quotation-create-items" data-quotation-items>
@@ -453,14 +452,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select></label>
                             <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
                             <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
-                            <label class="quotation-create-item__notes"><span>Notes / Exclusions (Optional)</span><input type="text" name="item_notes[]" maxlength="2000" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></label>
+                            <details class="quotation-create-item__notes"><summary>Item Note (Optional)</summary><input type="text" name="item_notes[]" maxlength="2000" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Add a note or exclusion"></details>
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                         </div>
                     <?php endforeach; ?>
-                </div>
-
-                <div class="quotation-create-add-row">
-                    <button type="button" class="btn-secondary" data-quotation-add-item>Add Item</button>
                 </div>
 
                 <template data-quotation-item-template>
@@ -489,7 +484,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </select></label>
                         <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
                         <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
-                        <label class="quotation-create-item__notes"><span>Notes / Exclusions (Optional)</span><input type="text" name="item_notes[]" maxlength="2000"></label>
+                        <details class="quotation-create-item__notes"><summary>Item Note (Optional)</summary><input type="text" name="item_notes[]" maxlength="2000" placeholder="Add a note or exclusion"></details>
                         <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                     </div>
                 </template>
@@ -497,7 +492,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-summary">
                     <label><span>Markup (%)</span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($marginPercentRaw, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-summary__error" data-quotation-markup-error aria-live="polite"><?php echo htmlspecialchars($markupError, ENT_QUOTES, 'UTF-8'); ?></span></label>
                     <div><span>Subtotal</span><strong>PHP <span data-quotation-subtotal>0.00</span></strong></div>
-                    <div><span>Profit</span><strong>PHP <span data-quotation-profit>0.00</span></strong></div>
                     <div class="quotation-create-grand-total"><span>Grand Total</span><strong>PHP <span data-quotation-total>0.00</span></strong></div>
                 </div>
 

@@ -565,8 +565,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const validateCosting = function (form, requireFinal) {
-        let hasMaterial = false;
-        let hasLabor = false;
         let hasAnyRow = false;
         let total = 0;
         let firstInvalid = null;
@@ -602,8 +600,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             hasAnyRow = true;
-            hasMaterial = hasMaterial || type?.value === 'material';
-            hasLabor = hasLabor || type?.value === 'labor';
             if (isValidQuantityText(quantityText, unitValue) && isValidCostText(unitCostText)) {
                 total += quantityValue * Number(unitCostText);
             }
@@ -661,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (requireFinal && !hasAnyRow) {
             firstInvalid = firstInvalid || form.querySelector('input[name="item_name[]"]');
-            setFieldError(firstInvalid, 'Add at least one material or labor row.');
+            setFieldError(firstInvalid, 'Add at least one cost item.');
         }
 
         if (requireFinal && findings && !hasMeaningfulFindings(findings.value)) {
@@ -669,25 +665,11 @@ document.addEventListener('DOMContentLoaded', function () {
             firstInvalid = firstInvalid || findings;
         }
 
-        if (requireFinal && (!hasMaterial || !hasLabor || total <= 0)) {
+        if (requireFinal && total <= 0) {
             const totalBox = form.querySelector('[data-costing-total]');
             totalBox?.classList.add('is-invalid-total');
-            if (!hasMaterial) {
-                const newRow = addCostingRow(form, 'material');
-                const nameField = newRow?.querySelector('input[name="item_name[]"]');
-                setFieldError(nameField, 'Fill this Material item.');
-                firstInvalid = firstInvalid || nameField;
-                errorMessage = errorMessage || 'Missing Material row. I added one below.';
-            } else if (!hasLabor) {
-                const newRow = addCostingRow(form, 'labor');
-                const nameField = newRow?.querySelector('input[name="item_name[]"]');
-                setFieldError(nameField, 'Fill this Labor item.');
-                firstInvalid = firstInvalid || nameField;
-                errorMessage = errorMessage || 'Missing Labor row. I added one below.';
-            } else {
-                firstInvalid = firstInvalid || totalBox;
-                errorMessage = errorMessage || 'Total cost must be greater than 0.';
-            }
+            firstInvalid = firstInvalid || totalBox;
+            errorMessage = errorMessage || 'Total cost must be greater than 0.';
         }
 
         if (firstInvalid) {
@@ -1170,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const actionField = form.elements.workflow_action;
         const nextAction = {
             Acknowledged: ['start', 'Start Inspection'],
-            Ongoing: ['complete', 'Mark Inspection Completed'],
+            Ongoing: ['complete', 'Complete & Submit to Admin'],
         }[status];
         if (!nextAction) {
             form.remove();
@@ -1330,10 +1312,10 @@ document.addEventListener('DOMContentLoaded', function () {
         completionModal.dataset.isCompleting = 'true';
         completionCancelButton.disabled = true;
         completionConfirmButton.disabled = true;
-        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Marking as completed...';
-        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Mark Inspection Completed';
+        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Completing and submitting...';
+        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Complete & Submit to Admin';
         pendingCompletionButton.disabled = true;
-        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Marking as completed...';
+        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Completing and submitting...';
         requestWorkflowTransition(pendingCompletionForm, pendingCompletionButton).then(function (success) {
             if (success) {
                 completionModal.hidden = true;
@@ -1345,7 +1327,7 @@ document.addEventListener('DOMContentLoaded', function () {
             completionModal.dataset.isCompleting = '';
             completionCancelButton.disabled = false;
             completionConfirmButton.disabled = false;
-            completionConfirmButton.textContent = 'Mark as Completed';
+            completionConfirmButton.textContent = 'Complete & Submit';
         });
     });
 
@@ -1700,7 +1682,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const costingForm = modal?.querySelector('[data-costing-form]');
             const findings = costingForm?.querySelector('textarea[name="engineer_findings"]');
             activateInspectionTab(modal, 'report');
-            const reportIsValid = costingForm ? validateCosting(costingForm, false) : false;
+            const reportIsValid = costingForm ? validateCosting(costingForm, true) : false;
             const findingsAreValid = hasMeaningfulFindings(findings?.value || '');
 
             if (!reportIsValid || !findingsAreValid || button.getAttribute('data-complete-ready') !== 'true' || (costingForm && isFormDirty(costingForm))) {

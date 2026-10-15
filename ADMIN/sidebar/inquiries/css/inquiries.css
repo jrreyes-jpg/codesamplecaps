@@ -379,6 +379,12 @@
     white-space: nowrap;
 }
 
+.quotation-create-add-item-row {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: -4px;
+}
+
 .quotation-create-item.is-material-item.has-linked-material {
     grid-template-columns: minmax(150px, .9fr) minmax(230px, 1.4fr) minmax(210px, 1.25fr) minmax(82px, .5fr) minmax(105px, .65fr) minmax(155px, .9fr);
 }
@@ -410,11 +416,11 @@
 
 .quotation-create-summary {
     display: grid;
-    grid-template-columns: minmax(170px, 220px) 1fr auto;
-    align-items: end;
-    gap: 10px;
+    grid-template-columns: minmax(180px, .85fr) repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px;
     margin-top: 6px;
-    padding: 10px 12px;
+    padding: 8px;
     border: 1px solid #e1ebe6;
     border-radius: 12px;
     background: #fbfdfc;
@@ -423,14 +429,26 @@
 .quotation-create-summary > label,
 .quotation-create-summary > div {
     min-width: 0;
-    padding: 4px 8px;
+    min-height: 56px;
+    padding: 7px 10px;
     border-radius: 9px;
-    background: transparent;
+    background: #f5f8f6;
 }
 
 .quotation-create-summary > label {
     display: grid;
     align-content: start;
+}
+
+.quotation-create-summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.quotation-create-summary > div > span {
+    margin: 0;
 }
 
 .quotation-create-summary__error {
@@ -451,7 +469,7 @@
 }
 
 .quotation-create-summary .quotation-create-grand-total {
-    padding: 9px 12px;
+    padding: 7px 10px;
     background: #dff6e9;
 }
 

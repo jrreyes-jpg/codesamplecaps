@@ -435,7 +435,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <div>
                         <h2>Cost Breakdown</h2>
                     </div>
-                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Item</button>
                 </div>
 
                 <div class="quotation-create-items" data-quotation-items>
@@ -461,6 +460,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                         </div>
                     <?php endforeach; ?>
+                </div>
+
+                <div class="quotation-create-add-item-row">
+                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Another Item</button>
                 </div>
 
                 <template data-quotation-item-template>

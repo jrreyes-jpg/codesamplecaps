@@ -869,13 +869,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($archiveReason, $archiveReasons, true)) {
             $archiveReason = '';
         }
-        if ($archiveReason === 'Other') {
+        $hasManualArchiveNote = $archiveReasonOther !== '';
+        if ($archiveReason === 'Other' || $hasManualArchiveNote) {
             $compactOtherReason = preg_replace('/\s+/u', '', $archiveReasonOther) ?? '';
             if (mb_strlen($compactOtherReason, 'UTF-8') < 5 || preg_match('/\p{L}/u', $archiveReasonOther) !== 1) {
                 $archiveReason = '';
                 $error = 'Enter a clear manual reason with at least 5 characters.';
-            } else {
+            } elseif ($archiveReason === 'Other') {
                 $archiveReason = $archiveReasonOther;
+            } else {
+                $archiveReason .= ' - ' . $archiveReasonOther;
             }
         }
 
@@ -3278,8 +3281,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <option value="Other">Other reason</option>
                                             </select>
                                         </label>
-                                        <label data-archive-manual-reason hidden>
-                                            <span>Manual Reason / Notes <b class="archive-other-required" data-archive-other-required hidden>*</b></span>
+                                        <label data-archive-manual-reason>
+                                            <span data-archive-manual-label>Additional Notes (Optional) <b class="archive-other-required" data-archive-other-required hidden>*</b></span>
                                             <textarea name="archive_reason_other" rows="2" placeholder="Add custom reason or extra note"></textarea>
                                         </label>
                                         <div class="inquiry-review-actions">

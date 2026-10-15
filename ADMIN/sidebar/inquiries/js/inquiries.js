@@ -1604,7 +1604,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const reasonSelect = form.querySelector('select[name="archive_reason"]');
         const manualReason = form.querySelector('textarea[name="archive_reason_other"]');
         const manualReasonMark = form.querySelector('[data-archive-other-required]');
-        const manualReasonField = form.querySelector('[data-archive-manual-reason]');
+        const manualReasonLabel = form.querySelector('[data-archive-manual-label]');
 
         const syncArchiveReasonRequirement = function () {
             if (!reasonSelect || !manualReason) {
@@ -1613,14 +1613,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const isOther = reasonSelect.value === 'Other';
             manualReason.required = isOther;
-            if (manualReasonField) {
-                manualReasonField.hidden = !isOther;
+            if (manualReasonLabel) {
+                manualReasonLabel.childNodes[0].nodeValue = isOther
+                    ? 'Manual Reason / Notes '
+                    : 'Additional Notes (Optional) ';
             }
             if (manualReasonMark) {
                 manualReasonMark.hidden = !isOther;
             }
             if (!isOther) {
-                manualReason.value = '';
                 manualReason.classList.remove('is-invalid');
                 manualReason.setCustomValidity('');
             }
@@ -1645,7 +1646,9 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (event) {
             const compactOtherReason = manualReason?.value.replace(/\s+/g, '') || '';
             const hasOtherLetter = /[A-Za-z]/.test(manualReason?.value || '');
-            if (reasonSelect?.value === 'Other' && (!hasOtherLetter || compactOtherReason.length < 5)) {
+            const manualNoteIsRequired = reasonSelect?.value === 'Other';
+            const manualNoteHasText = manualReason?.value.trim() !== '';
+            if ((manualNoteIsRequired || manualNoteHasText) && (!hasOtherLetter || compactOtherReason.length < 5)) {
                 event.preventDefault();
                 manualReason.setCustomValidity('Enter a clear manual reason with at least 5 characters.');
                 manualReason.reportValidity();
@@ -2879,6 +2882,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const quantityInput = row.querySelector('input[name="quantity[]"]');
 
             row.classList.toggle('is-material-item', isMaterial);
+            row.classList.toggle('has-linked-material', isLinkedMaterial);
 
             if (materialReference) {
                 materialReference.hidden = !isMaterial;

@@ -159,7 +159,7 @@
 
 .quotation-create-item {
     display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-columns: minmax(150px, .9fr) minmax(230px, 1.4fr) minmax(210px, 1.25fr) minmax(82px, .5fr) minmax(105px, .65fr) minmax(155px, .9fr);
     align-items: end;
     gap: 10px;
     padding: 14px;
@@ -169,26 +169,22 @@
 }
 
 .quotation-create-item__type {
-    grid-column: span 2;
     position: relative;
     padding-bottom: 20px;
 }
 
 .quotation-create-item__material-reference {
-    grid-column: span 3;
     position: relative;
     padding-bottom: 20px;
 }
 
 .quotation-create-item__name {
-    grid-column: span 3;
     position: relative;
     padding-bottom: 20px;
 }
 
 .quotation-create-item__quantity,
 .quotation-create-item__unit {
-    grid-column: span 1;
 }
 
 .quotation-create-item__quantity,
@@ -233,11 +229,10 @@
 }
 
 .quotation-create-item__cost {
-    grid-column: span 2;
 }
 
 .quotation-create-item__line-total {
-    grid-column: span 2;
+    grid-column: 1 / span 2;
     min-width: 0;
     min-height: 42px;
     padding: 9px 10px;
@@ -255,7 +250,7 @@
 }
 
 .quotation-create-item__notes {
-    grid-column: span 8;
+    grid-column: 3 / span 3;
     min-width: 0;
     padding: 9px 10px;
     border: 1px solid #dce8e3;
@@ -280,7 +275,7 @@
 }
 
 .quotation-create-item .quotation-create-remove {
-    grid-column: span 2;
+    grid-column: 6;
     margin-bottom: 18px;
     justify-self: end;
 }
@@ -301,11 +296,11 @@
 }
 
 .quotation-create-item:not(.is-material-item) .quotation-create-item__type {
-    grid-column: span 3;
+    grid-column: 1;
 }
 
 .quotation-create-item:not(.is-material-item) .quotation-create-item__name {
-    grid-column: span 9;
+    grid-column: 2 / span 2;
 }
 
 .quotation-create-item label,
@@ -364,6 +359,18 @@
 
 .quotation-create-add-item {
     white-space: nowrap;
+}
+
+.quotation-create-item.is-material-item.has-linked-material {
+    grid-template-columns: minmax(150px, .9fr) minmax(230px, 1.4fr) minmax(210px, 1.25fr) minmax(82px, .5fr) minmax(105px, .65fr) minmax(155px, .9fr);
+}
+
+.quotation-create-item.is-material-item.has-linked-material .quotation-create-item__material-reference {
+    grid-column: 2 / span 2;
+}
+
+.quotation-create-item.is-material-item.has-linked-material .quotation-create-item__name {
+    display: none;
 }
 
 .inquiry-live-notification-dot {
@@ -487,7 +494,7 @@
     .quotation-create-item__line-total,
     .quotation-create-item:not(.is-material-item) .quotation-create-item__type,
     .quotation-create-item:not(.is-material-item) .quotation-create-item__name {
-        grid-column: span 1;
+        grid-column: span 2;
     }
 
     .quotation-create-item__name,

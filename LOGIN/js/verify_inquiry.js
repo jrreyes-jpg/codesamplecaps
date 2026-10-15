@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const verifyInquiryForm = document.getElementById('verifyInquiryForm');
     const verifyInquiryButton = document.getElementById('verifyInquiryButton');
-    const backToHomeLink = document.getElementById('backToHomeLink');
+    const backToHomeLink = document.querySelector('.verify-brand-home-link');
     const verifyInquiryAction = document.getElementById('verifyInquiryAction');
     const otpCodeInput = document.querySelector('.js-otp-code');
     const verifySentToast = document.getElementById('verifySentToast');
@@ -115,13 +115,6 @@ document.addEventListener('DOMContentLoaded', function () {
         otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
     });
 
-    resendButton?.addEventListener('click', function () {
-        if (verifyInquiryAction) {
-            // Hidden value ito para kasama pa rin sa POST kahit disabled na ang button.
-            verifyInquiryAction.value = 'resend';
-        }
-    });
-
     verifyInquiryForm?.addEventListener('submit', function (event) {
         const isResendSubmission = verifyInquiryAction?.value === 'resend';
         if (isResendSubmission) {
@@ -155,7 +148,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const openLeaveVerificationConfirmation = function (event) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (isVerificationLimitReached) {
+        if (!backToHomeLink) {
+            return;
+        }
+
+        if ((otpCodeInput?.value || '').trim() === '') {
             window.location.assign(backToHomeLink.href);
             return;
         }
@@ -166,9 +163,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const confirmation = window.EdgePublicConfirmation?.open({
             title: 'Leave verification?',
-            message: 'Your inquiry has not been submitted yet. Leaving this page will cancel the current verification process.',
-            cancelLabel: 'Stay & Verify',
-            confirmLabel: 'Leave Verification',
+            message: 'Your inquiry is not submitted yet.',
+            cancelLabel: 'Stay',
+            confirmLabel: 'Back to Home',
             tone: 'danger',
             onConfirm: function (controls) {
                 controls.setBusy('Leaving...');
@@ -182,10 +179,49 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const submitResend = function () {
+        if (!verifyInquiryForm || !resendButton || !verifyInquiryAction) {
+            return;
+        }
+        verifyInquiryAction.value = 'resend';
+        verifyInquiryForm.requestSubmit(resendButton);
+    };
+
+    const openResendConfirmation = function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (isResendingOtp || resendButton?.disabled) {
+            return;
+        }
+
+        if (isOtpUnavailable) {
+            submitResend();
+            return;
+        }
+
+        const confirmation = window.EdgePublicConfirmation?.open({
+            title: 'Send a new code?',
+            message: 'Your current code will stop working.',
+            cancelLabel: 'Cancel',
+            confirmLabel: 'Send New Code',
+            onConfirm: function (controls) {
+                controls.setBusy('Sending...');
+                submitResend();
+            },
+        });
+
+        if (!confirmation) {
+            return;
+        }
+    };
+
     // Capture phase para hindi tumakbo ang luma o cached na native handler.
     document.addEventListener('click', function (event) {
-        if (event.target instanceof Element && event.target.closest('#backToHomeLink')) {
+        if (event.target instanceof Element && event.target.closest('.verify-brand-home-link')) {
             openLeaveVerificationConfirmation(event);
+        }
+        if (event.target instanceof Element && event.target.closest('#resendInquiryOtpButton')) {
+            openResendConfirmation(event);
         }
     }, true);
 });

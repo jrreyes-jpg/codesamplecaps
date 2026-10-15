@@ -1039,6 +1039,21 @@
     white-space: nowrap;
 }
 
+.inquiry-detail .inquiry-inspection-phase-inline {
+    display: inline-flex;
+    align-items: center;
+}
+
+.inquiry-detail .inquiry-inspection-phase-inline > span {
+    display: inline;
+}
+
+.inquiry-detail .inquiry-inspection-phase-inline strong,
+.inquiry-detail .inquiry-schedule-final {
+    display: inline-flex;
+    margin-top: 0;
+}
+
 .inquiry-inspection-phase-inline [data-phase="Assigned"] {
     background: #f1f5f9;
     color: #475569;
@@ -1688,6 +1703,18 @@
     align-items: center;
     justify-content: flex-end;
     min-width: 92px;
+}
+
+.inquiry-modal__monitor {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 0.8rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.inquiry-modal__head.has-inspection-monitor > div:first-child {
+    padding-right: 250px;
 }
 
 .inquiry-modal__primary-action {
@@ -2940,6 +2967,22 @@ body.inquiry-modal-open {
     .inquiry-modal__panel {
         height: calc(100dvh - 24px);
         max-height: calc(100dvh - 24px);
+    }
+
+    .inquiry-modal__head.has-inspection-monitor > div:first-child {
+        padding-right: 180px;
+    }
+
+    .inquiry-modal__monitor {
+        width: 38px;
+        min-height: 38px;
+        padding: 0;
+        font-size: 0;
+    }
+
+    .inquiry-modal__monitor::before {
+        content: '\25CE';
+        font-size: 1rem;
     }
 
     .inquiry-inspection-summary-card__head {

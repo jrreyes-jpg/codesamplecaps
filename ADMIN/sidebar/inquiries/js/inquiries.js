@@ -1901,6 +1901,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (value) value.textContent = note;
     };
 
+    const moveInspectionMonitorToTools = function (modal) {
+        const monitorButton = modal?.querySelector('[data-inspection-monitor-open]');
+        const tools = modal?.querySelector('.inquiry-modal__tools');
+        if (!monitorButton || !tools || monitorButton.hidden) return;
+        monitorButton.classList.add('inquiry-modal__monitor');
+        monitorButton.setAttribute('aria-label', 'Monitor Inspection');
+        const archiveButton = tools.querySelector('[data-archive-modal-open]');
+        if (archiveButton) {
+            archiveButton.insertAdjacentElement('beforebegin', monitorButton);
+        } else {
+            tools.prepend(monitorButton);
+        }
+        modal.querySelector('.inquiry-modal__head')?.classList.add('has-inspection-monitor');
+    };
+
     const applyFinalScheduleLock = function (modal, isFinal, phase) {
         if (!modal || !isFinal) return;
         const scheduleForm = modal.querySelector('[data-inquiry-inspection-form]');
@@ -1920,7 +1935,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (monitorButton && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {
             monitorButton.removeAttribute('hidden');
         }
+        moveInspectionMonitorToTools(modal);
     };
+
+    document.querySelectorAll('.inquiry-modal').forEach(moveInspectionMonitorToTools);
 
     const pollInspectionScheduleResponse = function () {
         if (inspectionResponsePollInProgress || document.hidden) return;

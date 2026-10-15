@@ -465,7 +465,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $is_device_locked = $error_class === 'error-locked' && $lock_type === 'ip';
 $is_email_locked = $error_class === 'error-locked' && $lock_type === 'email';
 $is_inactive_account_notice = strpos($error_class, 'error-account-inactive') !== false;
-$email_input_value = (!$is_device_locked && !$is_email_locked && $error !== '' && $flash_email !== '')
+// Iwan ang valid email kapag mali ang password. Password lang ang hindi ibabalik.
+$email_input_value = !$is_device_locked && $flash_email !== ''
     ? $flash_email
     : '';
 

@@ -1907,31 +1907,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (scheduleForm) scheduleForm.hidden = true;
         const scheduleEditor = scheduleForm?.closest('[data-inspection-schedule-editor]');
         if (scheduleEditor) scheduleEditor.hidden = true;
-        modal.querySelector('[data-inspection-monitor-open]')?.removeAttribute('hidden');
         const responseGrid = modal.querySelector('.inquiry-schedule-responses');
-        if (!responseGrid) return;
-        let phaseBadge = responseGrid.querySelector('[data-inspection-phase]');
-        if (!phaseBadge) {
-            responseGrid.replaceChildren();
-            const finalBadge = document.createElement('div');
-            finalBadge.className = 'inquiry-schedule-final';
-            finalBadge.dataset.scheduleFinalBadge = 'true';
-            const finalValue = document.createElement('strong');
-            finalValue.textContent = 'Schedule Final';
-            finalBadge.append(finalValue);
-            const phaseCard = document.createElement('div');
-            phaseCard.className = 'inquiry-inspection-phase';
-            phaseCard.dataset.inspectionPhaseCard = 'true';
-            const phaseLabel = document.createElement('span');
-            phaseLabel.textContent = 'Engineer Phase';
-            phaseBadge = document.createElement('strong');
-            phaseBadge.className = 'inquiry-status';
-            phaseBadge.dataset.inspectionPhase = 'true';
-            phaseCard.append(phaseLabel, phaseBadge);
-            responseGrid.append(finalBadge, phaseCard);
+        if (responseGrid) responseGrid.hidden = true;
+        const phaseBadge = modal.querySelector('[data-inspection-phase]');
+        if (phaseBadge) {
+            phaseBadge.dataset.phase = phase || 'Assigned';
+            phaseBadge.textContent = phase || 'Assigned';
         }
-        phaseBadge.dataset.phase = phase || 'Assigned';
-        phaseBadge.textContent = phase || 'Assigned';
+        modal.querySelector('[data-schedule-final-badge]')?.removeAttribute('hidden');
+        modal.querySelector('[data-inspection-phase-card]')?.removeAttribute('hidden');
+        const monitorButton = modal.querySelector('[data-inspection-monitor-open]');
+        if (monitorButton && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {
+            monitorButton.removeAttribute('hidden');
+        }
     };
 
     const pollInspectionScheduleResponse = function () {
@@ -2134,7 +2122,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     modal.querySelector('[data-quotation-approved-banner]')?.removeAttribute('hidden');
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
-                        statusLabel.textContent = 'Client Accepted';
+                        statusLabel.textContent = 'Client Approved';
                         statusLabel.classList.remove('status-draft', 'status-sent', 'status-revision');
                         statusLabel.classList.add('status-accepted');
                     }
@@ -2146,7 +2134,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     showLiveInquiryToast(
-                        'Notification: Quotation for this inquiry has been accepted by the client!',
+                        'Notification: Quotation for this inquiry was approved by the client!',
                         quotation.inquiry_id,
                         'quotation'
                     );

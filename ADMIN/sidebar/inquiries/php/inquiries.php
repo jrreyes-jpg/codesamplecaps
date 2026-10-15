@@ -478,7 +478,7 @@ function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere
 function inquiry_center_quotation_status_label(string $status): string
 {
     return inquiry_quote_normalize_status($status) === 'accepted'
-        ? 'Client Accepted'
+        ? 'Client Approved'
         : inquiry_quote_status_label($status);
 }
 
@@ -2421,7 +2421,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['', 'Verified Lead', 'For Inspection'], true); ?>
         <?php if ($showQuotationFilters): ?>
             <nav class="inquiry-status-strip inquiry-status-strip--quotation" aria-label="Initial quotation filters">
-                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Client Accepted', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
+                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Client Approved', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
                 <?php if ($statusFilter === 'For Inspection'): unset($quotationFilterChips['needs_quotation']); endif; ?>
                 <?php foreach ($quotationFilterChips as $filterKey => $filterLabel): ?>
                     <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey]), ENT_QUOTES, 'UTF-8'); ?>">
@@ -2566,7 +2566,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </button>
                         <?php endif; ?>
 
-                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>" hidden>
+                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>" hidden>
                             <div class="inquiry-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <div class="inquiry-modal__head">
                                     <div>
@@ -2639,13 +2639,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
                                     <div class="inquiry-section-title">Contact and Request Details</div>
                                     <div class="inquiry-details-grid">
-                                        <div class="inquiry-detail"><span>Contact Person</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail inquiry-detail--wide"><span>Complete Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <?php if (!empty($inquiry['preferred_inspection_date'])): ?>
+                                            <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="inquiry-description">
@@ -2653,6 +2652,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
 
+                                    <?php $showReviewActions = $currentStatus !== 'For Inspection'; ?>
+                                    <?php if ($showReviewActions): ?>
                                     <hr class="inquiry-review-divider">
                                     <div class="inquiry-section-title inquiry-review-section-title">Admin Review &amp; Actions</div>
                                     <?php $showReviewMetadata = in_array($currentStatus, ['Verified Lead', 'Not Qualified'], true) && !empty($inquiry['reviewed_at']); ?>
@@ -2723,10 +2724,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
                                         </div>
                                     <?php endif; ?>
+                                    <?php endif; ?>
                                 </section>
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
-                                    <div class="inquiry-section-title">Inspection</div>
                                     <?php
                                     $hasOfficialInspectionSchedule = $latestInspection && !empty($latestInspection['scheduled_at']);
                                     $clientScheduleResponse = $hasOfficialInspectionSchedule
@@ -2748,14 +2749,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         && $clientScheduleResponse === 'confirmed'
                                         && $engineerScheduleResponse === 'confirmed';
                                     ?>
-                                    <div class="inquiry-details-grid inquiry-schedule-responses">
-                                        <?php if ($scheduleIsFinal): ?>
-                                            <div class="inquiry-schedule-final" data-schedule-final-badge><strong>Schedule Final</strong></div>
-                                            <div class="inquiry-inspection-phase" data-inspection-phase-card>
-                                                <span>Engineer Phase</span>
-                                                <strong class="inquiry-status" data-inspection-phase data-phase="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                            </div>
-                                        <?php else: ?>
+                                    <div class="inquiry-details-grid inquiry-schedule-responses" <?php echo $scheduleIsFinal ? 'hidden' : ''; ?>>
+                                        <?php if (!$scheduleIsFinal): ?>
                                             <div class="inquiry-detail">
                                                 <span>Client Schedule Response</span>
                                                 <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="client" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -2781,9 +2776,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             (string)$latestInspection['scheduled_at']
                                         );
                                         ?>
-                                        <div class="inquiry-details-grid">
-                                            <div class="inquiry-detail"><span>Assigned Engineer</span><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div class="inquiry-detail inquiry-detail--monitor"><span>Inspection Date &amp; Time</span><div class="inquiry-detail__action-line"><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Monitor Inspection</button></div></div>
+                                        <div class="inquiry-details-grid inquiry-inspection-summary-grid">
+                                            <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-assigned-detail>
+                                                <div class="inquiry-inspection-summary-card__head">
+                                                    <span>Assigned Engineer</span>
+                                                    <span class="inquiry-inspection-phase-inline" data-inspection-phase-card <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>><span>Engineer Phase</span><strong class="inquiry-status" data-inspection-phase data-phase="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong></span>
+                                                </div>
+                                                <strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Monitor Inspection</button>
+                                            </div>
+                                            <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-date-detail>
+                                                <div class="inquiry-inspection-summary-card__head"><span>Inspection Date &amp; Time</span><strong class="inquiry-schedule-final" data-schedule-final-badge <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Schedule Final</strong></div>
+                                                <strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
                                             <?php if ($currentScheduleReason !== ''): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Schedule Change Reason</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                             <?php endif; ?>
@@ -3031,7 +3036,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             $quotationDisplayStatus = match ($quotationStatus) {
                                                 'draft' => 'Draft',
                                                 'sent' => 'Awaiting Client Approval',
-                                                'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
+                                                'accepted' => 'Approved',
                                                 default => inquiry_center_quotation_status_label((string)$quotationDraft['status']),
                                             };
                                             $quotationStatusClass = 'status-draft';
@@ -3082,8 +3087,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </div>
                                         </div>
                                         <div class="inquiry-quotation-approved-banner" data-quotation-approved-banner <?php echo $quotationStatus !== 'accepted' ? 'hidden' : ''; ?>>
-                                            <p><strong>&#127881; Quotation Approved!</strong> The financial proposal has been accepted by the client. Please proceed to the 'Inspection' tab above to assign an Engineer and finalize the project schedule.</p>
-                                            <button type="button" class="btn-primary inquiry-quotation-approved-banner__action" data-go-to-inspection>Go to Inspection Stage &#10132;</button>
+                                            <p><strong>Quotation Approved.</strong> You may now schedule the inspection.</p>
+                                            <button type="button" class="btn-primary inquiry-quotation-approved-banner__action" data-go-to-inspection>Schedule Inspection &#10132;</button>
                                         </div>
                                         <?php
                                             $isInspectionReportApproved = $latestInspection
@@ -3226,7 +3231,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php if (empty($inquiry['archived_at'])): ?>
                             <div class="inquiry-archive-modal" id="archiveModal<?php echo (int)$inquiry['id']; ?>" hidden>
                                 <div class="inquiry-archive-modal__panel" role="dialog" aria-modal="true" aria-labelledby="archiveModalTitle<?php echo (int)$inquiry['id']; ?>">
-                                    <div class="inquiry-modal__head">
+                                    <div class="inquiry-archive-modal__head">
                                         <div>
                                             <span class="reports-kicker">Archive Inquiry</span>
                                             <h2 id="archiveModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>

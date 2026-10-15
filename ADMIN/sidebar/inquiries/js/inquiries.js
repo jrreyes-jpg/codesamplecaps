@@ -2617,6 +2617,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
+        const setUnitMessage = function (row, message) {
+            const unitSelect = row.querySelector('select[name="unit[]"]');
+            const unitError = row.querySelector('[data-quotation-unit-error]');
+            if (!unitSelect) {
+                return;
+            }
+
+            unitSelect.setCustomValidity(message);
+            unitSelect.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            if (unitError) {
+                unitError.textContent = message;
+            }
+        };
+
         const isValidEstimatedUnitCost = function (rawValue) {
             const value = Number.parseFloat(rawValue || '0');
             return /^\d+(?:\.\d{1,2})?$/.test((rawValue || '').trim())
@@ -2662,9 +2676,9 @@ document.addEventListener('DOMContentLoaded', function () {
             let message = '';
 
             if (rawValue === '') {
-                message = requireValue ? 'Estimated Unit Cost is required.' : '';
+                message = requireValue ? 'Enter cost.' : '';
             } else if (!isValidEstimatedUnitCost(rawValue)) {
-                message = 'Estimated Unit Cost must be greater than 0.';
+                message = 'Use amount above 0.';
             }
 
             unitCostInput.setCustomValidity(message);
@@ -2675,7 +2689,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return message === '';
         };
 
-        const validateQuotationQuantity = function (row, clearInvalidQuantity, requireValue, showMessage) {
+        const validateQuotationQuantity = function (row, requireValue, showMessage) {
             const quantityInput = row.querySelector('input[name="quantity[]"]');
             const unitSelect = row.querySelector('select[name="unit[]"]');
             if (!quantityInput || !unitSelect) {
@@ -2685,29 +2699,22 @@ document.addEventListener('DOMContentLoaded', function () {
             const rawValue = quantityInput.value.trim();
             const quantity = Number.parseFloat(rawValue || '0');
             const unit = unitSelect.value.toLowerCase();
-            let message = '';
+            let quantityMessage = '';
+            let unitMessage = '';
 
-            if (rawValue === '') {
-                message = requireValue ? 'Quantity is required.' : '';
+            if (unit === '') {
+                unitMessage = requireValue ? 'Pick unit.' : '';
+            } else if (rawValue === '') {
+                quantityMessage = requireValue ? 'Enter quantity.' : '';
             } else if (!Number.isFinite(quantity) || quantity <= 0) {
-                message = 'Quantity must be greater than 0.';
+                quantityMessage = 'Use quantity above 0.';
             } else if (wholeCountUnits.includes(unit) && !Number.isInteger(quantity)) {
-                message = 'Use a whole number for ' + unit + '.';
+                quantityMessage = 'Whole ' + unit + ' only.';
             }
 
-            if (message !== ''
-                && clearInvalidQuantity
-                && rawValue !== ''
-                && Number.isFinite(quantity)
-                && quantity > 0
-                && wholeCountUnits.includes(unit)
-                && !Number.isInteger(quantity)) {
-                quantityInput.value = '';
-                message = 'Qty was cleared because ' + unit + ' needs a whole number.';
-            }
-
-            setQuantityMessage(row, showMessage ? message : '');
-            return message === '';
+            setQuantityMessage(row, showMessage ? quantityMessage : '');
+            setUnitMessage(row, showMessage ? unitMessage : '');
+            return quantityMessage === '' && unitMessage === '';
         };
 
         const setUnitOptions = function (row, options, preferredUnit, isLocked, allowEmpty = false) {
@@ -2727,6 +2734,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 placeholder.value = '';
                 placeholder.textContent = 'Select unit';
                 placeholder.selected = selectedUnit === '';
+                placeholder.disabled = true;
                 unitSelect.appendChild(placeholder);
             }
             options.forEach(function (option) {
@@ -2750,9 +2758,46 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
+        const updateMaterialStockStatus = function (row) {
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const stockStatus = row.querySelector('[data-quotation-material-feedback]');
+            const typeSelect = row.querySelector('select[name="item_type[]"]');
+            const selectedOption = materialSelect?.selectedOptions[0];
+            const materialId = materialSelect?.value || '';
+            if (!stockStatus) {
+                return;
+            }
+
+            if (typeSelect?.value !== 'material' || !/^[1-9]\d*$/.test(materialId)) {
+                stockStatus.hidden = true;
+                stockStatus.textContent = '';
+                stockStatus.className = 'quotation-create-item__material-feedback';
+                return;
+            }
+
+            const available = Number.parseFloat(selectedOption?.dataset.materialAvailable || '0');
+            const reorderLevel = Number.parseFloat(selectedOption?.dataset.materialReorder || '0');
+            const unit = selectedOption?.dataset.materialUnit || 'unit';
+            const displayQuantity = Number.isFinite(available) ? available.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0';
+            let state = 'is-available';
+            let label = 'Available: ' + displayQuantity + ' ' + unit;
+            if (!Number.isFinite(available) || available <= 0) {
+                state = 'is-out';
+                label = 'Out of stock';
+            } else if (Number.isFinite(reorderLevel) && available <= reorderLevel) {
+                state = 'is-low';
+                label = 'Low stock: ' + displayQuantity + ' ' + unit;
+            }
+
+            stockStatus.textContent = label;
+            stockStatus.className = 'quotation-create-item__material-feedback ' + state;
+            stockStatus.hidden = false;
+        };
+
         const setMaterialReferenceMessage = function (row, message) {
             const materialSelect = row.querySelector('select[name="material_id[]"]');
             const materialError = row.querySelector('[data-quotation-material-error]');
+            const stockStatus = row.querySelector('[data-quotation-material-feedback]');
             if (!materialSelect) {
                 return;
             }
@@ -2761,6 +2806,11 @@ document.addEventListener('DOMContentLoaded', function () {
             materialSelect.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
             if (materialError) {
                 materialError.textContent = message;
+            }
+            if (message !== '') {
+                stockStatus && (stockStatus.hidden = true);
+            } else {
+                updateMaterialStockStatus(row);
             }
         };
 
@@ -2773,7 +2823,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const message = materialSelect.value === ''
-                ? 'Select a material or Manual / non-stock material.'
+                ? 'Pick material.'
                 : '';
             setMaterialReferenceMessage(row, showMessage ? message : '');
             return message === '';
@@ -2829,7 +2879,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const isDuplicate = /^[1-9]\d*$/.test(materialId) && (selectedIds.get(materialId) || 0) > 1;
                 if (isDuplicate) {
                     isValid = false;
-                    setMaterialReferenceMessage(row, showMessage ? 'This material is already added. Edit the existing row instead.' : '');
+                    setMaterialReferenceMessage(row, showMessage ? 'Already added.' : '');
                 } else if (materialError?.textContent === 'This material is already added. Edit the existing row instead.') {
                     setMaterialReferenceMessage(row, '');
                 }
@@ -2913,6 +2963,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 setUnitOptions(row, unitOptionsByType[typeSelect?.value] || unitOptionsByType.other, currentUnit, false);
             }
 
+            updateMaterialStockStatus(row);
+
             if (itemName) {
                 itemName.readOnly = isLinkedMaterial;
                 itemName.classList.toggle('is-linked-material-name', isLinkedMaterial);
@@ -2927,7 +2979,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 quantityInput.value = '1';
             }
 
-            validateQuotationQuantity(row, true, false, false);
+            validateQuotationQuantity(row, false, false);
             validateMaterialReference(row, false);
         };
 
@@ -3085,7 +3137,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (event.target.classList.contains('is-locked')) {
                     syncMaterialReference(row);
                 } else {
-                    validateQuotationQuantity(row, true, false, true);
+                    validateQuotationQuantity(row, false, true);
                 }
             }
             updateQuotationPreview();
@@ -3121,7 +3173,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const invalidQuantityRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
-                return !validateQuotationQuantity(row, false, true, true);
+                return !validateQuotationQuantity(row, true, true);
             });
             if (invalidQuantityRow) {
                 event.preventDefault();
@@ -3246,7 +3298,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 validateMarkup(true, false);
             }
             if (row && event.target.matches('input[name="quantity[]"]')) {
-                validateQuotationQuantity(row, false, false, true);
+                validateQuotationQuantity(row, false, true);
             }
             if (row && event.target.matches('input[name="unit_cost[]"]')) {
                 validateEstimatedUnitCost(row, true, false);
@@ -3265,7 +3317,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (event.target.matches('input[name="quantity[]"]')) {
-                validateQuotationQuantity(row, false, true, true);
+                validateQuotationQuantity(row, true, true);
             }
             if (event.target.matches('input[name="unit_cost[]"]')) {
                 validateEstimatedUnitCost(row, true, true);
@@ -3283,7 +3335,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (event.target.matches('input[name="quantity[]"]')) {
-                validateQuotationQuantity(row, false, true, true);
+                validateQuotationQuantity(row, true, true);
             }
             if (event.target.matches('input[name="unit_cost[]"]')) {
                 validateEstimatedUnitCost(row, true, true);

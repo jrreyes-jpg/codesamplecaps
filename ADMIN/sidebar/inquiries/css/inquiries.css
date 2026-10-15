@@ -1579,7 +1579,7 @@
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
     width: min(1180px, calc(100vw - 48px));
-    height: min(480px, calc(100vh - 48px));
+    height: min(760px, calc(100vh - 48px));
     max-height: calc(100vh - 48px);
     min-height: 0;
     overflow: hidden;
@@ -1773,6 +1773,8 @@
     justify-content: flex-start;
     gap: 8px;
     min-width: 0;
+    height: 54px;
+    min-height: 54px;
     border: 1px solid #dbe5f1;
     border-radius: 10px;
     padding: 9px 10px;
@@ -1886,7 +1888,7 @@
 .inquiry-modal-panels {
     min-height: 0;
     min-width: 0;
-    max-height: 70vh;
+    max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;

@@ -1260,7 +1260,6 @@ require __DIR__ . '/../layout/header.php';
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
                                 <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Report'; ?></strong>
-                                <span>Total: <b data-costing-total><?php echo engineer_format_money($totalCost); ?></b></span>
                             </div>
                             <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isSubmittedToAdmin): ?>
@@ -1364,6 +1363,11 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
                             <?php endif; ?>
                             </details>
+
+                            <div class="inspection-costing-total" aria-label="Engineer costing total">
+                                <span>Engineer Grand Total</span>
+                                <strong data-costing-total><?php echo engineer_format_money($totalCost); ?></strong>
+                            </div>
 
                             <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?>>
                                 <summary>Asset Requirements <span>Optional reusable company assets</span></summary>

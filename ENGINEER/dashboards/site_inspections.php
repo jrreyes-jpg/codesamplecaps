@@ -61,12 +61,8 @@ function engineer_inspection_valid_unit_cost(string $value): bool
 function engineer_inspection_has_meaningful_findings(string $value): bool
 {
     $value = trim($value);
-    if (mb_strlen($value, 'UTF-8') < 20) {
-        return false;
-    }
-
-    $words = preg_split('/\s+/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-    return count($words) >= 3;
+    // Kahit maikling malinaw na finding ay puwede.
+    return $value !== '' && preg_match('/\p{L}/u', $value) === 1;
 }
 
 function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId): ?array
@@ -394,7 +390,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
         } elseif ($workflowAction === 'complete'
             && !engineer_inspection_has_meaningful_findings((string)($inspectionState['engineer_findings'] ?? ''))) {
-            $error = 'Save valid Engineer Findings before marking the inspection completed.';
+            $error = 'Save Engineer Findings before marking the inspection completed.';
         } elseif (site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
             if ($workflowAction === 'acknowledge') {
                 $confirmSchedule = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'confirmed', engineer_schedule_response_note = NULL, engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NOW() WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
@@ -604,7 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === '' && $costingAction === 'submit_to_admin') {
             if (!engineer_inspection_has_meaningful_findings($engineerFindings)) {
-                $error = 'Engineer Findings needs at least 3 words and 20 characters before submitting.';
+                $error = 'Enter Engineer Findings before submitting.';
             } elseif (!$hasMaterial) {
                 $error = 'Please add at least one material item before submitting.';
             } elseif (!$hasLabor) {
@@ -1201,7 +1197,7 @@ require __DIR__ . '/../layout/header.php';
                             <div class="inspection-costing-notes">
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
-                                    <textarea name="engineer_findings" rows="3" minlength="20" placeholder="Actual problem found, site condition, and recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    <textarea name="engineer_findings" rows="3" placeholder="Actual problem found, site condition, or recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </label>
                             </div>
 

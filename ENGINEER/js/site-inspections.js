@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const canComplete = completeButton.getAttribute('data-complete-ready') === 'true' && !isDirty;
             completeButton.classList.toggle('is-locked', !canComplete);
             completeButton.setAttribute('aria-disabled', canComplete ? 'false' : 'true');
-            completeButton.title = canComplete ? '' : 'Save valid Engineer Findings and report changes first.';
+            completeButton.title = canComplete ? '' : 'Save Engineer Findings and report changes first.';
         }
 
         if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
@@ -505,7 +505,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const hasMeaningfulFindings = function (value) {
         const text = String(value || '').trim();
-        return Array.from(text).length >= 20 && text.split(/\s+/).filter(Boolean).length >= 3;
+        return text !== '' && /[a-z]/i.test(text);
     };
 
     const costErrorMessage = function (value) {
@@ -665,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (requireFinal && findings && !hasMeaningfulFindings(findings.value)) {
-            setFieldError(findings, 'Enter at least 3 words and 20 characters.');
+            setFieldError(findings, 'Enter Engineer Findings.');
             firstInvalid = firstInvalid || findings;
         }
 
@@ -1705,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!reportIsValid || !findingsAreValid || button.getAttribute('data-complete-ready') !== 'true' || (costingForm && isFormDirty(costingForm))) {
                 if (!findingsAreValid && findings) {
-                    setFieldError(findings, 'Enter at least 3 words and 20 characters.');
+                    setFieldError(findings, 'Enter Engineer Findings.');
                 }
                 showCostingError(costingForm, 'Fix and save the highlighted report fields before completing.');
                 (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });

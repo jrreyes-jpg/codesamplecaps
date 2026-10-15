@@ -1564,7 +1564,7 @@
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
     width: min(1180px, calc(100vw - 48px));
-    height: min(560px, calc(100vh - 48px));
+    height: min(480px, calc(100vh - 48px));
     max-height: calc(100vh - 48px);
     min-height: 0;
     overflow: hidden;
@@ -2494,7 +2494,7 @@ body.inquiry-modal-open {
 }
 
 .inquiry-quote-draft {
-    grid-template-columns: minmax(190px, 1.35fr) minmax(120px, 0.8fr);
+    grid-template-columns: minmax(190px, 1fr) auto auto;
     margin-top: 0;
 }
 
@@ -2929,7 +2929,7 @@ body.inquiry-modal-open {
 }
 
 .inquiry-quote-draft .inquiry-quote-draft__action {
-    grid-column: 1 / -1;
+    grid-column: auto;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;

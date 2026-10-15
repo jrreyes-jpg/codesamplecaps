@@ -1255,11 +1255,11 @@ require __DIR__ . '/../layout/header.php';
                                     </details>
                                 <?php endif; ?>
 
-                                <?php if ($canEditCosting): ?><form method="POST" class="inspection-costing-form" data-costing-form>
+                                <form method="POST" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
-                                <strong>Inspection Findings &amp; Costing</strong>
+                                <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Report'; ?></strong>
                                 <span>Total: <b data-costing-total><?php echo engineer_format_money($totalCost); ?></b></span>
                             </div>
                             <p class="costing-error" data-costing-error hidden></p>
@@ -1446,7 +1446,7 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 </div>
                             <?php endif; ?>
-                                </form><?php elseif ($inspectionStatus === 'On Hold'): ?>
+                                </form><?php if (!$canEditCosting && $inspectionStatus === 'On Hold'): ?>
                                     <p class="inspection-submit-note inspection-submit-note--waiting">Inspection is on hold. Resume to edit this report.</p>
                                 <?php endif; ?>
                                 </section>

@@ -323,6 +323,12 @@
     margin-top: 0;
 }
 
+.inspection-costing-form--readonly textarea:disabled {
+    background: #f1f5f9;
+    color: #334155;
+    opacity: 1;
+}
+
 .inspection-modal[hidden] {
     display: none;
 }

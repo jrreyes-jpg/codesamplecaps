@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const activeModalKey = 'engineer.siteInspection.activeModal';
     const modalScrollKey = 'engineer.siteInspection.modalScroll';
+    const activeTabKey = 'engineer.siteInspection.activeTab';
 
     const money = new Intl.NumberFormat('en-PH', {
         style: 'currency',
@@ -834,6 +835,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         form.dataset.costingHandlersBound = '1';
+
+        // Huwag ipakita ang lumang browser draft sa locked report.
+        if (form.classList.contains('inspection-costing-form--readonly')) {
+            window.localStorage.removeItem(storageKeyForForm(form));
+            syncTotal(form);
+            return;
+        }
+
         form.querySelectorAll('.costing-row').forEach(function (row) {
             bindRow(form, row);
         });
@@ -967,6 +976,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const activateInspectionTab = function (modal, nextTab) {
         if (!modal || !nextTab) return;
+
+        window.localStorage.setItem(`${activeTabKey}.${modal.id}`, nextTab);
 
         modal.querySelectorAll('[data-inspection-tab]').forEach(function (button) {
             const isActive = button.getAttribute('data-inspection-tab') === nextTab;
@@ -1756,6 +1767,10 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.hidden = false;
         document.body.classList.add('inspection-modal-open');
         window.localStorage.setItem(activeModalKey, modal.id);
+        const savedTab = window.localStorage.getItem(`${activeTabKey}.${modal.id}`);
+        if (savedTab === 'details' || savedTab === 'report') {
+            activateInspectionTab(modal, savedTab);
+        }
         modal.querySelector('[data-inspection-modal-close]')?.focus();
     };
 
@@ -1845,6 +1860,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentModal = currentCard.querySelector('.inspection-modal');
         const keepOpen = Boolean(keepModalOpen && currentModal && !currentModal.hidden);
         const savedScrollTop = currentModal?.querySelector('.inspection-modal__panel')?.scrollTop || 0;
+        const savedTab = currentModal?.querySelector('[data-inspection-tab].is-active')?.getAttribute('data-inspection-tab') || 'details';
 
         return fetch(inspectionRefreshUrl.toString(), {
             headers: {
@@ -1873,6 +1889,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         nextModal.hidden = false;
                         document.body.classList.add('inspection-modal-open');
                         window.localStorage.setItem(activeModalKey, nextModal.id);
+                        activateInspectionTab(nextModal, savedTab);
                     }
                     if (nextPanel) nextPanel.scrollTop = savedScrollTop;
                 }

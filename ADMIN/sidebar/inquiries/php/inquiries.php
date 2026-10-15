@@ -275,7 +275,7 @@ function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): 
         return 'Client rejected the ' . $quotationName . '. Review the client note before taking the next action.';
     }
 
-    return 'Send the ' . $quotationName . ' to the client and wait for approval before assigning Engineer.';
+    return 'Send the ' . $quotationName . ' to the client. Wait for approval before assigning an engineer.';
 }
 
 function inquiry_center_validate_quotation_before_send(mysqli $conn, int $draftId, array $quotation): int
@@ -2574,9 +2574,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                            </span>
+                                            <?php if ($currentStatus !== 'Verified Lead'): ?>
+                                                <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
@@ -3047,10 +3049,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <div>
                                                 <span>Status</span>
                                                 <strong class="status-badge <?php echo $quotationStatusClass; ?>" data-quotation-status-label><?php echo htmlspecialchars($quotationDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                            </div>
-                                            <div>
-                                                <span>Total</span>
-                                                <strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotationDraft['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                             </div>
                                             <div class="inquiry-quote-draft__action">
                                                 <?php if (empty($inquiry['archived_at']) && inquiry_quote_normalize_status((string)$quotationDraft['status']) === 'draft'): ?>

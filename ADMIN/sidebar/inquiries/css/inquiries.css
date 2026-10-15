@@ -1438,8 +1438,9 @@
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
     width: min(1180px, calc(100vw - 48px));
-    height: min(780px, calc(100vh - 48px));
-    min-height: min(560px, calc(100vh - 48px));
+    height: auto;
+    max-height: calc(100vh - 48px);
+    min-height: 0;
     overflow: hidden;
     border-radius: 24px;
     background: #f8fafc;
@@ -2363,7 +2364,7 @@ body.inquiry-modal-open {
 }
 
 .inquiry-quote-draft {
-    grid-template-columns: minmax(190px, 1.35fr) minmax(120px, 0.8fr) minmax(130px, 0.85fr) auto;
+    grid-template-columns: minmax(190px, 1.35fr) minmax(120px, 0.8fr) auto;
     margin-top: 0;
 }
 
@@ -2799,9 +2800,63 @@ body.inquiry-modal-open {
 
 .inquiry-quote-draft .inquiry-quote-draft__action {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
     justify-content: end;
+}
+
+@media (max-width: 640px) {
+    .inquiry-modal__panel {
+        height: auto;
+        max-height: calc(100dvh - 24px);
+    }
+
+    .inquiry-modal-tabs {
+        gap: 6px;
+        padding: 8px 12px;
+    }
+
+    .inquiry-modal-tab {
+        min-height: 40px;
+        padding: 8px 10px;
+    }
+
+    .inquiry-modal-panels {
+        max-height: calc(100dvh - 250px);
+        padding: 12px;
+    }
+
+    .inquiry-prerequisite-banner {
+        padding: 12px;
+        font-size: .9rem;
+    }
+
+    .inquiry-quote-draft {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .inquiry-quote-draft > div:not(.inquiry-quote-draft__action) {
+        min-height: 0;
+        justify-items: start;
+        text-align: left;
+    }
+
+    .inquiry-quote-draft .inquiry-quote-draft__action,
+    .inquiry-quote-send-form {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .inquiry-quote-edit-link,
+    .inquiry-quote-pdf-link,
+    .inquiry-quote-send-button {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 44px;
+        margin-top: 0;
+    }
 }
 
 .inquiry-quote-pdf-link:hover,

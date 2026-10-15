@@ -2782,12 +2782,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span>Assigned Engineer</span>
                                                     <span class="inquiry-inspection-phase-inline" data-inspection-phase-card <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>><span>Engineer Phase</span><strong class="inquiry-status" data-inspection-phase data-phase="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong></span>
                                                 </div>
-                                                <strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                <button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Monitor Inspection</button>
+                                                <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Monitor Inspection</button></div>
                                             </div>
                                             <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-date-detail>
                                                 <div class="inquiry-inspection-summary-card__head"><span>Inspection Date &amp; Time</span><strong class="inquiry-schedule-final" data-schedule-final-badge <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Schedule Final</strong></div>
-                                                <strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                             </div>
                                             <?php if ($currentScheduleReason !== ''): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Schedule Change Reason</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>

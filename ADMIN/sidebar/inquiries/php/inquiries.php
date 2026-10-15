@@ -2798,19 +2798,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             $inspectionDisplayStatus = $latestInspectionStatus === 'Completed' && $inspectionReviewStatus === 'Returned'
                                                 ? 'Returned for Revision'
                                                 : $latestInspectionStatus;
-                                            $inspectionTimeline = [
-                                                'Assigned' => $latestInspection['created_at'] ?? null,
-                                                'Acknowledged' => $latestInspection['acknowledged_at'] ?? null,
-                                                'Ongoing' => $latestInspection['started_at'] ?? null,
-                                                'Completed' => $latestInspection['completed_at'] ?? null,
-                                                'Submitted' => $latestInspection['submitted_at'] ?? null,
-                                            ];
+                                            $initialQuotationTotalForReview = (float)($originalQuotation['grand_total'] ?? 0);
+                                            $inspectionCostDifference = round($latestCostTotal - $initialQuotationTotalForReview, 2);
                                             ?>
                                             <section class="submitted-inspection-report">
                                                 <div class="submitted-inspection-report__head">
                                                     <div>
                                                         <span>Submitted Inspection Report</span>
-                                                        <h3><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
@@ -2820,27 +2814,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                 </div>
 
-                                                <div class="inquiry-details-grid submitted-inspection-report__details" hidden>
-                                                    <div class="inquiry-detail"><span>Scheduled</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div class="inquiry-detail"><span>Actual Started</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['started_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div class="inquiry-detail"><span>Actual Completed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['completed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div class="inquiry-detail"><span>Submitted</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['submitted_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div class="inquiry-detail inquiry-detail--wide"><span>Site Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                <div class="inquiry-details-grid submitted-inspection-report__details">
                                                     <div class="inquiry-detail inquiry-detail--wide"><span>Engineer Findings</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['engineer_findings'] ?: 'No findings provided.'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
-                                                    <div class="inquiry-detail"><span>Risk / Safety Notes</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['risk_notes'] ?: 'None'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
-                                                    <div class="inquiry-detail"><span>Client Requests</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['client_requests'] ?: 'None'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                    <?php if (trim((string)($latestInspection['risk_notes'] ?? '')) !== ''): ?>
+                                                        <div class="inquiry-detail"><span>Risk / Safety Notes</span><strong><?php echo nl2br(htmlspecialchars((string)$latestInspection['risk_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                    <?php endif; ?>
+                                                    <?php if (trim((string)($latestInspection['client_requests'] ?? '')) !== ''): ?>
+                                                        <div class="inquiry-detail"><span>Client Requests</span><strong><?php echo nl2br(htmlspecialchars((string)$latestInspection['client_requests'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                    <?php endif; ?>
                                                 </div>
 
-                                                <div class="submitted-inspection-timeline" aria-label="Inspection status timeline" hidden>
-                                                    <?php foreach ($inspectionTimeline as $timelineStatus => $timelineTime): ?>
-                                                        <div class="submitted-inspection-timeline__step <?php echo $timelineTime ? 'is-done' : ''; ?>">
-                                                            <strong><?php echo htmlspecialchars($timelineStatus, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                            <span><?php echo htmlspecialchars(site_inspection_format_datetime($timelineTime), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        </div>
-                                                    <?php endforeach; ?>
+                                                <div class="inspection-cost-comparison" aria-label="Quotation and inspection cost comparison">
+                                                    <div><span>Initial Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($initialQuotationTotalForReview), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div><span>Engineer Costing Total</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inspection-cost-comparison__difference"><span>Difference</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($inspectionCostDifference), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                 </div>
 
-                                                <div class="inquiry-costing-table submitted-inspection-costing" hidden>
+                                                <div class="inquiry-costing-table submitted-inspection-costing">
                                                     <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--head">
                                                         <span>Type</span>
                                                         <span>Item / Labor</span>
@@ -2862,8 +2852,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
-                                                <div class="submitted-inspection-report__total" hidden>
-                                                    <span>Grand Total</span>
+                                                <div class="submitted-inspection-report__total">
+                                                    <span>Engineer Grand Total</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
 

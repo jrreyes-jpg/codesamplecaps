@@ -2433,6 +2433,39 @@ body.inquiry-modal-open {
     font-weight: 900;
 }
 
+.inspection-cost-comparison {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.inspection-cost-comparison > div {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #dbe5f1;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.inspection-cost-comparison span {
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.inspection-cost-comparison strong {
+    color: #0f172a;
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+}
+
+.inspection-cost-comparison__difference {
+    border-color: #bbf7d0 !important;
+    background: #f0fdf4 !important;
+}
+
 .submitted-inspection-report__total {
     display: flex;
     justify-content: flex-end;
@@ -2504,7 +2537,8 @@ body.inquiry-modal-open {
     }
 
     .submitted-inspection-timeline,
-    .submitted-inspection-costing__row {
+    .submitted-inspection-costing__row,
+    .inspection-cost-comparison {
         grid-template-columns: 1fr;
     }
 }

@@ -1604,23 +1604,34 @@ document.addEventListener('DOMContentLoaded', function () {
         const reasonSelect = form.querySelector('select[name="archive_reason"]');
         const manualReason = form.querySelector('textarea[name="archive_reason_other"]');
         const manualReasonMark = form.querySelector('[data-archive-other-required]');
+        const manualReasonField = form.querySelector('[data-archive-manual-reason]');
 
         const syncArchiveReasonRequirement = function () {
             if (!reasonSelect || !manualReason) {
                 return;
             }
 
-            manualReason.required = reasonSelect.value === 'Other';
-            if (manualReasonMark) {
-                manualReasonMark.hidden = reasonSelect.value !== 'Other';
+            const isOther = reasonSelect.value === 'Other';
+            manualReason.required = isOther;
+            if (manualReasonField) {
+                manualReasonField.hidden = !isOther;
             }
-            if (reasonSelect.value !== 'Other') {
+            if (manualReasonMark) {
+                manualReasonMark.hidden = !isOther;
+            }
+            if (!isOther) {
+                manualReason.value = '';
                 manualReason.classList.remove('is-invalid');
+                manualReason.setCustomValidity('');
             }
         };
 
         reasonSelect?.addEventListener('change', syncArchiveReasonRequirement);
         syncArchiveReasonRequirement();
+
+        manualReason?.addEventListener('input', function () {
+            manualReason.setCustomValidity('');
+        });
 
         form.querySelectorAll('textarea, input, select').forEach(function (field) {
             field.addEventListener('invalid', function () {
@@ -1632,6 +1643,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form.addEventListener('submit', function (event) {
+            const compactOtherReason = manualReason?.value.replace(/\s+/g, '') || '';
+            const hasOtherLetter = /[A-Za-z]/.test(manualReason?.value || '');
+            if (reasonSelect?.value === 'Other' && (!hasOtherLetter || compactOtherReason.length < 5)) {
+                event.preventDefault();
+                manualReason.setCustomValidity('Enter a clear manual reason with at least 5 characters.');
+                manualReason.reportValidity();
+                manualReason.focus();
+                return;
+            }
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
@@ -1914,14 +1934,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.querySelectorAll('[data-go-to-inspection]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const modal = button.closest('.inquiry-modal');
-            const inspectionTab = modal?.querySelector('[data-inquiry-tab="inspection"]');
-            inspectionTab?.click();
-        });
-    });
-
     const quotationStatusModals = Array.from(document.querySelectorAll('.inquiry-modal[data-inquiry-id]'));
     let quotationPollInProgress = false;
     let inspectionResponsePollInProgress = false;
@@ -2193,7 +2205,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         quotationPrerequisite.hidden = true;
                         quotationPrerequisite.removeAttribute('data-prerequisite-check');
                     }
-                    modal.querySelector('[data-quotation-approved-banner]')?.removeAttribute('hidden');
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
                         statusLabel.textContent = 'Client Approved';
@@ -2207,10 +2218,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         nextAction.setAttribute('data-inquiry-open-tab', 'inspection');
                     }
 
+                    if (!modal.hidden) {
+                        const activeTab = activateModalTab(modal, 'inspection') ? 'inspection' : 'quotation';
+                        pushModalHistory(modal, activeTab);
+                    }
+
                     showLiveInquiryToast(
-                        'Notification: Quotation for this inquiry was approved by the client!',
+                        'Client approved the quotation. Set the inspection schedule next.',
                         quotation.inquiry_id,
-                        'quotation'
+                        'inspection'
                     );
                 });
             })

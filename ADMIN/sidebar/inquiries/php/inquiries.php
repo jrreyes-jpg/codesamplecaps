@@ -859,15 +859,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
         $archiveReason = trim((string)($_POST['archive_reason'] ?? ''));
         $archiveReasonOther = trim((string)($_POST['archive_reason_other'] ?? ''));
+        $archiveReasons = [
+            'Duplicate inquiry',
+            'Client backed out',
+            'Not qualified',
+            'No response from client',
+            'Other',
+        ];
+        if (!in_array($archiveReason, $archiveReasons, true)) {
+            $archiveReason = '';
+        }
         if ($archiveReason === 'Other') {
-            $archiveReason = $archiveReasonOther;
-        } elseif ($archiveReasonOther !== '') {
-            $archiveReason .= ' - ' . $archiveReasonOther;
+            $compactOtherReason = preg_replace('/\s+/u', '', $archiveReasonOther) ?? '';
+            if (mb_strlen($compactOtherReason, 'UTF-8') < 5 || preg_match('/\p{L}/u', $archiveReasonOther) !== 1) {
+                $archiveReason = '';
+                $error = 'Enter a clear manual reason with at least 5 characters.';
+            } else {
+                $archiveReason = $archiveReasonOther;
+            }
         }
 
-        if ($inquiryId <= 0 || $archiveReason === '') {
+        if ($error === '' && ($inquiryId <= 0 || $archiveReason === '')) {
             $error = 'Please add archive reason.';
-        } else {
+        } elseif ($error === '') {
             $archiveStmt = $conn->prepare(
                 'UPDATE service_inquiries
                  SET archived_at = NOW(), archived_by = ?, archive_reason = ?
@@ -2777,8 +2791,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         && $clientScheduleResponse === 'confirmed'
                                         && $engineerScheduleResponse === 'confirmed';
                                     ?>
-                                    <div class="inquiry-details-grid inquiry-schedule-responses" <?php echo $scheduleIsFinal ? 'hidden' : ''; ?>>
-                                        <?php if (!$scheduleIsFinal): ?>
+                                    <div class="inquiry-details-grid inquiry-schedule-responses" <?php echo (!$hasOfficialInspectionSchedule || $scheduleIsFinal) ? 'hidden' : ''; ?>>
+                                        <?php if ($hasOfficialInspectionSchedule && !$scheduleIsFinal): ?>
                                             <div class="inquiry-detail">
                                                 <span>Client Schedule Response</span>
                                                 <strong class="inquiry-status inquiry-schedule-response" data-schedule-response-party="client" data-schedule-response="<?php echo htmlspecialchars($clientScheduleResponse, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($clientScheduleResponseLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -2915,11 +2929,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php endif; ?>
                                             </section>
                                         <?php endif; ?>
-                                    <?php else: ?>
-                                        <div class="inquiry-empty">
-                                            <strong>Inspection Status: Not Scheduled</strong>
-                                            <span class="inquiry-empty__helper">Select an Engineer, inspection date, and time below.</span>
-                                        </div>
                                     <?php endif; ?>
 
                                     <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
@@ -2959,7 +2968,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                             <?php if (!$showScheduleEditor): ?>
-                                                <strong>Set Inspection Schedule</strong>
+                                                <strong>Inspection Schedule</strong>
                                             <?php endif; ?>
                                             <div class="inquiry-schedule-grid">
                                                 <label>
@@ -3102,10 +3111,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <?php echo $isFinalClientAccepted ? 'View / Print Final Quotation' : 'Preview Quotation'; ?>
                                                 </a>
                                             </div>
-                                        </div>
-                                        <div class="inquiry-quotation-approved-banner" data-quotation-approved-banner <?php echo $quotationStatus !== 'accepted' ? 'hidden' : ''; ?>>
-                                            <p><strong>Quotation Approved.</strong> You may now schedule the inspection.</p>
-                                            <button type="button" class="btn-primary inquiry-quotation-approved-banner__action" data-go-to-inspection>Schedule Inspection &#10132;</button>
                                         </div>
                                         <?php
                                             $isInspectionReportApproved = $latestInspection
@@ -3263,7 +3268,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <label>
                                             <span>Archive Reason</span>
                                             <select name="archive_reason" required>
-                                                <option value="">Select reason</option>
+                                                <option value="" selected disabled>Select reason</option>
                                                 <option value="Duplicate inquiry">Duplicate inquiry</option>
                                                 <option value="Client backed out">Client backed out</option>
                                                 <option value="Not qualified">Not qualified</option>
@@ -3273,7 +3278,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <option value="Other">Other reason</option>
                                             </select>
                                         </label>
-                                        <label>
+                                        <label data-archive-manual-reason hidden>
                                             <span>Manual Reason / Notes <b class="archive-other-required" data-archive-other-required hidden>*</b></span>
                                             <textarea name="archive_reason_other" rows="2" placeholder="Add custom reason or extra note"></textarea>
                                         </label>

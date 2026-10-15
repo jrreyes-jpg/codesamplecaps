@@ -2,6 +2,38 @@
     padding-top: 112px;
 }
 
+/* Delivery list: simple status for Admin and Clerk flow. */
+.admin-material-delivery-list .data-table {
+    min-width: 850px;
+}
+
+.admin-material-delivery-list small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.material-delivery-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.material-delivery-status--for_verification {
+    color: #9a4d00;
+    background: #fff4dd;
+}
+
+.material-delivery-status--verified {
+    color: #106a3d;
+    background: #dcfce7;
+}
+
 .inventory-page-stack {
     display: grid;
     min-width: 0;

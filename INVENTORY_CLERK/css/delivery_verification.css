@@ -1,0 +1,28 @@
+.delivery-verification-table {
+    min-width: 980px;
+}
+
+.delivery-verification-table small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.delivery-verification-table td[data-label="Actual Count"] {
+    white-space: nowrap;
+}
+
+.delivery-verification-input {
+    width: 104px;
+    min-height: 40px;
+}
+
+.delivery-verification-notes {
+    min-width: 175px;
+    min-height: 40px;
+}
+
+.delivery-verification-table .btn-primary {
+    white-space: nowrap;
+}

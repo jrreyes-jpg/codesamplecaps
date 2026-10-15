@@ -42,6 +42,7 @@ function shared_navigation_items_for_role(string $role): array
                 'collapsed_context_children' => true,
                 'children' => [
                     ['module' => 'materials', 'label' => 'Material Quantities', 'mini' => 'Qty', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/dashboards/materials.php']],
+                    ['module' => 'delivery_verification', 'label' => 'Delivery Verification', 'mini' => 'Verify', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/delivery_verification.php', 'icon' => 'check', 'active' => ['/INVENTORY_CLERK/dashboards/delivery_verification.php']],
                     ['module' => 'material_history', 'label' => 'Material History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/dashboards/material_stock_history.php']],
                 ],
             ],

@@ -1136,19 +1136,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const steps = Array.from(card.querySelectorAll('.inspection-workflow__step'));
         const progressIndexByStatus = {
             Assigned: 0,
-            Acknowledged: 0,
-            Ongoing: 1,
-            'On Hold': 1,
-            Completed: 2,
-            Submitted: 3,
+            Acknowledged: 1,
+            Ongoing: 2,
+            'On Hold': 2,
+            Completed: 3,
+            Submitted: 4,
         };
         const currentIndex = progressIndexByStatus[status] ?? -1;
         steps.forEach(function (step, index) {
             step.classList.toggle('is-done', currentIndex > index);
             step.classList.toggle('is-current', currentIndex === index);
             const label = step.querySelector('span')?.textContent.trim() || '';
-            const timestampKey = label === 'Assigned' && status === 'Acknowledged' ? 'Acknowledged' : label;
-            const timestamp = payload.timestamps?.[timestampKey] || '';
+            const timestamp = payload.timestamps?.[label] || '';
             if (timestamp) {
                 let timeNode = step.querySelector('small');
                 if (!timeNode) {

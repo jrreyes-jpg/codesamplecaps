@@ -562,11 +562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
             $inspection = $stmt->get_result()->fetch_assoc() ?: null;
             if ($inspection) {
                 $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
-                $monitorPhase = match ($inspectionStatus) {
-                    'Assigned', 'Acknowledged' => 'Assigned',
-                    'On Hold' => 'Ongoing',
-                    default => $inspectionStatus,
-                };
+                $monitorPhase = $inspectionStatus === 'On Hold' ? 'Ongoing' : $inspectionStatus;
                 $report = null;
                 if (!empty($inspection['submitted_at'])) {
                     $costStmt = $conn->prepare(
@@ -608,7 +604,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                             : '',
                         'held_at' => site_inspection_format_datetime($inspection['held_at'] ?? null),
                         'timeline' => [
-                            ['label' => 'Assigned', 'at' => site_inspection_format_datetime($inspection['acknowledged_at'] ?? $inspection['created_at'] ?? null)],
+                            ['label' => 'Assigned', 'at' => site_inspection_format_datetime($inspection['created_at'] ?? null)],
+                            ['label' => 'Acknowledged', 'at' => site_inspection_format_datetime($inspection['acknowledged_at'] ?? null)],
                             ['label' => 'Ongoing', 'at' => site_inspection_format_datetime($inspection['started_at'] ?? null)],
                             ['label' => 'Completed', 'at' => site_inspection_format_datetime($inspection['completed_at'] ?? null)],
                             ['label' => 'Submitted', 'at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null)],
@@ -1209,8 +1206,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($inquiryId <= 0 || $inspectionId <= 0 || $targetReviewStatus === '') {
             $error = 'Invalid inspection review request.';
-        } elseif ($targetReviewStatus === 'Returned' && $adminRemarks === '') {
-            $error = 'Admin Remarks / Reason for Return is required.';
+        } elseif ($targetReviewStatus === 'Returned'
+            && (mb_strlen(preg_replace('/\s+/u', '', $adminRemarks) ?? '', 'UTF-8') < 5
+                || preg_match('/\p{L}/u', $adminRemarks) !== 1)) {
+            $error = 'Enter a clear return reason with at least 5 letters.';
         } elseif (mb_strlen($adminRemarks, 'UTF-8') > 2000) {
             $error = 'Admin remarks must not exceed 2,000 characters.';
         } else {
@@ -1218,7 +1217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             try {
                 $reviewStmt = $conn->prepare(
-                    'SELECT status, admin_review_status, admin_remarks, submitted_at
+                    'SELECT status, admin_review_status, admin_remarks, submitted_at, engineer_findings
                      FROM site_inspections
                      WHERE id = ? AND inquiry_id = ?
                      LIMIT 1
@@ -1243,6 +1242,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $targetReviewStatus
                 )) {
                     throw new RuntimeException('This inspection report was already reviewed or is not ready for review.');
+                }
+
+                if ($targetReviewStatus === 'Approved') {
+                    $findings = trim((string)($inspectionBeforeReview['engineer_findings'] ?? ''));
+                    if ($findings === '' || preg_match('/\p{L}/u', $findings) !== 1) {
+                        throw new RuntimeException('Engineer findings are required before approval.');
+                    }
+
+                    $costingCheck = $conn->prepare(
+                        'SELECT COUNT(*) AS item_count, COALESCE(SUM(line_total), 0) AS total_cost
+                         FROM site_inspection_cost_items
+                         WHERE inspection_id = ?'
+                    );
+                    if (!$costingCheck) {
+                        throw new RuntimeException('Unable to validate inspection costing.');
+                    }
+                    $costingCheck->bind_param('i', $inspectionId);
+                    $costingCheck->execute();
+                    $costingSummary = $costingCheck->get_result()->fetch_assoc() ?: [];
+                    if ((int)($costingSummary['item_count'] ?? 0) < 1 || (float)($costingSummary['total_cost'] ?? 0) <= 0) {
+                        throw new RuntimeException('Add at least one costing item with a total above PHP 0 before approval.');
+                    }
                 }
 
                 $adminId = (int)($_SESSION['user_id'] ?? 0);
@@ -1304,6 +1325,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Inspection report was not found.',
                     'This inspection report was already reviewed or is not ready for review.',
                     'Inspection review was not saved. Please refresh the page.',
+                    'Engineer findings are required before approval.',
+                    'Add at least one costing item with a total above PHP 0 before approval.',
                 ];
                 $error = in_array($exception->getMessage(), $safeReviewErrors, true)
                     ? $exception->getMessage()
@@ -2442,17 +2465,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php
-                        $hasOutOfStockInspectionMaterial = false;
+                        $outOfStockInspectionItems = [];
                         foreach ($latestCostItems as $latestCostItem) {
                             $isLinkedMaterial = strtolower((string)($latestCostItem['item_type'] ?? '')) === 'material'
                                 && (int)($latestCostItem['material_id'] ?? 0) > 0;
                             if ($isLinkedMaterial
                                 && ($latestCostItem['material_available'] ?? null) !== null
                                 && (float)$latestCostItem['material_available'] <= 0) {
-                                $hasOutOfStockInspectionMaterial = true;
-                                break;
+                                $outOfStockInspectionItems[] = [
+                                    'name' => (string)($latestCostItem['item_name'] ?? 'Material'),
+                                    'needed' => rtrim(rtrim(number_format((float)($latestCostItem['quantity'] ?? 0), 2), '0'), '.'),
+                                    'unit' => (string)($latestCostItem['unit'] ?? ''),
+                                    'available' => rtrim(rtrim(number_format((float)$latestCostItem['material_available'], 2), '0'), '.'),
+                                ];
                             }
                         }
+                        $hasOutOfStockInspectionMaterial = !empty($outOfStockInspectionItems);
                     ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
@@ -2808,9 +2836,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
-                                                            <span class="inspection-stock-alert">Out of stock</span>
+                                                            <button type="button" class="inspection-stock-alert inspection-stock-alert--button" data-inspection-stock-open data-stock-items="<?php echo htmlspecialchars((string)json_encode($outOfStockInspectionItems, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>">Out of Stock</button>
                                                         <?php endif; ?>
-                                                        <span class="inquiry-status" data-status="<?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inspectionDisplayStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                                                     </div>
                                                 </div>
 
@@ -2875,6 +2902,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <input type="hidden" name="action" value="review_inspection_report">
                                                         <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                         <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                        <input type="hidden" name="review_decision" value="" data-review-decision>
                                                         <label>
                                                             <span>Admin Remarks / Reason for Return</span>
                                                             <textarea name="admin_remarks" rows="3" maxlength="2000" placeholder="Required only when returning the report to the Engineer"></textarea>

@@ -128,6 +128,48 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(confirmBox);
 
+    const inspectionStockModal = document.createElement('div');
+    inspectionStockModal.className = 'inquiry-confirm';
+    inspectionStockModal.hidden = true;
+    inspectionStockModal.innerHTML = [
+        '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionStockTitle">',
+        '<h3 id="inspectionStockTitle">Out of Stock Materials</h3>',
+        '<p>These materials need stock checking before the project starts.</p>',
+        '<div class="inspection-stock-list" data-inspection-stock-list></div>',
+        '<div class="inquiry-confirm__actions">',
+        '<button type="button" class="btn-primary" data-inspection-stock-close>Close</button>',
+        '</div>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(inspectionStockModal);
+
+    const openInspectionStockModal = function (button) {
+        const list = inspectionStockModal.querySelector('[data-inspection-stock-list]');
+        let items = [];
+        try {
+            items = JSON.parse(button.dataset.stockItems || '[]');
+        } catch (error) {
+            items = [];
+        }
+        list?.replaceChildren();
+        items.forEach(function (item) {
+            const row = document.createElement('div');
+            row.className = 'inspection-stock-list__item';
+            const name = document.createElement('strong');
+            const detail = document.createElement('span');
+            name.textContent = item.name || 'Material';
+            detail.textContent = 'Needed: ' + (item.needed || '0') + ' ' + (item.unit || '') + ' | Available: ' + (item.available || '0') + ' ' + (item.unit || '');
+            row.append(name, detail);
+            list?.appendChild(row);
+        });
+        inspectionStockModal.hidden = false;
+        inspectionStockModal.querySelector('[data-inspection-stock-close]')?.focus();
+    };
+
+    const closeInspectionStockModal = function () {
+        inspectionStockModal.hidden = true;
+    };
+
     const discardConfirmBox = document.createElement('div');
     discardConfirmBox.className = 'inquiry-confirm';
     discardConfirmBox.hidden = true;
@@ -326,6 +368,15 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.addEventListener('click', function (event) {
+        const stockButton = event.target.closest('[data-inspection-stock-open]');
+        if (stockButton) {
+            openInspectionStockModal(stockButton);
+            return;
+        }
+        if (event.target === inspectionStockModal || event.target.closest('[data-inspection-stock-close]')) {
+            closeInspectionStockModal();
+            return;
+        }
         const openButton = event.target.closest('[data-inspection-monitor-open]');
         if (openButton) {
             inspectionMonitorId = Number.parseInt(openButton.dataset.inspectionId || '0', 10);
@@ -342,6 +393,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     inspectionMonitorRefresh?.addEventListener('click', refreshInspectionMonitor);
     document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !inspectionStockModal.hidden) {
+            event.preventDefault();
+            closeInspectionStockModal();
+            return;
+        }
         if (event.key === 'Escape' && !inspectionMonitorModal.hidden) {
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -2201,24 +2257,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.submitted-inspection-review-form').forEach(function (form) {
         const remarks = form.querySelector('textarea[name="admin_remarks"]');
+        const decisionField = form.querySelector('[data-review-decision]');
 
         form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
             const decision = event.submitter?.value || '';
-            if (decision === 'return' && remarks && remarks.value.trim() === '') {
+            const compactReason = remarks?.value.replace(/\s+/g, '') || '';
+            const hasLetter = /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(remarks?.value || '');
+            if (decision === 'return' && (!hasLetter || compactReason.length < 5)) {
                 event.preventDefault();
-                remarks.setCustomValidity('Admin Remarks / Reason for Return is required.');
+                remarks.setCustomValidity('Enter a clear return reason with at least 5 letters.');
                 remarks.reportValidity();
                 remarks.focus();
                 return;
             }
 
+            event.preventDefault();
             remarks?.setCustomValidity('');
-            const message = decision === 'approve'
-                ? 'Approve and lock this inspection report?'
-                : 'Return this report to the Engineer for revision?';
-            if (!window.confirm(message)) {
-                event.preventDefault();
-            }
+            if (decisionField) decisionField.value = decision;
+            const isApprove = decision === 'approve';
+            showConfirm(
+                form,
+                isApprove
+                    ? 'This locks the Engineer report and keeps the approved costing for the next quotation step.'
+                    : 'The Engineer can edit the report, fix the costing, and submit it again.',
+                null,
+                isApprove
+                    ? { title: 'Approve Inspection Report?', cancel: 'Cancel', confirm: 'Approve Report', mode: 'inspection-approve' }
+                    : { title: 'Return Report to Engineer?', cancel: 'Keep Reviewing', confirm: 'Return Report', mode: 'inspection-return' }
+            );
         });
 
         remarks?.addEventListener('input', function () {

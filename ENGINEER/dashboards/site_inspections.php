@@ -1067,15 +1067,17 @@ require __DIR__ . '/../layout/header.php';
                     ];
                     // Simple lang ang progress na kailangan makita ng Engineer.
                     $engineerProgressSteps = [
-                        ['label' => 'Assigned', 'time' => $statusTimes['Acknowledged'] ?? $statusTimes['Assigned']],
+                        ['label' => 'Assigned', 'time' => $statusTimes['Assigned']],
+                        ['label' => 'Acknowledged', 'time' => $statusTimes['Acknowledged']],
                         ['label' => 'Ongoing', 'time' => $statusTimes['Ongoing']],
                         ['label' => 'Completed', 'time' => $statusTimes['Completed']],
                         ['label' => 'Submitted', 'time' => $statusTimes['Submitted']],
                     ];
                     $engineerProgressIndex = match ($inspectionStatus) {
-                        'Ongoing', 'On Hold' => 1,
-                        'Completed' => 2,
-                        'Submitted' => 3,
+                        'Acknowledged' => 1,
+                        'Ongoing', 'On Hold' => 2,
+                        'Completed' => 3,
+                        'Submitted' => 4,
                         default => 0,
                     };
                     if (empty($costItems)) {
@@ -1124,7 +1126,7 @@ require __DIR__ . '/../layout/header.php';
                                             ? 'is-done'
                                             : ($statusIndex === $engineerProgressIndex ? 'is-current' : '');
                                         ?>
-                                        <div class="inspection-workflow__step <?php echo $stepClass; ?>"<?php echo $statusIndex === $engineerProgressIndex ? ' aria-current="step"' : ''; ?>>
+                                        <div class="inspection-workflow__step <?php echo $stepClass; ?>" data-phase="<?php echo htmlspecialchars($progressStep['label'], ENT_QUOTES, 'UTF-8'); ?>"<?php echo $statusIndex === $engineerProgressIndex ? ' aria-current="step"' : ''; ?>>
                                             <span><?php echo htmlspecialchars($progressStep['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <?php if (!empty($progressStep['time'])): ?>
                                                 <small><?php echo htmlspecialchars(site_inspection_format_datetime($progressStep['time']), ENT_QUOTES, 'UTF-8'); ?></small>

@@ -128,13 +128,13 @@
 }
 
 .inspection-status[data-status="Acknowledged"] {
-    background: #fff7ed;
-    color: #9a3412;
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .inspection-status[data-status="Ongoing"] {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #fff7ed;
+    color: #9a3412;
 }
 
 .inspection-status[data-status="On Hold"] {
@@ -143,13 +143,14 @@
 }
 
 .inspection-status[data-status="Completed"] {
-    background: #ede9fe;
-    color: #6d28d9;
-}
-
-.inspection-status[data-status="Submitted"] {
     background: #dcfce7;
     color: #166534;
+}
+
+.inspection-status[data-status="Submitted"],
+.inspection-status[data-status="Submitted for Admin Review"] {
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .inspection-status[data-status="Returned for Revision"] {
@@ -176,7 +177,7 @@
 
 .inspection-workflow {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -215,6 +216,31 @@
     border-color: #60a5fa;
     background: #eff6ff;
     color: #1d4ed8;
+}
+
+.inspection-workflow__step[data-phase="Assigned"] {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.inspection-workflow__step[data-phase="Acknowledged"],
+.inspection-workflow__step[data-phase="Submitted"] {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.inspection-workflow__step[data-phase="Ongoing"] {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.inspection-workflow__step[data-phase="Completed"] {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
 }
 
 .inspection-tabs {

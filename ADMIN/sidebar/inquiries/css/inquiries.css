@@ -874,13 +874,13 @@
 }
 
 .inquiry-status[data-status="Acknowledged"] {
-    background: #fff7ed !important;
-    color: #9a3412 !important;
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
 }
 
 .inquiry-status[data-status="Ongoing"] {
-    background: #dbeafe !important;
-    color: #1d4ed8 !important;
+    background: #fff7ed !important;
+    color: #9a3412 !important;
 }
 
 .inquiry-status[data-status="On Hold"] {
@@ -889,13 +889,13 @@
 }
 
 .inquiry-status[data-status="Completed"] {
-    background: #ede9fe !important;
-    color: #6d28d9 !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
 }
 
 .inquiry-status[data-status="Submitted"] {
-    background: #dcfce7 !important;
-    color: #166534 !important;
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
 }
 
 .inquiry-status[data-status="Returned for Revision"] {
@@ -1080,8 +1080,8 @@
 }
 
 .inquiry-inspection-phase-inline [data-phase="Submitted"] {
-    background: #ede9fe;
-    color: #6d28d9;
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .inquiry-inspection-summary-card__head {
@@ -1162,8 +1162,8 @@
 }
 
 .inquiry-inspection-phase [data-phase="Submitted"] {
-    background: #ede9fe;
-    color: #6d28d9;
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .inquiry-detail__action-line {
@@ -2394,6 +2394,38 @@ body.inquiry-modal-open {
     white-space: nowrap;
 }
 
+.inspection-stock-alert--button {
+    cursor: pointer;
+    font: inherit;
+}
+
+.inspection-stock-alert--button:hover,
+.inspection-stock-alert--button:focus-visible {
+    background: #ffedd5;
+    outline: 2px solid #fb923c;
+    outline-offset: 2px;
+}
+
+.inspection-stock-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.inspection-stock-list__item {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.inspection-stock-list__item span {
+    font-size: 0.84rem;
+}
+
 .submitted-inspection-timeline {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2735,7 +2767,7 @@ body.inquiry-modal-open {
 
 .inspection-monitor-modal__timeline > div {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
     margin-top: 10px;
 }
@@ -2787,7 +2819,45 @@ body.inquiry-modal-open {
 }
 
 .inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] strong {
-    color: #6d28d9;
+    color: #1d4ed8;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Assigned"] {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Assigned"] strong {
+    color: #475569;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Acknowledged"],
+.inspection-monitor-modal__timeline > div > div[data-phase="Submitted"] {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Acknowledged"] strong,
+.inspection-monitor-modal__timeline > div > div[data-phase="Submitted"] strong {
+    color: #1d4ed8;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Ongoing"] {
+    border-color: #fed7aa;
+    background: #fff7ed;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Ongoing"] strong {
+    color: #9a3412;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Completed"] {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Completed"] strong {
+    color: #166534;
 }
 
 .inspection-monitor-modal__materials {

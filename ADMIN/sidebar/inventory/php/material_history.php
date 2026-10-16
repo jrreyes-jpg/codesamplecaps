@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/material_stock.php';
+require_once __DIR__ . '/../../../../config/material_physical_count.php';
 
 require_role('admin');
 
@@ -39,6 +40,10 @@ if ($selectedMaterialId > 0) {
 $historyStmt->execute();
 $historyResult = $historyStmt->get_result();
 $movements = $historyResult ? $historyResult->fetch_all(MYSQLI_ASSOC) : [];
+$physicalCounts = material_physical_count_fetch_history($conn, $selectedMaterialId);
+$displayQuantity = static function (float $quantity): string {
+    return rtrim(rtrim(number_format($quantity, 2, '.', ','), '0'), '.');
+};
 
 $adminPageTitle = 'Consumable Stock History - Admin';
 $adminCssFiles = [
@@ -72,6 +77,28 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <tbody>
                     <?php if ($movements === []): ?><tr><td colspan="8" class="empty-state">No consumable stock movement yet.</td></tr><?php endif; ?>
                     <?php foreach ($movements as $movement): ?><tr><td data-label="Date"><?php echo htmlspecialchars((string)$movement['created_at']); ?></td><td data-label="Material"><?php echo htmlspecialchars((string)$movement['material_name']); ?></td><td data-label="Type"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string)$movement['movement_type']))); ?></td><td data-label="Qty"><?php echo htmlspecialchars((string)$movement['quantity'] . ' ' . (string)$movement['unit']); ?></td><td data-label="Before"><?php echo htmlspecialchars((string)$movement['physical_before']); ?></td><td data-label="After"><?php echo htmlspecialchars((string)$movement['physical_after']); ?></td><td data-label="Recorded By"><?php echo htmlspecialchars((string)($movement['full_name'] ?? 'System')); ?></td><td data-label="Reference / Remarks"><?php echo htmlspecialchars((string)($movement['remarks'] ?? '')); ?></td></tr><?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 class="material-history-subtitle">Clerk Physical Count History</h2>
+            <div class="table-responsive">
+                <table class="data-table material-history-table mobile-card-table">
+                    <thead><tr><th>Date</th><th>Material</th><th>System Stock at Count</th><th>Clerk Count</th><th>Variance</th><th>Counted By</th><th>Remarks</th></tr></thead>
+                    <tbody>
+                    <?php if ($physicalCounts === []): ?><tr><td colspan="7" class="empty-state">No Clerk physical count yet.</td></tr><?php endif; ?>
+                    <?php foreach ($physicalCounts as $count): ?>
+                        <?php $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot']; ?>
+                        <tr>
+                            <td data-label="Date"><?php echo htmlspecialchars((string)$count['counted_at']); ?></td>
+                            <td data-label="Material"><?php echo htmlspecialchars((string)$count['material_name']); ?></td>
+                            <td data-label="System Stock at Count"><?php echo htmlspecialchars($displayQuantity((float)$count['total_quantity_snapshot']) . ' ' . (string)$count['unit']); ?></td>
+                            <td data-label="Clerk Count"><?php echo htmlspecialchars($displayQuantity((float)$count['counted_quantity']) . ' ' . (string)$count['unit']); ?></td>
+                            <td data-label="Variance"><?php echo htmlspecialchars(($variance > 0 ? '+' : '') . $displayQuantity($variance) . ' ' . (string)$count['unit']); ?></td>
+                            <td data-label="Counted By"><?php echo htmlspecialchars(trim((string)$count['counted_by_name']) ?: 'Inventory Clerk'); ?></td>
+                            <td data-label="Remarks"><?php echo htmlspecialchars(trim((string)$count['remarks']) ?: '—'); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>

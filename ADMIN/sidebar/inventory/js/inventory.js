@@ -24,6 +24,87 @@
         });
     }
 
+    const selectAllMaterials = document.querySelector('[data-material-select-all]');
+    const materialSelections = Array.from(document.querySelectorAll('[data-material-select]'));
+    const bulkArchiveForm = document.querySelector('[data-material-bulk-archive-form]');
+    const bulkArchiveButton = document.querySelector('[data-material-bulk-archive]');
+    const selectedCount = document.querySelector('[data-material-selected-count]');
+
+    function updateBulkArchiveState() {
+        const selected = materialSelections.filter(function (item) { return item.checked; });
+        if (selectedCount) selectedCount.textContent = selected.length + ' selected';
+        if (bulkArchiveButton) bulkArchiveButton.disabled = selected.length === 0;
+        if (selectAllMaterials) {
+            selectAllMaterials.checked = selected.length > 0 && selected.length === materialSelections.length;
+            selectAllMaterials.indeterminate = selected.length > 0 && selected.length < materialSelections.length;
+        }
+    }
+
+    selectAllMaterials?.addEventListener('change', function () {
+        materialSelections.forEach(function (item) { item.checked = selectAllMaterials.checked; });
+        updateBulkArchiveState();
+    });
+    materialSelections.forEach(function (item) {
+        item.addEventListener('change', updateBulkArchiveState);
+    });
+    const archiveModal = document.querySelector('[data-material-archive-modal]');
+    const archiveMessage = archiveModal ? archiveModal.querySelector('[data-material-archive-message]') : null;
+    const archiveClose = archiveModal ? archiveModal.querySelector('[data-material-archive-close]') : null;
+    const archiveConfirm = archiveModal ? archiveModal.querySelector('[data-material-archive-confirm]') : null;
+    let pendingArchiveForm = null;
+    let archiveReturnFocus = null;
+    let archiveConfirmed = false;
+
+    function closeArchiveModal() {
+        if (!archiveModal) return;
+        archiveModal.hidden = true;
+        document.body.classList.remove('material-create-modal-open');
+        pendingArchiveForm = null;
+        if (archiveReturnFocus) archiveReturnFocus.focus();
+    }
+
+    function openArchiveModal(form, message, returnFocus) {
+        if (!archiveModal || !archiveMessage) return;
+        pendingArchiveForm = form;
+        archiveReturnFocus = returnFocus || document.activeElement;
+        archiveMessage.textContent = message;
+        archiveModal.hidden = false;
+        document.body.classList.add('material-create-modal-open');
+        window.requestAnimationFrame(function () { archiveClose?.focus(); });
+    }
+
+    bulkArchiveForm?.addEventListener('submit', function (event) {
+        if (archiveConfirmed) {
+            archiveConfirmed = false;
+            return;
+        }
+        const selected = materialSelections.filter(function (item) { return item.checked; });
+        event.preventDefault();
+        if (selected.length === 0) return;
+        openArchiveModal(bulkArchiveForm, 'Archive ' + selected.length + ' selected material(s)? Items with stock, active projects, or pending deliveries will stay active.', bulkArchiveButton);
+    });
+    document.querySelectorAll('[data-material-archive-form]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (archiveConfirmed) {
+                archiveConfirmed = false;
+                return;
+            }
+            event.preventDefault();
+            const materialName = form.querySelector('[data-material-name]')?.dataset.materialName || 'this material';
+            openArchiveModal(form, 'Archive ' + materialName + '? You can restore it later.', form.querySelector('[data-material-name]'));
+        });
+    });
+    archiveClose?.addEventListener('click', closeArchiveModal);
+    archiveModal?.addEventListener('click', function (event) {
+        if (event.target === archiveModal) closeArchiveModal();
+    });
+    archiveConfirm?.addEventListener('click', function () {
+        if (!pendingArchiveForm) return;
+        archiveConfirmed = true;
+        pendingArchiveForm.requestSubmit();
+    });
+    updateBulkArchiveState();
+
     const menuToggles = Array.from(document.querySelectorAll('[data-material-menu-toggle]'));
 
     function closeRowMenus(exceptToggle) {
@@ -101,6 +182,10 @@
     });
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || (removeModal && !removeModal.hidden)) return;
+        if (archiveModal && !archiveModal.hidden) {
+            closeArchiveModal();
+            return;
+        }
         const openToggle = document.querySelector('[data-material-menu-toggle][aria-expanded="true"]');
         closeRowMenus();
         if (openToggle) openToggle.focus();

@@ -95,6 +95,22 @@
     gap: 10px;
 }
 
+.material-master-page .inventory-report-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+}
+
+.inventory-report-tabs {
+    grid-column: 2;
+    justify-self: center;
+}
+
+.material-master-page .inventory-report-heading__actions {
+    grid-column: 3;
+    justify-self: end;
+}
+
 .admin-material-stock-in-panel {
     width: min(100%, 760px);
 }
@@ -165,7 +181,42 @@
 }
 
 .material-master-table {
-    min-width: 980px;
+    min-width: 1040px;
+}
+
+.material-selection-cell {
+    width: 44px;
+    text-align: center;
+}
+
+.material-selection-cell input {
+    width: 18px;
+    height: 18px;
+    accent-color: #15803d;
+    cursor: pointer;
+}
+
+.material-list-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.material-bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    margin: 0 0 12px;
+    color: #475569;
+    font-size: .84rem;
+    font-weight: 700;
+}
+
+.material-bulk-actions .btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: .55;
 }
 
 .material-master-table tr[hidden] {
@@ -221,7 +272,8 @@
 }
 
 .material-row-menu__edit,
-.material-row-menu__remove {
+.material-row-menu__remove,
+.material-row-menu__archive {
     width: 100%;
     min-height: 38px;
     padding: 8px 10px;
@@ -240,9 +292,19 @@
     color: #166534;
 }
 
+.material-row-menu__archive {
+    color: #9a4d00;
+}
+
 .material-row-menu__edit:hover,
 .material-row-menu__edit:focus-visible {
     background: #f0fdf4;
+    outline: none;
+}
+
+.material-row-menu__archive:hover,
+.material-row-menu__archive:focus-visible {
+    background: #fff7ed;
     outline: none;
 }
 
@@ -567,6 +629,12 @@ body.material-create-modal-open {
     margin-bottom: 18px;
 }
 
+.material-history-subtitle {
+    margin: 28px 0 12px;
+    color: #0f172a;
+    font-size: 1rem;
+}
+
 .material-history-filter {
     grid-template-columns: minmax(220px, 460px) auto;
     align-items: end;
@@ -759,6 +827,14 @@ body.material-create-modal-open {
     .inventory-report-heading {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .material-master-page .inventory-report-heading {
+        display: flex;
+    }
+
+    .inventory-report-tabs {
+        justify-content: center;
     }
 
     .inventory-report-heading .btn-primary,

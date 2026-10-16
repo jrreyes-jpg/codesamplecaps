@@ -240,3 +240,46 @@ if (!function_exists('material_physical_count_fetch_latest')) {
         return $latestCounts;
     }
 }
+
+if (!function_exists('material_physical_count_fetch_history')) {
+    function material_physical_count_fetch_history(mysqli $conn, int $materialId = 0): array
+    {
+        if (!material_physical_count_is_ready($conn)) {
+            return [];
+        }
+
+        $sql = "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.counted_at,
+                       m.material_name, m.unit, u.full_name AS counted_by_name, al.new_values AS audit_values
+                FROM material_physical_counts pc
+                INNER JOIN materials m ON m.id = pc.material_id
+                LEFT JOIN users u ON u.id = pc.counted_by
+                LEFT JOIN audit_logs al
+                  ON al.entity_type = 'material_physical_count'
+                 AND al.entity_id = pc.id
+                 AND al.action = 'physical_count_submitted'";
+        if ($materialId > 0) {
+            $sql .= ' WHERE pc.material_id = ?';
+        }
+        $sql .= ' ORDER BY pc.counted_at DESC, pc.id DESC LIMIT 200';
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        if ($materialId > 0) {
+            $stmt->bind_param('i', $materialId);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $counts = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        foreach ($counts as &$count) {
+            $auditValues = json_decode((string)($count['audit_values'] ?? ''), true);
+            $count['remarks'] = is_array($auditValues) ? trim((string)($auditValues['remarks'] ?? '')) : '';
+            unset($count['audit_values']);
+        }
+        unset($count);
+
+        return $counts;
+    }
+}

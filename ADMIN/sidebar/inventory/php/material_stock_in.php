@@ -62,7 +62,10 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css',
 ];
-$adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/material_stock_in.js',
+];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
@@ -92,7 +95,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="alert alert-error">Delivery verification setup is not ready. Run the new database migration first.</div>
             <?php endif; ?>
 
-            <form method="POST" novalidate>
+            <form method="POST" data-stock-in-form novalidate>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($requestToken); ?>">
                 <div class="form-grid">
@@ -129,6 +132,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </form>
         </section>
+
+        <div class="material-remove-modal" data-stock-in-confirm-modal hidden>
+            <section class="material-remove-modal__panel" role="dialog" aria-modal="true" aria-labelledby="stockInConfirmTitle" aria-describedby="stockInConfirmMessage">
+                <h2 id="stockInConfirmTitle">Send delivery for verification?</h2>
+                <p id="stockInConfirmMessage">The Clerk will count the actual quantity. Stock will not change until the Clerk verifies it.</p>
+                <div class="material-remove-modal__actions">
+                    <button type="button" class="btn-secondary" data-stock-in-confirm-close>Cancel</button>
+                    <button type="button" class="btn-primary" data-stock-in-confirm-submit>Send to Clerk</button>
+                </div>
+            </section>
+        </div>
 
         <section class="form-panel admin-material-delivery-list">
             <div class="inventory-report-heading">

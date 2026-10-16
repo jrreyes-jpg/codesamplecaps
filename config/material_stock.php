@@ -247,6 +247,22 @@ if (!function_exists('material_stock_archive_material')) {
             $reservationStmt->execute();
             $hasActiveReservation = (bool)$reservationStmt->get_result()->fetch_assoc();
 
+            $hasPendingDelivery = false;
+            $deliveryTable = $conn->query("SHOW TABLES LIKE 'material_delivery_verifications'");
+            if ($deliveryTable instanceof mysqli_result && $deliveryTable->num_rows === 1) {
+                $deliveryStmt = $conn->prepare(
+                    "SELECT id FROM material_delivery_verifications
+                     WHERE material_id = ? AND status = 'for_verification'
+                     LIMIT 1 FOR UPDATE"
+                );
+                if (!$deliveryStmt) {
+                    throw new RuntimeException('Unable to check pending deliveries.');
+                }
+                $deliveryStmt->bind_param('i', $materialId);
+                $deliveryStmt->execute();
+                $hasPendingDelivery = (bool)$deliveryStmt->get_result()->fetch_assoc();
+            }
+
             if ((float)$material['physical_quantity'] > 0) {
                 $quantity = rtrim(rtrim(number_format((float)$material['physical_quantity'], 2, '.', ''), '0'), '.');
                 throw new RuntimeException($quantity . ' ' . (string)$material['unit'] . ' remain in stock. Issue or adjust the remaining stock before archiving.');
@@ -256,6 +272,9 @@ if (!function_exists('material_stock_archive_material')) {
             }
             if ($hasActiveReservation) {
                 throw new RuntimeException('This material still has an active project reservation.');
+            }
+            if ($hasPendingDelivery) {
+                throw new RuntimeException('This material has a supplier delivery waiting for Clerk verification.');
             }
 
             $archiveStmt = $conn->prepare("UPDATE materials SET status = 'inactive' WHERE id = ? AND status = 'active'");
@@ -306,6 +325,11 @@ if (!function_exists('material_stock_has_usage_reference')) {
         $countTable = $conn->query("SHOW TABLES LIKE 'material_physical_counts'");
         if ($countTable instanceof mysqli_result && $countTable->num_rows === 1) {
             $tables[] = 'material_physical_counts';
+        }
+
+        $deliveryTable = $conn->query("SHOW TABLES LIKE 'material_delivery_verifications'");
+        if ($deliveryTable instanceof mysqli_result && $deliveryTable->num_rows === 1) {
+            $tables[] = 'material_delivery_verifications';
         }
 
         foreach ($tables as $table) {
@@ -362,7 +386,7 @@ if (!function_exists('material_stock_permanently_delete_material')) {
         $conn->begin_transaction();
         try {
             $materialStmt = $conn->prepare(
-                'SELECT id, physical_quantity, reserved_quantity
+                'SELECT id, status, physical_quantity, reserved_quantity
                  FROM materials
                  WHERE id = ?
                  FOR UPDATE'
@@ -375,6 +399,7 @@ if (!function_exists('material_stock_permanently_delete_material')) {
             $material = $materialStmt->get_result()->fetch_assoc();
 
             if (!$material
+                || (string)$material['status'] !== 'inactive'
                 || (float)$material['physical_quantity'] !== 0.0
                 || (float)$material['reserved_quantity'] !== 0.0
                 || material_stock_has_usage_reference($conn, $materialId, true)) {

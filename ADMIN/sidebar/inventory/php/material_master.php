@@ -11,7 +11,7 @@ require_role('admin');
 $materialCsrfToken = auth_csrf_token('admin_material_master');
 $materialFlashKey = 'admin_material_master_flash';
 $materialFormStateKey = 'admin_material_master_form_state';
-$materialFilter = in_array($_GET['material_filter'] ?? 'active', ['active', 'inactive', 'all'], true)
+$materialFilter = in_array($_GET['material_filter'] ?? 'active', ['active', 'inactive'], true)
     ? (string)($_GET['material_filter'] ?? 'active')
     : 'active';
 $materialCategories = material_detail_suggestion_categories();
@@ -106,7 +106,7 @@ $validateMaterialValues = static function (array $values) use (
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $materialPostText($_POST['material_action'] ?? '');
-    $redirectFilter = in_array($_POST['material_filter'] ?? '', ['active', 'inactive', 'all'], true)
+    $redirectFilter = in_array($_POST['material_filter'] ?? '', ['active', 'inactive'], true)
         ? (string)$_POST['material_filter']
         : 'active';
     $submittedMaterialValues = [];
@@ -175,6 +175,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $validated['description']
                 );
                 $_SESSION[$materialFlashKey] = ['type' => 'success', 'action' => 'create', 'message' => 'Material ' . $code . ' created.'];
+            }
+        } elseif ($action === 'bulk_archive') {
+            if (!material_stock_consume_once_token('admin_material_bulk_archive', $_POST['request_token'] ?? null)) {
+                throw new RuntimeException('This archive request was already sent. Please try again.');
+            }
+
+            $selectedIds = is_array($_POST['material_ids'] ?? null) ? $_POST['material_ids'] : [];
+            $selectedIds = array_values(array_unique(array_filter(array_map('intval', $selectedIds), static fn(int $id): bool => $id > 0)));
+            if ($selectedIds === []) {
+                throw new RuntimeException('Select at least one material to archive.');
+            }
+
+            $archivedCount = 0;
+            $failedMessages = [];
+            foreach ($selectedIds as $selectedId) {
+                try {
+                    material_stock_archive_material($conn, $selectedId);
+                    $archivedCount++;
+                } catch (Throwable $archiveError) {
+                    $failedMessages[] = $archiveError->getMessage();
+                }
+            }
+
+            if ($failedMessages !== []) {
+                $_SESSION[$materialFlashKey] = [
+                    'type' => 'error',
+                    'message' => $archivedCount . ' archived. ' . count($failedMessages) . ' not archived: ' . $failedMessages[0],
+                ];
+            } else {
+                $_SESSION[$materialFlashKey] = ['type' => 'success', 'message' => $archivedCount . ' material(s) archived.'];
             }
         } else {
             $materialId = filter_var($materialPostText($_POST['material_id'] ?? ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
@@ -245,7 +275,8 @@ $materialFormMode = ($materialFormState['mode'] ?? 'add') === 'edit' ? 'edit' : 
 $materialFormMaterialId = (int)($materialFormState['material_id'] ?? 0);
 $materialCreateRequestToken = material_stock_issue_once_token('admin_material_create');
 $materialUpdateRequestToken = material_stock_issue_once_token('admin_material_update');
-$materials = material_stock_fetch_materials($conn, 'active');
+$materialBulkArchiveRequestToken = material_stock_issue_once_token('admin_material_bulk_archive');
+$materials = material_stock_fetch_materials($conn, $materialFilter);
 $latestPhysicalCounts = material_physical_count_fetch_latest($conn);
 $deletableMaterialIds = array_fill_keys(material_stock_fetch_deletable_material_ids($conn), true);
 $materialFormUnitEditable = $materialFormMode !== 'edit' || isset($deletableMaterialIds[$materialFormMaterialId]);
@@ -267,11 +298,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 <main class="main-content inventory-main-content">
     <div class="page-stack inventory-page-stack material-master-page">
-        <nav class="resource-page-tabs inventory-page-tabs" aria-label="Inventory sections">
-            <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
-            <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
-        </nav>
-
         <?php if ($materialFlash): ?>
             <div class="alert <?php echo $materialFlash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>">
                 <?php echo htmlspecialchars((string)$materialFlash['message']); ?>
@@ -281,8 +307,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <section class="form-panel inventory-report-panel">
             <div class="inventory-report-heading">
                 <div>
-                    <h1 class="section-title-inline">Inventory Report</h1>
+                    <h1 class="section-title-inline"><?php echo $materialFilter === 'inactive' ? 'Archived Materials' : 'Inventory Report'; ?></h1>
                 </div>
+                <nav class="resource-page-tabs inventory-page-tabs inventory-report-tabs" aria-label="Inventory sections">
+                    <a class="<?php echo $materialFilter === 'active' ? 'is-active' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=materials&amp;material_filter=active">Consumables</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
+                </nav>
                 <div class="inventory-report-heading__actions">
                     <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/material_stock_in.php">Stock In</a>
                     <button type="button" class="btn-primary" data-material-modal-open>+ Add Material</button>
@@ -292,11 +322,25 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <label class="sr-only" for="inventoryReportSearch">Search inventory report</label>
                 <input id="inventoryReportSearch" type="search" placeholder="Search item, description, or unit" data-inventory-report-search>
             </div>
+            <div class="material-list-filters" aria-label="Material status filter">
+                <a class="action-chip<?php echo $materialFilter === 'active' ? ' active-chip' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=materials&amp;material_filter=active">Active</a>
+                <a class="action-chip<?php echo $materialFilter === 'inactive' ? ' active-chip' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=materials&amp;material_filter=inactive">Archived</a>
+            </div>
+            <?php if ($materialFilter === 'active' && $materials !== []): ?>
+                <form id="materialBulkArchiveForm" method="POST" class="material-bulk-actions" data-material-bulk-archive-form>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
+                    <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($materialBulkArchiveRequestToken); ?>">
+                    <input type="hidden" name="material_action" value="bulk_archive">
+                    <input type="hidden" name="material_filter" value="active">
+                    <span data-material-selected-count>0 selected</span>
+                    <button type="submit" class="btn-secondary" data-material-bulk-archive disabled>Archive Selected</button>
+                </form>
+            <?php endif; ?>
             <div class="table-responsive">
                 <table class="data-table material-master-table mobile-card-table">
-                    <thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>System Stock</th><th>Clerk Physical Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
+                    <thead><tr><?php if ($materialFilter === 'active'): ?><th class="material-selection-cell"><input type="checkbox" data-material-select-all aria-label="Select all active materials"></th><?php endif; ?><th>Item</th><th>Description</th><th>Unit</th><th>System Stock</th><th>Clerk Physical Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
                     <tbody>
-                    <?php if ($materials === []): ?><tr><td colspan="8" class="empty-state">No active materials yet.</td></tr><?php endif; ?>
+                    <?php if ($materials === []): ?><tr><td colspan="<?php echo $materialFilter === 'active' ? '9' : '8'; ?>" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
                     <?php foreach ($materials as $material): ?>
                         <?php
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
@@ -306,6 +350,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $isShortage = $variance !== null && $variance < -0.005;
                         ?>
                         <tr class="<?php echo $isShortage ? 'material-master-row--shortage' : ''; ?>" data-inventory-report-row>
+                            <?php if ($materialFilter === 'active'): ?><td data-label="Select" class="material-selection-cell"><input type="checkbox" form="materialBulkArchiveForm" name="material_ids[]" value="<?php echo (int)$material['id']; ?>" data-material-select aria-label="Select <?php echo htmlspecialchars((string)$material['material_name']); ?>"></td><?php endif; ?>
                             <td data-label="Item"><strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$material['material_code']); ?></small></td>
                             <td data-label="Description" class="material-report-description"><?php echo htmlspecialchars(trim((string)$material['description']) ?: '—'); ?></td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
@@ -315,11 +360,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <span class="material-audit-pending">Not yet counted</span>
                                 <?php else: ?>
                                     <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$latestCount['counted_quantity'])); ?></strong>
-                                    <small>System stock at count: <?php echo htmlspecialchars($displayMaterialQuantity((float)$latestCount['total_quantity_snapshot'])); ?></small>
-                                    <small>
-                                        By <?php echo htmlspecialchars(trim((string)$latestCount['counted_by_name']) ?: 'Inventory Clerk'); ?>
-                                        &middot; <?php echo htmlspecialchars((string)$latestCount['counted_at']); ?>
-                                    </small>
                                 <?php endif; ?>
                             </td>
                             <td data-label="Variance" class="material-master-number material-variance<?php echo $isShortage ? ' material-variance--shortage' : ''; ?>">
@@ -332,36 +372,63 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <div class="material-row-menu" data-material-row-menu>
                                     <button type="button" class="material-row-menu__toggle" data-material-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="More actions for <?php echo htmlspecialchars((string)$material['material_name']); ?>">&#8942;</button>
                                     <div class="material-row-menu__panel" data-material-menu-panel role="menu" hidden>
-                                        <button
-                                            type="button"
-                                            class="material-row-menu__edit"
-                                            data-material-edit-open
-                                            data-material-id="<?php echo (int)$material['id']; ?>"
-                                            data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-material-description="<?php echo htmlspecialchars((string)($material['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-material-category="<?php echo htmlspecialchars((string)($material['category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-unit-editable="<?php echo isset($deletableMaterialIds[(int)$material['id']]) ? 'true' : 'false'; ?>"
-                                            role="menuitem"
-                                        >Edit</button>
-                                        <?php if (isset($deletableMaterialIds[(int)$material['id']])): ?>
+                                        <?php if ($materialFilter === 'active'): ?>
+                                            <button
+                                                type="button"
+                                                class="material-row-menu__edit"
+                                                data-material-edit-open
+                                                data-material-id="<?php echo (int)$material['id']; ?>"
+                                                data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-material-description="<?php echo htmlspecialchars((string)($material['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-material-category="<?php echo htmlspecialchars((string)($material['category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-unit-editable="<?php echo isset($deletableMaterialIds[(int)$material['id']]) ? 'true' : 'false'; ?>"
+                                                role="menuitem"
+                                            >Edit</button>
+                                        <?php endif; ?>
+                                        <?php if ($materialFilter === 'active'): ?>
+                                            <form method="POST" data-material-archive-form>
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
+                                                <input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>">
+                                                <input type="hidden" name="material_action" value="archive">
+                                                <input type="hidden" name="material_filter" value="active">
+                                                <button type="submit" class="material-row-menu__archive" data-material-name="<?php echo htmlspecialchars((string)$material['material_name']); ?>" role="menuitem">Archive</button>
+                                            </form>
+                                        <?php elseif (isset($deletableMaterialIds[(int)$material['id']])): ?>
+                                            <form method="POST">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
+                                                <input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>">
+                                                <input type="hidden" name="material_action" value="restore">
+                                                <input type="hidden" name="material_filter" value="inactive">
+                                                <button type="submit" class="material-row-menu__edit" role="menuitem">Restore</button>
+                                            </form>
                                             <form method="POST" data-material-remove-form>
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
                                                 <input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>">
+                                                <input type="hidden" name="material_filter" value="inactive">
                                                 <input type="hidden" name="material_action" value="permanent_delete">
                                                 <button type="button" class="material-row-menu__remove" data-material-remove-open data-material-name="<?php echo htmlspecialchars((string)$material['material_name']); ?>" role="menuitem">Remove</button>
                                             </form>
                                         <?php else: ?>
-                                            <button type="button" class="material-row-menu__remove" role="menuitem" disabled>Remove</button>
-                                            <small>Cannot remove: this item has stock or history.</small>
+                                            <?php if ($materialFilter === 'inactive'): ?>
+                                                <form method="POST">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
+                                                    <input type="hidden" name="material_id" value="<?php echo (int)$material['id']; ?>">
+                                                    <input type="hidden" name="material_action" value="restore">
+                                                    <input type="hidden" name="material_filter" value="inactive">
+                                                    <button type="submit" class="material-row-menu__edit" role="menuitem">Restore</button>
+                                                </form>
+                                                <button type="button" class="material-row-menu__remove" role="menuitem" disabled>Remove</button>
+                                                <small>Cannot remove: this item has stock or history.</small>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    <tr data-inventory-report-empty hidden><td colspan="8" class="empty-state">No matching materials.</td></tr>
+                    <tr data-inventory-report-empty hidden><td colspan="<?php echo $materialFilter === 'active' ? '9' : '8'; ?>" class="empty-state">No matching materials.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -425,6 +492,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
                 </form>
+            </section>
+        </div>
+
+        <div class="material-remove-modal" data-material-archive-modal hidden>
+            <section class="material-remove-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialArchiveTitle" aria-describedby="materialArchiveMessage">
+                <h2 id="materialArchiveTitle">Archive material?</h2>
+                <p id="materialArchiveMessage" data-material-archive-message></p>
+                <div class="material-remove-modal__actions">
+                    <button type="button" class="btn-secondary" data-material-archive-close>Cancel</button>
+                    <button type="button" class="btn-primary" data-material-archive-confirm>Archive</button>
+                </div>
             </section>
         </div>
 

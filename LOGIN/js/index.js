@@ -449,6 +449,22 @@ const initInquiryForm = () => {
         return true;
     };
 
+    const validateProjectDescription = (field) => {
+        const value = field.value.trim();
+
+        if (value === '') {
+            clearFieldError(field);
+            return true;
+        }
+
+        if (Array.from(value).length < 3) {
+            setFieldError(field, 'Enter at least 3 characters.');
+            return false;
+        }
+
+        return validateMeaningfulTextField(field, 'Project Description', 3);
+    };
+
     const normalizeContactNumber = (field) => {
         let digits = field.value.replace(/\D/g, '');
 
@@ -1108,12 +1124,12 @@ const restoreInquiryDraft = () => {
 
         const projectDescriptionInput = inquiryForm.querySelector('textarea[name="description"]');
         projectDescriptionInput?.addEventListener('input', (event) => {
-            clearFieldError(event.currentTarget);
+            validateProjectDescription(event.currentTarget);
             clearFormMessageIfReady();
             saveInquiryDraft();
         });
         projectDescriptionInput?.addEventListener('blur', (event) => {
-            validateMeaningfulTextField(event.currentTarget, 'Project Description');
+            validateProjectDescription(event.currentTarget);
         });
 
         inquiryForm.querySelectorAll('input, select, textarea').forEach((field) => {
@@ -1219,10 +1235,7 @@ const restoreInquiryDraft = () => {
                     firstInvalidField = firstInvalidField || field;
                 }
 
-                if (field.name === 'description' && value !== '' && value.length < 10) {
-                    setFieldError(field, 'Project description must be at least 10 characters.');
-                    firstInvalidField = firstInvalidField || field;
-                } else if (field.name === 'description' && value !== '' && !validateMeaningfulTextField(field, 'Project Description')) {
+                if (field.name === 'description' && value !== '' && !validateProjectDescription(field)) {
                     firstInvalidField = firstInvalidField || field;
                 }
             }

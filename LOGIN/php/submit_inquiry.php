@@ -123,7 +123,7 @@ if ($serviceCategory === '' || !in_array($serviceCategory, $allowedCategories, t
     $errors[] = 'service_category';
 }
 
-if ($description === '' || mb_strlen($description, 'UTF-8') < 10 || !has_meaningful_letters($description, 4)) {
+if ($description === '' || mb_strlen($description, 'UTF-8') < 3 || !has_meaningful_letters($description, 3)) {
     $errors[] = 'description';
 }
 

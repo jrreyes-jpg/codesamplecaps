@@ -70,12 +70,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 <main class="main-content inventory-main-content">
-    <div class="page-stack inventory-page-stack">
-        <nav class="resource-page-tabs inventory-page-tabs" aria-label="Inventory sections">
-            <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
-            <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
-        </nav>
-
+    <div class="page-stack inventory-page-stack material-stock-in-page">
         <?php if (is_array($flash)): ?>
             <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : 'alert-error'; ?>">
                 <?php echo htmlspecialchars((string)($flash['message'] ?? 'Unable to save Stock In.')); ?>
@@ -83,12 +78,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
         <section class="form-panel admin-material-stock-in-panel">
-            <div class="inventory-report-heading">
+            <div class="inventory-report-heading material-stock-in-heading">
                 <div>
                     <h1 class="section-title-inline">Material Stock In</h1>
                     <p>Record the supplier delivery receipt. The Clerk will count first before stock is added.</p>
                 </div>
-                <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Back to Inventory</a>
+                <nav class="resource-page-tabs inventory-page-tabs inventory-report-tabs" aria-label="Inventory sections">
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
+                </nav>
+                <div class="inventory-report-heading__actions">
+                    <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Back to Inventory</a>
+                </div>
             </div>
 
             <?php if (!$deliveryReady): ?>
@@ -98,31 +99,32 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <form method="POST" data-stock-in-form novalidate>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($requestToken); ?>">
-                <div class="form-grid">
+                <div class="form-grid material-stock-in-form-grid">
                     <div class="input-group">
-                        <label for="material_id">Material <span class="required">*</span></label>
-                        <select id="material_id" name="material_id" required>
-                            <option value="">Select material</option>
+                        <label for="material_id">Material <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <select id="material_id" name="material_id" data-stock-in-material required>
+                            <option value="" disabled<?php echo (int)$values['material_id'] === 0 ? ' selected' : ''; ?>>Select material</option>
                             <?php foreach ($materials as $material): ?>
-                                <option value="<?php echo (int)$material['id']; ?>"<?php echo (int)$values['material_id'] === (int)$material['id'] ? ' selected' : ''; ?>>
+                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>"<?php echo (int)$values['material_id'] === (int)$material['id'] ? ' selected' : ''; ?>>
                                     <?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="quantity">Expected Quantity <span class="required">*</span></label>
-                        <input id="quantity" name="quantity" type="number" min="0.01" step="0.01" inputmode="decimal" required value="<?php echo htmlspecialchars((string)$values['quantity']); ?>">
+                        <label for="quantity">Expected Quantity <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <input id="quantity" name="quantity" type="number" min="0.01" step="0.01" inputmode="decimal" data-stock-in-quantity required value="<?php echo htmlspecialchars((string)$values['quantity']); ?>">
+                        <small class="material-field-hint" data-stock-in-unit-hint>Select a material to see its unit.</small>
                     </div>
                     <div class="input-group">
-                        <label for="supplier_name">Supplier <span class="required">*</span></label>
+                        <label for="supplier_name">Supplier <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="supplier_name" name="supplier_name" maxlength="180" required placeholder="Supplier name" value="<?php echo htmlspecialchars((string)$values['supplier_name']); ?>">
                     </div>
-                    <div class="input-group material-master-description">
-                        <label for="receipt_no">Delivery Receipt No. <span class="required">*</span></label>
+                    <div class="input-group">
+                        <label for="receipt_no">Delivery Receipt No. <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="receipt_no" name="receipt_no" maxlength="120" required placeholder="Example: DR-1001" value="<?php echo htmlspecialchars((string)$values['receipt_no']); ?>">
                     </div>
-                    <div class="input-group material-master-description">
+                    <div class="input-group material-stock-in-notes">
                         <label for="remarks">Admin Notes (Optional)</label>
                         <input id="remarks" name="remarks" maxlength="500" placeholder="Optional delivery note" value="<?php echo htmlspecialchars((string)$values['remarks']); ?>">
                     </div>

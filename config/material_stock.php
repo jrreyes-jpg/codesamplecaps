@@ -142,6 +142,23 @@ if (!function_exists('material_stock_available_quantity')) {
     }
 }
 
+if (!function_exists('material_stock_alert_status')) {
+    function material_stock_alert_status(array $material): string
+    {
+        $availableQuantity = material_stock_available_quantity($material);
+        if ($availableQuantity <= 0) {
+            return 'out-of-stock';
+        }
+
+        $reorderLevel = $material['reorder_level'] ?? null;
+        if ($reorderLevel !== null && $reorderLevel !== '' && $availableQuantity <= (float)$reorderLevel) {
+            return 'low-stock';
+        }
+
+        return 'available';
+    }
+}
+
 if (!function_exists('material_stock_next_status')) {
     function material_stock_next_status(float $requiredQuantity, float $reservedQuantity, float $issuedQuantity, bool $cancelled = false): string
     {

@@ -4,7 +4,7 @@
 
 /* Delivery list: simple status for Admin and Clerk flow. */
 .admin-material-delivery-list .data-table {
-    min-width: 850px;
+    min-width: 780px;
 }
 
 .admin-material-delivery-list small {
@@ -42,8 +42,15 @@
 }
 
 .inventory-page-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, 390px);
     justify-content: center;
     margin: 0;
+}
+
+.inventory-page-tabs a {
+    width: 100%;
 }
 
 .material-master-form-grid {
@@ -111,12 +118,37 @@
     justify-self: end;
 }
 
+.material-stock-in-page .form-panel {
+    width: min(100%, 1080px);
+    margin-inline: auto;
+}
+
 .admin-material-stock-in-panel {
-    width: min(100%, 760px);
+    box-sizing: border-box;
 }
 
 .admin-material-stock-in-panel .form-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
+}
+
+.material-stock-in-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.material-stock-in-notes {
+    grid-column: 1 / -1;
+}
+
+.material-stock-in-page .inventory-report-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+}
+
+.material-stock-in-page .inventory-report-heading__actions {
+    grid-column: 3;
+    justify-self: end;
 }
 
 .inventory-report-heading .section-title-inline,
@@ -181,13 +213,24 @@
 }
 
 .material-master-table {
-    min-width: 1140px;
+    min-width: 1120px;
+    table-layout: fixed;
 }
 
 .material-selection-cell {
-    width: 150px;
+    width: auto;
     text-align: left;
 }
+
+.material-col-select { width: 128px; }
+.material-col-item { width: 170px; }
+.material-col-description { width: 120px; }
+.material-col-unit { width: 84px; }
+.material-col-stock { width: 120px; }
+.material-col-count { width: 150px; }
+.material-col-variance { width: 86px; }
+.material-col-remarks { width: 120px; }
+.material-col-actions { width: 62px; }
 
 .material-selection-cell input {
     width: 18px;
@@ -216,6 +259,48 @@
     font-weight: 650;
     line-height: 1.3;
     overflow-wrap: anywhere;
+}
+
+.material-item-cell strong,
+.material-item-cell small {
+    display: block;
+}
+
+.material-item-cell small {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: .74rem;
+    line-height: 1.25;
+}
+
+.material-master-table th {
+    white-space: nowrap;
+}
+
+.material-stock-cell strong,
+.material-stock-cell .material-stock-status {
+    display: block;
+}
+
+.material-stock-status {
+    width: fit-content;
+    margin-top: 5px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    font-size: .66rem;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.material-stock-status--out-of-stock {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.material-stock-status--low-stock {
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .material-list-filters {
@@ -656,6 +741,17 @@ body.material-create-modal-open {
     margin-bottom: 18px;
 }
 
+.material-history-page .inventory-report-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+}
+
+.material-history-page .inventory-report-heading__actions {
+    grid-column: 3;
+    justify-self: end;
+}
+
 .material-history-subtitle {
     margin: 28px 0 12px;
     color: #0f172a;
@@ -860,6 +956,18 @@ body.material-create-modal-open {
         display: flex;
     }
 
+    .material-history-page .inventory-report-heading {
+        display: flex;
+    }
+
+    .material-stock-in-page .inventory-report-heading {
+        display: flex;
+    }
+
+    .material-stock-in-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .inventory-report-tabs {
         justify-content: center;
     }
@@ -943,5 +1051,12 @@ body.material-create-modal-open {
     .material-remove-modal__actions .btn-danger {
         width: 100%;
         min-height: 44px;
+    }
+}
+
+@media (max-width: 430px) {
+    .inventory-page-tabs {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
     }
 }

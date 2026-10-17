@@ -56,14 +56,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 <main class="main-content inventory-main-content">
     <div class="page-stack inventory-page-stack material-history-page">
-        <nav class="resource-page-tabs inventory-page-tabs" aria-label="Inventory sections">
-            <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
-            <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
-        </nav>
         <section class="form-panel material-history-panel">
-            <div class="material-master-heading">
-                <h1 class="section-title-inline">Consumable Stock History</h1>
-                <?php if ($selectedMaterial): ?><a class="btn-secondary" href="?view=history">Clear Filter</a><?php endif; ?>
+            <div class="inventory-report-heading material-history-heading">
+                <div><h1 class="section-title-inline">Consumable Stock History</h1></div>
+                <nav class="resource-page-tabs inventory-page-tabs inventory-report-tabs" aria-label="Inventory sections">
+                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
+                    <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
+                </nav>
+                <div class="inventory-report-heading__actions">
+                    <?php if ($selectedMaterial): ?><a class="btn-secondary" href="?view=history">Clear Filter</a><?php endif; ?>
+                </div>
             </div>
             <form method="GET" class="form-grid material-history-filter">
                 <input type="hidden" name="view" value="history">

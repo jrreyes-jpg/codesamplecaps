@@ -341,7 +341,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <?php endif; ?>
             <div class="table-responsive">
                 <table class="data-table material-master-table mobile-card-table">
-                    <thead><tr><?php if ($materialFilter === 'active'): ?><th class="material-selection-cell"><input type="checkbox" data-material-select-all aria-label="Select all active materials"></th><?php endif; ?><th>Item</th><th>Description</th><th>Unit</th><th>System Stock</th><th>Clerk Physical Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
+                    <colgroup>
+                        <?php if ($materialFilter === 'active'): ?><col class="material-col-select"><?php endif; ?>
+                        <col class="material-col-item"><col class="material-col-description"><col class="material-col-unit"><col class="material-col-stock"><col class="material-col-count"><col class="material-col-variance"><col class="material-col-remarks"><col class="material-col-actions">
+                    </colgroup>
+                    <thead><tr><?php if ($materialFilter === 'active'): ?><th class="material-selection-cell"><input type="checkbox" data-material-select-all aria-label="Select all active materials"></th><?php endif; ?><th>Item</th><th>Description</th><th>Unit</th><th>System Stock</th><th>Clerk Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
                     <tbody>
                     <?php if ($materials === []): ?><tr><td colspan="<?php echo $materialFilter === 'active' ? '9' : '8'; ?>" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
                     <?php foreach ($materials as $material): ?>
@@ -353,6 +357,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $isShortage = $variance !== null && $variance < -0.005;
                         $archiveBlockReason = $archiveBlockReasons[(int)$material['id']] ?? '';
                         $canArchive = $archiveBlockReason === '';
+                        $stockStatus = material_stock_alert_status($material);
                         ?>
                         <tr class="<?php echo $isShortage ? 'material-master-row--shortage' : ''; ?>" data-inventory-report-row>
                             <?php if ($materialFilter === 'active'): ?>
@@ -363,10 +368,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     </div>
                                 </td>
                             <?php endif; ?>
-                            <td data-label="Item"><strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$material['material_code']); ?></small></td>
+                            <td data-label="Item" class="material-item-cell"><strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$material['material_code']); ?></small></td>
                             <td data-label="Description" class="material-report-description"><?php echo htmlspecialchars(trim((string)$material['description']) ?: '—'); ?></td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
-                            <td data-label="System Stock" class="material-master-number"><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></td>
+                            <td data-label="System Stock" class="material-master-number material-stock-cell">
+                                <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong>
+                                <?php if ($stockStatus !== 'available'): ?>
+                                    <span class="material-stock-status material-stock-status--<?php echo htmlspecialchars($stockStatus); ?>"><?php echo $stockStatus === 'out-of-stock' ? 'Out of Stock' : 'Low Stock'; ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td data-label="Clerk Physical Count" class="material-master-count">
                                 <?php if ($latestCount === null): ?>
                                     <span class="material-audit-pending">Not yet counted</span>
@@ -486,10 +496,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                         <div class="input-group material-master-reorder">
                             <div class="material-field-label-row">
-                                <label for="reorder_level">Low Stock Alert Level</label>
+                                <label for="reorder_level">Low Stock Alert Level <span class="required-indicator" aria-hidden="true">*</span></label>
                                 <span class="material-field-info" data-material-tooltip>
                                     <button type="button" aria-label="About Low Stock Alert Level" aria-describedby="materialReorderTooltip" aria-expanded="false">i</button>
-                                    <span id="materialReorderTooltip" role="tooltip">Shows a low-stock alert when on-hand stock reaches this quantity or lower.</span>
+                                    <span id="materialReorderTooltip" role="tooltip">Use 0 when no low-stock alert is needed. Zero stock is always Out of Stock.</span>
                                 </span>
                             </div>
                             <input id="reorder_level" name="reorder_level" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" placeholder="e.g., 10" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '')); ?>" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>

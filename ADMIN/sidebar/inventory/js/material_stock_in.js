@@ -5,10 +5,31 @@
     const modal = document.querySelector('[data-stock-in-confirm-modal]');
     const closeButton = modal?.querySelector('[data-stock-in-confirm-close]');
     const submitButton = modal?.querySelector('[data-stock-in-confirm-submit]');
+    const materialSelect = form?.querySelector('[data-stock-in-material]');
+    const quantityInput = form?.querySelector('[data-stock-in-quantity]');
+    const quantityHint = form?.querySelector('[data-stock-in-unit-hint]');
     let confirmed = false;
     let returnFocus = null;
 
     if (!form || !modal || !closeButton || !submitButton) return;
+
+    function updateQuantityUnit() {
+        const option = materialSelect?.options[materialSelect.selectedIndex];
+        const unit = option?.dataset.materialUnit || '';
+        const wholeNumber = option?.dataset.wholeNumber === 'true';
+
+        if (quantityHint) {
+            quantityHint.textContent = unit === ''
+                ? 'Select a material to see its unit.'
+                : 'Unit: ' + unit + (wholeNumber ? ' (whole number only)' : '');
+        }
+        if (quantityInput) {
+            quantityInput.step = wholeNumber ? '1' : '0.01';
+        }
+    }
+
+    materialSelect?.addEventListener('change', updateQuantityUnit);
+    updateQuantityUnit();
 
     function closeModal() {
         modal.hidden = true;

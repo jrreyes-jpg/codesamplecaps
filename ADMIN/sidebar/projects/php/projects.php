@@ -3209,7 +3209,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <label for="walk_in_email">Email Address <span class="required-indicator">*</span></label>
                                 <input id="walk_in_email" name="email" type="email" maxlength="190" autocomplete="email" value="<?php echo htmlspecialchars((string)($walkInOldInput['email'] ?? ''), ENT_QUOTES); ?>" placeholder="name@example.com" data-walk-in-email required>
                                 <small class="walk-in-field-error" data-walk-in-email-error></small>
-                                <small class="walk-in-field-help">Use a valid email address.</small>
+                                <span class="walk-in-email-tools">
+                                    <button type="button" class="walk-in-verify-email-button" data-walk-in-send-otp>Verify Email</button>
+                                    <small class="walk-in-email-status" data-walk-in-email-status>Email not verified</small>
+                                </span>
                             </div>
 
                             <div class="input-group">
@@ -3299,15 +3302,40 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <small class="walk-in-field-help">Lunch time is not available. Last start is 4:00 PM.</small>
                                 <small class="walk-in-field-error" data-walk-in-schedule-error></small>
                             </div>
+
+                            <div class="input-group input-group-wide">
+                                <label for="walk_in_engineer">Available Engineer <span class="optional-indicator">(Optional)</span></label>
+                                <select id="walk_in_engineer" name="preferred_engineer_id">
+                                    <option value="">Unassigned</option>
+                                    <?php foreach ($engineers as $engineer): ?>
+                                        <?php if ((string)($engineer['role'] ?? '') !== 'engineer') continue; ?>
+                                        <option value="<?php echo (int)$engineer['id']; ?>" <?php echo (int)($walkInOldInput['preferred_engineer_id'] ?? 0) === (int)$engineer['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$engineer['full_name'], ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="walk-in-field-help">Leave Unassigned if no Engineer has confirmed the preferred date and time.</small>
+                            </div>
                         </div>
 
                         <div class="form-actions walk-in-inquiry-actions">
                             <button type="button" class="btn-secondary walk-in-clear-button" data-walk-in-clear>Clear Form</button>
                             <button type="button" class="btn-secondary" data-walk-in-inquiry-close>Cancel</button>
-                            <button type="submit" class="btn-secondary" value="pending" data-walk-in-submit-action>Save as Pending</button>
-                            <button type="submit" class="btn-primary" value="review" data-walk-in-submit-action>Save &amp; Review Inquiry</button>
+                            <button type="submit" class="btn-primary" value="pending" data-walk-in-submit-action>Save Walk-in Inquiry</button>
                         </div>
                     </form>
+                </div>
+            </section>
+
+            <section class="walk-in-otp-modal" data-walk-in-otp-modal aria-hidden="true">
+                <div class="walk-in-otp-card" role="dialog" aria-modal="true" aria-labelledby="walk-in-otp-title">
+                    <h3 id="walk-in-otp-title">Verify Client Email</h3>
+                    <p>Enter the 6-digit code sent to <strong data-walk-in-otp-email></strong>.</p>
+                    <label for="walk_in_otp_code">Verification Code</label>
+                    <input id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" data-walk-in-otp-code>
+                    <small class="walk-in-field-error" data-walk-in-otp-error></small>
+                    <div class="walk-in-confirm-actions">
+                        <button type="button" class="btn-secondary" data-walk-in-otp-close>Close</button>
+                        <button type="button" class="btn-primary" data-walk-in-otp-verify>Verify Code</button>
+                    </div>
                 </div>
             </section>
 

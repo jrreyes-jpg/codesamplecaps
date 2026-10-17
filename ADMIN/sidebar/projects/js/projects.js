@@ -1450,9 +1450,12 @@ function initWalkInInquiryPanel() {
     const barangaySelect = panel?.querySelector('[data-walk-in-barangay]');
     const dateInput = panel?.querySelector('[data-walk-in-date]');
     const timeSelect = panel?.querySelector('[data-walk-in-time]');
+    const engineerSelect = panel?.querySelector('select[name="preferred_engineer_id"]');
     const nextActionInput = panel?.querySelector('[data-walk-in-next-action]');
     const nameError = panel?.querySelector('[data-walk-in-name-error]');
     const emailError = panel?.querySelector('[data-walk-in-email-error]');
+    const sendOtpButton = panel?.querySelector('[data-walk-in-send-otp]');
+    const emailStatus = panel?.querySelector('[data-walk-in-email-status]');
     const contactError = panel?.querySelector('[data-walk-in-contact-error]');
     const descriptionError = panel?.querySelector('[data-walk-in-description-error]');
     const otherError = panel?.querySelector('[data-walk-in-other-error]');
@@ -1462,6 +1465,11 @@ function initWalkInInquiryPanel() {
     const confirmMessage = confirmModal?.querySelector('[data-walk-in-confirm-message]');
     const confirmAccept = confirmModal?.querySelector('[data-walk-in-confirm-accept]');
     const confirmCancel = confirmModal?.querySelector('[data-walk-in-confirm-cancel]');
+    const otpModal = document.querySelector('[data-walk-in-otp-modal]');
+    const otpEmail = otpModal?.querySelector('[data-walk-in-otp-email]');
+    const otpCode = otpModal?.querySelector('[data-walk-in-otp-code]');
+    const otpError = otpModal?.querySelector('[data-walk-in-otp-error]');
+    const otpVerifyButton = otpModal?.querySelector('[data-walk-in-otp-verify]');
     const draftKey = 'codesamplecaps.admin.walkInInquiryDraft';
     let locationData = null;
     let locationLoading = null;
@@ -1471,6 +1479,7 @@ function initWalkInInquiryPanel() {
     let contactCheckId = 0;
     let emailEdited = false;
     let contactEdited = false;
+    let emailIsVerified = false;
     let historyGuardReady = false;
     let ignoreNextPopstate = false;
 
@@ -1688,6 +1697,82 @@ function initWalkInInquiryPanel() {
         return setValidation(emailAddress, emailError, valid ? '' : 'Enter a valid email address.');
     }
 
+    function setEmailVerified(verified) {
+        emailIsVerified = verified;
+        if (!emailStatus) return;
+        emailStatus.textContent = verified ? 'Email verified' : 'Email not verified';
+        emailStatus.classList.toggle('is-verified', verified);
+        if (sendOtpButton) sendOtpButton.textContent = verified ? 'Verified' : 'Verify Email';
+    }
+
+    function closeOtpModal() {
+        otpModal?.classList.remove('is-open');
+        otpModal?.setAttribute('aria-hidden', 'true');
+        if (otpError) otpError.textContent = '';
+        if (otpCode) otpCode.value = '';
+    }
+
+    async function sendEmailOtp() {
+        if (!validateName() || !validateEmail()) return;
+        sendOtpButton?.setAttribute('disabled', 'disabled');
+        const data = new FormData();
+        data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        data.append('client_name', clientName.value.trim());
+        data.append('email', emailAddress.value.trim());
+        try {
+            const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/send_walk_in_email_otp.php', {
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+                body: data,
+            });
+            const result = await response.json();
+            if (!result.success) {
+                setValidation(emailAddress, emailError, result.message || 'Email cannot be sent right now.');
+                return;
+            }
+            if (otpEmail) otpEmail.textContent = emailAddress.value.trim();
+            otpModal?.classList.add('is-open');
+            otpModal?.setAttribute('aria-hidden', 'false');
+            otpCode?.focus({ preventScroll: true });
+        } catch (error) {
+            setValidation(emailAddress, emailError, 'Email cannot be sent right now.');
+        } finally {
+            sendOtpButton?.removeAttribute('disabled');
+        }
+    }
+
+    async function verifyEmailOtp() {
+        const code = String(otpCode?.value || '').replace(/\D/g, '').slice(0, 6);
+        if (otpCode) otpCode.value = code;
+        if (!/^\d{6}$/.test(code)) {
+            if (otpError) otpError.textContent = 'Enter the 6-digit code.';
+            return;
+        }
+        otpVerifyButton?.setAttribute('disabled', 'disabled');
+        const data = new FormData();
+        data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        data.append('email', emailAddress.value.trim());
+        data.append('otp', code);
+        try {
+            const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/verify_walk_in_email_otp.php', {
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+                body: data,
+            });
+            const result = await response.json();
+            if (!result.success) {
+                if (otpError) otpError.textContent = result.message || 'Incorrect code.';
+                return;
+            }
+            setEmailVerified(true);
+            closeOtpModal();
+        } catch (error) {
+            if (otpError) otpError.textContent = 'Unable to verify the code. Try again.';
+        } finally {
+            otpVerifyButton?.removeAttribute('disabled');
+        }
+    }
+
     async function checkExistingContact() {
         const name = String(clientName?.value || '').trim();
         const email = String(emailAddress?.value || '').trim();
@@ -1759,7 +1844,7 @@ function initWalkInInquiryPanel() {
     function getDraftData() {
         const data = {};
         new FormData(form).forEach(function (value, key) {
-            if (key !== 'csrf_token') data[key] = String(value);
+            if (!['csrf_token', 'next_action'].includes(key)) data[key] = String(value);
         });
         return data;
     }
@@ -1781,10 +1866,10 @@ function initWalkInInquiryPanel() {
     function saveDraft() {
         try {
             if (hasDraftContent()) {
-                window.localStorage.setItem(draftKey, JSON.stringify(getDraftData()));
+                window.sessionStorage.setItem(draftKey, JSON.stringify(getDraftData()));
                 enableHistoryGuard();
             } else {
-                window.localStorage.removeItem(draftKey);
+                window.sessionStorage.removeItem(draftKey);
             }
         } catch (error) {
         }
@@ -1792,6 +1877,7 @@ function initWalkInInquiryPanel() {
 
     function clearSavedDraft() {
         try {
+            window.sessionStorage.removeItem(draftKey);
             window.localStorage.removeItem(draftKey);
         } catch (error) {
         }
@@ -1801,7 +1887,7 @@ function initWalkInInquiryPanel() {
         if (form.dataset.hasServerInput === '1') return false;
         let draft = null;
         try {
-            draft = JSON.parse(window.localStorage.getItem(draftKey) || 'null');
+            draft = JSON.parse(window.sessionStorage.getItem(draftKey) || 'null');
         } catch (error) {
             draft = null;
         }
@@ -1889,6 +1975,7 @@ function initWalkInInquiryPanel() {
         clearSavedDraft();
         emailEdited = false;
         contactEdited = false;
+        setEmailVerified(false);
         clientName?.focus({ preventScroll: true });
     }
 
@@ -1951,6 +2038,7 @@ function initWalkInInquiryPanel() {
     document.addEventListener('click', function (event) {
         if (event.target.closest('[data-walk-in-inquiry-open]')) {
             event.preventDefault();
+            restoreDraft();
             openPanel();
             return;
         }
@@ -1978,6 +2066,10 @@ function initWalkInInquiryPanel() {
 
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
+        if (otpModal?.classList.contains('is-open')) {
+            closeOtpModal();
+            return;
+        }
         if (confirmModal?.classList.contains('is-open')) {
             hideConfirm();
             return;
@@ -1993,6 +2085,16 @@ function initWalkInInquiryPanel() {
     emailAddress?.addEventListener('input', function () {
         emailEdited = true;
         setValidation(emailAddress, emailError, '');
+        setEmailVerified(false);
+    });
+    sendOtpButton?.addEventListener('click', sendEmailOtp);
+    otpVerifyButton?.addEventListener('click', verifyEmailOtp);
+    otpModal?.addEventListener('click', function (event) {
+        if (event.target === otpModal || event.target.closest('[data-walk-in-otp-close]')) closeOtpModal();
+    });
+    otpCode?.addEventListener('input', function () {
+        otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 6);
+        if (otpError) otpError.textContent = '';
     });
     emailAddress?.addEventListener('blur', function () {
         if (emailEdited) validateEmail();
@@ -2021,7 +2123,7 @@ function initWalkInInquiryPanel() {
     form.addEventListener('submit', async function (event) {
         if (saveConfirmed) return;
         event.preventDefault();
-        const nextAction = event.submitter?.value === 'review' ? 'review' : 'pending';
+        const nextAction = 'pending';
         if (nextActionInput) nextActionInput.value = nextAction;
         const nameIsValid = validateName();
         const emailIsValid = validateEmail();
@@ -2049,13 +2151,12 @@ function initWalkInInquiryPanel() {
             return;
         }
         const selectedTime = timeSelect?.selectedOptions[0]?.textContent?.trim() || '';
-        const willContinueReview = nextAction === 'review';
+        const engineerName = engineerSelect?.selectedOptions[0]?.textContent?.trim() || 'Unassigned';
+        const emailNote = emailIsVerified ? 'Email is verified.' : 'Email is not verified yet.';
         showConfirm({
-            title: willContinueReview ? 'Save and Review Inquiry?' : 'Save as Pending Inquiry?',
-            message: willContinueReview
-                ? clientName.value.trim() + ' - Save first, then review the inquiry and prepare the initial quotation.'
-                : clientName.value.trim() + ' - ' + dateInput.value + ' at ' + selectedTime + '. Engineer stays Unassigned.',
-            accept: willContinueReview ? 'Save and Review' : 'Confirm Pending',
+            title: 'Save Walk-in Inquiry?',
+            message: clientName.value.trim() + ' - ' + dateInput.value + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. ' + emailNote,
+            accept: 'Confirm Save',
             cancel: 'Go Back',
             tone: 'primary',
         }, function () {
@@ -2068,7 +2169,11 @@ function initWalkInInquiryPanel() {
         });
     });
 
-    const draftRestored = restoreDraft();
+    // Alisin ang lumang draft na dating tumatagal kahit sarado na ang browser.
+    try {
+        window.localStorage.removeItem(draftKey);
+    } catch (error) {
+    }
     syncOtherService();
     syncAvailableTimes();
     if (contactNumber?.value && contactNumber.value !== '09') validateContact();
@@ -2080,8 +2185,6 @@ function initWalkInInquiryPanel() {
         panel.setAttribute('aria-hidden', 'false');
         document.body.classList.add('project-modal-open');
         loadLocations();
-    } else if (draftRestored) {
-        openPanel();
     }
 
     document.addEventListener('click', function (event) {
@@ -2098,13 +2201,6 @@ function initWalkInInquiryPanel() {
             window.location.assign(link.href);
         });
     }, true);
-
-    window.addEventListener('beforeunload', function (event) {
-        if (isSubmitting || !hasDraftContent()) return;
-        saveDraft();
-        event.preventDefault();
-        event.returnValue = '';
-    });
 
     window.addEventListener('popstate', function () {
         if (ignoreNextPopstate) {

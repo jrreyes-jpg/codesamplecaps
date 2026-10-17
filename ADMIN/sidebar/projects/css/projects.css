@@ -3120,6 +3120,75 @@ body.project-modal-open {
     line-height: 1.4;
 }
 
+.walk-in-email-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.walk-in-verify-email-button {
+    min-height: 34px;
+    padding: 7px 12px;
+    border: 1px solid #86efac;
+    border-radius: 9px;
+    color: #166534;
+    background: #f0fdf4;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.walk-in-verify-email-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.walk-in-email-status {
+    color: #b45309;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.walk-in-email-status.is-verified {
+    color: #15803d;
+}
+
+.walk-in-otp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: none;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.64);
+}
+
+.walk-in-otp-modal.is-open {
+    display: grid;
+}
+
+.walk-in-otp-card {
+    width: min(420px, 100%);
+    padding: 24px;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.walk-in-otp-card h3,
+.walk-in-otp-card p {
+    margin-top: 0;
+}
+
+.walk-in-otp-card input {
+    width: 100%;
+    margin-top: 8px;
+    text-align: center;
+    letter-spacing: 0.35em;
+}
+
 @media (max-width: 640px) {
     .walk-in-inquiry-panel {
         width: 100%;

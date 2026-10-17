@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../services/walk_in_inquiry_service.php';
+require_once __DIR__ . '/../../../../config/walk_in_email_verification.php';
 
 require_role('admin');
 
@@ -22,6 +23,8 @@ $_SESSION['walk_in_inquiry_old_input'] = $_POST;
 
 try {
     $nextAction = (string)($_POST['next_action'] ?? '') === 'review' ? 'review' : 'pending';
+    $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''));
+    $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
     $inquiryId = create_walk_in_inquiry($conn, $_POST);
     audit_log_event(
         $conn,
@@ -30,8 +33,13 @@ try {
         'service_inquiry',
         $inquiryId,
         null,
-        ['status' => 'Pending Review', 'engineer' => 'Unassigned']
+        [
+            'status' => 'Pending Review',
+            'email_verified' => $emailWasVerified,
+            'preferred_engineer_id' => $preferredEngineerId ?: null,
+        ]
     );
+    walk_in_email_verification_clear();
     unset($_SESSION['walk_in_inquiry_old_input']);
     $_SESSION['inquiry_center_flash'] = $nextAction === 'review'
         ? 'Walk-in inquiry saved. Review it before preparing the initial quotation.'

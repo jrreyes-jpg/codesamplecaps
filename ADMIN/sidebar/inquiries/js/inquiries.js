@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const pageParams = new URLSearchParams(window.location.search);
     if (pageParams.get('walk_in_saved') === '1') {
         try {
+            window.sessionStorage.removeItem('codesamplecaps.admin.walkInInquiryDraft');
             window.localStorage.removeItem('codesamplecaps.admin.walkInInquiryDraft');
         } catch (error) {
         }

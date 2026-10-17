@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/walk_in_inquiry_schedule.php';
+require_once __DIR__ . '/../../config/walk_in_email_verification.php';
 
 function walk_in_inquiry_has_column(mysqli $conn, string $column): bool
 {
@@ -48,6 +49,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
     $description = trim((string)($input['description'] ?? ''));
     $preferredDate = trim((string)($input['preferred_inspection_date'] ?? ''));
     $preferredTime = trim((string)($input['preferred_inspection_time'] ?? ''));
+    $preferredEngineerId = max(0, (int)($input['preferred_engineer_id'] ?? 0));
 
     if (!inquiry_name_is_valid($clientName)) {
         throw new InvalidArgumentException('Enter a valid full name.');
@@ -96,7 +98,29 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
         throw new InvalidArgumentException((string)$scheduleValidation['message']);
     }
 
+    $preferredEngineerName = '';
+    if ($preferredEngineerId > 0) {
+        $engineerStmt = $conn->prepare("SELECT full_name FROM users WHERE id = ? AND role = 'engineer' AND status = 'active' AND deleted_at IS NULL LIMIT 1");
+        if (!$engineerStmt) {
+            throw new RuntimeException('Unable to check the Engineer.');
+        }
+        $engineerStmt->bind_param('i', $preferredEngineerId);
+        $engineerStmt->execute();
+        $engineer = $engineerStmt->get_result()->fetch_assoc();
+        if (!$engineer) {
+            throw new InvalidArgumentException('Select an active Engineer or leave it Unassigned.');
+        }
+        $preferredEngineerName = (string)$engineer['full_name'];
+    }
+
     $status = 'Pending Review';
+    $emailVerified = walk_in_email_is_verified($email);
+    $adminNotes = $emailVerified ? '[Walk-in email verified by OTP]' : '[Walk-in email unverified]';
+    if ($preferredEngineerId > 0) {
+        $adminNotes .= "\n[Preferred Engineer confirmed: {$preferredEngineerName} (#{$preferredEngineerId})]";
+    } else {
+        $adminNotes .= "\n[Preferred Engineer: Unassigned]";
+    }
     if (
         walk_in_inquiry_has_column($conn, 'inquiry_source')
         && walk_in_inquiry_has_column($conn, 'contact_person')
@@ -107,14 +131,14 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
             'INSERT INTO service_inquiries
                 (inquiry_source, client_name, contact_person, email, contact_no,
                  province, city_municipality, barangay, site_address, service_category,
-                 description, preferred_inspection_date, preferred_inspection_time, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                 description, preferred_inspection_date, preferred_inspection_time, status, admin_notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$stmt) {
             throw new RuntimeException('Unable to save the walk-in inquiry.');
         }
         $stmt->bind_param(
-            'ssssssssssssss',
+            'sssssssssssssss',
             $source,
             $clientName,
             $clientName,
@@ -128,11 +152,12 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
             $description,
             $preferredDate,
             $preferredTime,
-            $status
+            $status,
+            $adminNotes
         );
     } else {
         // Fallback habang hindi pa nalalagay ang migration.
-        $sourceNote = '[Walk-in inquiry] Preferred time: ' . $preferredTime;
+        $sourceNote = '[Walk-in inquiry] Preferred time: ' . $preferredTime . "\n" . $adminNotes;
         $stmt = $conn->prepare(
             'INSERT INTO service_inquiries
                 (client_name, email, contact_no, province, city_municipality, barangay,

@@ -29,19 +29,21 @@
     const bulkArchiveForm = document.querySelector('[data-material-bulk-archive-form]');
     const bulkArchiveButton = document.querySelector('[data-material-bulk-archive]');
     const selectedCount = document.querySelector('[data-material-selected-count]');
+    const selectableMaterialSelections = materialSelections.filter(function (item) { return !item.disabled; });
 
     function updateBulkArchiveState() {
-        const selected = materialSelections.filter(function (item) { return item.checked; });
+        const selected = selectableMaterialSelections.filter(function (item) { return item.checked; });
         if (selectedCount) selectedCount.textContent = selected.length + ' selected';
         if (bulkArchiveButton) bulkArchiveButton.disabled = selected.length === 0;
         if (selectAllMaterials) {
-            selectAllMaterials.checked = selected.length > 0 && selected.length === materialSelections.length;
-            selectAllMaterials.indeterminate = selected.length > 0 && selected.length < materialSelections.length;
+            selectAllMaterials.checked = selectableMaterialSelections.length > 0 && selected.length === selectableMaterialSelections.length;
+            selectAllMaterials.indeterminate = selected.length > 0 && selected.length < selectableMaterialSelections.length;
+            selectAllMaterials.disabled = selectableMaterialSelections.length === 0;
         }
     }
 
     selectAllMaterials?.addEventListener('change', function () {
-        materialSelections.forEach(function (item) { item.checked = selectAllMaterials.checked; });
+        selectableMaterialSelections.forEach(function (item) { item.checked = selectAllMaterials.checked; });
         updateBulkArchiveState();
     });
     materialSelections.forEach(function (item) {
@@ -78,7 +80,7 @@
             archiveConfirmed = false;
             return;
         }
-        const selected = materialSelections.filter(function (item) { return item.checked; });
+        const selected = selectableMaterialSelections.filter(function (item) { return item.checked; });
         event.preventDefault();
         if (selected.length === 0) return;
         openArchiveModal(bulkArchiveForm, 'Archive ' + selected.length + ' selected material(s)? Items with stock, active projects, or pending deliveries will stay active.', bulkArchiveButton);

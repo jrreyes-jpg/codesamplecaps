@@ -184,6 +184,66 @@ if (!function_exists('material_stock_fetch_materials')) {
     }
 }
 
+if (!function_exists('material_stock_fetch_archive_block_reasons')) {
+    function material_stock_fetch_archive_block_reasons(mysqli $conn, array $materials): array
+    {
+        $materialIds = array_values(array_filter(array_map(
+            static fn(array $material): int => (int)($material['id'] ?? 0),
+            $materials
+        )));
+        if ($materialIds === []) {
+            return [];
+        }
+
+        $idList = implode(',', $materialIds);
+        $activeReservations = [];
+        $reservationResult = $conn->query(
+            "SELECT DISTINCT material_id FROM project_material_reservations
+             WHERE status = 'active' AND material_id IN ({$idList})"
+        );
+        if ($reservationResult instanceof mysqli_result) {
+            foreach ($reservationResult->fetch_all(MYSQLI_ASSOC) as $row) {
+                $activeReservations[(int)$row['material_id']] = true;
+            }
+        }
+
+        $pendingDeliveries = [];
+        $deliveryTable = $conn->query("SHOW TABLES LIKE 'material_delivery_verifications'");
+        if ($deliveryTable instanceof mysqli_result && $deliveryTable->num_rows === 1) {
+            $deliveryResult = $conn->query(
+                "SELECT DISTINCT material_id FROM material_delivery_verifications
+                 WHERE status = 'for_verification' AND material_id IN ({$idList})"
+            );
+            if ($deliveryResult instanceof mysqli_result) {
+                foreach ($deliveryResult->fetch_all(MYSQLI_ASSOC) as $row) {
+                    $pendingDeliveries[(int)$row['material_id']] = true;
+                }
+            }
+        }
+
+        $reasons = [];
+        foreach ($materials as $material) {
+            $materialId = (int)$material['id'];
+            $quantity = (float)($material['physical_quantity'] ?? 0);
+            $reserved = (float)($material['reserved_quantity'] ?? 0);
+            $unit = trim((string)($material['unit'] ?? ''));
+
+            if ($quantity > 0) {
+                $displayQuantity = rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
+                $reasons[$materialId] = 'Cannot archive: ' . $displayQuantity . ' ' . $unit . ' in stock.';
+            } elseif ($reserved > 0) {
+                $reasons[$materialId] = 'Cannot archive: stock is reserved.';
+            } elseif (isset($activeReservations[$materialId])) {
+                $reasons[$materialId] = 'Cannot archive: used by an active project.';
+            } elseif (isset($pendingDeliveries[$materialId])) {
+                $reasons[$materialId] = 'Cannot archive: Clerk count is pending.';
+            }
+        }
+
+        return $reasons;
+    }
+}
+
 if (!function_exists('material_stock_fetch_project_issued_totals')) {
     function material_stock_fetch_project_issued_totals(mysqli $conn): array
     {

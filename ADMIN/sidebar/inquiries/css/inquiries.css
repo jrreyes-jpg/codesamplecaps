@@ -1510,6 +1510,12 @@
     margin-top: 2px;
 }
 
+.inquiry-source-strip {
+    margin-top: 2px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
 .inquiry-status-strip--quotation {
     gap: 6px;
     margin-top: 2px;

@@ -1433,6 +1433,704 @@ function initCreateProjectPanel() {
     }
 }
 
+function initWalkInInquiryPanel() {
+    const panel = document.querySelector('[data-walk-in-inquiry-panel]');
+    const dialog = panel?.querySelector('[role="dialog"]');
+    const form = panel?.querySelector('[data-walk-in-inquiry-form]');
+    const clientName = panel?.querySelector('[data-walk-in-client-name]');
+    const emailAddress = panel?.querySelector('[data-walk-in-email]');
+    const contactNumber = panel?.querySelector('[data-walk-in-contact-number]');
+    const description = panel?.querySelector('[data-walk-in-description]');
+    const serviceSelect = panel?.querySelector('select[name="service_category"]');
+    const otherServiceWrap = panel?.querySelector('[data-walk-in-other-service]');
+    const otherService = panel?.querySelector('input[name="other_service_details"]');
+    const regionSelect = panel?.querySelector('[data-walk-in-region]');
+    const areaSelect = panel?.querySelector('[data-walk-in-area]');
+    const citySelect = panel?.querySelector('[data-walk-in-city]');
+    const barangaySelect = panel?.querySelector('[data-walk-in-barangay]');
+    const dateInput = panel?.querySelector('[data-walk-in-date]');
+    const timeSelect = panel?.querySelector('[data-walk-in-time]');
+    const nextActionInput = panel?.querySelector('[data-walk-in-next-action]');
+    const nameError = panel?.querySelector('[data-walk-in-name-error]');
+    const emailError = panel?.querySelector('[data-walk-in-email-error]');
+    const contactError = panel?.querySelector('[data-walk-in-contact-error]');
+    const descriptionError = panel?.querySelector('[data-walk-in-description-error]');
+    const otherError = panel?.querySelector('[data-walk-in-other-error]');
+    const scheduleError = panel?.querySelector('[data-walk-in-schedule-error]');
+    const confirmModal = document.querySelector('[data-walk-in-confirm-modal]');
+    const confirmTitle = confirmModal?.querySelector('[data-walk-in-confirm-title]');
+    const confirmMessage = confirmModal?.querySelector('[data-walk-in-confirm-message]');
+    const confirmAccept = confirmModal?.querySelector('[data-walk-in-confirm-accept]');
+    const confirmCancel = confirmModal?.querySelector('[data-walk-in-confirm-cancel]');
+    const draftKey = 'codesamplecaps.admin.walkInInquiryDraft';
+    let locationData = null;
+    let locationLoading = null;
+    let pendingConfirmAction = null;
+    let isSubmitting = false;
+    let saveConfirmed = false;
+    let contactCheckId = 0;
+    let emailEdited = false;
+    let contactEdited = false;
+    let historyGuardReady = false;
+    let ignoreNextPopstate = false;
+
+    if (!panel || !form) return;
+
+    function setValidation(field, errorElement, message) {
+        if (!field) return false;
+        field.setCustomValidity(message);
+        field.classList.toggle('is-invalid-live', message !== '');
+        if (errorElement) errorElement.textContent = message;
+        return message === '';
+    }
+
+    function closeCombobox(input) {
+        const box = input?.closest('[data-walk-in-combobox]');
+        box?.classList.remove('is-open');
+        const list = box?.querySelector('[data-walk-in-combobox-list]');
+        if (list) list.replaceChildren();
+    }
+
+    function closeOtherComboboxes(activeInput) {
+        panel.querySelectorAll('[data-walk-in-combobox]').forEach(function (box) {
+            if (box !== activeInput?.closest('[data-walk-in-combobox]')) {
+                box.classList.remove('is-open');
+            }
+        });
+    }
+
+    function setSelectedLocation(input, value) {
+        if (!input) return;
+        input.value = value;
+        input.dataset.selectedValue = value;
+        input.setCustomValidity('');
+    }
+
+    function clearLocation(input, placeholder) {
+        if (!input) return;
+        input.value = '';
+        delete input.dataset.selectedValue;
+        input.placeholder = placeholder;
+        closeCombobox(input);
+    }
+
+    function isSelectedLocation(input, options) {
+        const value = String(input?.value || '').trim();
+        return value !== '' && value === (input?.dataset.selectedValue || '') && options.includes(value);
+    }
+
+    function renderLocationOptions(input, options, showAll = false) {
+        const box = input?.closest('[data-walk-in-combobox]');
+        const list = box?.querySelector('[data-walk-in-combobox-list]');
+        if (!input || !list || input.disabled) return;
+
+        closeOtherComboboxes(input);
+        const search = showAll ? '' : input.value.trim().toLowerCase();
+        const matches = options.filter(function (option) {
+            return option.toLowerCase().includes(search);
+        });
+        list.replaceChildren();
+
+        if (matches.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'walk-in-combobox__empty';
+            empty.textContent = 'No match. Select from the list.';
+            list.appendChild(empty);
+        } else {
+            matches.forEach(function (option) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = option;
+                button.addEventListener('click', function (event) {
+                    // Huwag isara ang form habang pumipili.
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setSelectedLocation(input, option);
+                    closeCombobox(input);
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                list.appendChild(button);
+            });
+        }
+        box?.classList.add('is-open');
+    }
+
+    function bindLocationCombobox(input, getOptions, onChanged) {
+        if (!input) return;
+        const toggle = input.closest('[data-walk-in-combobox]')?.querySelector('[data-walk-in-combobox-toggle]');
+        input.addEventListener('input', function () {
+            if (input.value !== (input.dataset.selectedValue || '')) delete input.dataset.selectedValue;
+            input.setCustomValidity('');
+            onChanged();
+            renderLocationOptions(input, getOptions());
+        });
+        input.addEventListener('focus', function () {
+            renderLocationOptions(input, getOptions());
+        });
+        input.addEventListener('blur', function () {
+            window.setTimeout(function () {
+                if (input.value && !isSelectedLocation(input, getOptions())) {
+                    input.setCustomValidity('Select from the list.');
+                }
+            }, 120);
+        });
+        toggle?.addEventListener('click', function () {
+            if (input.disabled) return;
+            if (input.closest('[data-walk-in-combobox]')?.classList.contains('is-open')) {
+                closeCombobox(input);
+                return;
+            }
+            input.focus();
+            renderLocationOptions(input, getOptions(), true);
+        });
+    }
+
+    function loadLocations() {
+        if (locationData) return Promise.resolve(locationData);
+        if (locationLoading) return locationLoading;
+        locationLoading = fetch('/codesamplecaps/ADMIN/sidebar/projects/php/walk_in_location_data.php', {
+            headers: { Accept: 'application/json' },
+        }).then(function (response) {
+            if (!response.ok) throw new Error('Location list is not available.');
+            return response.json();
+        }).then(function (data) {
+            locationData = data;
+            const initialRegion = regionSelect?.dataset.initialValue || '';
+            const regions = Object.keys(data.areas || {});
+            regionSelect.disabled = regions.length === 0;
+            regionSelect.placeholder = 'Search or select region';
+            if (regions.includes(initialRegion)) setSelectedLocation(regionSelect, initialRegion);
+            syncAreas(true);
+            return data;
+        }).catch(function () {
+            regionSelect.disabled = true;
+            regionSelect.placeholder = 'Location list is not available';
+            return null;
+        });
+        return locationLoading;
+    }
+
+    function getRegionOptions() {
+        return Object.keys(locationData?.areas || {});
+    }
+
+    function getAreaOptions() {
+        const region = regionSelect?.value || '';
+        return isSelectedLocation(regionSelect, getRegionOptions())
+            ? Object.keys(locationData?.areas?.[region] || {})
+            : [];
+    }
+
+    function getCityOptions() {
+        const region = regionSelect?.value || '';
+        const area = areaSelect?.value || '';
+        return isSelectedLocation(areaSelect, getAreaOptions())
+            ? (locationData?.areas?.[region]?.[area] || [])
+            : [];
+    }
+
+    function getBarangayOptions() {
+        const region = regionSelect?.value || '';
+        const area = areaSelect?.value || '';
+        const city = citySelect?.value || '';
+        return isSelectedLocation(citySelect, getCityOptions())
+            ? (locationData?.barangays?.[region]?.[area]?.[city] || [])
+            : [];
+    }
+
+    function syncAreas(restoreInitial = false) {
+        clearLocation(areaSelect, 'Select region first');
+        clearLocation(citySelect, 'Select province / area first');
+        clearLocation(barangaySelect, 'Select city first');
+        const options = getAreaOptions();
+        areaSelect.disabled = options.length === 0;
+        if (options.length) areaSelect.placeholder = 'Search or select province / area';
+        const initial = restoreInitial ? (areaSelect.dataset.initialValue || '') : '';
+        if (options.includes(initial)) setSelectedLocation(areaSelect, initial);
+        syncCities(restoreInitial);
+    }
+
+    function syncCities(restoreInitial = false) {
+        clearLocation(citySelect, 'Select province / area first');
+        clearLocation(barangaySelect, 'Select city first');
+        const options = getCityOptions();
+        citySelect.disabled = options.length === 0;
+        if (options.length) citySelect.placeholder = 'Search or select city / municipality';
+        const initial = restoreInitial ? (citySelect.dataset.initialValue || '') : '';
+        if (options.includes(initial)) setSelectedLocation(citySelect, initial);
+        syncBarangays(restoreInitial);
+    }
+
+    function syncBarangays(restoreInitial = false) {
+        clearLocation(barangaySelect, 'Select city first');
+        const options = getBarangayOptions();
+        barangaySelect.disabled = options.length === 0;
+        if (options.length) barangaySelect.placeholder = 'Search or select barangay';
+        const initial = restoreInitial ? (barangaySelect.dataset.initialValue || '') : '';
+        if (options.includes(initial)) setSelectedLocation(barangaySelect, initial);
+    }
+
+    function validateName() {
+        const value = String(clientName?.value || '').trim();
+        const allowed = /^[\p{L}\p{M} .'’-]+$/u.test(value);
+        const letters = value.match(/\p{L}/gu) || [];
+        return setValidation(clientName, nameError, allowed && letters.length >= 2 ? '' : 'Enter a valid full name.');
+    }
+
+    function validateContact() {
+        const value = String(contactNumber?.value || '');
+        return setValidation(contactNumber, contactError, /^09\d{9}$/.test(value) ? '' : 'Use 09 and enter 11 digits.');
+    }
+
+    function validateEmail() {
+        const value = String(emailAddress?.value || '').trim();
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        return setValidation(emailAddress, emailError, valid ? '' : 'Enter a valid email address.');
+    }
+
+    async function checkExistingContact() {
+        const name = String(clientName?.value || '').trim();
+        const email = String(emailAddress?.value || '').trim();
+        const phone = String(contactNumber?.value || '');
+        const nameIsValid = /^[\p{L}\p{M} .'â€™-]+$/u.test(name) && (name.match(/\p{L}/gu) || []).length >= 2;
+        const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        const phoneIsValid = /^09\d{9}$/.test(phone);
+        if (!nameIsValid || !emailIsValid || !phoneIsValid) return false;
+
+        const requestId = ++contactCheckId;
+        const data = new FormData();
+        data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        data.append('client_name', clientName.value.trim());
+        data.append('email', emailAddress.value.trim());
+        data.append('contact_no', contactNumber.value);
+
+        try {
+            const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/check_walk_in_contact.php', {
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+                body: data,
+            });
+            const result = await response.json();
+            if (requestId !== contactCheckId) return false;
+            const message = result.valid ? '' : (result.message || 'Invalid client details.');
+            setValidation(clientName, nameError, '');
+            setValidation(emailAddress, emailError, '');
+            setValidation(contactNumber, contactError, '');
+            if (!result.valid) {
+                if (result.field === 'name') setValidation(clientName, nameError, message);
+                if (result.field === 'email' || result.field === 'both') setValidation(emailAddress, emailError, message);
+                if (result.field === 'phone' || result.field === 'both') setValidation(contactNumber, contactError, message);
+                if (!result.field) setValidation(emailAddress, emailError, message);
+            }
+            return Boolean(result.valid);
+        } catch (error) {
+            if (requestId !== contactCheckId) return false;
+            setValidation(emailAddress, emailError, 'Unable to check the client details. Try again.');
+            return false;
+        }
+    }
+
+    function validateDescription() {
+        const value = String(description?.value || '').trim();
+        const letters = value.match(/\p{L}/gu) || [];
+        return setValidation(description, descriptionError, value.length >= 3 && letters.length >= 2 ? '' : 'Enter at least 3 characters.');
+    }
+
+    function syncOtherService() {
+        const shouldShow = serviceSelect?.value === 'Other Service';
+        if (otherServiceWrap) otherServiceWrap.hidden = !shouldShow;
+        if (otherService) {
+            otherService.disabled = !shouldShow;
+            otherService.required = shouldShow;
+            if (!shouldShow) {
+                otherService.value = '';
+                setValidation(otherService, otherError, '');
+            }
+        }
+    }
+
+    function validateOtherService() {
+        if (serviceSelect?.value !== 'Other Service') return true;
+        const value = String(otherService?.value || '').trim();
+        const letters = value.match(/\p{L}/gu) || [];
+        return setValidation(otherService, otherError, value.length >= 3 && letters.length >= 2 ? '' : 'Enter the other service details.');
+    }
+
+    function getDraftData() {
+        const data = {};
+        new FormData(form).forEach(function (value, key) {
+            if (key !== 'csrf_token') data[key] = String(value);
+        });
+        return data;
+    }
+
+    function hasDraftContent() {
+        return Object.entries(getDraftData()).some(function ([key, value]) {
+            const cleanValue = value.trim();
+            return cleanValue !== '' && !(key === 'contact_no' && cleanValue === '09');
+        });
+    }
+
+    function enableHistoryGuard() {
+        if (historyGuardReady) return;
+        window.history.replaceState({ ...(window.history.state || {}), walkInGuardBase: true }, '', window.location.href);
+        window.history.pushState({ walkInGuardTop: true }, '', window.location.href);
+        historyGuardReady = true;
+    }
+
+    function saveDraft() {
+        try {
+            if (hasDraftContent()) {
+                window.localStorage.setItem(draftKey, JSON.stringify(getDraftData()));
+                enableHistoryGuard();
+            } else {
+                window.localStorage.removeItem(draftKey);
+            }
+        } catch (error) {
+        }
+    }
+
+    function clearSavedDraft() {
+        try {
+            window.localStorage.removeItem(draftKey);
+        } catch (error) {
+        }
+    }
+
+    function restoreDraft() {
+        if (form.dataset.hasServerInput === '1') return false;
+        let draft = null;
+        try {
+            draft = JSON.parse(window.localStorage.getItem(draftKey) || 'null');
+        } catch (error) {
+            draft = null;
+        }
+        if (!draft || typeof draft !== 'object') return false;
+
+        Array.from(form.elements).forEach(function (field) {
+            if (!field.name || field.name === 'csrf_token' || !(field.name in draft)) return;
+            if (['region', 'location_area', 'city_municipality', 'barangay'].includes(field.name)) {
+                field.dataset.initialValue = draft[field.name];
+            } else {
+                field.value = draft[field.name];
+            }
+        });
+        syncOtherService();
+        syncAvailableTimes();
+        enableHistoryGuard();
+        return true;
+    }
+
+    function showConfirm(options, action) {
+        if (!confirmModal) return;
+        pendingConfirmAction = action;
+        if (confirmTitle) confirmTitle.textContent = options.title;
+        if (confirmMessage) confirmMessage.textContent = options.message;
+        if (confirmAccept) {
+            confirmAccept.textContent = options.accept;
+            confirmAccept.classList.toggle('btn-primary', options.tone === 'primary');
+            confirmAccept.classList.toggle('btn-danger', options.tone !== 'primary');
+        }
+        if (confirmCancel) confirmCancel.textContent = options.cancel || 'Keep Editing';
+        confirmModal.classList.add('is-open');
+        confirmModal.setAttribute('aria-hidden', 'false');
+        confirmCancel?.focus({ preventScroll: true });
+    }
+
+    function hideConfirm() {
+        confirmModal?.classList.remove('is-open');
+        confirmModal?.setAttribute('aria-hidden', 'true');
+        pendingConfirmAction = null;
+    }
+
+    function askToDiscard(action) {
+        if (!hasDraftContent()) {
+            action();
+            return;
+        }
+        showConfirm({
+            title: 'Discard unsaved inquiry?',
+            message: 'Your saved draft will be removed.',
+            accept: 'Discard',
+        }, action);
+    }
+
+    function askToLeave(action) {
+        if (!hasDraftContent()) {
+            action();
+            return;
+        }
+        saveDraft();
+        showConfirm({
+            title: 'Leave this form?',
+            message: 'Your draft is saved. You can continue it later.',
+            accept: 'Leave',
+        }, action);
+    }
+
+    function clearForm() {
+        form.reset();
+        form.dataset.hasServerInput = '0';
+        [regionSelect, areaSelect, citySelect, barangaySelect].forEach(function (field) {
+            if (field) field.dataset.initialValue = '';
+        });
+        clearLocation(regionSelect, 'Search or select region');
+        regionSelect.disabled = !locationData;
+        syncAreas(false);
+        syncOtherService();
+        syncAvailableTimes();
+        [clientName, emailAddress, contactNumber, description, otherService].forEach(function (field) {
+            field?.classList.remove('is-invalid-live');
+            field?.setCustomValidity('');
+        });
+        [nameError, emailError, contactError, descriptionError, otherError, scheduleError].forEach(function (field) {
+            if (field) field.textContent = '';
+        });
+        clearSavedDraft();
+        emailEdited = false;
+        contactEdited = false;
+        clientName?.focus({ preventScroll: true });
+    }
+
+    function syncAvailableTimes() {
+        if (!dateInput || !timeSelect) return;
+        const now = new Date();
+        const minimum = new Date(now.getTime() + (60 * 60 * 1000));
+        const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+        const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const tomorrow = [tomorrowDate.getFullYear(), String(tomorrowDate.getMonth() + 1).padStart(2, '0'), String(tomorrowDate.getDate()).padStart(2, '0')].join('-');
+        const hasTimeToday = Array.from(timeSelect.options).some(function (option) {
+            if (!option.value) return false;
+            const parts = option.value.split(':').map(Number);
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], 0, 0) >= minimum;
+        });
+
+        if (!hasTimeToday) dateInput.min = tomorrow;
+        if (!hasTimeToday && dateInput.value === today) dateInput.value = '';
+        if (!dateInput.value) {
+            timeSelect.value = '';
+            timeSelect.disabled = true;
+            setValidation(timeSelect, scheduleError, '');
+            return;
+        }
+        let enabledCount = 0;
+
+        Array.from(timeSelect.options).forEach(function (option) {
+            if (!option.value) return;
+            option.disabled = false;
+            if (dateInput.value === today) {
+                const parts = option.value.split(':').map(Number);
+                const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], 0, 0);
+                option.disabled = candidate < minimum;
+            }
+            if (!option.disabled) enabledCount += 1;
+        });
+
+        timeSelect.disabled = enabledCount === 0;
+        if (timeSelect.selectedOptions[0]?.disabled) timeSelect.value = '';
+        const message = dateInput.value === today && enabledCount === 0
+            ? 'No time left today. Choose another date.'
+            : '';
+        setValidation(timeSelect, scheduleError, message);
+    }
+
+    function openPanel() {
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('project-modal-open');
+        loadLocations();
+        clientName?.focus({ preventScroll: true });
+    }
+
+    function closePanel() {
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('project-modal-open');
+    }
+
+    document.addEventListener('click', function (event) {
+        if (event.target.closest('[data-walk-in-inquiry-open]')) {
+            event.preventDefault();
+            openPanel();
+            return;
+        }
+        if (event.target.closest('[data-walk-in-inquiry-close]')) {
+            event.preventDefault();
+            askToLeave(closePanel);
+            return;
+        }
+        if (event.target.closest('[data-walk-in-clear]')) {
+            event.preventDefault();
+            askToDiscard(clearForm);
+        }
+    });
+
+    panel.addEventListener('click', function (event) {
+        if (dialog && !dialog.contains(event.target)) askToLeave(closePanel);
+    });
+
+    confirmCancel?.addEventListener('click', hideConfirm);
+    confirmAccept?.addEventListener('click', function () {
+        const action = pendingConfirmAction;
+        hideConfirm();
+        if (action) action();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        if (confirmModal?.classList.contains('is-open')) {
+            hideConfirm();
+            return;
+        }
+        if (panel.classList.contains('is-open')) askToLeave(closePanel);
+    });
+
+    contactNumber?.addEventListener('input', function () {
+        contactEdited = true;
+        contactNumber.value = contactNumber.value.replace(/\D/g, '').slice(0, 11);
+        setValidation(contactNumber, contactError, '');
+    });
+    emailAddress?.addEventListener('input', function () {
+        emailEdited = true;
+        setValidation(emailAddress, emailError, '');
+    });
+    emailAddress?.addEventListener('blur', function () {
+        if (emailEdited) validateEmail();
+        checkExistingContact();
+    });
+    contactNumber?.addEventListener('blur', function () {
+        if (contactEdited) validateContact();
+        checkExistingContact();
+    });
+    clientName?.addEventListener('input', validateName);
+    clientName?.addEventListener('blur', checkExistingContact);
+    description?.addEventListener('input', validateDescription);
+    otherService?.addEventListener('input', validateOtherService);
+    serviceSelect?.addEventListener('change', syncOtherService);
+    bindLocationCombobox(regionSelect, getRegionOptions, function () { syncAreas(false); });
+    bindLocationCombobox(areaSelect, getAreaOptions, function () { syncCities(false); });
+    bindLocationCombobox(citySelect, getCityOptions, function () { syncBarangays(false); });
+    bindLocationCombobox(barangaySelect, getBarangayOptions, function () {});
+    regionSelect?.addEventListener('change', function () { syncAreas(false); });
+    areaSelect?.addEventListener('change', function () { syncCities(false); });
+    citySelect?.addEventListener('change', function () { syncBarangays(false); });
+    dateInput?.addEventListener('change', syncAvailableTimes);
+    form.addEventListener('input', saveDraft);
+    form.addEventListener('change', saveDraft);
+
+    form.addEventListener('submit', async function (event) {
+        if (saveConfirmed) return;
+        event.preventDefault();
+        const nextAction = event.submitter?.value === 'review' ? 'review' : 'pending';
+        if (nextActionInput) nextActionInput.value = nextAction;
+        const nameIsValid = validateName();
+        const emailIsValid = validateEmail();
+        const contactIsValid = validateContact();
+        const descriptionIsValid = validateDescription();
+        const otherServiceIsValid = validateOtherService();
+        const locationsAreValid = [
+            [regionSelect, getRegionOptions()],
+            [areaSelect, getAreaOptions()],
+            [citySelect, getCityOptions()],
+            [barangaySelect, getBarangayOptions()],
+        ].every(function (entry) {
+            const valid = isSelectedLocation(entry[0], entry[1]);
+            entry[0]?.setCustomValidity(valid ? '' : 'Select from the list.');
+            return valid;
+        });
+        const valid = nameIsValid && emailIsValid && contactIsValid && descriptionIsValid && otherServiceIsValid && locationsAreValid;
+        syncAvailableTimes();
+        if (!valid || !form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        if (!(await checkExistingContact())) {
+            form.reportValidity();
+            return;
+        }
+        const selectedTime = timeSelect?.selectedOptions[0]?.textContent?.trim() || '';
+        const willContinueReview = nextAction === 'review';
+        showConfirm({
+            title: willContinueReview ? 'Save and Review Inquiry?' : 'Save as Pending Inquiry?',
+            message: willContinueReview
+                ? clientName.value.trim() + ' - Save first, then review the inquiry and prepare the initial quotation.'
+                : clientName.value.trim() + ' - ' + dateInput.value + ' at ' + selectedTime + '. Engineer stays Unassigned.',
+            accept: willContinueReview ? 'Save and Review' : 'Confirm Pending',
+            cancel: 'Go Back',
+            tone: 'primary',
+        }, function () {
+            saveConfirmed = true;
+            isSubmitting = true;
+            form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+                button.setAttribute('disabled', 'disabled');
+            });
+            form.requestSubmit();
+        });
+    });
+
+    const draftRestored = restoreDraft();
+    syncOtherService();
+    syncAvailableTimes();
+    if (contactNumber?.value && contactNumber.value !== '09') validateContact();
+    if (emailAddress?.value) validateEmail();
+    if (description?.value) validateDescription();
+    if (clientName?.value) validateName();
+
+    if (panel.classList.contains('is-open')) {
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('project-modal-open');
+        loadLocations();
+    } else if (draftRestored) {
+        openPanel();
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-walk-in-combobox]')) closeOtherComboboxes(null);
+    });
+
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest('a[href]');
+        if (!link || !panel.classList.contains('is-open') || !hasDraftContent()) return;
+        if (link.target === '_blank' || link.hasAttribute('download')) return;
+        event.preventDefault();
+        askToLeave(function () {
+            isSubmitting = true;
+            window.location.assign(link.href);
+        });
+    }, true);
+
+    window.addEventListener('beforeunload', function (event) {
+        if (isSubmitting || !hasDraftContent()) return;
+        saveDraft();
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
+    window.addEventListener('popstate', function () {
+        if (ignoreNextPopstate) {
+            ignoreNextPopstate = false;
+            return;
+        }
+        if (!historyGuardReady) return;
+        if (!hasDraftContent()) {
+            historyGuardReady = false;
+            window.history.back();
+            return;
+        }
+        ignoreNextPopstate = true;
+        window.history.forward();
+        showConfirm({
+            title: 'Leave this form?',
+            message: 'Your draft is saved. You can return to it later.',
+            accept: 'Leave',
+        }, function () {
+            historyGuardReady = false;
+            isSubmitting = true;
+            window.history.go(-2);
+        });
+    });
+}
+
 function initProjectCreateMenu() {
     const menu = document.querySelector('[data-project-create-menu]');
     const toggle = menu?.querySelector('[data-project-create-menu-toggle]');
@@ -1575,4 +2273,5 @@ document.addEventListener('DOMContentLoaded', initProjectsScrollRestore);
 document.addEventListener('DOMContentLoaded', initProjectConfirmForms);
 document.addEventListener('DOMContentLoaded', initProjectCreateMenu);
 document.addEventListener('DOMContentLoaded', initCreateProjectPanel);
+document.addEventListener('DOMContentLoaded', initWalkInInquiryPanel);
 document.addEventListener('DOMContentLoaded', initCreateProjectTextValidation);

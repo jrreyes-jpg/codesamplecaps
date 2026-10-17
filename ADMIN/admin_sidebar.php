@@ -231,24 +231,34 @@ if (!function_exists('super_admin_fetch_notification_data')) {
         $inquiryCount = 0;
         $inquiryAlerts = [];
         if (super_admin_sidebar_table_exists($conn, 'service_inquiries')) {
+            $hasInquirySource = super_admin_sidebar_column_exists($conn, 'service_inquiries', 'inquiry_source');
+            $walkInCondition = $hasInquirySource
+                ? "(COALESCE(i.inquiry_source, 'online') = 'walk_in' OR COALESCE(i.admin_notes, '') LIKE '[Walk-in inquiry]%' OR (i.client_id IS NULL AND COALESCE(i.email, '') = ''))"
+                : "(COALESCE(i.admin_notes, '') LIKE '[Walk-in inquiry]%' OR (i.client_id IS NULL AND COALESCE(i.email, '') = ''))";
+            $pendingNotificationCondition = "i.archived_at IS NULL
+                 AND (
+                    (i.status = 'Pending Review' AND i.viewed_at IS NULL AND NOT ($walkInCondition))
+                    OR (
+                        ($walkInCondition)
+                        AND i.status <> 'Not Qualified'
+                        AND NOT EXISTS (SELECT 1 FROM site_inspections si WHERE si.inquiry_id = i.id)
+                    )
+                 )";
             $inquiryCountResult = $conn->query(
                 "SELECT COUNT(*) AS total
-                 FROM service_inquiries
-                 WHERE status = 'Pending Review'
-                 AND viewed_at IS NULL
-                 AND archived_at IS NULL"
+                 FROM service_inquiries i
+                 WHERE $pendingNotificationCondition"
             );
             if ($inquiryCountResult) {
                 $inquiryCount = (int)(($inquiryCountResult->fetch_assoc()['total'] ?? 0));
             }
 
             $inquiryAlertResult = $conn->query(
-                "SELECT id, client_name, service_category, created_at
-                 FROM service_inquiries
-                 WHERE status = 'Pending Review'
-                 AND viewed_at IS NULL
-                 AND archived_at IS NULL
-                 ORDER BY created_at DESC
+                "SELECT i.id, i.client_name, i.service_category, i.created_at,
+                        CASE WHEN $walkInCondition THEN 'walk_in_unassigned' ELSE 'inquiry' END AS alert_kind
+                 FROM service_inquiries i
+                 WHERE $pendingNotificationCondition
+                 ORDER BY i.created_at DESC
                  LIMIT 8"
             );
             if ($inquiryAlertResult) {
@@ -354,11 +364,14 @@ $adminBellUnreadCount = (int)($superAdminNotificationData['inquiry_count'] ?? 0)
 $adminBellItems = [];
 
 foreach ($superAdminNotificationData['inquiry_alerts'] ?? [] as $inquiryAlert) {
+    $isWalkInUnassigned = (string)($inquiryAlert['alert_kind'] ?? '') === 'walk_in_unassigned';
     $adminBellItems[] = [
-        'source' => 'inquiry',
+        'source' => $isWalkInUnassigned ? 'walk_in_unassigned' : 'inquiry',
         'id' => (int)($inquiryAlert['id'] ?? 0),
         'title' => (string)($inquiryAlert['client_name'] ?? 'Client inquiry'),
-        'message' => (string)($inquiryAlert['service_category'] ?? 'Service request') . ' • New inquiry',
+        'message' => $isWalkInUnassigned
+            ? 'Walk-in inquiry needs Engineer confirmation.'
+            : (string)($inquiryAlert['service_category'] ?? 'Service request') . ' - New inquiry',
         'created_at' => (string)($inquiryAlert['created_at'] ?? ''),
         'target_url' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?viewed_inquiry=' . (int)($inquiryAlert['id'] ?? 0),
     ];

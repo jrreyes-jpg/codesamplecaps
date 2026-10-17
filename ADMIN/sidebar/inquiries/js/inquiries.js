@@ -1,5 +1,15 @@
 // Inquiry modal controls para malinis at walang inline JavaScript.
 document.addEventListener('DOMContentLoaded', function () {
+    const pageParams = new URLSearchParams(window.location.search);
+    if (pageParams.get('walk_in_saved') === '1') {
+        try {
+            window.localStorage.removeItem('codesamplecaps.admin.walkInInquiryDraft');
+        } catch (error) {
+        }
+        pageParams.delete('walk_in_saved');
+        const cleanQuery = pageParams.toString();
+        window.history.replaceState(window.history.state, '', window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash);
+    }
     const inquiryShell = document.querySelector('.inquiries-shell');
     const listStartAtTopKey = 'edgeInquiryListStartAtTop';
     let latestRevisionId = Number.parseInt(inquiryShell?.dataset.latestRevisionId || '0', 10);

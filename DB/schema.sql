@@ -895,7 +895,9 @@ CREATE TABLE `service_barangays` (
 CREATE TABLE `service_inquiries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `client_id` int(11) DEFAULT NULL,
+  `inquiry_source` varchar(30) NOT NULL DEFAULT 'online',
   `client_name` varchar(150) NOT NULL,
+  `contact_person` varchar(150) DEFAULT NULL,
   `company_name` varchar(150) DEFAULT NULL,
   `email` varchar(150) NOT NULL,
   `contact_no` varchar(30) NOT NULL,
@@ -906,6 +908,7 @@ CREATE TABLE `service_inquiries` (
   `service_category` varchar(80) NOT NULL,
   `description` text NOT NULL,
   `preferred_inspection_date` date DEFAULT NULL,
+  `preferred_inspection_time` time DEFAULT NULL,
   `status` varchar(50) NOT NULL DEFAULT 'Pending Review',
   `admin_notes` text DEFAULT NULL,
   `client_review_reason` varchar(500) DEFAULT NULL,
@@ -917,6 +920,7 @@ CREATE TABLE `service_inquiries` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_service_inquiries_client_id` (`client_id`),
+  KEY `idx_service_inquiries_source_status` (`inquiry_source`,`status`,`archived_at`),
   CONSTRAINT `fk_service_inquiries_client` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `project_material_reservations` (

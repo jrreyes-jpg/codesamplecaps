@@ -8,23 +8,40 @@ header('Cache-Control: no-store');
 
 function admin_inquiry_notification_state(mysqli $conn, int $userId): array
 {
+    $sourceColumnResult = $conn->query(
+        "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'service_inquiries'
+           AND COLUMN_NAME = 'inquiry_source'
+         LIMIT 1"
+    );
+    $hasSourceColumn = (bool)($sourceColumnResult && $sourceColumnResult->fetch_assoc());
+    $walkInCondition = $hasSourceColumn
+        ? "(COALESCE(i.inquiry_source, 'online') = 'walk_in' OR COALESCE(i.admin_notes, '') LIKE '[Walk-in inquiry]%' OR (i.client_id IS NULL AND COALESCE(i.email, '') = ''))"
+        : "(COALESCE(i.admin_notes, '') LIKE '[Walk-in inquiry]%' OR (i.client_id IS NULL AND COALESCE(i.email, '') = ''))";
+    $pendingCondition = "i.archived_at IS NULL
+           AND (
+                (i.status = 'Pending Review' AND i.viewed_at IS NULL AND NOT ($walkInCondition))
+                OR (
+                    ($walkInCondition)
+                    AND i.status <> 'Not Qualified'
+                    AND NOT EXISTS (SELECT 1 FROM site_inspections si WHERE si.inquiry_id = i.id)
+                )
+           )";
     $countResult = $conn->query(
         "SELECT COUNT(*) AS total, MAX(id) AS latest_id
-         FROM service_inquiries
-         WHERE status = 'Pending Review'
-           AND viewed_at IS NULL
-           AND archived_at IS NULL"
+         FROM service_inquiries i
+         WHERE $pendingCondition"
     );
     $countRow = $countResult ? $countResult->fetch_assoc() : [];
 
     $inquiryItems = [];
     $itemsResult = $conn->query(
-        "SELECT id, client_name, service_category, created_at
-         FROM service_inquiries
-         WHERE status = 'Pending Review'
-           AND viewed_at IS NULL
-           AND archived_at IS NULL
-         ORDER BY created_at DESC, id DESC
+        "SELECT i.id, i.client_name, i.service_category, i.created_at,
+                CASE WHEN $walkInCondition THEN 'walk_in_unassigned' ELSE 'inquiry' END AS alert_kind
+         FROM service_inquiries i
+         WHERE $pendingCondition
+         ORDER BY i.created_at DESC, i.id DESC
          LIMIT 8"
     );
     if ($itemsResult) {
@@ -36,11 +53,13 @@ function admin_inquiry_notification_state(mysqli $conn, int $userId): array
     $items = [];
 
     foreach ($inquiryItems as $inquiry) {
+        $isWalkInUnassigned = (string)($inquiry['alert_kind'] ?? '') === 'walk_in_unassigned';
         $items[] = [
-            'source' => 'inquiry',
+            'source' => $isWalkInUnassigned ? 'walk_in_unassigned' : 'inquiry',
             'id' => (int)($inquiry['id'] ?? 0),
             'client_name' => (string)($inquiry['client_name'] ?? ''),
             'service_category' => (string)($inquiry['service_category'] ?? ''),
+            'message' => $isWalkInUnassigned ? 'Walk-in inquiry needs Engineer confirmation.' : '',
             'created_at' => (string)($inquiry['created_at'] ?? ''),
         ];
     }

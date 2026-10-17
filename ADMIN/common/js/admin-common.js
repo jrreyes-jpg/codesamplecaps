@@ -192,9 +192,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     name.textContent = String(item.title || 'Notification');
                     details.textContent = String(item.message || '');
                     bindUserNotificationLink(link, source, notificationId);
+                } else if (source === 'walk_in_unassigned') {
+                    name.textContent = String(item.client_name || 'Walk-in inquiry');
+                    details.textContent = String(item.message || 'Walk-in inquiry needs Engineer confirmation.');
                 } else {
                     name.textContent = String(item.client_name || 'Client inquiry');
-                details.textContent = String(item.service_category || 'Service request') + ' • New inquiry';
+                    details.textContent = String(item.service_category || 'Service request') + ' - New inquiry';
                 }
                 time.className = 'notification-item__time';
                 time.textContent = formatRelativeTime(item.created_at);

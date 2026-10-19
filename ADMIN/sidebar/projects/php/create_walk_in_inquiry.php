@@ -23,7 +23,6 @@ if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'super_admin')) {
 $_SESSION['walk_in_inquiry_old_input'] = $_POST;
 
 try {
-    $nextAction = (string)($_POST['next_action'] ?? '') === 'review' ? 'review' : 'pending';
     $contactCheck = inquiry_contact_validation_result(
         $conn,
         (string)($_POST['client_name'] ?? ''),
@@ -33,6 +32,7 @@ try {
     $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''))
         || !empty($contactCheck['email_verified']);
     $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
+    $isConfirmedInspection = $preferredEngineerId > 0;
     $inquiryId = create_walk_in_inquiry($conn, $_POST);
     audit_log_event(
         $conn,
@@ -42,19 +42,19 @@ try {
         $inquiryId,
         null,
         [
-            'status' => 'Pending Review',
+            'status' => $isConfirmedInspection ? 'For Inspection' : 'Pending Review',
             'email_verified' => $emailWasVerified,
             'preferred_engineer_id' => $preferredEngineerId ?: null,
         ]
     );
     walk_in_email_verification_clear();
     unset($_SESSION['walk_in_inquiry_old_input']);
-    $_SESSION['inquiry_center_flash'] = $nextAction === 'review'
-        ? 'Walk-in inquiry saved. Review it before preparing the initial quotation.'
+    $_SESSION['inquiry_center_flash'] = $isConfirmedInspection
+        ? 'Confirmed inspection saved. Engineer is assigned.'
         : 'Walk-in inquiry saved as Pending. Engineer is still Unassigned.';
     $_SESSION['inquiry_center_flash_type'] = 'success';
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
-        'status' => 'Pending Review',
+        'status' => $isConfirmedInspection ? 'For Inspection' : 'Pending Review',
         'source' => 'walk_in',
         'walk_in_saved' => '1',
         'open' => 'inquiryModal' . $inquiryId,

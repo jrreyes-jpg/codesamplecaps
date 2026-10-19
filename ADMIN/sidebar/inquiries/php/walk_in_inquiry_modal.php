@@ -120,7 +120,7 @@
                 </div>
 
                 <div class="input-group input-group-wide">
-                    <label for="walk_in_engineer">Available Engineer <span class="optional-indicator">(Optional)</span></label>
+                    <label for="walk_in_engineer">Confirmed Engineer <span class="optional-indicator">(Optional)</span></label>
                     <select id="walk_in_engineer" name="preferred_engineer_id">
                         <option value="">Unassigned</option>
                         <?php foreach ($engineers as $engineer): ?>
@@ -128,14 +128,14 @@
                             <option value="<?php echo (int)$engineer['id']; ?>" <?php echo (int)($walkInOldInput['preferred_engineer_id'] ?? 0) === (int)$engineer['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$engineer['full_name'], ENT_QUOTES, 'UTF-8'); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="walk-in-field-help">Leave Unassigned if no Engineer has confirmed the preferred date and time.</small>
+                    <small class="walk-in-field-help" data-walk-in-engineer-help>Select only after the Engineer confirms the client's preferred date and time.</small>
                 </div>
             </div>
 
             <div class="form-actions walk-in-inquiry-actions">
                 <button type="button" class="btn-secondary walk-in-clear-button" data-walk-in-clear>Clear Form</button>
                 <button type="button" class="btn-secondary" data-walk-in-inquiry-close>Cancel</button>
-                <button type="submit" class="btn-primary" value="pending" data-walk-in-submit-action>Save Walk-in Inquiry</button>
+                <button type="submit" class="btn-primary" value="pending" data-walk-in-submit-action>Save as Pending</button>
             </div>
         </form>
     </div>

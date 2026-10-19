@@ -1452,6 +1452,8 @@ function initWalkInInquiryPanel() {
     const timeSelect = panel?.querySelector('[data-walk-in-time]');
     const engineerSelect = panel?.querySelector('select[name="preferred_engineer_id"]');
     const nextActionInput = panel?.querySelector('[data-walk-in-next-action]');
+    const submitActionButton = panel?.querySelector('[data-walk-in-submit-action]');
+    const engineerHelp = panel?.querySelector('[data-walk-in-engineer-help]');
     const nameError = panel?.querySelector('[data-walk-in-name-error]');
     const emailError = panel?.querySelector('[data-walk-in-email-error]');
     const sendOtpButton = panel?.querySelector('[data-walk-in-send-otp]');
@@ -1997,6 +1999,20 @@ function initWalkInInquiryPanel() {
         return setValidation(description, descriptionError, value.length >= 3 && letters.length >= 2 ? '' : 'Enter at least 3 characters.');
     }
 
+    function syncWalkInSaveAction() {
+        const hasConfirmedEngineer = Number(engineerSelect?.value || 0) > 0;
+        if (nextActionInput) nextActionInput.value = hasConfirmedEngineer ? 'confirmed' : 'pending';
+        if (submitActionButton) {
+            submitActionButton.value = hasConfirmedEngineer ? 'confirmed' : 'pending';
+            submitActionButton.textContent = hasConfirmedEngineer ? 'Save Confirmed Inspection' : 'Save as Pending';
+        }
+        if (engineerHelp) {
+            engineerHelp.textContent = hasConfirmedEngineer
+                ? 'Engineer confirmed the preferred date and time. This will create the inspection schedule.'
+                : 'Leave Unassigned if no Engineer has confirmed the preferred date and time.';
+        }
+    }
+
     function formatWalkInDate(value) {
         const parts = String(value || '').split('-').map(Number);
         if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return value;
@@ -2099,6 +2115,7 @@ function initWalkInInquiryPanel() {
         });
         keepContactPrefix();
         syncOtherService();
+        syncWalkInSaveAction();
         syncAvailableTimes();
         enableHistoryGuard();
         return true;
@@ -2181,6 +2198,7 @@ function initWalkInInquiryPanel() {
         });
         form.reset();
         keepContactPrefix();
+        syncWalkInSaveAction();
         form.dataset.hasServerInput = '0';
         [regionSelect, areaSelect, citySelect, barangaySelect].forEach(function (field) {
             if (field) field.dataset.initialValue = '';
@@ -2400,6 +2418,7 @@ function initWalkInInquiryPanel() {
     description?.addEventListener('input', validateDescription);
     otherService?.addEventListener('input', validateOtherService);
     serviceSelect?.addEventListener('change', syncOtherService);
+    engineerSelect?.addEventListener('change', syncWalkInSaveAction);
     bindLocationCombobox(regionSelect, getRegionOptions, function () { syncAreas(false); });
     bindLocationCombobox(areaSelect, getAreaOptions, function () { syncCities(false); });
     bindLocationCombobox(citySelect, getCityOptions, function () { syncBarangays(false); });
@@ -2416,7 +2435,7 @@ function initWalkInInquiryPanel() {
     form.addEventListener('submit', async function (event) {
         if (saveConfirmed) return;
         event.preventDefault();
-        const nextAction = 'pending';
+        const nextAction = Number(engineerSelect?.value || 0) > 0 ? 'confirmed' : 'pending';
         if (nextActionInput) nextActionInput.value = nextAction;
         const nameIsValid = validateName();
         const emailIsValid = validateEmail();
@@ -2451,9 +2470,11 @@ function initWalkInInquiryPanel() {
         const engineerName = engineerSelect?.selectedOptions[0]?.textContent?.trim() || 'Unassigned';
         const displayDate = formatWalkInDate(dateInput.value);
         showConfirm({
-            title: 'Save Walk-in Inquiry?',
-            message: clientName.value.trim() + ' - ' + displayDate + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. Email is verified.',
-            accept: 'Confirm Save',
+            title: nextAction === 'confirmed' ? 'Save Confirmed Inspection?' : 'Save as Pending?',
+            message: nextAction === 'confirmed'
+                ? clientName.value.trim() + ' - ' + displayDate + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. Inspection will be scheduled.'
+                : clientName.value.trim() + ' - ' + displayDate + ' at ' + selectedTime + '. Engineer: Unassigned. Admin will confirm an Engineer later.',
+            accept: nextAction === 'confirmed' ? 'Confirm Inspection' : 'Save as Pending',
             cancel: 'Go Back',
             tone: 'primary',
         }, function () {
@@ -2476,6 +2497,7 @@ function initWalkInInquiryPanel() {
     } catch (error) {
     }
     syncOtherService();
+    syncWalkInSaveAction();
     syncAvailableTimes();
     keepContactPrefix();
     if (contactNumber?.value && contactNumber.value !== '09') validateContact();

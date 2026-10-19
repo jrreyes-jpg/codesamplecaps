@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/walk_in_inquiry_schedule.php';
 require_once __DIR__ . '/../../config/walk_in_email_verification.php';
+require_once __DIR__ . '/../../config/site_inspections.php';
 
 function walk_in_inquiry_has_column(mysqli $conn, string $column): bool
 {
@@ -21,6 +22,21 @@ function walk_in_inquiry_has_column(mysqli $conn, string $column): bool
     }
 
     $stmt->bind_param('s', $column);
+    $stmt->execute();
+    return (bool)$stmt->get_result()->fetch_assoc();
+}
+
+function walk_in_inquiry_table_exists(mysqli $conn, string $table): bool
+{
+    $stmt = $conn->prepare(
+        'SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1'
+    );
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('s', $table);
     $stmt->execute();
     return (bool)$stmt->get_result()->fetch_assoc();
 }
@@ -115,15 +131,26 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
             throw new InvalidArgumentException('Select an active Engineer or leave it Unassigned.');
         }
         $preferredEngineerName = (string)$engineer['full_name'];
+        if (!walk_in_inquiry_table_exists($conn, 'site_inspections')) {
+            throw new RuntimeException('Site inspection table is not ready. Run the site inspection migration first.');
+        }
+        $candidate = new DateTimeImmutable($preferredDate . ' ' . $preferredTime, walk_in_inquiry_timezone());
+        if (site_inspection_engineer_has_conflict($conn, $preferredEngineerId, $candidate)) {
+            throw new InvalidArgumentException('This Engineer already has an inspection at this time. Choose another Engineer or save as Pending.');
+        }
     }
 
-    $status = 'Pending Review';
+    // Kapag may Engineer, ibig sabihin kinumpirma na niya kay Admin ang oras.
+    $isConfirmedInspection = $preferredEngineerId > 0;
+    $status = $isConfirmedInspection ? 'For Inspection' : 'Pending Review';
     $adminNotes = '[Walk-in email verified]';
-    if ($preferredEngineerId > 0) {
-        $adminNotes .= "\n[Preferred Engineer confirmed: {$preferredEngineerName} (#{$preferredEngineerId})]";
+    if ($isConfirmedInspection) {
+        $adminNotes .= "\n[Inspection confirmed with Engineer: {$preferredEngineerName} (#{$preferredEngineerId})]";
     } else {
         $adminNotes .= "\n[Preferred Engineer: Unassigned]";
     }
+    $conn->begin_transaction();
+    try {
     if (
         walk_in_inquiry_has_column($conn, 'inquiry_source')
         && walk_in_inquiry_has_column($conn, 'contact_person')
@@ -187,9 +214,32 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
         );
     }
 
-    if (!$stmt->execute()) {
-        throw new RuntimeException('Unable to save the walk-in inquiry.');
-    }
+        if (!$stmt->execute()) {
+            throw new RuntimeException('Unable to save the walk-in inquiry.');
+        }
 
-    return (int)$conn->insert_id;
+        $inquiryId = (int)$conn->insert_id;
+        if ($isConfirmedInspection) {
+            $scheduledAt = $preferredDate . ' ' . $preferredTime . ':00';
+            $siteNotes = 'Walk-in inspection schedule confirmed by Admin.';
+            $createdBy = (int)($_SESSION['user_id'] ?? 0);
+            $inspectionStmt = $conn->prepare(
+                "INSERT INTO site_inspections (inquiry_id, engineer_id, scheduled_at, site_notes, status, created_by)
+                 VALUES (?, ?, ?, ?, 'Assigned', ?)"
+            );
+            if (!$inspectionStmt) {
+                throw new RuntimeException('Unable to create the inspection schedule.');
+            }
+            $inspectionStmt->bind_param('iissi', $inquiryId, $preferredEngineerId, $scheduledAt, $siteNotes, $createdBy);
+            if (!$inspectionStmt->execute()) {
+                throw new RuntimeException('Unable to save the inspection schedule.');
+            }
+        }
+
+        $conn->commit();
+        return $inquiryId;
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        throw $exception;
+    }
 }

@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const targetUrl = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', window.location.origin);
                 targetUrl.searchParams.set('status', fallbackStatus);
                 targetUrl.searchParams.set('open', 'inquiryModal' + String(inquiryId || ''));
-                targetUrl.searchParams.set('tab', targetTab || 'quotation');
+                targetUrl.searchParams.set('tab', targetTab || 'client');
                 window.location.assign(targetUrl.toString());
                 return;
             }
@@ -3436,7 +3436,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const openModalBeforeHistoryChange = document.querySelector('.inquiry-modal:not([hidden])');
 
         if (openModalBeforeHistoryChange?.dataset.quotationSending === '1') {
-            const activeTab = openModalBeforeHistoryChange.querySelector('.inquiry-modal-tab.is-active')?.getAttribute('data-inquiry-tab') || 'quotation';
+            const activeTab = openModalBeforeHistoryChange.querySelector('.inquiry-modal-tab.is-active')?.getAttribute('data-inquiry-tab') || 'client';
             if (targetModal !== openModalBeforeHistoryChange || targetTab !== activeTab) {
                 pushModalHistory(openModalBeforeHistoryChange, activeTab);
             }

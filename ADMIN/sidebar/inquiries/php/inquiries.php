@@ -2578,47 +2578,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     ?>
                     <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
                     <?php
-                        $nextActionLabel = 'Review Inquiry';
-                        $nextActionTab = 'client';
                         $quotationStage = $quotationListStatus;
                         $canScheduleInspection = inquiry_center_has_client_quotation_approval($quotationStage);
                         $quotationPrerequisiteMessage = inquiry_center_quotation_prerequisite_message($quotationDraft);
                         $showInspection = $latestInspection || $canScheduleInspection;
                         $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
-
-                        if ($quotationStage === 'accepted') {
-                            $nextActionLabel = $latestInspection ? 'View Inspection' : 'Schedule Inspection';
-                            $nextActionTab = 'inspection';
-                        } elseif ($quotationStage === 'sent') {
-                            $nextActionLabel = 'Waiting for Client';
-                            $nextActionTab = 'quotation';
-                        } elseif ($quotationStage === 'revision_requested') {
-                            $nextActionLabel = 'Review Revision';
-                            $nextActionTab = 'quotation';
-                        } elseif (in_array($quotationStage, ['draft', 'approved', 'rejected'], true)) {
-                            $nextActionLabel = $quotationStage === 'approved'
-                                ? ($isInitialQuotationDraft ? 'Send Initial Quotation' : 'Send Revised Quotation')
-                                : ($isInitialQuotationDraft ? 'Review Initial Quotation' : 'Review Revised Quotation');
-                            $nextActionTab = 'quotation';
-                        } elseif ($showCosting) {
-                            $nextActionLabel = 'Prepare Quotation';
-                            $nextActionTab = 'quotation';
-                        } elseif ($latestInspection) {
-                            $nextActionLabel = (string)($latestInspection['status'] ?? '') === 'Submitted'
-                                ? 'Review Costing'
-                                : 'View Inspection';
-                            $nextActionTab = (string)($latestInspection['status'] ?? '') === 'Submitted' && $showCosting
-                                ? 'quotation'
-                                : 'inspection';
-                        } elseif ($currentStatus === 'Verified Lead') {
-                            $nextActionLabel = 'Create Initial Quotation';
-                            $nextActionTab = 'quotation';
-                        } elseif ($currentStatus === 'Not Qualified') {
-                            $nextActionLabel = 'View Review';
-                        }
-                        $nextActionClass = in_array($nextActionLabel, ['Review Inquiry', 'Review Initial Quotation', 'View Review'], true)
-                            ? ' inquiry-next-action--review'
-                            : '';
+                        // Simple lang para kay Admin: details at inspection lang ang tingnan.
+                        $nextActionLabel = 'View Details';
+                        $nextActionTab = $latestInspection ? 'inspection' : 'client';
+                        $nextActionClass = '';
                     ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
                         <div class="inquiry-card__head">
@@ -2673,7 +2641,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <div class="inquiry-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <div class="inquiry-modal__head">
                                     <div>
-                                        <span class="reports-kicker">Inquiry Review</span>
+                                        <span class="reports-kicker"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry Details' : 'Online Inquiry Details'; ?></span>
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -2714,29 +2682,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </button>
                                             </form>
                                         <?php endif; ?>
-                                        <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry review">&times;</button>
+                                        <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry details">&times;</button>
                                     </div>
                                 </div>
-                                <?php
-                                    $workflowReviewCompleted = in_array($currentStatus, ['Verified Lead', 'For Inspection', 'Not Qualified'], true);
-                                    $workflowInitialQuoteAccepted = $originalQuotation
-                                        && inquiry_quote_normalize_status((string)($originalQuotation['status'] ?? '')) === 'accepted';
-                                    $workflowQuotationLocked = $currentStatus === 'Not Qualified' || !$showQuotation;
-                                    $workflowInspectionLocked = !$showInspection;
-                                ?>
-                                <div class="inquiry-modal-tabs inquiry-workflow" role="tablist" aria-label="Inquiry review workflow">
-                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step is-active<?php echo $workflowReviewCompleted ? ' is-completed' : ' is-current'; ?>" data-inquiry-tab="client" aria-selected="true" aria-current="<?php echo !$workflowReviewCompleted ? 'step' : 'false'; ?>">
+                                <?php $showInspectionTab = (bool)$showInspection && $currentStatus !== 'Not Qualified'; ?>
+                                <div class="inquiry-modal-tabs inquiry-workflow inquiry-workflow--admin" role="tablist" aria-label="Inquiry details tabs">
+                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step is-active is-current" data-inquiry-tab="client" aria-selected="true" aria-current="step">
                                         <span class="inquiry-workflow__marker" aria-hidden="true"><span>1</span><b>&#10003;</b></span>
-                                        <span class="inquiry-workflow__label">Contact &amp; Review</span>
+                                        <span class="inquiry-workflow__label">Contact &amp; Request</span>
                                     </button>
-                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step<?php echo $workflowQuotationLocked ? ' chip-disabled is-locked' : ($workflowInitialQuoteAccepted ? ' is-completed' : ' is-current'); ?>" data-inquiry-tab="quotation" aria-selected="false" aria-disabled="<?php echo $workflowQuotationLocked ? 'true' : 'false'; ?>" aria-current="<?php echo !$workflowQuotationLocked && !$workflowInitialQuoteAccepted ? 'step' : 'false'; ?>">
-                                        <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
-                                        <span class="inquiry-workflow__label">Quotation</span>
-                                    </button>
-                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step<?php echo $workflowInspectionLocked ? ' chip-disabled is-locked' : ' is-current'; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-selected="false" aria-disabled="<?php echo $workflowInspectionLocked ? 'true' : 'false'; ?>" aria-current="<?php echo !$workflowInspectionLocked ? 'step' : 'false'; ?>">
-                                        <span class="inquiry-workflow__marker" aria-hidden="true"><span>3</span><b>&#10003;</b></span>
-                                        <span class="inquiry-workflow__label">Inspection</span>
-                                    </button>
+                                    <?php if ($showInspectionTab): ?>
+                                        <button type="button" class="inquiry-modal-tab inquiry-workflow__step" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-selected="false" aria-current="false">
+                                            <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
+                                            <span class="inquiry-workflow__label">Inspection</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             <div class="inquiry-modal-panels" <?php echo !empty($inquiry['archived_at']) ? 'data-archived-readonly="true"' : ''; ?>>
                                 <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
@@ -3108,6 +3068,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endif; ?>
                                 </section>
 
+                                <?php
+                                    // Engineer ang may hawak ng quotation at costing workspace.
+                                    $showAdminQuotationWorkspace = false;
+                                ?>
+                                <?php if ($showAdminQuotationWorkspace): ?>
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
                                     <div class="inquiry-quotation-layout">
                                     <?php if ($quotationPrerequisiteMessage !== ''): ?>
@@ -3320,6 +3285,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endif; ?>
                                     </div>
                                 </section>
+                                <?php endif; ?>
 
                             </div>
                             </div>

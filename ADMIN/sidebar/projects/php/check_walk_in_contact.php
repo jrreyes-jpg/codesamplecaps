@@ -91,6 +91,33 @@ while ($user = $lookupResult->fetch_assoc()) {
     }
 }
 
+// Ipakita agad kung may dating inquiry ang number o email.
+// Hindi ito block kung pareho ang buong client details sa huli.
+if (!$clientFound && ($lookupEmail !== '' || $lookupPhone !== '')) {
+    $inquiryStmt = $conn->prepare(
+        'SELECT id, email, contact_no
+         FROM service_inquiries
+         WHERE LOWER(email) = ? OR contact_no = ?
+         ORDER BY id DESC'
+    );
+    if ($inquiryStmt) {
+        $inquiryStmt->bind_param('ss', $lookupEmail, $lookupPhone);
+        $inquiryStmt->execute();
+        $inquiryResult = $inquiryStmt->get_result();
+        while ($inquiry = $inquiryResult->fetch_assoc()) {
+            $emailMatches = $emailIsValid
+                && mb_strtolower((string)($inquiry['email'] ?? ''), 'UTF-8') === $normalizedEmail;
+            $phoneMatches = $phoneIsValid
+                && normalize_ph_mobile((string)($inquiry['contact_no'] ?? '')) === $normalizedPhone;
+            if ($emailMatches || $phoneMatches) {
+                $clientFound = true;
+                $clientMatchedField = $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone');
+                break;
+            }
+        }
+    }
+}
+
 if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
     echo json_encode([
         'valid' => true,

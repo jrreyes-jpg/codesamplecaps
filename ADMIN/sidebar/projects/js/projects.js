@@ -1972,9 +1972,14 @@ function initWalkInInquiryPanel() {
                 }
             } else if (result.complete === false) {
                 if (result.status === 'existing_client_detected') {
-                    const existingMessage = 'Existing client found. Use the same name and email.';
-                    if (result.field === 'phone' || result.field === 'both') setContactInfo(contactError, existingMessage);
-                    if (result.field === 'email') setContactInfo(emailError, existingMessage);
+                    const existingMessage = 'This number is already used. Use the same name and email.';
+                    // Red muna habang kulang o hindi tugma ang buong client details.
+                    if (result.field === 'phone' || result.field === 'both') {
+                        setValidation(contactNumber, contactError, existingMessage);
+                    }
+                    if (result.field === 'email') {
+                        setValidation(emailAddress, emailError, 'This email is already used. Use the same name and number.');
+                    }
                 }
                 if (!emailIsVerified) {
                     setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
@@ -1984,6 +1989,7 @@ function initWalkInInquiryPanel() {
                 setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
                 setEmailVerified(false, 'Existing client found. Verify email.');
             } else if (result.status === 'existing_inquiry') {
+                setContactInfo(contactError, 'Existing inquiry found. You may create another inquiry.');
                 if (!emailIsVerified) setEmailVerified(false, 'Existing inquiry found. Verify email.');
             } else if (!emailIsVerified) {
                 setEmailVerified(false);

@@ -1450,6 +1450,60 @@
     border-radius: 0 0 12px 12px;
 }
 
+/* Simple popup para sa pagpalit ng inspection schedule. */
+.inquiry-reschedule-modal[hidden] {
+    display: none;
+}
+
+.inquiry-reschedule-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.56);
+}
+
+.inquiry-reschedule-modal__panel {
+    width: min(620px, 100%);
+    max-height: min(680px, calc(100vh - 40px));
+    overflow: auto;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.34);
+}
+
+.inquiry-reschedule-modal__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px 18px 0;
+}
+
+.inquiry-reschedule-modal__head h3,
+.inquiry-reschedule-modal__head p {
+    margin: 0;
+}
+
+.inquiry-reschedule-modal__head h3 {
+    color: #0f172a;
+    font-size: 1.2rem;
+}
+
+.inquiry-reschedule-modal__head p {
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+.inquiry-reschedule-modal .inquiry-schedule-form {
+    margin: 14px 18px 18px;
+    border-color: #dbe5f1;
+}
+
 .inquiry-schedule-retry-form {
     margin-top: 10px;
 }

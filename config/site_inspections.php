@@ -43,7 +43,7 @@ function site_inspection_minimum_lead_minutes(): int
 
 function site_inspection_schedule_window_days(): int
 {
-    return 14;
+    return 30;
 }
 
 function site_inspection_latest_schedule_date(?DateTimeImmutable $now = null): string
@@ -56,8 +56,8 @@ function site_inspection_latest_schedule_date(?DateTimeImmutable $now = null): s
 function site_inspection_available_time_slots(): array
 {
     $slots = [];
-    foreach ([[8 * 60, 11 * 60 + 30], [13 * 60, 16 * 60]] as [$start, $end]) {
-        for ($minutes = $start; $minutes <= $end; $minutes += 30) {
+    foreach ([[8 * 60, 11 * 60], [13 * 60, 16 * 60]] as [$start, $end]) {
+        for ($minutes = $start; $minutes <= $end; $minutes += 60) {
             $hour = intdiv($minutes, 60);
             $minute = $minutes % 60;
             $value = sprintf('%02d:%02d', $hour, $minute);
@@ -85,7 +85,7 @@ function site_inspection_validate_start(string $date, string $time, ?DateTimeImm
 
     $now = $now ?: new DateTimeImmutable('now', $timezone);
     if ($candidate->format('Y-m-d') > site_inspection_latest_schedule_date($now)) {
-        return ['valid' => false, 'message' => 'Please choose a schedule within the next 14 days.', 'datetime' => null];
+        return ['valid' => false, 'message' => 'Please choose a schedule within the next 30 days.', 'datetime' => null];
     }
     $minimum = $now->setTime((int)$now->format('H'), (int)$now->format('i'))->modify('+' . site_inspection_minimum_lead_minutes() . ' minutes');
     if ($candidate < $minimum) {

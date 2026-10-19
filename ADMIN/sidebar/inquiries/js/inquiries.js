@@ -1011,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const syncDateAvailability = function () {
             const earliestDate = getEarliestScheduleDate();
-            const latestDate = addDaysToDate(getManilaNow().date, 14);
+            const latestDate = addDaysToDate(getManilaNow().date, 30);
             const originalDate = form.dataset.originalDate || '';
             const keepExistingDate = originalDate !== ''
                 && dateInput.value === originalDate
@@ -1034,8 +1034,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const isUnavailable = dateInput.value === now.date
+                const isPastTodayTime = dateInput.value === now.date
                     && timeValueToMinutes(option.value) < minimumTodayTime;
+                const isOldSchedule = form.dataset.hasExistingSchedule === '1'
+                    && dateInput.value === (form.dataset.originalDate || '')
+                    && option.value === (form.dataset.originalTime || '');
+                const isUnavailable = isPastTodayTime || isOldSchedule;
                 option.disabled = isUnavailable;
                 option.hidden = isUnavailable;
             });
@@ -1052,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const now = getManilaNow();
             return dateInput.value < getEarliestScheduleDate()
-                || dateInput.value > addDaysToDate(getManilaNow().date, 14)
+                || dateInput.value > addDaysToDate(getManilaNow().date, 30)
                 || (dateInput.value === now.date && timeValueToMinutes(timeInput.value) < now.minutes + inspectionLeadMinutes);
         };
 
@@ -2020,11 +2024,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const scheduleEditor = scheduleForm?.closest('[data-inspection-schedule-editor]');
         if (!scheduleForm || scheduleForm.hidden) return;
 
-        if (scheduleEditor) scheduleEditor.open = true;
+        if (scheduleEditor) scheduleEditor.hidden = false;
         scheduleForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
         window.setTimeout(function () {
             scheduleForm.querySelector('input[name="inspection_date"]')?.focus({ preventScroll: true });
         }, 350);
+    });
+
+    document.addEventListener('click', function (event) {
+        const closeButton = event.target.closest('[data-reschedule-inspection-close]');
+        const rescheduleModal = event.target.closest('[data-inspection-schedule-editor]');
+        if (closeButton && rescheduleModal) {
+            rescheduleModal.hidden = true;
+            return;
+        }
+
+        if (rescheduleModal && event.target === rescheduleModal) {
+            rescheduleModal.hidden = true;
+        }
     });
 
     const pollInspectionScheduleResponse = function () {

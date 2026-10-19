@@ -3183,7 +3183,7 @@ body.walk-in-otp-lock {
 }
 
 .walk-in-otp-card {
-    width: min(420px, 100%);
+    width: min(460px, 100%);
     max-height: calc(100dvh - 40px);
     overflow: auto;
     padding: 24px;
@@ -3228,11 +3228,130 @@ body.walk-in-otp-lock {
     margin-top: 0;
 }
 
-.walk-in-otp-card input {
-    width: 100%;
-    margin-top: 8px;
+.walk-in-otp-heading {
+    margin-bottom: 20px;
     text-align: center;
-    letter-spacing: 0.35em;
+}
+
+.walk-in-otp-heading h3 {
+    margin: 10px 0 6px;
+    color: #172033;
+    font-size: 1.45rem;
+}
+
+.walk-in-otp-heading p {
+    margin-bottom: 3px;
+    color: #64748b;
+}
+
+.walk-in-otp-icon {
+    display: inline-grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 1.45rem;
+}
+
+.walk-in-otp-email {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #172033;
+}
+
+.walk-in-otp-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #334155;
+    font-weight: 700;
+}
+
+.walk-in-otp-card .walk-in-otp-code {
+    width: 100%;
+    height: 58px;
+    margin: 0;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    color: #172033;
+    font-size: 1.35rem;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 0.5em;
+}
+
+.walk-in-otp-card .walk-in-otp-code:focus {
+    border-color: #16a34a;
+    outline: 3px solid rgba(22, 163, 74, 0.14);
+}
+
+.walk-in-otp-timer {
+    margin: 10px 0 0;
+    color: #475569;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.walk-in-otp-message {
+    display: block;
+    min-height: 20px;
+    margin-top: 7px;
+    text-align: center;
+}
+
+.walk-in-otp-message.is-success {
+    color: #15803d;
+}
+
+.walk-in-otp-timer.is-warning {
+    color: #b45309;
+}
+
+.walk-in-otp-timer.is-expired {
+    color: #b91c1c;
+}
+
+.walk-in-otp-resend {
+    display: grid;
+    gap: 8px;
+    margin: 16px 0 18px;
+    text-align: center;
+}
+
+.walk-in-otp-resend-button {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #16a34a;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #15803d;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.walk-in-otp-resend-button:disabled {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.walk-in-otp-resend p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.walk-in-otp-content .walk-in-confirm-actions {
+    justify-content: stretch;
+}
+
+.walk-in-otp-content .walk-in-confirm-actions button {
+    flex: 1 1 0;
 }
 
 @media (max-width: 640px) {

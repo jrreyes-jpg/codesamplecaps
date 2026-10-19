@@ -1470,6 +1470,8 @@ function initWalkInInquiryPanel() {
     const otpCode = otpModal?.querySelector('[data-walk-in-otp-code]');
     const otpError = otpModal?.querySelector('[data-walk-in-otp-error]');
     const otpVerifyButton = otpModal?.querySelector('[data-walk-in-otp-verify]');
+    const otpResendButton = otpModal?.querySelector('[data-walk-in-otp-resend]');
+    const otpTimer = otpModal?.querySelector('[data-walk-in-otp-timer]');
     const draftKey = 'codesamplecaps.admin.walkInInquiryDraft';
     const panelStateKey = 'codesamplecaps.admin.walkInInquiryOpen';
     let locationData = null;
@@ -1484,6 +1486,9 @@ function initWalkInInquiryPanel() {
     let emailIsVerified = false;
     let historyGuardReady = false;
     let ignoreNextPopstate = false;
+    let otpExpiresAt = 0;
+    let otpResendAt = 0;
+    let otpClock = null;
 
     if (!panel || !form) return;
 
@@ -1711,14 +1716,48 @@ function initWalkInInquiryPanel() {
     }
 
     function closeOtpModal() {
+        window.clearInterval(otpClock);
+        otpClock = null;
         otpModal?.classList.remove('is-open');
         otpModal?.setAttribute('aria-hidden', 'true');
         panel.classList.remove('is-otp-locked');
         document.body.classList.remove('walk-in-otp-lock');
         if (dialog) dialog.inert = false;
-        if (otpError) otpError.textContent = '';
+        if (otpError) {
+            otpError.textContent = '';
+            otpError.classList.remove('is-success');
+        }
         if (otpCode) otpCode.value = '';
         sendOtpButton?.focus({ preventScroll: true });
+    }
+
+    function formatOtpTime(seconds) {
+        const safeSeconds = Math.max(0, seconds);
+        return `${String(Math.floor(safeSeconds / 60)).padStart(2, '0')}:${String(safeSeconds % 60).padStart(2, '0')}`;
+    }
+
+    function updateOtpClock() {
+        const now = Date.now();
+        const expiresIn = Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
+        const resendIn = Math.max(0, Math.ceil((otpResendAt - now) / 1000));
+
+        if (otpTimer) {
+            otpTimer.textContent = expiresIn > 0 ? `Code expires in ${formatOtpTime(expiresIn)}` : 'Code expired. Resend a new code.';
+            otpTimer.classList.toggle('is-warning', expiresIn > 0 && expiresIn <= 60);
+            otpTimer.classList.toggle('is-expired', expiresIn === 0);
+        }
+        if (otpResendButton) {
+            otpResendButton.textContent = resendIn > 0 ? `Resend Code (${formatOtpTime(resendIn)})` : 'Resend Code';
+            otpResendButton.disabled = resendIn > 0;
+        }
+    }
+
+    function startOtpClock(expiresIn = 180, resendIn = 60) {
+        otpExpiresAt = Date.now() + (Number(expiresIn) || 180) * 1000;
+        otpResendAt = Date.now() + resendIn * 1000;
+        window.clearInterval(otpClock);
+        updateOtpClock();
+        otpClock = window.setInterval(updateOtpClock, 1000);
     }
 
     function openOtpModal(isSending = false) {
@@ -1763,12 +1802,54 @@ function initWalkInInquiryPanel() {
                 return;
             }
             if (otpEmail) otpEmail.textContent = emailAddress.value.trim();
+            startOtpClock(result.expires_in, 60);
             showOtpEntry();
         } catch (error) {
             closeOtpModal();
             setValidation(emailAddress, emailError, 'Email cannot be sent right now.');
         } finally {
             if (!emailIsVerified) sendOtpButton?.removeAttribute('disabled');
+        }
+    }
+
+    async function resendEmailOtp() {
+        if (!otpResendButton || otpResendButton.disabled) return;
+        if (otpError) {
+            otpError.textContent = '';
+            otpError.classList.remove('is-success');
+        }
+        openOtpModal(true);
+        const data = new FormData();
+        data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        data.append('client_name', clientName.value.trim());
+        data.append('email', emailAddress.value.trim());
+        try {
+            const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/send_walk_in_email_otp.php', {
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+                body: data,
+            });
+            const result = await response.json();
+            showOtpEntry();
+            if (!result.success) {
+                if (otpError) {
+                    otpError.classList.remove('is-success');
+                    otpError.textContent = result.message || 'Code cannot be sent right now.';
+                }
+                return;
+            }
+            if (otpError) {
+                otpError.textContent = 'A new code was sent.';
+                otpError.classList.add('is-success');
+            }
+            if (otpCode) otpCode.value = '';
+            startOtpClock(result.expires_in, 60);
+        } catch (error) {
+            showOtpEntry();
+            if (otpError) {
+                otpError.classList.remove('is-success');
+                otpError.textContent = 'No internet. Check the connection and try again.';
+            }
         }
     }
 
@@ -2176,6 +2257,7 @@ function initWalkInInquiryPanel() {
     });
     sendOtpButton?.addEventListener('click', sendEmailOtp);
     otpVerifyButton?.addEventListener('click', verifyEmailOtp);
+    otpResendButton?.addEventListener('click', resendEmailOtp);
     otpModal?.addEventListener('click', function (event) {
         if (event.target === otpModal || event.target.closest('[data-walk-in-otp-close]')) {
             askToCloseOtp();
@@ -2183,7 +2265,10 @@ function initWalkInInquiryPanel() {
     });
     otpCode?.addEventListener('input', function () {
         otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 6);
-        if (otpError) otpError.textContent = '';
+        if (otpError) {
+            otpError.textContent = '';
+            otpError.classList.remove('is-success');
+        }
     });
     otpModal?.addEventListener('keydown', function (event) {
         if (event.key !== 'Tab') return;

@@ -148,12 +148,21 @@
             <h3>Sending code...</h3>
             <p>Please wait. Do not close this page.</p>
         </div>
-        <div data-walk-in-otp-content>
-            <h3 id="walk-in-otp-title">Verify Client Email</h3>
-            <p>Enter the 6-digit code sent to <strong data-walk-in-otp-email></strong>.</p>
-            <label for="walk_in_otp_code">Verification Code</label>
-            <input id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" data-walk-in-otp-code>
-            <small class="walk-in-field-error" data-walk-in-otp-error></small>
+        <div class="walk-in-otp-content" data-walk-in-otp-content>
+            <div class="walk-in-otp-heading">
+                <span class="walk-in-otp-icon" aria-hidden="true">&#9993;</span>
+                <h3 id="walk-in-otp-title">Verify Client Email</h3>
+                <p>Enter the 6-digit code sent to</p>
+                <strong class="walk-in-otp-email" data-walk-in-otp-email></strong>
+            </div>
+            <label class="walk-in-otp-label" for="walk_in_otp_code">Verification Code</label>
+            <input class="walk-in-otp-code" id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-describedby="walk-in-otp-help walk-in-otp-error" data-walk-in-otp-code>
+            <small class="walk-in-field-error walk-in-otp-message" id="walk-in-otp-error" data-walk-in-otp-error></small>
+            <p class="walk-in-otp-timer" data-walk-in-otp-timer>Code expires in 03:00</p>
+            <div class="walk-in-otp-resend">
+                <button type="button" class="walk-in-otp-resend-button" data-walk-in-otp-resend disabled>Resend Code (01:00)</button>
+                <p id="walk-in-otp-help">Did not get the code? Check Spam or Junk. You can resend when the timer ends.</p>
+            </div>
             <div class="walk-in-confirm-actions">
                 <button type="button" class="btn-secondary" data-walk-in-otp-close>Close</button>
                 <button type="button" class="btn-primary" data-walk-in-otp-verify>Verify Code</button>

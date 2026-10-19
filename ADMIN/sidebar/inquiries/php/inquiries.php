@@ -2823,7 +2823,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-assigned-detail>
                                                 <div class="inquiry-inspection-summary-card__head">
                                                     <span>Assigned Engineer</span>
-                                                    <span class="inquiry-inspection-phase-inline" data-inspection-phase-card <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>><span>Engineer Phase</span><strong class="inquiry-status" data-inspection-phase data-phase="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong></span>
                                                 </div>
                                                 <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$canMonitorInspection ? 'hidden' : ''; ?>>Monitor Inspection</button></div>
                                             </div>

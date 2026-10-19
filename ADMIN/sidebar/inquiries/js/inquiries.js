@@ -1328,7 +1328,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         setInspectionSchedulingState(modal, false);
                         if (draftKey) sessionStorage.removeItem(draftKey);
-                        window.location.assign(result.data.redirect || window.location.href);
+                        // Tapos na ang update, kaya huwag nang ibalik ang reschedule popup.
+                        sessionStorage.removeItem('edgeOpenRescheduleModal');
+                        const scheduleEditor = form.closest('[data-inspection-schedule-editor]');
+                        if (scheduleEditor) scheduleEditor.hidden = true;
+
+                        // Ibalik si Admin sa Inspection tab para makita ang bagong schedule.
+                        const redirectUrl = new URL(result.data.redirect || window.location.href, window.location.origin);
+                        redirectUrl.searchParams.set('open', modal.id);
+                        redirectUrl.searchParams.set('tab', 'inspection');
+                        window.location.assign(redirectUrl.toString());
                     })
                     .catch(function (error) {
                         form.dataset.submitting = '0';
@@ -2001,13 +2010,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const scheduleForm = modal.querySelector('[data-inquiry-inspection-form]');
         const responseGrid = modal.querySelector('.inquiry-schedule-responses');
         if (responseGrid) responseGrid.hidden = true;
-        const phaseBadge = modal.querySelector('[data-inspection-phase]');
-        if (phaseBadge) {
-            phaseBadge.dataset.phase = phase || 'Assigned';
-            phaseBadge.textContent = phase || 'Assigned';
-        }
         modal.querySelector('[data-schedule-final-badge]')?.removeAttribute('hidden');
-        modal.querySelector('[data-inspection-phase-card]')?.removeAttribute('hidden');
         const monitorButton = modal.querySelector('[data-inspection-monitor-open]');
         const canMonitor = ['Ongoing', 'Completed', 'Submitted'].includes(phase || 'Assigned');
         if (monitorButton && canMonitor && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {

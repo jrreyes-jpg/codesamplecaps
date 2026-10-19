@@ -1958,6 +1958,13 @@ function initWalkInInquiryPanel() {
                 if (!result.field) setValidation(emailAddress, emailError, message);
                 setEmailVerified(false);
                 if (sendOtpButton) sendOtpButton.disabled = true;
+            } else if (result.email_verified) {
+                if (result.status === 'existing_client') {
+                    setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
+                    setEmailVerified(true, 'Existing client found.');
+                } else {
+                    setEmailVerified(true, 'Email verified');
+                }
             } else if (result.complete === false) {
                 if (result.status === 'existing_client_detected') {
                     const existingMessage = 'Existing client found. Use the same name and email.';
@@ -1970,7 +1977,7 @@ function initWalkInInquiryPanel() {
                 if (sendOtpButton) sendOtpButton.disabled = emailIsVerified || !result.can_verify_email;
             } else if (result.status === 'existing_client') {
                 setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
-                setEmailVerified(Boolean(result.email_verified), result.email_verified ? 'Existing client found.' : 'Existing client found. Verify email.');
+                setEmailVerified(false, 'Existing client found. Verify email.');
             } else if (result.status === 'existing_inquiry') {
                 if (!emailIsVerified) setEmailVerified(false, 'Existing inquiry found. Verify email.');
             } else if (!emailIsVerified) {
@@ -1988,6 +1995,22 @@ function initWalkInInquiryPanel() {
         const value = String(description?.value || '').trim();
         const letters = value.match(/\p{L}/gu) || [];
         return setValidation(description, descriptionError, value.length >= 3 && letters.length >= 2 ? '' : 'Enter at least 3 characters.');
+    }
+
+    function formatWalkInDate(value) {
+        const parts = String(value || '').split('-').map(Number);
+        if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return value;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${months[parts[1] - 1] || ''} ${parts[2]} ${parts[0]}`.trim();
+    }
+
+    function guideToEmailVerification() {
+        setValidation(emailAddress, emailError, 'Verify the client email before saving.');
+        setEmailVerified(false, 'Email verification required.');
+        emailAddress?.closest('.input-group')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(function () {
+            sendOtpButton?.focus({ preventScroll: true });
+        }, 350);
     }
 
     function syncOtherService() {
@@ -2147,6 +2170,15 @@ function initWalkInInquiryPanel() {
     }
 
     function clearForm() {
+        const clearVerificationData = new FormData();
+        clearVerificationData.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        fetch('/codesamplecaps/ADMIN/sidebar/projects/php/clear_walk_in_email_verification.php', {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            body: clearVerificationData,
+        }).catch(function () {
+            // Mawawala rin ito kapag nag-expire ang server session.
+        });
         form.reset();
         keepContactPrefix();
         form.dataset.hasServerInput = '0';
@@ -2198,10 +2230,13 @@ function initWalkInInquiryPanel() {
         Array.from(timeSelect.options).forEach(function (option) {
             if (!option.value) return;
             option.disabled = false;
+            option.hidden = false;
             if (dateInput.value === today) {
                 const parts = option.value.split(':').map(Number);
                 const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], 0, 0);
-                option.disabled = candidate < minimum;
+                const unavailable = candidate < minimum;
+                option.disabled = unavailable;
+                option.hidden = unavailable;
             }
             if (!option.disabled) enabledCount += 1;
         });
@@ -2223,6 +2258,10 @@ function initWalkInInquiryPanel() {
         } catch (error) {
         }
         loadLocations();
+        syncAvailableTimes();
+        if (emailAddress?.value || /^09\d{9}$/.test(contactNumber?.value || '')) {
+            checkExistingContact();
+        }
         const firstEmptyField = [clientName, emailAddress].find((field) => !String(field?.value || '').trim());
         firstEmptyField?.focus({ preventScroll: true });
     }
@@ -2369,6 +2408,8 @@ function initWalkInInquiryPanel() {
     areaSelect?.addEventListener('change', function () { syncCities(false); });
     citySelect?.addEventListener('change', function () { syncBarangays(false); });
     dateInput?.addEventListener('change', syncAvailableTimes);
+    timeSelect?.addEventListener('pointerdown', syncAvailableTimes);
+    timeSelect?.addEventListener('focus', syncAvailableTimes);
     form.addEventListener('input', saveDraft);
     form.addEventListener('change', saveDraft);
 
@@ -2402,12 +2443,16 @@ function initWalkInInquiryPanel() {
             form.reportValidity();
             return;
         }
+        if (!emailIsVerified) {
+            guideToEmailVerification();
+            return;
+        }
         const selectedTime = timeSelect?.selectedOptions[0]?.textContent?.trim() || '';
         const engineerName = engineerSelect?.selectedOptions[0]?.textContent?.trim() || 'Unassigned';
-        const emailNote = emailIsVerified ? 'Email is verified.' : 'Email is not verified yet.';
+        const displayDate = formatWalkInDate(dateInput.value);
         showConfirm({
             title: 'Save Walk-in Inquiry?',
-            message: clientName.value.trim() + ' - ' + dateInput.value + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. ' + emailNote,
+            message: clientName.value.trim() + ' - ' + displayDate + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. Email is verified.',
             accept: 'Confirm Save',
             cancel: 'Go Back',
             tone: 'primary',
@@ -2446,6 +2491,9 @@ function initWalkInInquiryPanel() {
         } catch (error) {
         }
         loadLocations();
+        if (emailAddress?.value || /^09\d{9}$/.test(contactNumber?.value || '')) {
+            checkExistingContact();
+        }
     } else {
         let reopenAfterRefresh = false;
         try {

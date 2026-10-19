@@ -70,6 +70,10 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
         }
         throw new RuntimeException('Unable to check the client details. Try again.');
     }
+    $emailVerified = walk_in_email_is_verified($email) || !empty($contactValidation['email_verified']);
+    if (!$emailVerified) {
+        throw new InvalidArgumentException('Verify the client email before saving.');
+    }
     if (!in_array($serviceCategory, $allowedServices, true)) {
         throw new InvalidArgumentException('Select a service type.');
     }
@@ -114,8 +118,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
     }
 
     $status = 'Pending Review';
-    $emailVerified = walk_in_email_is_verified($email) || !empty($contactValidation['email_verified']);
-    $adminNotes = $emailVerified ? '[Walk-in email verified by OTP]' : '[Walk-in email unverified]';
+    $adminNotes = '[Walk-in email verified]';
     if ($preferredEngineerId > 0) {
         $adminNotes .= "\n[Preferred Engineer confirmed: {$preferredEngineerName} (#{$preferredEngineerId})]";
     } else {

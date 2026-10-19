@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/inquiry_contact_validation.php';
+require_once __DIR__ . '/../../../../config/walk_in_email_verification.php';
 
 require_role('admin');
 header('Content-Type: application/json; charset=UTF-8');
@@ -27,6 +28,7 @@ $normalizedPhone = normalize_ph_mobile($phone);
 $emailIsValid = filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
 $phoneIsValid = is_valid_ph_mobile($phone);
 $nameIsValid = $name !== '';
+$sessionEmailVerified = $emailIsValid && walk_in_email_is_verified($normalizedEmail);
 
 if (!$emailIsValid && !$phoneIsValid) {
     echo json_encode([
@@ -94,7 +96,7 @@ if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
         'valid' => true,
         'complete' => false,
         'status' => $clientFound ? 'existing_client_detected' : 'incomplete_contact',
-        'email_verified' => false,
+        'email_verified' => $sessionEmailVerified,
         'can_verify_email' => $emailIsValid && !$clientFound,
         'field' => $clientMatchedField,
         'message' => $clientFound ? 'Existing client found.' : '',
@@ -116,7 +118,7 @@ echo json_encode([
     'valid' => (bool)$result['valid'],
     'complete' => true,
     'status' => (string)$result['status'],
-    'email_verified' => !empty($result['email_verified']),
+    'email_verified' => $sessionEmailVerified || !empty($result['email_verified']),
     'can_verify_email' => (bool)$result['valid'],
     'field' => (string)($result['field'] ?? ''),
     'message' => $result['valid'] ? '' : ($messages[$result['status']] ?? 'Invalid client details.'),

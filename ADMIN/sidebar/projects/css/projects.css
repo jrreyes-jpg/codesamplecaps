@@ -3125,6 +3125,10 @@ body.walk-in-otp-lock {
     display: none;
 }
 
+.walk-in-field-error.is-info {
+    color: #15803d;
+}
+
 .walk-in-field-help {
     color: #64748b;
     font-size: 0.8rem;

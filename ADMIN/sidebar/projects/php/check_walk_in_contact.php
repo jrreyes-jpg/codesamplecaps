@@ -56,12 +56,13 @@ $lookupStmt->bind_param('ss', $lookupEmail, $lookupPhone);
 $lookupStmt->execute();
 $lookupResult = $lookupStmt->get_result();
 $clientFound = false;
+$clientMatchedField = '';
 while ($user = $lookupResult->fetch_assoc()) {
     $emailMatches = $emailIsValid && mb_strtolower((string)($user['email'] ?? ''), 'UTF-8') === $normalizedEmail;
     $phoneMatches = $phoneIsValid && (string)($user['phone_normalized'] ?? '') === $normalizedPhone;
     $role = strtolower((string)($user['role'] ?? ''));
 
-    if ($role !== 'client') {
+    if ($role !== 'client' && ($emailMatches || $phoneMatches)) {
         $field = $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone');
         $message = $field === 'email'
             ? 'This email belongs to a staff account.'
@@ -78,8 +79,13 @@ while ($user = $lookupResult->fetch_assoc()) {
         exit();
     }
 
+    if ($role !== 'client') {
+        continue;
+    }
+
     if ($emailMatches || $phoneMatches) {
         $clientFound = true;
+        $clientMatchedField = $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone');
     }
 }
 
@@ -90,6 +96,7 @@ if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
         'status' => $clientFound ? 'existing_client_detected' : 'incomplete_contact',
         'email_verified' => false,
         'can_verify_email' => $emailIsValid && !$clientFound,
+        'field' => $clientMatchedField,
         'message' => $clientFound ? 'Existing client found.' : '',
     ]);
     exit();

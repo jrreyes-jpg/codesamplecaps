@@ -1496,8 +1496,17 @@ function initWalkInInquiryPanel() {
         if (!field) return false;
         field.setCustomValidity(message);
         field.classList.toggle('is-invalid-live', message !== '');
-        if (errorElement) errorElement.textContent = message;
+        if (errorElement) {
+            errorElement.classList.remove('is-info');
+            errorElement.textContent = message;
+        }
         return message === '';
+    }
+
+    function setContactInfo(field, message) {
+        if (!field) return;
+        field.textContent = message;
+        field.classList.toggle('is-info', message !== '');
     }
 
     function closeCombobox(input) {
@@ -1696,6 +1705,22 @@ function initWalkInInquiryPanel() {
     function validateContact() {
         const value = String(contactNumber?.value || '');
         return setValidation(contactNumber, contactError, /^09\d{9}$/.test(value) ? '' : 'Use 09 and enter 11 digits.');
+    }
+
+    function keepContactPrefix() {
+        if (!contactNumber) return;
+        let digits = contactNumber.value.replace(/\D/g, '');
+        if (!digits.startsWith('09')) {
+            digits = '09' + digits.replace(/^0?9?/, '');
+        }
+        contactNumber.value = digits.slice(0, 11) || '09';
+    }
+
+    function keepContactCursorAfterPrefix() {
+        if (!contactNumber || document.activeElement !== contactNumber) return;
+        const start = Math.max(2, contactNumber.selectionStart ?? 2);
+        const end = Math.max(2, contactNumber.selectionEnd ?? start);
+        contactNumber.setSelectionRange(start, end);
     }
 
     function validateEmail() {
@@ -1924,12 +1949,18 @@ function initWalkInInquiryPanel() {
                 setEmailVerified(false);
                 if (sendOtpButton) sendOtpButton.disabled = true;
             } else if (result.complete === false) {
+                if (result.status === 'existing_client_detected') {
+                    const existingMessage = 'Existing client found. Use the same name and email.';
+                    if (result.field === 'phone' || result.field === 'both') setContactInfo(contactError, existingMessage);
+                    if (result.field === 'email') setContactInfo(emailError, existingMessage);
+                }
                 if (!emailIsVerified) {
                     setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
                 }
                 if (sendOtpButton) sendOtpButton.disabled = emailIsVerified || !result.can_verify_email;
-            } else if (result.status === 'existing_client' && result.email_verified) {
-                setEmailVerified(true, 'Existing client found.');
+            } else if (result.status === 'existing_client') {
+                setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
+                setEmailVerified(Boolean(result.email_verified), result.email_verified ? 'Existing client found.' : 'Existing client found. Verify email.');
             } else if (result.status === 'existing_inquiry') {
                 if (!emailIsVerified) setEmailVerified(false, 'Existing inquiry found. Verify email.');
             } else if (!emailIsVerified) {
@@ -2033,6 +2064,7 @@ function initWalkInInquiryPanel() {
                 field.value = draft[field.name];
             }
         });
+        keepContactPrefix();
         syncOtherService();
         syncAvailableTimes();
         enableHistoryGuard();
@@ -2106,6 +2138,7 @@ function initWalkInInquiryPanel() {
 
     function clearForm() {
         form.reset();
+        keepContactPrefix();
         form.dataset.hasServerInput = '0';
         [regionSelect, areaSelect, citySelect, barangaySelect].forEach(function (field) {
             if (field) field.dataset.initialValue = '';
@@ -2243,10 +2276,27 @@ function initWalkInInquiryPanel() {
 
     contactNumber?.addEventListener('input', function () {
         contactEdited = true;
-        contactNumber.value = contactNumber.value.replace(/\D/g, '').slice(0, 11);
+        keepContactPrefix();
+        keepContactCursorAfterPrefix();
         setValidation(contactNumber, contactError, '');
         window.clearTimeout(contactCheckTimer);
-        contactCheckTimer = window.setTimeout(checkExistingContact, 450);
+        if (/^09\d{9}$/.test(contactNumber.value)) {
+            checkExistingContact();
+        } else {
+            contactCheckTimer = window.setTimeout(checkExistingContact, 450);
+        }
+    });
+    contactNumber?.addEventListener('focus', function () {
+        keepContactPrefix();
+        window.setTimeout(keepContactCursorAfterPrefix, 0);
+    });
+    contactNumber?.addEventListener('click', keepContactCursorAfterPrefix);
+    contactNumber?.addEventListener('keydown', function (event) {
+        const selectionStart = contactNumber.selectionStart ?? 0;
+        const selectionEnd = contactNumber.selectionEnd ?? selectionStart;
+        if (event.key === 'Backspace' && selectionStart <= 2 && selectionEnd <= 2) {
+            event.preventDefault();
+        }
     });
     emailAddress?.addEventListener('input', function () {
         emailEdited = true;
@@ -2372,6 +2422,7 @@ function initWalkInInquiryPanel() {
     }
     syncOtherService();
     syncAvailableTimes();
+    keepContactPrefix();
     if (contactNumber?.value && contactNumber.value !== '09') validateContact();
     if (emailAddress?.value) validateEmail();
     if (description?.value) validateDescription();

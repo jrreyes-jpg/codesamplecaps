@@ -1525,7 +1525,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hasNotesChanges = $existingInspectionId > 0
                 && trim((string)($existingInspection['site_notes'] ?? '')) !== $siteNotes;
             $hasScheduleChanges = $hasAssignmentChanges || $hasNotesChanges;
-            if ($error === '' && $existingInspectionId > 0 && !$hasAssignmentChanges) {
+            if ($error === '' && $hasAssignmentChanges
+                && site_inspection_engineer_has_schedule_on_date(
+                    $conn,
+                    $engineerId,
+                    $scheduleDateTime,
+                    $existingInspectionId,
+                    true
+                )) {
+                $error = 'This Engineer already has an inspection on this date.';
+            } elseif ($error === '' && $existingInspectionId > 0 && !$hasAssignmentChanges) {
                 // Notes lang ay hindi reschedule. Gamitin ang hiwalay na retry kung email lang ang kulang.
                 $error = 'Change the Engineer, inspection date, or time before updating the schedule.';
             } elseif ($error === '' && mb_strlen($rescheduleReason, 'UTF-8') > 1000) {

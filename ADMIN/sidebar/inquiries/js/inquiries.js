@@ -973,6 +973,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         const inspectionLeadMinutes = 60;
         let dateNoteTimer = null;
+        let engineerBusyOnDate = false;
+        let availabilityRequestId = 0;
 
         const getManilaNow = function () {
             const parts = manilaDateFormatter.formatToParts(new Date()).reduce(function (values, part) {
@@ -1039,7 +1041,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const isOldSchedule = form.dataset.hasExistingSchedule === '1'
                     && dateInput.value === (form.dataset.originalDate || '')
                     && option.value === (form.dataset.originalTime || '');
-                const isUnavailable = isPastTodayTime || isOldSchedule;
+                const isEngineerBusy = engineerBusyOnDate;
+                const isUnavailable = isPastTodayTime || isOldSchedule || isEngineerBusy;
                 option.disabled = isUnavailable;
                 option.hidden = isUnavailable;
             });
@@ -1068,6 +1071,41 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 timeInput.setCustomValidity('');
             }
+        };
+
+        const loadEngineerAvailability = function () {
+            const engineerId = Number.parseInt(engineerInput?.value || '0', 10);
+            const selectedDate = dateInput.value;
+            const requestId = ++availabilityRequestId;
+
+            if (engineerId <= 0 || selectedDate === '') {
+                engineerBusyOnDate = false;
+                syncTimeOptions();
+                return;
+            }
+
+            const url = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/engineer_schedule_availability.php', window.location.origin);
+            url.searchParams.set('engineer_id', String(engineerId));
+            url.searchParams.set('date', selectedDate);
+            url.searchParams.set('exclude_inspection_id', modal?.dataset.inspectionId || '0');
+
+            fetch(url.toString(), { headers: { Accept: 'application/json' }, cache: 'no-store' })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Schedule check failed.');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (requestId !== availabilityRequestId || !data.success) return;
+                    engineerBusyOnDate = data.engineer_busy === true;
+                    syncTimeOptions();
+                    syncRescheduleControls(false);
+                })
+                .catch(function () {
+                    if (requestId !== availabilityRequestId) return;
+                    // Server validation ang huling safety kapag may temporary connection problem.
+                    engineerBusyOnDate = false;
+                    syncTimeOptions();
+                });
         };
 
         const scheduleValidationMessage = function () {
@@ -1372,6 +1410,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
         });
+        engineerInput?.addEventListener('change', loadEngineerAvailability);
+        dateInput.addEventListener('change', loadEngineerAvailability);
+        loadEngineerAvailability();
         syncRescheduleControls(false);
     });
 

@@ -231,8 +231,8 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
             throw new RuntimeException('Site inspection table is not ready. Run the site inspection migration first.');
         }
         $candidate = new DateTimeImmutable($preferredDate . ' ' . $preferredTime, walk_in_inquiry_timezone());
-        if (site_inspection_engineer_has_conflict($conn, $preferredEngineerId, $candidate)) {
-            throw new InvalidArgumentException('This Engineer already has an inspection at this time. Choose another Engineer or save as Pending.');
+        if (site_inspection_engineer_has_schedule_on_date($conn, $preferredEngineerId, $candidate)) {
+            throw new InvalidArgumentException('This Engineer already has an inspection on this date. Choose another Engineer or save as Pending.');
         }
     }
 

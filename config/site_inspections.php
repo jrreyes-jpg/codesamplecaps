@@ -169,6 +169,29 @@ function site_inspection_engineer_has_conflict(
 
     return (bool)$stmt->get_result()->fetch_assoc();
 }
+
+function site_inspection_engineer_has_schedule_on_date(
+    mysqli $conn,
+    int $engineerId,
+    DateTimeImmutable $candidate,
+    int $excludeInspectionId = 0,
+    bool $lockRows = false
+): bool {
+    $date = $candidate->format('Y-m-d');
+    $sql = "SELECT id FROM site_inspections
+            WHERE engineer_id = ? AND id <> ?
+              AND DATE(scheduled_at) = ?
+              AND status IN ('Assigned', 'Acknowledged', 'Ongoing')
+            LIMIT 1" . ($lockRows ? ' FOR UPDATE' : '');
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return true;
+    }
+    $stmt->bind_param('iis', $engineerId, $excludeInspectionId, $date);
+    $stmt->execute();
+
+    return (bool)$stmt->get_result()->fetch_assoc();
+}
 // Shared Site Inspection helpers para hindi duplicate sa Admin at Engineer.
 
 if (!function_exists('site_inspection_format_datetime')) {

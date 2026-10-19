@@ -181,3 +181,11 @@
         </div>
     </div>
 </section>
+
+<section class="walk-in-save-modal" data-walk-in-save-modal aria-hidden="true">
+    <div class="walk-in-save-card" role="alertdialog" aria-modal="true" aria-labelledby="walk-in-save-title">
+        <span class="walk-in-otp-spinner" aria-hidden="true"></span>
+        <h3 id="walk-in-save-title" tabindex="-1" data-walk-in-save-title>Saving inquiry...</h3>
+        <p data-walk-in-save-message>Please wait. Do not close this page.</p>
+    </div>
+</section>

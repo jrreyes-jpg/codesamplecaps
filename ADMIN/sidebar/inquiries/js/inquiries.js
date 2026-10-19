@@ -1100,12 +1100,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const validRescheduleReason = function () {
             const value = reasonInput?.value || '';
-            const withoutWhitespace = value.replace(/\s+/gu, '');
-            if (withoutWhitespace.length < 5) {
-                return 'Enter a reschedule reason with at least 5 non-space characters.';
-            }
             if (value.length > 1000) {
-                return 'Reschedule reason must not exceed 1000 characters.';
+                return 'Reschedule note must not exceed 1000 characters.';
             }
             return '';
         };
@@ -1131,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (reasonWrap && reasonInput) {
                 reasonWrap.hidden = !hasValidScheduleChange;
                 reasonInput.disabled = !hasValidScheduleChange;
-                reasonInput.required = hasValidScheduleChange;
+                reasonInput.required = false;
 
                 if (!hasValidScheduleChange) {
                     reasonInput.setCustomValidity('');
@@ -1147,22 +1143,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            const reasonMessage = hasValidScheduleChange && reasonInput ? validRescheduleReason() : 'Missing reason.';
+            const reasonMessage = hasValidScheduleChange && reasonInput ? validRescheduleReason() : '';
             submitButton.disabled = !hasValidScheduleChange || reasonMessage !== '';
 
             if (!changed) {
                 setRescheduleGuidance('Change the assigned Engineer, date, or time to reschedule.', 'neutral');
             } else if (!hasValidScheduleChange) {
                 setRescheduleGuidance(scheduleMessage, 'error');
-            } else if (reasonMessage !== '') {
-                setRescheduleGuidance(
-                    reasonInput?.value.trim() === ''
-                        ? 'Next: enter a reschedule reason to enable Update Schedule.'
-                        : '',
-                    'neutral'
-                );
             } else {
-                setRescheduleGuidance('Ready to update the schedule and notify the Client and Engineer.', 'ready');
+                setRescheduleGuidance('Ready to update the schedule and email the Client and Engineer.', 'ready');
             }
         };
 
@@ -1354,14 +1343,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
+            const isReschedule = hasExistingSchedule;
             showConfirm(
                 form,
-                'This will schedule the inspection and notify the client and assigned Engineer.',
+                isReschedule
+                    ? 'The updated schedule will be emailed to the Client and Engineer.'
+                    : 'The schedule will be emailed to the Client and Engineer.',
                 null,
                 {
-                    title: 'Confirm inspection schedule?',
-                    cancel: 'Cancel',
-                    confirm: 'Confirm Schedule',
+                    title: isReschedule ? 'Update inspection?' : 'Confirm inspection?',
+                    cancel: 'Back',
+                    confirm: isReschedule ? 'Update Schedule' : 'Confirm',
                 }
             );
         });
@@ -2001,9 +1993,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const applyFinalScheduleLock = function (modal, isFinal, phase) {
         if (!modal || !isFinal) return;
         const scheduleForm = modal.querySelector('[data-inquiry-inspection-form]');
-        if (scheduleForm) scheduleForm.hidden = true;
-        const scheduleEditor = scheduleForm?.closest('[data-inspection-schedule-editor]');
-        if (scheduleEditor) scheduleEditor.hidden = true;
         const responseGrid = modal.querySelector('.inquiry-schedule-responses');
         if (responseGrid) responseGrid.hidden = true;
         const phaseBadge = modal.querySelector('[data-inspection-phase]');
@@ -2021,6 +2010,22 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.querySelectorAll('.inquiry-modal').forEach(moveInspectionMonitorToTools);
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-reschedule-inspection-open]');
+        if (!button) return;
+
+        const modal = button.closest('.inquiry-modal');
+        const scheduleForm = modal?.querySelector('[data-inquiry-inspection-form]');
+        const scheduleEditor = scheduleForm?.closest('[data-inspection-schedule-editor]');
+        if (!scheduleForm || scheduleForm.hidden) return;
+
+        if (scheduleEditor) scheduleEditor.open = true;
+        scheduleForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(function () {
+            scheduleForm.querySelector('input[name="inspection_date"]')?.focus({ preventScroll: true });
+        }, 350);
+    });
 
     const pollInspectionScheduleResponse = function () {
         if (inspectionResponsePollInProgress || document.hidden) return;

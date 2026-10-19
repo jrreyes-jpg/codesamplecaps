@@ -1175,6 +1175,16 @@
     white-space: nowrap;
 }
 
+.inquiry-inspection-summary-card__reschedule {
+    flex: 0 0 auto;
+    width: fit-content;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
 .inquiry-inspection-summary-card__value-line {
     display: flex;
     align-items: center;

@@ -1510,20 +1510,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($error === '' && $existingInspectionId > 0 && inquiry_center_inspection_schedule_is_locked($existingInspection)) {
                 $error = 'The inspection already started. Engineer, date, and time can no longer be changed.';
             }
-            if ($error === '' && $existingInspectionId > 0
-                && inquiry_center_inspection_schedule_is_confirmation_locked($existingInspection)) {
-                $error = 'The Client and Engineer have confirmed this schedule. The schedule is now final.';
-            }
-            if ($error === '' && site_inspection_engineer_has_conflict(
-                $conn,
-                $engineerId,
-                $scheduleDateTime,
-                $existingInspectionId,
-                true
-            )) {
-                $error = 'The selected Engineer already has an overlapping inspection schedule.';
-            }
-
             $notificationHash = inquiry_center_schedule_notification_hash($engineerId, $scheduleValue, $siteNotes);
             $hasAssignmentChanges = $existingInspectionId <= 0
                 || (int)($existingInspection['engineer_id'] ?? 0) !== $engineerId
@@ -1531,13 +1517,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hasNotesChanges = $existingInspectionId > 0
                 && trim((string)($existingInspection['site_notes'] ?? '')) !== $siteNotes;
             $hasScheduleChanges = $hasAssignmentChanges || $hasNotesChanges;
-            $reasonWithoutWhitespace = preg_replace('/\s+/u', '', $rescheduleReason) ?? '';
             if ($error === '' && $existingInspectionId > 0 && !$hasAssignmentChanges) {
                 // Notes lang ay hindi reschedule. Gamitin ang hiwalay na retry kung email lang ang kulang.
                 $error = 'Change the Engineer, inspection date, or time before updating the schedule.';
-            } elseif ($error === '' && $existingInspectionId > 0
-                && (mb_strlen($reasonWithoutWhitespace, 'UTF-8') < 5 || mb_strlen($rescheduleReason, 'UTF-8') > 1000)) {
-                $error = 'Enter a reschedule reason with at least 5 non-space characters.';
+            } elseif ($error === '' && mb_strlen($rescheduleReason, 'UTF-8') > 1000) {
+                $error = 'Reschedule note must not exceed 1000 characters.';
             }
             $storedNotificationHash = trim((string)($existingInspection['schedule_notification_hash'] ?? ''));
             $needsScheduleNotification = $hasAssignmentChanges
@@ -1546,8 +1530,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     || empty($existingInspection['client_schedule_notified_at'])
                     || empty($existingInspection['engineer_schedule_notified_at'])
                 ));
-            $clientScheduleToken = $hasAssignmentChanges ? bin2hex(random_bytes(32)) : '';
-            $clientScheduleTokenHash = $clientScheduleToken !== '' ? site_inspection_schedule_token_hash($clientScheduleToken) : '';
+            // Admin already confirmed the new time with Client and Engineer by call or text.
+            $clientScheduleToken = '';
+            $clientScheduleTokenHash = '';
 
             $stmt = null;
             if ($error === '' && $hasScheduleChanges) {
@@ -1693,7 +1678,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ], static fn(string $value): bool => $value !== '');
                     $siteAddress = implode(', ', $siteAddressParts);
                     $scheduleForEmail = $scheduleDateTime->format('l, F j, Y, g:i A') . ' (PHT)';
-                    $clientScheduleLink = $clientScheduleToken !== '' ? site_inspection_schedule_public_link($clientScheduleToken) : '';
+                    $clientScheduleLink = '';
                     $isScheduleUpdate = $existingInspectionId > 0 && $hasAssignmentChanges;
                     $isEngineerReassignment = $isScheduleUpdate
                         && (int)($existingInspection['engineer_id'] ?? 0) !== $engineerId;
@@ -1799,7 +1784,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     $message = $clientEmailSent && $engineerEmailSent && $notificationMarked
-                        ? 'Inspection scheduled. Client and Engineer notified.'
+                        ? ($isScheduleUpdate
+                            ? 'Inspection updated. Client and Engineer notified.'
+                            : 'Inspection scheduled. Client and Engineer notified.')
                         : (!$clientEmailSent && !$engineerEmailSent
                             ? 'Schedule saved, but the Client and Engineer emails could not be sent.'
                             : (!$clientEmailSent
@@ -2570,6 +2557,24 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             trim((string)($inquiry['province'] ?? '')),
                         ], static fn(string $part): bool => $part !== '');
                         $fullAddress = $addressParts ? implode(', ', $addressParts) : 'Not set';
+                        $cardLocation = implode(', ', array_filter([
+                            trim((string)($inquiry['barangay'] ?? '')),
+                            trim((string)($inquiry['city_municipality'] ?? '')),
+                        ], static fn(string $part): bool => $part !== ''));
+                        if ($cardLocation === '') {
+                            $cardLocation = trim((string)($inquiry['province'] ?? '')) ?: 'Not set';
+                        }
+                        $cardService = trim((string)($inquiry['service_category'] ?? ''));
+                        if ($cardService === 'Other Service') {
+                            $descriptionValue = (string)($inquiry['description'] ?? '');
+                            $otherDetails = '';
+                            if (preg_match('/Other service details:\s*(.+)/is', $descriptionValue, $matches)) {
+                                $otherDetails = preg_replace('/\s+/u', ' ', trim((string)$matches[1])) ?? '';
+                            }
+                            $cardService = $otherDetails !== ''
+                                ? 'Other: ' . mb_strimwidth($otherDetails, 0, 42, '...')
+                                : 'Other Service';
+                        }
                     ?>
                     <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
                     <?php
@@ -2631,20 +2636,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                         <div class="inquiry-card__summary">
                             <div class="inquiry-card__info">
-                                <span>Company</span>
-                                <strong><?php echo htmlspecialchars((string)($inquiry['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                            </div>
-                            <div class="inquiry-card__info">
                                 <span>Service</span>
-                                <strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <strong><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                             <div class="inquiry-card__info">
                                 <span>Location</span>
-                                <strong><?php echo htmlspecialchars(trim((string)($inquiry['city_municipality'] ?: $inquiry['province'] ?: 'Not set')), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                             <div class="inquiry-card__info">
-                                <span>Submitted</span>
-                                <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <?php if ($displayStatus === 'For Inspection' && !empty($latestInspection['scheduled_at'])): ?>
+                                    <span>Inspection Schedule</span>
+                                    <strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <?php else: ?>
+                                    <span>Submitted</span>
+                                    <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['created_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -2847,6 +2853,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     $latestInspectionStatus = $latestInspection
                                         ? (string)($latestInspection['status'] ?? 'Assigned')
                                         : 'Not Scheduled';
+                                    $canRescheduleInspection = $latestInspection
+                                        && empty($inquiry['archived_at'])
+                                        && $canScheduleInspection
+                                        && !in_array($latestInspectionStatus, ['Ongoing', 'Completed', 'Submitted'], true);
                                     $scheduleIsFinal = $hasOfficialInspectionSchedule
                                         && $clientScheduleResponse === 'confirmed'
                                         && $engineerScheduleResponse === 'confirmed';
@@ -2888,7 +2898,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             </div>
                                             <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-date-detail>
                                                 <div class="inquiry-inspection-summary-card__head"><span>Inspection Date &amp; Time</span><strong class="inquiry-schedule-final" data-schedule-final-badge <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Schedule Final</strong></div>
-                                                <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                <div class="inquiry-inspection-summary-card__value-line">
+                                                    <strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                    <?php if ($canRescheduleInspection): ?>
+                                                        <button type="button" class="btn-secondary inquiry-inspection-summary-card__reschedule" data-reschedule-inspection-open>Reschedule Inspection</button>
+                                                    <?php endif; ?>
+                                                </div>
                                             </div>
                                             <?php if ($currentScheduleReason !== ''): ?>
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Schedule Change Reason</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
@@ -2994,8 +3009,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php if (in_array($quotationStage, ['sent', 'accepted'], true) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <?php $inspectionScheduleLocked = inquiry_center_inspection_schedule_is_locked($latestInspection); ?>
-                                        <?php $scheduleConfirmationLocked = inquiry_center_inspection_schedule_is_confirmation_locked($latestInspection); ?>
-                                        <?php $scheduleReadOnly = $inspectionScheduleLocked || $scheduleConfirmationLocked; ?>
+                                        <?php $scheduleReadOnly = $inspectionScheduleLocked; ?>
                                         <?php
                                             $currentScheduleHash = $latestInspection
                                                 ? inquiry_center_schedule_notification_hash(
@@ -3011,9 +3025,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 && !empty($latestInspection['schedule_notified_at'])
                                                 && $storedScheduleHash !== ''
                                                 && hash_equals($storedScheduleHash, $currentScheduleHash);
-                                            $scheduleSubmitLabel = $latestInspection && $isScheduleConfirmed
-                                                ? 'Update Schedule & Notify Client and Engineer'
-                                                : 'Confirm Schedule & Notify Client and Engineer';
+                                            $scheduleSubmitLabel = $latestInspection
+                                                ? 'Update Schedule'
+                                                : 'Confirm Schedule';
                                             $showScheduleEditor = $latestInspection
                                                 && !$scheduleReadOnly
                                                 && empty($inquiry['archived_at'])
@@ -3065,9 +3079,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <textarea name="site_notes" hidden><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             <?php if ($latestInspection): ?>
                                                 <label data-admin-reschedule-reason hidden>
-                                                    <span>Reschedule Reason</span>
-                                                    <textarea name="reschedule_reason" rows="2" minlength="5" maxlength="1000" placeholder="Explain why the Engineer, date, or time is changing." disabled aria-describedby="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?> admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>"></textarea>
-                                                    <small id="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?>">Required for a schedule change. Shared with the Client and Engineer.</small>
+                                                    <span>Reschedule Note <em>(Optional)</em></span>
+                                                    <textarea name="reschedule_reason" rows="2" maxlength="1000" placeholder="Optional note for Client and Engineer." disabled aria-describedby="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?> admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>"></textarea>
+                                                    <small id="admin-reschedule-reason-help-<?php echo (int)$inquiry['id']; ?>">Add a note only if needed. It will be sent by email.</small>
                                                     <small class="inquiry-schedule-field-feedback" id="admin-reschedule-reason-feedback-<?php echo (int)$inquiry['id']; ?>" data-admin-reschedule-reason-feedback hidden aria-live="polite"></small>
                                                 </label>
                                             <?php endif; ?>

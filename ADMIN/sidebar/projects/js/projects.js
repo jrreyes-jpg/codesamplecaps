@@ -1467,6 +1467,9 @@ function initWalkInInquiryPanel() {
     const confirmMessage = confirmModal?.querySelector('[data-walk-in-confirm-message]');
     const confirmAccept = confirmModal?.querySelector('[data-walk-in-confirm-accept]');
     const confirmCancel = confirmModal?.querySelector('[data-walk-in-confirm-cancel]');
+    const saveModal = document.querySelector('[data-walk-in-save-modal]');
+    const saveTitle = saveModal?.querySelector('[data-walk-in-save-title]');
+    const saveMessage = saveModal?.querySelector('[data-walk-in-save-message]');
     const otpModal = document.querySelector('[data-walk-in-otp-modal]');
     const otpEmail = otpModal?.querySelector('[data-walk-in-otp-email]');
     const otpCode = otpModal?.querySelector('[data-walk-in-otp-code]');
@@ -2285,6 +2288,7 @@ function initWalkInInquiryPanel() {
     }
 
     function closePanel() {
+        if (isSubmitting) return;
         panel.classList.remove('is-open');
         panel.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('project-modal-open');
@@ -2292,6 +2296,21 @@ function initWalkInInquiryPanel() {
             window.sessionStorage.removeItem(panelStateKey);
         } catch (error) {
         }
+    }
+
+    function showSaveLoading(action) {
+        const isConfirmed = action === 'confirmed';
+        if (saveTitle) saveTitle.textContent = isConfirmed ? 'Saving inspection...' : 'Saving pending inquiry...';
+        if (saveMessage) {
+            saveMessage.textContent = isConfirmed
+                ? 'Sending schedule emails. Please wait.'
+                : 'Please wait. Do not close this page.';
+        }
+        panel.classList.add('is-save-locked');
+        saveModal?.classList.add('is-open');
+        saveModal?.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('walk-in-save-lock');
+        saveTitle?.focus({ preventScroll: true });
     }
 
     document.addEventListener('click', function (event) {
@@ -2303,6 +2322,7 @@ function initWalkInInquiryPanel() {
         }
         if (event.target.closest('[data-walk-in-inquiry-close]')) {
             event.preventDefault();
+            if (isSubmitting) return;
             if (otpModal?.classList.contains('is-open')) {
                 otpCode?.focus({ preventScroll: true });
                 return;
@@ -2312,11 +2332,13 @@ function initWalkInInquiryPanel() {
         }
         if (event.target.closest('[data-walk-in-clear]')) {
             event.preventDefault();
+            if (isSubmitting) return;
             askToDiscard(clearForm);
         }
     });
 
     panel.addEventListener('click', function (event) {
+        if (isSubmitting) return;
         if (dialog && !dialog.contains(event.target)) askToLeave(closePanel);
     });
 
@@ -2329,6 +2351,10 @@ function initWalkInInquiryPanel() {
 
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
+        if (isSubmitting) {
+            event.preventDefault();
+            return;
+        }
         if (otpModal?.classList.contains('is-open')) {
             event.preventDefault();
             otpCode?.focus({ preventScroll: true });
@@ -2480,6 +2506,7 @@ function initWalkInInquiryPanel() {
         }, function () {
             saveConfirmed = true;
             isSubmitting = true;
+            showSaveLoading(nextAction);
             try {
                 window.sessionStorage.removeItem(panelStateKey);
             } catch (error) {

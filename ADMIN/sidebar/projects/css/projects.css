@@ -2886,7 +2886,18 @@ body.walk-in-otp-lock {
     overscroll-behavior: none;
 }
 
+body.walk-in-save-lock {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
 .project-create-modal.is-otp-locked .walk-in-inquiry-panel {
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+}
+
+.project-create-modal.is-save-locked .walk-in-inquiry-panel {
     overflow: hidden;
     pointer-events: none;
     user-select: none;
@@ -3079,6 +3090,47 @@ body.walk-in-otp-lock {
 
 .walk-in-confirm-modal.is-open {
     display: grid;
+}
+
+.walk-in-save-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1600;
+    display: none;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.68);
+    overscroll-behavior: contain;
+    touch-action: none;
+}
+
+.walk-in-save-modal.is-open {
+    display: grid;
+}
+
+.walk-in-save-card {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    width: min(340px, 100%);
+    padding: 28px 24px;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+    text-align: center;
+}
+
+.walk-in-save-card h3,
+.walk-in-save-card p {
+    margin: 0;
+}
+
+.walk-in-save-card h3 {
+    color: #172033;
+}
+
+.walk-in-save-card p {
+    color: #64748b;
 }
 
 .walk-in-confirm-card {

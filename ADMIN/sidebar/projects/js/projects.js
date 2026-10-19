@@ -1785,7 +1785,10 @@ function initWalkInInquiryPanel() {
         const nameIsValid = /^[\p{L}\p{M} .'â€™-]+$/u.test(name) && (name.match(/\p{L}/gu) || []).length >= 2;
         const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         const phoneIsValid = /^09\d{9}$/.test(phone);
-        if (!nameIsValid || !emailIsValid || !phoneIsValid) return false;
+        if (!emailIsValid && !phoneIsValid) {
+            if (sendOtpButton) sendOtpButton.disabled = true;
+            return false;
+        }
 
         const requestId = ++contactCheckId;
         const data = new FormData();
@@ -1803,9 +1806,9 @@ function initWalkInInquiryPanel() {
             const result = await response.json();
             if (requestId !== contactCheckId) return false;
             const message = result.valid ? '' : (result.message || 'Invalid client details.');
-            setValidation(clientName, nameError, '');
-            setValidation(emailAddress, emailError, '');
-            setValidation(contactNumber, contactError, '');
+            if (nameIsValid) setValidation(clientName, nameError, '');
+            if (emailIsValid) setValidation(emailAddress, emailError, '');
+            if (phoneIsValid) setValidation(contactNumber, contactError, '');
             if (!result.valid) {
                 if (result.field === 'name') setValidation(clientName, nameError, message);
                 if (result.field === 'email' || result.field === 'both') setValidation(emailAddress, emailError, message);
@@ -1813,14 +1816,17 @@ function initWalkInInquiryPanel() {
                 if (!result.field) setValidation(emailAddress, emailError, message);
                 setEmailVerified(false);
                 if (sendOtpButton) sendOtpButton.disabled = true;
+            } else if (result.complete === false) {
+                setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
+                if (sendOtpButton) sendOtpButton.disabled = true;
             } else if (result.status === 'existing_client' && result.email_verified) {
-                setEmailVerified(true, 'Existing client found. Email already verified.');
+                setEmailVerified(true, 'Existing client found.');
             } else if (result.status === 'existing_inquiry') {
                 setEmailVerified(false, 'Existing inquiry found. Verify email.');
             } else {
                 setEmailVerified(false);
             }
-            return Boolean(result.valid);
+            return Boolean(result.valid && result.complete !== false);
         } catch (error) {
             if (requestId !== contactCheckId) return false;
             setValidation(emailAddress, emailError, 'Unable to check the client details. Try again.');
@@ -1961,9 +1967,11 @@ function initWalkInInquiryPanel() {
         }
         saveDraft();
         showConfirm({
-            title: 'Leave this form?',
-            message: 'Your draft is saved. You can continue it later.',
-            accept: 'Leave',
+            title: 'Leave and keep draft?',
+            message: 'Your entries will stay in this browser until you save or clear the form.',
+            accept: 'Leave & Keep Draft',
+            cancel: 'Continue Editing',
+            tone: 'primary',
         }, action);
     }
 
@@ -2237,9 +2245,11 @@ function initWalkInInquiryPanel() {
         ignoreNextPopstate = true;
         window.history.forward();
         showConfirm({
-            title: 'Leave this form?',
-            message: 'Your draft is saved. You can return to it later.',
-            accept: 'Leave',
+            title: 'Leave and keep draft?',
+            message: 'Your entries will stay in this browser until you save or clear the form.',
+            accept: 'Leave & Keep Draft',
+            cancel: 'Continue Editing',
+            tone: 'primary',
         }, function () {
             historyGuardReady = false;
             isSubmitting = true;

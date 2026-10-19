@@ -1061,7 +1061,7 @@ body:has([data-user-management-shell]) .user-management-panel {
     background: rgba(0, 0, 0, 0.7);
     justify-content: center;
     align-items: center;
-    z-index: 1200;
+    z-index: 1600;
 }
 
 .modal-backdrop.is-open {
@@ -1070,6 +1070,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 
 .account-status-confirmation {
     padding: 16px;
+    z-index: 1700;
 }
 
 .account-status-confirmation__panel {

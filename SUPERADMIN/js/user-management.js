@@ -145,20 +145,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    document.addEventListener('submit', function (event) {
-        const form = event.target.closest('[data-confirm-message]');
-        if (!form) {
-            return;
-        }
-
-        if (!window.confirm(form.getAttribute('data-confirm-message') || 'Continue?')) {
-            event.preventDefault();
-            return;
-        }
-
-        sessionStorage.removeItem('superadmin_user_toast');
-    });
-
     document.querySelector('[data-role-filter-select]')?.addEventListener('change', function (event) {
         event.target.closest('form')?.submit();
     });
@@ -188,6 +174,11 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.addEventListener('click', function (event) {
+        // Huwag isara ang huling Manage Actions habang nasa ibang popup.
+        if (event.target.closest('.modal-backdrop')) {
+            return;
+        }
+
         const toggle = event.target.closest('[data-user-actions-toggle]');
         const closeButton = event.target.closest('[data-user-actions-close]');
         const blockedAction = event.target.closest('[data-user-blocked-toast]');
@@ -231,6 +222,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.addEventListener('keydown', function (event) {
+        if (document.querySelector('.modal-backdrop.is-open')) {
+            return;
+        }
+
         if (event.key === 'Escape') {
             closeUserActionMenus(null);
         }
@@ -252,7 +247,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         accountStatusModal.hidden = true;
         accountStatusModal.classList.remove('is-open');
-        document.body.style.overflow = '';
+        const hasOpenActionMenu = Array.from(document.querySelectorAll('[data-user-actions-list]'))
+            .some((list) => !list.hasAttribute('hidden'));
+        const hasOpenFormModal = Boolean(document.querySelector('.modal-backdrop.is-open:not([data-account-status-modal])'));
+        document.body.style.overflow = hasOpenActionMenu || hasOpenFormModal ? 'hidden' : '';
         pendingAccountStatusForm = null;
 
         const focusTarget = accountStatusReturnFocus;
@@ -260,33 +258,67 @@ document.addEventListener('DOMContentLoaded', function () {
         window.setTimeout(() => focusTarget?.focus(), 0);
     };
 
-    const openAccountStatusModal = function (form) {
+    const openUserConfirmationModal = function (form, options) {
         if (!accountStatusModal || !accountStatusTitle || !accountStatusMessage || !accountStatusConfirm) {
             return;
         }
 
-        const nextStatus = form.querySelector('input[name="status"]')?.value || '';
-        const userName = form.getAttribute('data-user-name')?.trim() || 'this user';
-        const isReactivation = nextStatus === 'active';
-
         pendingAccountStatusForm = form;
-        accountStatusReturnFocus = form.closest('[data-user-actions-menu]')?.querySelector('[data-user-actions-toggle]') || null;
+        accountStatusReturnFocus = options.returnFocus
+            || form.closest('[data-user-actions-menu]')?.querySelector('[data-user-actions-toggle]')
+            || null;
         accountStatusSubmitting = false;
-        accountStatusTitle.textContent = isReactivation ? 'Reactivate Account?' : 'Deactivate Account?';
-        accountStatusMessage.textContent = isReactivation
-            ? `Reactivate ${userName}\u2019s account? They will be able to log in again.`
-            : `Deactivate ${userName}\u2019s account? They will lose access to the system.`;
-        accountStatusConfirm.textContent = isReactivation ? 'Reactivate' : 'Deactivate';
-        accountStatusConfirm.classList.toggle('is-danger', !isReactivation);
+        accountStatusTitle.textContent = options.title || 'Confirm Action';
+        accountStatusMessage.textContent = options.message || 'Continue with this action?';
+        accountStatusConfirm.textContent = options.confirmText || 'Confirm';
+        accountStatusConfirm.classList.toggle('is-danger', Boolean(options.isDanger));
         accountStatusConfirm.disabled = false;
         accountStatusCloseButtons.forEach((button) => { button.disabled = false; });
 
-        closeUserActionMenus(null);
         accountStatusModal.hidden = false;
         accountStatusModal.classList.add('is-open');
         document.body.style.overflow = 'hidden';
         window.setTimeout(() => accountStatusConfirm.focus(), 50);
     };
+
+    const openAccountStatusModal = function (form) {
+        const nextStatus = form.querySelector('input[name="status"]')?.value || '';
+        const userName = form.getAttribute('data-user-name')?.trim() || 'this user';
+        const isReactivation = nextStatus === 'active';
+
+        openUserConfirmationModal(form, {
+            title: isReactivation ? 'Reactivate Account?' : 'Deactivate Account?',
+            message: isReactivation
+                ? `Reactivate ${userName}\u2019s account? They will be able to log in again.`
+                : `Deactivate ${userName}\u2019s account? They will lose access to the system.`,
+            confirmText: isReactivation ? 'Reactivate' : 'Deactivate',
+            isDanger: !isReactivation,
+            returnFocus: form.querySelector('button[type="submit"]'),
+        });
+    };
+
+    document.addEventListener('submit', function (event) {
+        const form = event.target.closest('[data-confirm-message]');
+        if (!form || form.dataset.userActionConfirmed === 'true') {
+            return;
+        }
+
+        event.preventDefault();
+        const action = form.querySelector('input[name="action"]')?.value || '';
+        const confirmation = {
+            restore_user: { title: 'Restore User?', confirmText: 'Restore', isDanger: false },
+            delete_user: { title: 'Move User to Trash?', confirmText: 'Move to Trash', isDanger: true },
+            permanent_delete_user: { title: 'Delete User Forever?', confirmText: 'Delete Forever', isDanger: true },
+        }[action] || { title: 'Confirm Action', confirmText: 'Confirm', isDanger: false };
+
+        openUserConfirmationModal(form, {
+            title: confirmation.title,
+            message: form.getAttribute('data-confirm-message') || 'Continue with this action?',
+            confirmText: confirmation.confirmText,
+            isDanger: confirmation.isDanger,
+            returnFocus: form.querySelector('button[type="submit"]'),
+        });
+    });
 
     document.addEventListener('submit', function (event) {
         const form = event.target.closest('[data-account-status-confirm]');
@@ -316,6 +348,7 @@ document.addEventListener('DOMContentLoaded', function () {
         accountStatusCloseButtons.forEach((button) => { button.disabled = true; });
         accountStatusConfirm.textContent = 'Processing...';
         pendingAccountStatusForm.dataset.accountStatusConfirmed = 'true';
+        pendingAccountStatusForm.dataset.userActionConfirmed = 'true';
         sessionStorage.removeItem('superadmin_user_toast');
         pendingAccountStatusForm.requestSubmit();
     });
@@ -402,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const editEmail = editForm.querySelector('#edit_email');
         const editPhone = editForm.querySelector('#edit_phone');
         const editStatusDate = editForm.querySelector('[data-edit-status-date]');
+        let editReturnFocus = null;
 
         const clearEditValidation = function () {
             [editName, editEmail, editPhone].forEach(function (input) {
@@ -417,8 +451,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const closeEditModal = function () {
             editModal.hidden = true;
             editModal.classList.remove('is-open');
-            document.body.style.overflow = '';
+            const hasOpenActionMenu = Array.from(document.querySelectorAll('[data-user-actions-list]'))
+                .some((list) => !list.hasAttribute('hidden'));
+            document.body.style.overflow = hasOpenActionMenu ? 'hidden' : '';
             clearEditValidation();
+            const focusTarget = editReturnFocus;
+            editReturnFocus = null;
+            window.setTimeout(() => focusTarget?.focus(), 0);
         };
 
         const validateEditForm = function (showErrors) {
@@ -448,6 +487,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll('[data-open-edit-modal]').forEach(function (button) {
             button.addEventListener('click', function () {
+                editReturnFocus = button;
                 if (editUserId) editUserId.value = button.getAttribute('data-user-id') || '';
                 if (editName) editName.value = button.getAttribute('data-user-name') || '';
                 if (editEmail) editEmail.value = button.getAttribute('data-user-email') || '';
@@ -455,7 +495,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (editStatusDate) editStatusDate.textContent = button.getAttribute('data-user-status-date') || 'Not set';
                 editForm.dataset.userStatus = button.getAttribute('data-user-status') || '';
                 clearEditValidation();
-                closeUserActionMenus(null);
                 editModal.hidden = false;
                 editModal.classList.add('is-open');
                 document.body.style.overflow = 'hidden';
@@ -494,8 +533,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (editForm.dataset.userStatus === 'active' && !window.confirm('Save changes to this active user account?')) {
+            if (editForm.dataset.userStatus === 'active' && editForm.dataset.userActionConfirmed !== 'true') {
                 event.preventDefault();
+                openUserConfirmationModal(editForm, {
+                    title: 'Save Active User Changes?',
+                    message: 'Save these changes to this active user account?',
+                    confirmText: 'Save Changes',
+                    isDanger: false,
+                    returnFocus: editForm.querySelector('button[type="submit"]'),
+                });
             }
         });
     }
@@ -550,9 +596,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const resetPassword = resetForm.querySelector('#reset_new_password');
         const resetIndicator = resetForm.querySelector('#resetPassStrength');
         const resetTarget = resetModal.querySelector('[data-reset-password-target]');
+        let resetReturnFocus = null;
 
         const openResetModal = function (button) {
-            closeUserActionMenus(null);
+            resetReturnFocus = button;
             if (resetUserId) {
                 resetUserId.value = button.getAttribute('data-user-id') || '';
             }
@@ -576,7 +623,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const closeResetModal = function () {
             resetModal.hidden = true;
             resetModal.classList.remove('is-open');
-            document.body.style.overflow = '';
+            const hasOpenActionMenu = Array.from(document.querySelectorAll('[data-user-actions-list]'))
+                .some((list) => !list.hasAttribute('hidden'));
+            document.body.style.overflow = hasOpenActionMenu ? 'hidden' : '';
+            const focusTarget = resetReturnFocus;
+            resetReturnFocus = null;
+            window.setTimeout(() => focusTarget?.focus(), 0);
         };
 
         document.querySelectorAll('[data-open-reset-modal]').forEach(function (button) {
@@ -589,6 +641,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         resetModal.addEventListener('click', function (event) {
             if (event.target === resetModal) {
+                closeResetModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && resetModal.classList.contains('is-open')) {
                 closeResetModal();
             }
         });

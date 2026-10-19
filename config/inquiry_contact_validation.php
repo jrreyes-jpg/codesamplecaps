@@ -28,14 +28,14 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
         return ['valid' => false, 'status' => 'server_error'];
     }
 
-    $internalRoles = ['super_admin', 'admin', 'engineer', 'foreman', 'inventory_clerk'];
     $emailClient = null;
     $phoneClient = null;
     $result = $stmt->get_result();
 
     while ($user = $result->fetch_assoc()) {
         $role = strtolower((string)($user['role'] ?? ''));
-        if (in_array($role, $internalRoles, true)) {
+        // Client lang ang puwedeng gumamit ulit ng dating account details.
+        if ($role !== 'client') {
             $emailMatches = mb_strtolower((string)($user['email'] ?? ''), 'UTF-8') === $email;
             $phoneMatches = (string)($user['phone_normalized'] ?? '') === $phone;
             return [
@@ -43,10 +43,6 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
                 'status' => 'contact_not_allowed',
                 'field' => $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone'),
             ];
-        }
-
-        if ($role !== 'client') {
-            continue;
         }
 
         if (mb_strtolower((string)($user['email'] ?? ''), 'UTF-8') === $email) {

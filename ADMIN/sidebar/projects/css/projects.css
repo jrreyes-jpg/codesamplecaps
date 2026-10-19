@@ -2881,6 +2881,17 @@ body.project-modal-open {
     overflow: hidden;
 }
 
+body.walk-in-otp-lock {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+.project-create-modal.is-otp-locked .walk-in-inquiry-panel {
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+}
+
 .project-create-header-actions {
     display: flex;
     align-items: center;
@@ -3059,7 +3070,7 @@ body.project-modal-open {
 .walk-in-confirm-modal {
     position: fixed;
     inset: 0;
-    z-index: 1300;
+    z-index: 1500;
     display: none;
     place-items: center;
     padding: 20px;
@@ -3163,6 +3174,8 @@ body.project-modal-open {
     place-items: center;
     padding: 20px;
     background: rgba(15, 23, 42, 0.64);
+    overscroll-behavior: contain;
+    touch-action: none;
 }
 
 .walk-in-otp-modal.is-open {
@@ -3171,10 +3184,43 @@ body.project-modal-open {
 
 .walk-in-otp-card {
     width: min(420px, 100%);
+    max-height: calc(100dvh - 40px);
+    overflow: auto;
     padding: 24px;
     border-radius: 20px;
     background: #ffffff;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    touch-action: auto;
+}
+
+.walk-in-otp-loading {
+    display: none;
+    place-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.walk-in-otp-modal.is-sending .walk-in-otp-loading {
+    display: grid;
+}
+
+.walk-in-otp-modal.is-sending [data-walk-in-otp-content] {
+    display: none;
+}
+
+.walk-in-otp-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #dcfce7;
+    border-top-color: #16a34a;
+    border-radius: 50%;
+    animation: walk-in-otp-spin 0.8s linear infinite;
+}
+
+@keyframes walk-in-otp-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .walk-in-otp-card h3,

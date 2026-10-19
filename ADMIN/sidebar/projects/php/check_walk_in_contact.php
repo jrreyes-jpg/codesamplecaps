@@ -34,6 +34,7 @@ if (!$emailIsValid && !$phoneIsValid) {
         'complete' => false,
         'status' => 'incomplete_contact',
         'email_verified' => false,
+        'can_verify_email' => false,
     ]);
     exit();
 }
@@ -70,6 +71,7 @@ while ($user = $lookupResult->fetch_assoc()) {
             'complete' => false,
             'status' => 'contact_not_allowed',
             'email_verified' => false,
+            'can_verify_email' => false,
             'field' => $field,
             'message' => $message,
         ]);
@@ -87,6 +89,7 @@ if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
         'complete' => false,
         'status' => $clientFound ? 'existing_client_detected' : 'incomplete_contact',
         'email_verified' => false,
+        'can_verify_email' => $emailIsValid && !$clientFound,
         'message' => $clientFound ? 'Existing client found.' : '',
     ]);
     exit();
@@ -107,6 +110,7 @@ echo json_encode([
     'complete' => true,
     'status' => (string)$result['status'],
     'email_verified' => !empty($result['email_verified']),
+    'can_verify_email' => (bool)$result['valid'],
     'field' => (string)($result['field'] ?? ''),
     'message' => $result['valid'] ? '' : ($messages[$result['status']] ?? 'Invalid client details.'),
 ]);

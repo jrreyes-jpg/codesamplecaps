@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../../../config/walk_in_email_verification.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
@@ -16,8 +17,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !auth_is_valid_csrf($_POST['csrf_to
 
 $name = trim((string)($_POST['client_name'] ?? ''));
 $email = mb_strtolower(trim((string)($_POST['email'] ?? '')), 'UTF-8');
-if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    echo json_encode(['success' => false, 'message' => 'Enter a valid name and email first.']);
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo json_encode(['success' => false, 'message' => 'Enter a valid email first.']);
+    exit();
+}
+$name = $name !== '' ? $name : 'Client';
+
+// Huwag padalhan ng client OTP ang email ng staff.
+$accountStmt = $conn->prepare('SELECT role, status FROM users WHERE deleted_at IS NULL AND LOWER(email) = ? LIMIT 1');
+if (!$accountStmt) {
+    echo json_encode(['success' => false, 'message' => 'Unable to check this email right now.']);
+    exit();
+}
+$accountStmt->bind_param('s', $email);
+$accountStmt->execute();
+$account = $accountStmt->get_result()->fetch_assoc();
+if ($account && strtolower((string)($account['role'] ?? '')) !== 'client') {
+    echo json_encode(['success' => false, 'message' => 'This email belongs to a staff account.']);
     exit();
 }
 

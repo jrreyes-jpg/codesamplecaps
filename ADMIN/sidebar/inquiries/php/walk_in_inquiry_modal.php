@@ -143,25 +143,32 @@
 
 <section class="walk-in-otp-modal" data-walk-in-otp-modal aria-hidden="true">
     <div class="walk-in-otp-card" role="dialog" aria-modal="true" aria-labelledby="walk-in-otp-title">
-        <h3 id="walk-in-otp-title">Verify Client Email</h3>
-        <p>Enter the 6-digit code sent to <strong data-walk-in-otp-email></strong>.</p>
-        <label for="walk_in_otp_code">Verification Code</label>
-        <input id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" data-walk-in-otp-code>
-        <small class="walk-in-field-error" data-walk-in-otp-error></small>
-        <div class="walk-in-confirm-actions">
-            <button type="button" class="btn-secondary" data-walk-in-otp-close>Close</button>
-            <button type="button" class="btn-primary" data-walk-in-otp-verify>Verify Code</button>
+        <div class="walk-in-otp-loading" data-walk-in-otp-loading aria-live="polite">
+            <span class="walk-in-otp-spinner" aria-hidden="true"></span>
+            <h3>Sending code...</h3>
+            <p>Please wait. Do not close this page.</p>
+        </div>
+        <div data-walk-in-otp-content>
+            <h3 id="walk-in-otp-title">Verify Client Email</h3>
+            <p>Enter the 6-digit code sent to <strong data-walk-in-otp-email></strong>.</p>
+            <label for="walk_in_otp_code">Verification Code</label>
+            <input id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" data-walk-in-otp-code>
+            <small class="walk-in-field-error" data-walk-in-otp-error></small>
+            <div class="walk-in-confirm-actions">
+                <button type="button" class="btn-secondary" data-walk-in-otp-close>Close</button>
+                <button type="button" class="btn-primary" data-walk-in-otp-verify>Verify Code</button>
+            </div>
         </div>
     </div>
 </section>
 
 <section class="walk-in-confirm-modal" data-walk-in-confirm-modal aria-hidden="true">
     <div class="walk-in-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="walk-in-confirm-title" aria-describedby="walk-in-confirm-message">
-        <h3 id="walk-in-confirm-title" data-walk-in-confirm-title>Discard changes?</h3>
-        <p id="walk-in-confirm-message" data-walk-in-confirm-message>Your unsaved walk-in inquiry will be kept unless you confirm.</p>
+        <h3 id="walk-in-confirm-title" data-walk-in-confirm-title>Clear this form?</h3>
+        <p id="walk-in-confirm-message" data-walk-in-confirm-message>All entered details and the saved draft will be removed.</p>
         <div class="walk-in-confirm-actions">
             <button type="button" class="btn-secondary" data-walk-in-confirm-cancel>Keep Editing</button>
-            <button type="button" class="btn-danger" data-walk-in-confirm-accept>Discard</button>
+            <button type="button" class="btn-danger" data-walk-in-confirm-accept>Clear Form</button>
         </div>
     </div>
 </section>

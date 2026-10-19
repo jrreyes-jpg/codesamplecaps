@@ -1471,6 +1471,7 @@ function initWalkInInquiryPanel() {
     const otpError = otpModal?.querySelector('[data-walk-in-otp-error]');
     const otpVerifyButton = otpModal?.querySelector('[data-walk-in-otp-verify]');
     const draftKey = 'codesamplecaps.admin.walkInInquiryDraft';
+    const panelStateKey = 'codesamplecaps.admin.walkInInquiryOpen';
     let locationData = null;
     let locationLoading = null;
     let pendingConfirmAction = null;
@@ -1712,14 +1713,39 @@ function initWalkInInquiryPanel() {
     function closeOtpModal() {
         otpModal?.classList.remove('is-open');
         otpModal?.setAttribute('aria-hidden', 'true');
+        panel.classList.remove('is-otp-locked');
+        document.body.classList.remove('walk-in-otp-lock');
+        if (dialog) dialog.inert = false;
         if (otpError) otpError.textContent = '';
         if (otpCode) otpCode.value = '';
+        sendOtpButton?.focus({ preventScroll: true });
+    }
+
+    function openOtpModal(isSending = false) {
+        panel.classList.add('is-otp-locked');
+        document.body.classList.add('walk-in-otp-lock');
+        if (dialog) dialog.inert = true;
+        otpModal?.classList.toggle('is-sending', isSending);
+        otpModal?.setAttribute('aria-busy', isSending ? 'true' : 'false');
+        otpModal?.classList.add('is-open');
+        otpModal?.setAttribute('aria-hidden', 'false');
+        if (!isSending) otpCode?.focus({ preventScroll: true });
+    }
+
+    function showOtpEntry() {
+        otpModal?.classList.remove('is-sending');
+        otpModal?.setAttribute('aria-busy', 'false');
+        otpCode?.focus({ preventScroll: true });
     }
 
     async function sendEmailOtp() {
-        if (!validateName() || !validateEmail()) return;
-        if (!(await checkExistingContact()) || emailIsVerified) return;
+        if (!validateEmail()) return;
         sendOtpButton?.setAttribute('disabled', 'disabled');
+        openOtpModal(true);
+        if (!(await checkExistingContact()) || emailIsVerified) {
+            closeOtpModal();
+            return;
+        }
         const data = new FormData();
         data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
         data.append('client_name', clientName.value.trim());
@@ -1732,14 +1758,14 @@ function initWalkInInquiryPanel() {
             });
             const result = await response.json();
             if (!result.success) {
+                closeOtpModal();
                 setValidation(emailAddress, emailError, result.message || 'Email cannot be sent right now.');
                 return;
             }
             if (otpEmail) otpEmail.textContent = emailAddress.value.trim();
-            otpModal?.classList.add('is-open');
-            otpModal?.setAttribute('aria-hidden', 'false');
-            otpCode?.focus({ preventScroll: true });
+            showOtpEntry();
         } catch (error) {
+            closeOtpModal();
             setValidation(emailAddress, emailError, 'Email cannot be sent right now.');
         } finally {
             if (!emailIsVerified) sendOtpButton?.removeAttribute('disabled');
@@ -1817,16 +1843,18 @@ function initWalkInInquiryPanel() {
                 setEmailVerified(false);
                 if (sendOtpButton) sendOtpButton.disabled = true;
             } else if (result.complete === false) {
-                setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
-                if (sendOtpButton) sendOtpButton.disabled = true;
+                if (!emailIsVerified) {
+                    setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
+                }
+                if (sendOtpButton) sendOtpButton.disabled = emailIsVerified || !result.can_verify_email;
             } else if (result.status === 'existing_client' && result.email_verified) {
                 setEmailVerified(true, 'Existing client found.');
             } else if (result.status === 'existing_inquiry') {
-                setEmailVerified(false, 'Existing inquiry found. Verify email.');
-            } else {
+                if (!emailIsVerified) setEmailVerified(false, 'Existing inquiry found. Verify email.');
+            } else if (!emailIsVerified) {
                 setEmailVerified(false);
             }
-            return Boolean(result.valid && result.complete !== false);
+            return Boolean(result.valid && (result.complete !== false || result.can_verify_email));
         } catch (error) {
             if (requestId !== contactCheckId) return false;
             setValidation(emailAddress, emailError, 'Unable to check the client details. Try again.');
@@ -1886,6 +1914,9 @@ function initWalkInInquiryPanel() {
         try {
             if (hasDraftContent()) {
                 window.sessionStorage.setItem(draftKey, JSON.stringify(getDraftData()));
+                if (panel.classList.contains('is-open')) {
+                    window.sessionStorage.setItem(panelStateKey, '1');
+                }
                 enableHistoryGuard();
             } else {
                 window.sessionStorage.removeItem(draftKey);
@@ -1897,6 +1928,7 @@ function initWalkInInquiryPanel() {
     function clearSavedDraft() {
         try {
             window.sessionStorage.removeItem(draftKey);
+            window.sessionStorage.removeItem(panelStateKey);
             window.localStorage.removeItem(draftKey);
         } catch (error) {
         }
@@ -1929,6 +1961,7 @@ function initWalkInInquiryPanel() {
     function showConfirm(options, action) {
         if (!confirmModal) return;
         pendingConfirmAction = action;
+        if (otpModal?.classList.contains('is-open')) otpModal.inert = true;
         if (confirmTitle) confirmTitle.textContent = options.title;
         if (confirmMessage) confirmMessage.textContent = options.message;
         if (confirmAccept) {
@@ -1945,7 +1978,21 @@ function initWalkInInquiryPanel() {
     function hideConfirm() {
         confirmModal?.classList.remove('is-open');
         confirmModal?.setAttribute('aria-hidden', 'true');
+        if (otpModal?.classList.contains('is-open')) {
+            otpModal.inert = false;
+            otpCode?.focus({ preventScroll: true });
+        }
         pendingConfirmAction = null;
+    }
+
+    function askToCloseOtp() {
+        if (!otpModal?.classList.contains('is-open') || otpModal.classList.contains('is-sending')) return;
+        showConfirm({
+            title: 'Cancel email verification?',
+            message: 'You will return to the Walk-in Inquiry form.',
+            accept: 'Go Back',
+            cancel: 'Continue Verification',
+        }, closeOtpModal);
     }
 
     function askToDiscard(action) {
@@ -1954,9 +2001,10 @@ function initWalkInInquiryPanel() {
             return;
         }
         showConfirm({
-            title: 'Discard unsaved inquiry?',
-            message: 'Your saved draft will be removed.',
-            accept: 'Discard',
+            title: 'Clear this form?',
+            message: 'All entered details and the saved draft will be removed.',
+            accept: 'Clear Form',
+            cancel: 'Keep Editing',
         }, action);
     }
 
@@ -2046,14 +2094,23 @@ function initWalkInInquiryPanel() {
         panel.classList.add('is-open');
         panel.setAttribute('aria-hidden', 'false');
         document.body.classList.add('project-modal-open');
+        try {
+            window.sessionStorage.setItem(panelStateKey, '1');
+        } catch (error) {
+        }
         loadLocations();
-        clientName?.focus({ preventScroll: true });
+        const firstEmptyField = [clientName, emailAddress].find((field) => !String(field?.value || '').trim());
+        firstEmptyField?.focus({ preventScroll: true });
     }
 
     function closePanel() {
         panel.classList.remove('is-open');
         panel.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('project-modal-open');
+        try {
+            window.sessionStorage.removeItem(panelStateKey);
+        } catch (error) {
+        }
     }
 
     document.addEventListener('click', function (event) {
@@ -2065,6 +2122,10 @@ function initWalkInInquiryPanel() {
         }
         if (event.target.closest('[data-walk-in-inquiry-close]')) {
             event.preventDefault();
+            if (otpModal?.classList.contains('is-open')) {
+                otpCode?.focus({ preventScroll: true });
+                return;
+            }
             askToLeave(closePanel);
             return;
         }
@@ -2088,7 +2149,8 @@ function initWalkInInquiryPanel() {
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
         if (otpModal?.classList.contains('is-open')) {
-            closeOtpModal();
+            event.preventDefault();
+            otpCode?.focus({ preventScroll: true });
             return;
         }
         if (confirmModal?.classList.contains('is-open')) {
@@ -2115,11 +2177,27 @@ function initWalkInInquiryPanel() {
     sendOtpButton?.addEventListener('click', sendEmailOtp);
     otpVerifyButton?.addEventListener('click', verifyEmailOtp);
     otpModal?.addEventListener('click', function (event) {
-        if (event.target === otpModal || event.target.closest('[data-walk-in-otp-close]')) closeOtpModal();
+        if (event.target === otpModal || event.target.closest('[data-walk-in-otp-close]')) {
+            askToCloseOtp();
+        }
     });
     otpCode?.addEventListener('input', function () {
         otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 6);
         if (otpError) otpError.textContent = '';
+    });
+    otpModal?.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab') return;
+        const focusable = Array.from(otpModal.querySelectorAll('button:not(:disabled), input:not(:disabled)'));
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     });
     emailAddress?.addEventListener('blur', function () {
         if (emailEdited) validateEmail();
@@ -2191,6 +2269,10 @@ function initWalkInInquiryPanel() {
         }, function () {
             saveConfirmed = true;
             isSubmitting = true;
+            try {
+                window.sessionStorage.removeItem(panelStateKey);
+            } catch (error) {
+            }
             form.querySelectorAll('button[type="submit"]').forEach(function (button) {
                 button.setAttribute('disabled', 'disabled');
             });
@@ -2213,7 +2295,21 @@ function initWalkInInquiryPanel() {
     if (panel.classList.contains('is-open')) {
         panel.setAttribute('aria-hidden', 'false');
         document.body.classList.add('project-modal-open');
+        try {
+            window.sessionStorage.setItem(panelStateKey, '1');
+        } catch (error) {
+        }
         loadLocations();
+    } else {
+        let reopenAfterRefresh = false;
+        try {
+            reopenAfterRefresh = window.sessionStorage.getItem(panelStateKey) === '1';
+        } catch (error) {
+        }
+        if (reopenAfterRefresh) {
+            restoreDraft();
+            openPanel();
+        }
     }
 
     document.addEventListener('click', function (event) {

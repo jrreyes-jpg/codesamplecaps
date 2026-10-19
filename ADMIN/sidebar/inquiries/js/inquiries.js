@@ -2007,10 +2007,13 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.querySelector('[data-schedule-final-badge]')?.removeAttribute('hidden');
         modal.querySelector('[data-inspection-phase-card]')?.removeAttribute('hidden');
         const monitorButton = modal.querySelector('[data-inspection-monitor-open]');
-        if (monitorButton && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {
+        const canMonitor = ['Ongoing', 'Completed', 'Submitted'].includes(phase || 'Assigned');
+        if (monitorButton && canMonitor && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {
             monitorButton.removeAttribute('hidden');
+        } else if (monitorButton) {
+            monitorButton.hidden = true;
         }
-        moveInspectionMonitorToTools(modal);
+        if (canMonitor) moveInspectionMonitorToTools(modal);
     };
 
     document.querySelectorAll('.inquiry-modal').forEach(moveInspectionMonitorToTools);

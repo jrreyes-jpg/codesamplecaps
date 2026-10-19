@@ -2806,6 +2806,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     $canRescheduleInspection = $latestInspection
                                         && empty($inquiry['archived_at'])
                                         && !inquiry_center_inspection_schedule_is_locked($latestInspection);
+                                    $canMonitorInspection = $latestInspection
+                                        && in_array($latestInspectionStatus, ['Ongoing', 'Completed', 'Submitted'], true);
                                     $scheduleIsFinal = $hasOfficialInspectionSchedule;
                                     ?>
                                     <?php if ($latestInspection): ?>
@@ -2823,10 +2825,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span>Assigned Engineer</span>
                                                     <span class="inquiry-inspection-phase-inline" data-inspection-phase-card <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>><span>Engineer Phase</span><strong class="inquiry-status" data-inspection-phase data-phase="<?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($latestInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></strong></span>
                                                 </div>
-                                                <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Monitor Inspection</button></div>
+                                                <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$canMonitorInspection ? 'hidden' : ''; ?>>Monitor Inspection</button></div>
                                             </div>
                                             <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-date-detail>
-                                                <div class="inquiry-inspection-summary-card__head"><span>Inspection Date &amp; Time</span><strong class="inquiry-schedule-final" data-schedule-final-badge <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Schedule Final</strong></div>
+                                                <div class="inquiry-inspection-summary-card__head"><span>Inspection Date &amp; Time</span><strong class="inquiry-schedule-final" data-schedule-final-badge <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Scheduled</strong></div>
                                                 <div class="inquiry-inspection-summary-card__value-line">
                                                     <strong><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                     <?php if ($canRescheduleInspection): ?>

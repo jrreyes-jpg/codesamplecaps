@@ -2470,12 +2470,12 @@ function initWalkInInquiryPanel() {
         const engineerName = engineerSelect?.selectedOptions[0]?.textContent?.trim() || 'Unassigned';
         const displayDate = formatWalkInDate(dateInput.value);
         showConfirm({
-            title: nextAction === 'confirmed' ? 'Save Confirmed Inspection?' : 'Save as Pending?',
+            title: nextAction === 'confirmed' ? 'Confirm inspection?' : 'Save as pending?',
             message: nextAction === 'confirmed'
-                ? clientName.value.trim() + ' - ' + displayDate + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. Inspection will be scheduled.'
-                : clientName.value.trim() + ' - ' + displayDate + ' at ' + selectedTime + '. Engineer: Unassigned. Admin will confirm an Engineer later.',
-            accept: nextAction === 'confirmed' ? 'Confirm Inspection' : 'Save as Pending',
-            cancel: 'Go Back',
+                ? 'Schedule: ' + displayDate + ' at ' + selectedTime + '. Engineer: ' + engineerName + '. Client and Engineer will get an email.'
+                : 'Schedule: ' + displayDate + ' at ' + selectedTime + '. Engineer is unassigned. Admin will contact an Engineer later.',
+            accept: nextAction === 'confirmed' ? 'Confirm' : 'Save Pending',
+            cancel: 'Back',
             tone: 'primary',
         }, function () {
             saveConfirmed = true;

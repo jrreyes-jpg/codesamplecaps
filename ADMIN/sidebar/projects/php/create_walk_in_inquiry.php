@@ -33,7 +33,8 @@ try {
         || !empty($contactCheck['email_verified']);
     $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
     $isConfirmedInspection = $preferredEngineerId > 0;
-    $inquiryId = create_walk_in_inquiry($conn, $_POST);
+    $notificationResult = [];
+    $inquiryId = create_walk_in_inquiry($conn, $_POST, $notificationResult);
     audit_log_event(
         $conn,
         (int)($_SESSION['user_id'] ?? 0),
@@ -49,9 +50,15 @@ try {
     );
     walk_in_email_verification_clear();
     unset($_SESSION['walk_in_inquiry_old_input']);
-    $_SESSION['inquiry_center_flash'] = $isConfirmedInspection
-        ? 'Confirmed inspection saved. Engineer is assigned.'
-        : 'Walk-in inquiry saved as Pending. Engineer is still Unassigned.';
+    if ($isConfirmedInspection) {
+        $clientSent = !empty($notificationResult['client_sent']);
+        $engineerSent = !empty($notificationResult['engineer_sent']);
+        $_SESSION['inquiry_center_flash'] = $clientSent && $engineerSent
+            ? 'Confirmed inspection saved. Client and Engineer were notified by email.'
+            : 'Confirmed inspection saved. Check email setup if a notice was not sent.';
+    } else {
+        $_SESSION['inquiry_center_flash'] = 'Walk-in inquiry saved as Pending. Engineer is still Unassigned.';
+    }
     $_SESSION['inquiry_center_flash_type'] = 'success';
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
         'status' => $isConfirmedInspection ? 'For Inspection' : 'Pending Review',

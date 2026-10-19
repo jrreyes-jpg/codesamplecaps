@@ -470,15 +470,20 @@ class EmailService {
             $scheduleCta = $scheduleLink !== ''
                 ? "<p><a href='{$safeScheduleLink}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>Review &amp; Respond</a></p>"
                 : '';
-            $scheduleIntro = $isUpdated
-                ? 'Your inspection schedule has been updated. Please review the details and confirm the schedule or request a change.'
-                : 'Your site inspection has been scheduled. Please review the details and confirm the schedule or request a change.';
+            $isFinalScheduleNotice = $scheduleLink === '';
+            $scheduleIntro = $isFinalScheduleNotice
+                ? 'Your site inspection has been scheduled. Please keep this final schedule for your reference.'
+                : ($isUpdated
+                    ? 'Your inspection schedule has been updated. Please review the details and confirm the schedule or request a change.'
+                    : 'Your site inspection has been scheduled. Please review the details and confirm the schedule or request a change.');
 
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = ($isUpdated ? 'Inspection Schedule Updated' : 'Inspection Schedule - Confirmation Required') . ' - Edge Automation';
+            $this->mailer->Subject = ($isFinalScheduleNotice
+                ? 'Inspection Schedule Confirmed'
+                : ($isUpdated ? 'Inspection Schedule Updated' : 'Inspection Schedule - Confirmation Required')) . ' - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>

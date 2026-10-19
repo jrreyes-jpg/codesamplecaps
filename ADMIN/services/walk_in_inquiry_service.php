@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/walk_in_inquiry_schedule.php';
 require_once __DIR__ . '/../../config/walk_in_email_verification.php';
 require_once __DIR__ . '/../../config/site_inspections.php';
+require_once __DIR__ . '/../../config/user_notifications.php';
+require_once __DIR__ . '/../../services/EmailService.php';
 
 function walk_in_inquiry_has_column(mysqli $conn, string $column): bool
 {
@@ -41,7 +43,100 @@ function walk_in_inquiry_table_exists(mysqli $conn, string $table): bool
     return (bool)$stmt->get_result()->fetch_assoc();
 }
 
-function create_walk_in_inquiry(mysqli $conn, array $input): int
+function walk_in_inquiry_table_has_column(mysqli $conn, string $table, string $column): bool
+{
+    $stmt = $conn->prepare(
+        'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1'
+    );
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('ss', $table, $column);
+    $stmt->execute();
+
+    return (bool)$stmt->get_result()->fetch_assoc();
+}
+
+function walk_in_send_confirmed_inspection_notifications(
+    mysqli $conn,
+    int $inspectionId,
+    int $engineerId,
+    string $engineerName,
+    string $engineerEmail,
+    string $clientName,
+    string $clientEmail,
+    string $clientContactNumber,
+    string $service,
+    string $siteAddress,
+    string $scheduledAt,
+    string $siteNotes
+): array {
+    $result = ['client_sent' => false, 'engineer_sent' => false];
+    $schedule = (new DateTimeImmutable($scheduledAt, site_inspection_timezone()))
+        ->format('l, F j, Y, g:i A') . ' (PHT)';
+
+    user_notifications_create_if_missing(
+        $conn,
+        $engineerId,
+        'site_inspection_assignment',
+        $inspectionId,
+        'New Site Inspection Assignment',
+        'Client: ' . ($clientName !== '' ? $clientName : 'Client') . ' | Schedule: ' . $schedule,
+        site_inspection_engineer_link($inspectionId),
+        'site_inspection_assignment:' . $engineerId . ':' . $inspectionId
+    );
+
+    if (filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
+        $clientMailer = new EmailService();
+        $result['client_sent'] = $clientMailer->sendInspectionScheduleClientNotification(
+            $clientEmail,
+            $clientName,
+            $service,
+            $schedule,
+            $engineerName,
+            $siteAddress,
+            $siteNotes
+        );
+    }
+
+    if (filter_var($engineerEmail, FILTER_VALIDATE_EMAIL)) {
+        $engineerMailer = new EmailService();
+        $result['engineer_sent'] = $engineerMailer->sendInspectionScheduleEngineerAssignment(
+            $engineerEmail,
+            $engineerName,
+            $clientName,
+            $service,
+            $schedule,
+            $siteAddress,
+            $clientContactNumber,
+            $clientEmail,
+            $siteNotes,
+            false,
+            site_inspection_engineer_link($inspectionId)
+        );
+    }
+
+    if (walk_in_inquiry_table_has_column($conn, 'site_inspections', 'client_schedule_notified_at') && $result['client_sent']) {
+        $stmt = $conn->prepare('UPDATE site_inspections SET client_schedule_notified_at = NOW() WHERE id = ?');
+        if ($stmt) {
+            $stmt->bind_param('i', $inspectionId);
+            $stmt->execute();
+        }
+    }
+    if (walk_in_inquiry_table_has_column($conn, 'site_inspections', 'engineer_schedule_notified_at') && $result['engineer_sent']) {
+        $stmt = $conn->prepare('UPDATE site_inspections SET engineer_schedule_notified_at = NOW() WHERE id = ?');
+        if ($stmt) {
+            $stmt->bind_param('i', $inspectionId);
+            $stmt->execute();
+        }
+    }
+
+    return $result;
+}
+
+function create_walk_in_inquiry(mysqli $conn, array $input, array &$notificationResult = []): int
 {
     $allowedServices = [
         'New Automation Installation',
@@ -120,7 +215,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
 
     $preferredEngineerName = '';
     if ($preferredEngineerId > 0) {
-        $engineerStmt = $conn->prepare("SELECT full_name FROM users WHERE id = ? AND role = 'engineer' AND status = 'active' AND deleted_at IS NULL LIMIT 1");
+        $engineerStmt = $conn->prepare("SELECT full_name, email FROM users WHERE id = ? AND role = 'engineer' AND status = 'active' AND deleted_at IS NULL LIMIT 1");
         if (!$engineerStmt) {
             throw new RuntimeException('Unable to check the Engineer.');
         }
@@ -131,6 +226,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
             throw new InvalidArgumentException('Select an active Engineer or leave it Unassigned.');
         }
         $preferredEngineerName = (string)$engineer['full_name'];
+        $preferredEngineerEmail = (string)($engineer['email'] ?? '');
         if (!walk_in_inquiry_table_exists($conn, 'site_inspections')) {
             throw new RuntimeException('Site inspection table is not ready. Run the site inspection migration first.');
         }
@@ -219,6 +315,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
         }
 
         $inquiryId = (int)$conn->insert_id;
+        $inspectionId = 0;
         if ($isConfirmedInspection) {
             $scheduledAt = $preferredDate . ' ' . $preferredTime . ':00';
             $siteNotes = 'Walk-in inspection schedule confirmed by Admin.';
@@ -234,9 +331,39 @@ function create_walk_in_inquiry(mysqli $conn, array $input): int
             if (!$inspectionStmt->execute()) {
                 throw new RuntimeException('Unable to save the inspection schedule.');
             }
+            $inspectionId = (int)$conn->insert_id;
         }
 
         $conn->commit();
+
+        if ($isConfirmedInspection && $inspectionId > 0) {
+            try {
+                $fullSiteAddress = implode(', ', array_filter([
+                    $siteAddress,
+                    $barangay,
+                    $cityMunicipality,
+                    $province,
+                ], static fn(string $value): bool => trim($value) !== ''));
+                $notificationResult = walk_in_send_confirmed_inspection_notifications(
+                    $conn,
+                    $inspectionId,
+                    $preferredEngineerId,
+                    $preferredEngineerName,
+                    $preferredEngineerEmail ?? '',
+                    $clientName,
+                    $email,
+                    $contactNo,
+                    $serviceCategory,
+                    $fullSiteAddress ?: 'Site address not set',
+                    $scheduledAt,
+                    $siteNotes
+                );
+            } catch (Throwable $notificationException) {
+                // Naka-save na ang schedule kahit may email problem.
+                error_log('Walk-in inspection email notification failed: ' . $notificationException->getMessage());
+                $notificationResult = ['client_sent' => false, 'engineer_sent' => false];
+            }
+        }
         return $inquiryId;
     } catch (Throwable $exception) {
         $conn->rollback();

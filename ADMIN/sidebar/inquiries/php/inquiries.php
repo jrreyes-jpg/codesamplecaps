@@ -1426,21 +1426,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = (string)$scheduleValidation['message'];
         } else {
             $currentInquiryStatus = '';
-            $statusStmt = $conn->prepare('SELECT status FROM service_inquiries WHERE id = ? LIMIT 1');
+            $currentInquirySource = '';
+            $statusStmt = $conn->prepare('SELECT status, inquiry_source FROM service_inquiries WHERE id = ? LIMIT 1');
             if ($statusStmt) {
                 $statusStmt->bind_param('i', $inquiryId);
                 $statusStmt->execute();
                 $statusRow = $statusStmt->get_result()->fetch_assoc();
                 $currentInquiryStatus = (string)($statusRow['status'] ?? '');
+                $currentInquirySource = (string)($statusRow['inquiry_source'] ?? '');
             }
+            $isWalkInPendingSchedule = $currentInquiryStatus === 'Pending Review'
+                && $currentInquirySource === 'walk_in';
 
-            if (!in_array($currentInquiryStatus, ['Verified Lead', 'For Inspection'], true)) {
-                $error = 'Only verified leads can be scheduled for site inspection.';
+            if (!in_array($currentInquiryStatus, ['Verified Lead', 'For Inspection'], true) && !$isWalkInPendingSchedule) {
+                $error = 'Only verified leads or pending walk-in inquiries can be scheduled.';
             }
 
             // Para sa existing inspection, puwedeng mag-reschedule si Admin kahit walk-in ito.
             // Para sa bagong inspection lang kailangan ang accepted quotation.
-            if ($error === '' && $existingScheduleValue === '') {
+            if ($error === '' && $existingScheduleValue === '' && !$isWalkInPendingSchedule) {
                 $quotationStmt = $conn->prepare(
                     'SELECT id, status FROM inquiry_quotation_drafts
                      WHERE inquiry_id = ?
@@ -1470,7 +1474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $existingInspectionStatus = '';
 
             $lockedInquiryStmt = $conn->prepare(
-                'SELECT status, archived_at FROM service_inquiries WHERE id = ? LIMIT 1 FOR UPDATE'
+                'SELECT status, inquiry_source, archived_at FROM service_inquiries WHERE id = ? LIMIT 1 FOR UPDATE'
             );
             if (!$lockedInquiryStmt) {
                 $error = 'Unable to verify the inquiry before saving the schedule.';
@@ -1482,8 +1486,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Inquiry not found.';
                 } elseif (!empty($lockedInquiry['archived_at'])) {
                     $error = 'This inquiry is archived. Restore it before changing the inspection schedule.';
-                } elseif (!in_array((string)$lockedInquiry['status'], ['Verified Lead', 'For Inspection'], true)) {
-                    $error = 'Only verified leads can be scheduled for site inspection.';
+                } elseif (!in_array((string)$lockedInquiry['status'], ['Verified Lead', 'For Inspection'], true)
+                    && !((string)$lockedInquiry['status'] === 'Pending Review'
+                        && (string)($lockedInquiry['inquiry_source'] ?? '') === 'walk_in')) {
+                    $error = 'Only verified leads or pending walk-in inquiries can be scheduled.';
                 }
             }
 
@@ -2518,6 +2524,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <div class="inquiry-list">
                 <?php foreach ($inquiryRows as $inquiry): ?>
                     <?php $currentStatus = (string)($inquiry['status'] ?? 'Pending Review'); ?>
+                    <?php $isWalkInPending = (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' && $currentStatus === 'Pending Review'; ?>
                     <?php $isViewed = !empty($inquiry['viewed_at']); ?>
                     <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
@@ -2583,11 +2590,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $quotationStage = $quotationListStatus;
                         $canScheduleInspection = inquiry_center_has_client_quotation_approval($quotationStage);
                         $quotationPrerequisiteMessage = inquiry_center_quotation_prerequisite_message($quotationDraft);
-                        $showInspection = $latestInspection || $canScheduleInspection;
+                        $showInspection = $latestInspection || $canScheduleInspection || $isWalkInPending;
                         $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
                         // Simple lang para kay Admin: details at inspection lang ang tingnan.
-                        $nextActionLabel = 'View Details';
-                        $nextActionTab = $latestInspection ? 'inspection' : 'client';
+                        $nextActionLabel = $isWalkInPending ? 'Set Inspection Schedule' : 'View Details';
+                        $nextActionTab = ($latestInspection || $isWalkInPending) ? 'inspection' : 'client';
                         $nextActionClass = '';
                     ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
@@ -2722,7 +2729,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
 
-                                    <?php $showReviewActions = $currentStatus !== 'For Inspection'; ?>
+                                    <?php $showReviewActions = $currentStatus !== 'For Inspection' && !$isWalkInPending; ?>
                                     <?php if ($showReviewActions): ?>
                                     <hr class="inquiry-review-divider">
                                     <div class="inquiry-section-title inquiry-review-section-title">Admin Review &amp; Actions</div>
@@ -2936,7 +2943,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php endif; ?>
                                     <?php endif; ?>
 
-                                    <?php if (($latestInspection || in_array($quotationStage, ['sent', 'accepted'], true)) && in_array($currentStatus, ['Verified Lead', 'For Inspection'], true)): ?>
+                                    <?php if (($latestInspection || in_array($quotationStage, ['sent', 'accepted'], true) || $isWalkInPending) && in_array($currentStatus, ['Pending Review', 'Verified Lead', 'For Inspection'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <?php $inspectionScheduleLocked = inquiry_center_inspection_schedule_is_locked($latestInspection); ?>
                                         <?php $scheduleReadOnly = $inspectionScheduleLocked; ?>
@@ -2957,7 +2964,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 && hash_equals($storedScheduleHash, $currentScheduleHash);
                                             $scheduleSubmitLabel = $latestInspection
                                                 ? 'Update Schedule'
-                                                : 'Confirm Schedule';
+                                                : ($isWalkInPending ? 'Set Inspection Schedule' : 'Confirm Schedule');
                                             $showScheduleEditor = $latestInspection
                                                 && !$scheduleReadOnly
                                                 && empty($inquiry['archived_at']);
@@ -2973,7 +2980,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <button type="button" class="inquiry-modal__close" data-reschedule-inspection-close aria-label="Close reschedule form">&times;</button>
                                                     </div>
                                         <?php endif; ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo ((!$latestInspection && !$canScheduleInspection) || $scheduleReadOnly || !empty($inquiry['archived_at'])) ? 'hidden' : ''; ?>>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" data-original-time="<?php echo $inspectionTimestamp ? date('H:i', $inspectionTimestamp) : ''; ?>" <?php echo ((!$latestInspection && !$canScheduleInspection && !$isWalkInPending) || $scheduleReadOnly || !empty($inquiry['archived_at'])) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">

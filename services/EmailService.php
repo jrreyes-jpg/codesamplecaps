@@ -471,8 +471,11 @@ class EmailService {
                 ? "<p><a href='{$safeScheduleLink}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>Review &amp; Respond</a></p>"
                 : '';
             $isFinalScheduleNotice = $scheduleLink === '';
+            $clientHeading = $isUpdated ? 'Site Inspection Schedule Updated' : 'Site Inspection Scheduled';
             $scheduleIntro = $isFinalScheduleNotice
-                ? 'Your site inspection has been scheduled. Please keep this final schedule for your reference.'
+                ? ($isUpdated
+                    ? 'Your inspection schedule was updated. Please keep the new schedule for your reference.'
+                    : 'Your site inspection has been scheduled. Please keep this schedule for your reference.')
                 : ($isUpdated
                     ? 'Your inspection schedule has been updated. Please review the details and confirm the schedule or request a change.'
                     : 'Your site inspection has been scheduled. Please review the details and confirm the schedule or request a change.');
@@ -481,13 +484,11 @@ class EmailService {
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = ($isFinalScheduleNotice
-                ? 'Inspection Schedule Confirmed'
-                : ($isUpdated ? 'Inspection Schedule Updated' : 'Inspection Schedule - Confirmation Required')) . ' - Edge Automation';
+            $this->mailer->Subject = $clientHeading . ' - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
-                        <h2 style='margin:0'>" . ($isUpdated ? 'Your site inspection schedule has been updated' : 'Your site inspection is scheduled') . "</h2>
+                        <h2 style='margin:0'>{$clientHeading}</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
@@ -537,16 +538,6 @@ class EmailService {
             $safeSchedule = htmlspecialchars($inspectionSchedule, ENT_QUOTES, 'UTF-8');
             $safeAddress = htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8');
             $safeContact = htmlspecialchars($contactNumber, ENT_QUOTES, 'UTF-8');
-            $safeClientEmail = htmlspecialchars($clientEmail, ENT_QUOTES, 'UTF-8');
-            $siteNotesHtml = $siteNotes !== ''
-                ? '<p><strong>Site Notes:</strong><br>' . nl2br(htmlspecialchars($siteNotes, ENT_QUOTES, 'UTF-8')) . '</p>'
-                : '';
-            $siteNotesText = $siteNotes !== '' ? "\nSite Notes: {$siteNotes}" : '';
-            $rescheduleReason = trim($rescheduleReason);
-            $rescheduleReasonHtml = $rescheduleReason !== ''
-                ? '<p><strong>Schedule Change Reason:</strong><br>' . nl2br(htmlspecialchars($rescheduleReason, ENT_QUOTES, 'UTF-8')) . '</p>'
-                : '';
-            $rescheduleReasonText = $rescheduleReason !== '' ? "\nSchedule Change Reason: {$rescheduleReason}" : '';
             $safeInspectionUrl = htmlspecialchars($inspectionUrl, ENT_QUOTES, 'UTF-8');
             $isNewAssignment = !$isUpdated || $isReassignment;
             $inspectionHeading = $isNewAssignment ? 'New Site Inspection Assignment' : 'Site Inspection Schedule Updated';
@@ -572,13 +563,11 @@ class EmailService {
                         <p><strong>Service:</strong> {$safeService}</p>
                         <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
-                        <p><strong>Contact Number:</strong> {$safeContact}<br><strong>Client Email:</strong> {$safeClientEmail}</p>
-                        {$siteNotesHtml}
-                        {$rescheduleReasonHtml}
+                        <p><strong>Client Contact Number:</strong> {$safeContact}</p>
                         {$inspectionCta}
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nContact Number: {$contactNumber}\nClient Email: {$clientEmail}{$siteNotesText}{$rescheduleReasonText}";
+            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

@@ -1124,8 +1124,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const changed = hasAssignmentChanges();
             const scheduleMessage = changed ? scheduleValidationMessage() : '';
             const hasValidScheduleChange = changed && scheduleMessage === '';
+            // Huwag magpakita ng red error pag kabukas lang ng reschedule popup.
             const showScheduleMessage = changed && scheduleMessage !== ''
-                && (forceFeedback || wasScheduleFieldEdited());
+                && forceFeedback
+                && form.dataset.submitAttempted === '1';
             setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');
 
             if (reasonWrap && reasonInput) {
@@ -1152,10 +1154,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!changed) {
                 setRescheduleGuidance('Change the assigned Engineer, date, or time to reschedule.', 'neutral');
-            } else if (!hasValidScheduleChange) {
+            } else if (!hasValidScheduleChange && form.dataset.submitAttempted === '1') {
                 setRescheduleGuidance(scheduleMessage, 'error');
             } else {
-                setRescheduleGuidance('Ready to update the schedule and email the Client and Engineer.', 'ready');
+                setRescheduleGuidance(hasValidScheduleChange ? 'Ready to update the schedule and email the Client and Engineer.' : '', hasValidScheduleChange ? 'ready' : 'neutral');
             }
         };
 
@@ -2027,7 +2029,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const scheduleEditor = scheduleForm?.closest('[data-inspection-schedule-editor]');
         if (!scheduleForm || scheduleForm.hidden) return;
 
-        if (scheduleEditor) scheduleEditor.hidden = false;
+        if (scheduleEditor) {
+            scheduleEditor.hidden = false;
+            sessionStorage.setItem('edgeOpenRescheduleModal', modal.id);
+        }
         scheduleForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
         window.setTimeout(function () {
             scheduleForm.querySelector('input[name="inspection_date"]')?.focus({ preventScroll: true });
@@ -2039,13 +2044,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const rescheduleModal = event.target.closest('[data-inspection-schedule-editor]');
         if (closeButton && rescheduleModal) {
             rescheduleModal.hidden = true;
+            sessionStorage.removeItem('edgeOpenRescheduleModal');
             return;
         }
 
         if (rescheduleModal && event.target === rescheduleModal) {
             rescheduleModal.hidden = true;
+            sessionStorage.removeItem('edgeOpenRescheduleModal');
         }
     });
+
+    // Ibalik ang reschedule popup kapag nag-refresh si Admin habang bukas ito.
+    window.setTimeout(function () {
+        const modalId = sessionStorage.getItem('edgeOpenRescheduleModal');
+        const inquiryModal = modalId ? document.getElementById(modalId) : null;
+        const rescheduleModal = inquiryModal?.querySelector('[data-inspection-schedule-editor]');
+        if (inquiryModal && rescheduleModal && !inquiryModal.hidden) {
+            rescheduleModal.hidden = false;
+        }
+    }, 100);
 
     const pollInspectionScheduleResponse = function () {
         if (inspectionResponsePollInProgress || document.hidden) return;

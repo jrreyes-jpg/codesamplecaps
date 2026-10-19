@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/site_inspections.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 require_once __DIR__ . '/../../../../config/user_notifications.php';
+require_once __DIR__ . '/../../../../config/walk_in_inquiry_schedule.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
@@ -2024,10 +2025,17 @@ unset($_SESSION['inquiry_center_flash_type']);
 unset($_SESSION['inquiry_center_flash_project_id']);
 
 $engineers = [];
-$engineerResult = $conn->query("SELECT id, full_name FROM users WHERE role = 'engineer' AND status = 'active' ORDER BY full_name ASC");
+$engineerResult = $conn->query("SELECT id, full_name, role FROM users WHERE role = 'engineer' AND status = 'active' ORDER BY full_name ASC");
 if ($engineerResult) {
     $engineers = $engineerResult->fetch_all(MYSQLI_ASSOC);
 }
+
+$walkInOldInput = $_SESSION['walk_in_inquiry_old_input'] ?? [];
+unset($_SESSION['walk_in_inquiry_old_input']);
+$openWalkInInquiry = (string)($_GET['walk_in'] ?? '') === '1' || $walkInOldInput !== [];
+$walkInScheduleRange = walk_in_inquiry_date_range();
+$walkInTimeSlots = walk_in_inquiry_time_slots();
+$walkInCsrfToken = auth_csrf_token('super_admin');
 
 $statusFilter = trim((string)($_GET['status'] ?? ''));
 $quotationFilter = trim((string)($_GET['quotation_filter'] ?? ''));
@@ -2042,6 +2050,9 @@ if (!in_array($statusFilter, $inquiryFilterStatuses, true)) {
 }
 $quotationFilterOptions = ['needs_quotation', 'draft', 'awaiting_client', 'accepted', 'needs_revision', 'rejected'];
 if (!in_array($quotationFilter, $quotationFilterOptions, true)) {
+    $quotationFilter = '';
+}
+if (!in_array($statusFilter, ['Verified Lead', 'For Inspection'], true)) {
     $quotationFilter = '';
 }
 if (!in_array($sourceFilter, ['online', 'walk_in'], true)) {
@@ -2419,12 +2430,14 @@ $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -2440,7 +2453,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
     >
         <?php if ($message || $error): ?>
             <div
-                class="shared-toast <?php echo $message ? ($flashType === 'warning' ? 'shared-toast--warning' : 'shared-toast--success') : 'shared-toast--error'; ?>"
+                class="shared-toast <?php echo $message ? ($flashType === 'error' ? 'shared-toast--error' : ($flashType === 'warning' ? 'shared-toast--warning' : 'shared-toast--success')) : 'shared-toast--error'; ?>"
                 role="<?php echo $message ? 'status' : 'alert'; ?>"
                 data-shared-toast
             >
@@ -2456,18 +2469,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
 
+        <div class="inquiry-page-header">
+            <h1>Inquiry Center</h1>
+            <form class="inquiry-header-search" method="GET" role="search">
+                <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries..." aria-label="Search inquiries">
+                <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
+                <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
+                <?php if ($quotationFilter !== ''): ?><input type="hidden" name="quotation_filter" value="<?php echo htmlspecialchars($quotationFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
+                <?php if ($sourceFilter !== ''): ?><input type="hidden" name="source" value="<?php echo htmlspecialchars($sourceFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
+                <button type="submit" class="btn-primary">Search</button>
+            </form>
+            <?php if ($view !== 'archive'): ?>
+                <button type="button" class="btn-primary" data-walk-in-inquiry-open>+ Create Walk-in Inquiry</button>
+            <?php endif; ?>
+        </div>
 
-        <form class="inquiry-filter-bar" method="GET">
-            <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries...">
-            <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
-            <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
-            <?php if ($quotationFilter !== ''): ?><input type="hidden" name="quotation_filter" value="<?php echo htmlspecialchars($quotationFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
-            <?php if ($sourceFilter !== ''): ?><input type="hidden" name="source" value="<?php echo htmlspecialchars($sourceFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
-            <div class="inquiry-filter-actions">
-                <button type="submit" class="btn-primary">Filter</button>
-                <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="btn-secondary">Reset</a>
-            </div>
-        </form>
+        <?php include __DIR__ . '/walk_in_inquiry_modal.php'; ?>
 
         <nav class="inquiry-status-strip inquiry-source-strip" aria-label="Inquiry source filters">
             <a class="inquiry-view-link <?php echo $sourceFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search]), ENT_QUOTES, 'UTF-8'); ?>">All Sources</a>
@@ -2493,7 +2510,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </a>
         </nav>
 
-        <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['', 'Verified Lead', 'For Inspection'], true); ?>
+        <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['Verified Lead', 'For Inspection'], true); ?>
         <?php if ($showQuotationFilters): ?>
             <nav class="inquiry-status-strip inquiry-status-strip--quotation" aria-label="Initial quotation filters">
                 <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Client Approved', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>

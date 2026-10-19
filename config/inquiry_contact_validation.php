@@ -14,7 +14,7 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
     $phone = normalize_ph_mobile($phone);
 
     $stmt = $conn->prepare(
-        'SELECT id, full_name, email, phone_normalized, role
+        'SELECT id, full_name, email, phone_normalized, role, status
          FROM users
          WHERE deleted_at IS NULL
            AND (LOWER(email) = ? OR phone_normalized = ?)'
@@ -68,7 +68,11 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
             return ['valid' => false, 'status' => 'name_mismatch', 'field' => 'name'];
         }
 
-        return ['valid' => true, 'status' => 'existing_client'];
+        return [
+            'valid' => true,
+            'status' => 'existing_client',
+            'email_verified' => strtolower((string)($emailClient['status'] ?? '')) === 'active',
+        ];
     }
 
     // Tingnan din ang dating inquiry para pareho ang detalye ng walk-in at online client.
@@ -100,7 +104,7 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
     }
 
     if ($emailInquiry === null && $phoneInquiry === null) {
-        return ['valid' => true, 'status' => 'new_contact'];
+        return ['valid' => true, 'status' => 'new_contact', 'email_verified' => false];
     }
 
     if ($emailInquiry === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
@@ -112,5 +116,5 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
         return ['valid' => false, 'status' => 'name_mismatch', 'field' => 'name'];
     }
 
-    return ['valid' => true, 'status' => 'existing_client'];
+    return ['valid' => true, 'status' => 'existing_inquiry', 'email_verified' => false];
 }

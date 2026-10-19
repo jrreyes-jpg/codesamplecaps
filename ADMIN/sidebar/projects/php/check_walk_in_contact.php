@@ -41,6 +41,7 @@ $messages = [
 echo json_encode([
     'valid' => (bool)$result['valid'],
     'status' => (string)$result['status'],
+    'email_verified' => !empty($result['email_verified']),
     'field' => (string)($result['field'] ?? ''),
     'message' => $result['valid'] ? '' : ($messages[$result['status']] ?? 'Invalid client details.'),
 ]);

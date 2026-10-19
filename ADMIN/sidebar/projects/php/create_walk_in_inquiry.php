@@ -9,13 +9,14 @@ require_once __DIR__ . '/../../../../config/walk_in_email_verification.php';
 require_role('admin');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php');
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
     exit();
 }
 
 if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'super_admin')) {
-    $_SESSION['projects_flash'] = ['type' => 'error', 'message' => 'Security check failed. Try again.'];
-    header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php?walk_in=1');
+    $_SESSION['inquiry_center_flash'] = 'Security check failed. Try again.';
+    $_SESSION['inquiry_center_flash_type'] = 'error';
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?walk_in=1');
     exit();
 }
 
@@ -23,7 +24,14 @@ $_SESSION['walk_in_inquiry_old_input'] = $_POST;
 
 try {
     $nextAction = (string)($_POST['next_action'] ?? '') === 'review' ? 'review' : 'pending';
-    $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''));
+    $contactCheck = inquiry_contact_validation_result(
+        $conn,
+        (string)($_POST['client_name'] ?? ''),
+        (string)($_POST['email'] ?? ''),
+        (string)($_POST['contact_no'] ?? '')
+    );
+    $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''))
+        || !empty($contactCheck['email_verified']);
     $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
     $inquiryId = create_walk_in_inquiry($conn, $_POST);
     audit_log_event(
@@ -54,7 +62,8 @@ try {
     ]));
     exit();
 } catch (Throwable $exception) {
-    $_SESSION['projects_flash'] = ['type' => 'error', 'message' => $exception->getMessage()];
-    header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php?walk_in=1');
+    $_SESSION['inquiry_center_flash'] = $exception->getMessage();
+    $_SESSION['inquiry_center_flash_type'] = 'error';
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?walk_in=1');
     exit();
 }

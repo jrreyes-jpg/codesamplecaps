@@ -1665,11 +1665,21 @@ function initWalkInInquiryPanel() {
 
     function syncAreas(restoreInitial = false) {
         clearLocation(areaSelect, 'Select region first');
+        if (areaSelect) areaSelect.readOnly = false;
         clearLocation(citySelect, 'Select province / area first');
         clearLocation(barangaySelect, 'Select city first');
         const options = getAreaOptions();
         areaSelect.disabled = options.length === 0;
         if (options.length) areaSelect.placeholder = 'Search or select province / area';
+
+        const isNcr = regionSelect?.value === 'National Capital Region (NCR)';
+        if (isNcr && options.includes('Metro Manila (NCR)')) {
+            setSelectedLocation(areaSelect, 'Metro Manila (NCR)');
+            areaSelect.readOnly = true;
+            syncCities(restoreInitial);
+            return;
+        }
+
         const initial = restoreInitial ? (areaSelect.dataset.initialValue || '') : '';
         if (options.includes(initial)) setSelectedLocation(areaSelect, initial);
         syncCities(restoreInitial);

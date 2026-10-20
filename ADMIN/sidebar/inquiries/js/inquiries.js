@@ -502,13 +502,11 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const inquiryReviewHasChanges = function (modal) {
-        const reviewForm = modal?.querySelector('.inquiry-review-form');
-        return reviewForm?.dataset.reviewDirty === '1';
+        return false;
     };
 
     const discardInquiryReviewChanges = function (modal) {
-        const reviewForm = modal?.querySelector('.inquiry-review-form');
-        reviewForm?.dispatchEvent(new CustomEvent('edge:review-discard'));
+        return modal;
     };
 
     const closeDiscardConfirm = function (keepEditing = false) {
@@ -521,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (keepEditing && modal) {
             keepAction?.();
-            modal.querySelector('textarea[name="admin_notes"], select[name="status"]')?.focus();
+            modal.querySelector('select[name="engineer_id"], input[name="inspection_date"]')?.focus();
         }
     };
 
@@ -807,11 +805,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const requestCloseModal = function (modal) {
         if (modal?.dataset.quotationSending === '1' || modal?.dataset.reviewSaving === '1' || modal?.dataset.inspectionScheduling === '1') {
-            return;
-        }
-
-        const reviewForm = modal?.querySelector('.inquiry-review-form');
-        if (reviewForm?.dataset.submitting === '1') {
             return;
         }
 
@@ -1318,118 +1311,6 @@ document.addEventListener('DOMContentLoaded', function () {
         syncRescheduleControls(false);
     });
 
-    const bindAdminNotesToggle = function (button) {
-        if (!button || button.dataset.notesToggleBound === '1') {
-            return;
-        }
-        button.dataset.notesToggleBound = '1';
-
-        const notesBlock = button.closest('.inquiry-admin-notes');
-        const notesPanel = notesBlock?.querySelector('[data-admin-notes-panel]');
-        const notesField = notesPanel?.querySelector('textarea[name="admin_notes"]');
-
-        button.addEventListener('click', function () {
-            const willOpen = notesPanel?.hidden !== false;
-            if (notesPanel) {
-                notesPanel.hidden = !willOpen;
-            }
-            button.setAttribute('aria-expanded', String(willOpen));
-            if (willOpen) {
-                notesField?.focus();
-            }
-        });
-    };
-
-    document.querySelectorAll('[data-admin-notes-toggle]').forEach(bindAdminNotesToggle);
-
-    const bindInquiryReviewForm = function (form) {
-        if (!form || form.dataset.reviewHandlersBound === '1') {
-            return;
-        }
-        form.dataset.reviewHandlersBound = '1';
-
-        const notesField = form.querySelector('textarea[name="admin_notes"]');
-        const submitButton = form.querySelector('button[type="submit"]');
-
-        let originalNotes = notesField ? notesField.value : '';
-
-        const syncReviewState = function () {
-            const notesChanged = notesField ? notesField.value !== originalNotes : false;
-            form.dataset.reviewDirty = notesChanged ? '1' : '0';
-
-            if (submitButton) {
-                submitButton.disabled = !notesChanged || form.dataset.submitting === '1';
-                submitButton.setAttribute('aria-disabled', String(!notesChanged || form.dataset.submitting === '1'));
-                if (form.dataset.submitting !== '1') {
-                    submitButton.classList.remove('inquiry-send-button--loading');
-                    submitButton.textContent = 'Save Notes';
-                }
-            }
-        };
-
-        notesField?.addEventListener('input', syncReviewState);
-        form.addEventListener('edge:review-discard', function () {
-            form.reset();
-            delete form.dataset.submitting;
-            syncReviewState();
-        });
-        syncReviewState();
-
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            const notesChanged = notesField ? notesField.value !== originalNotes : false;
-            if (!notesChanged || form.dataset.submitting === '1') {
-                return;
-            }
-
-            form.dataset.submitting = '1';
-            const reviewRequestData = new FormData(form);
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.setAttribute('aria-disabled', 'true');
-                submitButton.textContent = 'Saving...';
-            }
-
-            fetch(form.getAttribute('action') || window.location.href, {
-                method: 'POST',
-                body: reviewRequestData,
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            })
-                .then(function (response) {
-                    return response.json().then(function (data) {
-                        return { response: response, data: data };
-                    });
-                })
-                .then(function (result) {
-                    if (!result.response.ok || !result.data.success) {
-                        throw new Error(result.data.message || 'Unable to save inquiry review.');
-                    }
-
-                    originalNotes = notesField ? notesField.value : '';
-                    window.location.assign(result.data.redirect || window.location.href);
-                })
-                .catch(function (error) {
-                    form.dataset.submitting = '0';
-                    syncReviewState();
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(error.message || 'Unable to save inquiry review.', 'error');
-                    } else {
-                        window.alert(error.message || 'Unable to save inquiry review.');
-                    }
-                });
-        });
-    };
-
-    const bindInquiryReviewForms = function (root) {
-        root.querySelectorAll('.inquiry-review-form').forEach(bindInquiryReviewForm);
-    };
-
-    bindInquiryReviewForms(document);
-
     const bindInquiryArchiveForm = function (form) {
         if (!form || form.dataset.archiveHandlersBound === '1') {
             return;
@@ -1655,7 +1536,6 @@ document.addEventListener('DOMContentLoaded', function () {
             currentList.prepend(importedCard);
             currentIds.add(inquiryId);
             result.insertedIds.push(inquiryId);
-            bindInquiryReviewForms(importedCard);
             bindInquiryArchiveForms(importedCard);
         });
 

@@ -2607,57 +2607,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
 
-                                    <?php $showReviewActions = (string)($inquiry['inquiry_source'] ?? 'online') === 'online'; ?>
-                                    <?php if ($showReviewActions): ?>
-                                        <?php $adminNotesPanelId = 'adminNotesPanel' . (int)$inquiry['id']; ?>
-                                        <?php $hasAdminNotes = trim((string)($inquiry['admin_notes'] ?? '')) !== ''; ?>
-                                        <div class="inquiry-admin-notes">
-                                            <button type="button" class="inquiry-admin-notes__toggle" data-admin-notes-toggle aria-expanded="false" aria-controls="<?php echo $adminNotesPanelId; ?>">
-                                                <span class="inquiry-admin-notes__icon" aria-hidden="true">&#128221;</span>
-                                                <span>Admin Notes</span>
-                                                <?php if ($hasAdminNotes): ?>
-                                                    <span class="inquiry-admin-notes__saved">Saved</span>
-                                                <?php endif; ?>
-                                            </button>
-                                            <div class="inquiry-admin-notes__panel" id="<?php echo $adminNotesPanelId; ?>" data-admin-notes-panel hidden>
-                                                <?php if (!empty($inquiry['reviewed_at'])): ?>
-                                                    <div class="inquiry-review-metadata">
-                                                        <span>Last saved</span>
-                                                        <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['reviewed_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <?php if ($isConvertedToProject): ?>
-                                                    <div class="inquiry-readonly-notice">
-                                                        This inquiry is already converted to a Project.
-                                                        <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">Open Project</a>
-                                                    </div>
-                                                <?php elseif (!empty($inquiry['archived_at'])): ?>
-                                                    <div class="inquiry-readonly-notice">
-                                                        This inquiry is archived. Restore it first before changing notes.
-                                                    </div>
-                                                <?php else: ?>
-                                                    <form method="POST" class="inquiry-review-form">
-                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                        <label class="inquiry-review-form__notes">
-                                                            <span>Private note for Admin</span>
-                                                            <textarea name="admin_notes" rows="4" maxlength="2000" placeholder="Call result or schedule notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                                        </label>
-                                                        <div class="inquiry-review-actions inquiry-review-form__actions">
-                                                            <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Notes</button>
-                                                        </div>
-                                                    </form>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-
                                     <?php if (!empty($inquiry['archived_at'])): ?>
                                         <div class="inquiry-archive-output">
                                             <strong>Archived</strong>
                                             <span><?php echo htmlspecialchars(inquiry_center_format_datetime($inquiry['archived_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span>Reason: <?php echo htmlspecialchars((string)($inquiry['archive_reason'] ?: 'No reason'), ENT_QUOTES, 'UTF-8'); ?></span>
                                         </div>
-                                    <?php endif; ?>
                                     <?php endif; ?>
                                 </section>
 

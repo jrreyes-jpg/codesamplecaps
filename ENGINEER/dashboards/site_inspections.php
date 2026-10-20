@@ -36,6 +36,22 @@ function engineer_inspection_valid_csrf(?string $token): bool
     return auth_is_valid_csrf($token, 'engineer_site_inspections');
 }
 
+function engineer_inspection_schedule_date_is_reached(?string $scheduledAt): bool
+{
+    if (trim((string)$scheduledAt) === '') {
+        return false;
+    }
+
+    try {
+        $timezone = site_inspection_timezone();
+        $scheduledDate = new DateTimeImmutable((string)$scheduledAt, $timezone);
+        $today = new DateTimeImmutable('today', $timezone);
+        return $scheduledDate->format('Y-m-d') <= $today->format('Y-m-d');
+    } catch (Throwable $exception) {
+        return false;
+    }
+}
+
 function engineer_format_money(float $amount): string
 {
     return 'PHP ' . number_format($amount, 2);
@@ -305,7 +321,7 @@ function engineer_get_inspection_state(mysqli $conn, int $inspectionId, int $eng
         ? 'hold_reason, held_at, resumed_at,'
         : 'NULL AS hold_reason, NULL AS held_at, NULL AS resumed_at,';
     $stmt = $conn->prepare(
-        "SELECT status, admin_review_status, admin_remarks, engineer_findings, created_at, acknowledged_at, started_at, {$holdSelect} completed_at, submitted_at, client_schedule_response, engineer_schedule_response
+        "SELECT status, admin_review_status, admin_remarks, engineer_findings, scheduled_at, created_at, acknowledged_at, started_at, {$holdSelect} completed_at, submitted_at, client_schedule_response, engineer_schedule_response
          FROM site_inspections
          WHERE id = ? AND engineer_id = ?
          LIMIT 1"
@@ -421,7 +437,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $holdReason = trim((string)($_POST['hold_reason'] ?? ''));
         $meaningfulHoldReason = preg_replace('/\s+/u', '', $holdReason) ?? '';
 
-        if (!site_inspection_hold_columns_ready($conn)) {
+        if (!engineer_inspection_schedule_date_is_reached($inspectionState['scheduled_at'] ?? null)) {
+            $error = 'This action is available on the scheduled inspection date.';
+        } elseif (!site_inspection_hold_columns_ready($conn)) {
             $error = 'On Hold setup is not ready. Please apply the site inspection hold migration first.';
         } elseif (!site_inspection_can_hold($currentStatus, $workflowAction)) {
             $error = 'This inspection cannot be updated right now. Please refresh the page.';
@@ -461,7 +479,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $targetStatus = $workflowTargets[$workflowAction] ?? '';
         $savedStatus = $currentStatus;
 
-        if ($targetStatus === '' || !site_inspection_can_transition($currentStatus, $targetStatus)) {
+        if ($workflowAction === 'start' && !engineer_inspection_schedule_date_is_reached($inspectionState['scheduled_at'] ?? null)) {
+            $error = 'You can start this inspection on ' . site_inspection_format_date($inspectionState['scheduled_at'] ?? null) . '.';
+        } elseif ($targetStatus === '' || !site_inspection_can_transition($currentStatus, $targetStatus)) {
             $error = 'Invalid inspection status change. Please refresh the page.';
         } elseif ($workflowAction === 'start' && (string)($inspectionState['client_schedule_response'] ?? '') === 'reschedule_requested') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
@@ -1067,6 +1087,10 @@ require __DIR__ . '/../layout/header.php';
                         (int)($inspection['engineer_id'] ?? $userId),
                         (string)($inspection['scheduled_at'] ?? '')
                     );
+                    $visibleSiteNotes = trim((string)($inspection['site_notes'] ?? ''));
+                    if ($visibleSiteNotes === 'Walk-in inspection schedule confirmed by Admin.') {
+                        $visibleSiteNotes = '';
+                    }
                     $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
@@ -1075,6 +1099,9 @@ require __DIR__ . '/../layout/header.php';
                     $isReturnedForRevision = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned';
                     // Para sa dating completed report bago ang one-click submit flow.
                     $isLegacyCompletedPending = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Pending';
+                    $isScheduleDateReached = engineer_inspection_schedule_date_is_reached($inspection['scheduled_at'] ?? null);
+                    $isInspectionStarted = in_array($inspectionStatus, ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true);
+                    $canOpenInspectionReport = $isScheduleDateReached && $isInspectionStarted;
                     $canEditCosting = $inspectionStatus === 'Ongoing' || $isReturnedForRevision || $isLegacyCompletedPending;
                     $canSubmitToAdmin = $isReturnedForRevision || $isLegacyCompletedPending;
                     $savedReportError = engineer_inspection_saved_report_error(
@@ -1089,6 +1116,9 @@ require __DIR__ . '/../layout/header.php';
                         'On Hold' => 'resume',
                         default => '',
                     };
+                    if (!$isScheduleDateReached && in_array($inspectionStatus, ['Assigned', 'Acknowledged'], true)) {
+                        $workflowAction = '';
+                    }
                     $workflowActionLabel = match ($inspectionStatus) {
                         'Assigned', 'Acknowledged' => 'Start Inspection',
                         'Ongoing' => 'Submit Report to Admin',
@@ -1124,7 +1154,7 @@ require __DIR__ . '/../layout/header.php';
                         ]];
                     }
                     ?>
-                    <article class="inspection-card" data-inspection-card-id="<?php echo $inspectionId; ?>">
+                    <article class="inspection-card" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), $currentScheduleReason, $visibleSiteNotes])), ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inspection-card__head">
                             <div>
                                 <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
@@ -1169,7 +1199,7 @@ require __DIR__ . '/../layout/header.php';
                                 <div class="inspection-tab-toolbar">
                                     <div class="inspection-tabs" role="tablist" aria-label="Site inspection sections">
                                         <button type="button" class="inspection-tabs__button is-active" role="tab" aria-selected="true" aria-controls="inspectionDetails<?php echo $inspectionId; ?>" id="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab="details">Details</button>
-                                        <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report">Inspection Report</button>
+                                        <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report" <?php echo !$canOpenInspectionReport ? 'disabled aria-disabled="true" title="Start the inspection on its scheduled date to open this report."' : ''; ?>>Inspection Report</button>
                                     </div>
                                     <div class="inspection-report-actions" data-inspection-report-actions hidden>
                                         <?php if ($inspectionStatus === 'Ongoing'): ?>
@@ -1180,7 +1210,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <button type="button" class="btn-secondary" data-workflow-transition>Put On Hold</button>
                                             </form>
                                         <?php endif; ?>
-                                        <?php if ($workflowAction !== ''): ?>
+                                        <?php if ($workflowAction !== '' && $workflowAction !== 'start'): ?>
                                             <form method="POST">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
@@ -1194,6 +1224,9 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
 
                                 <section class="inspection-tab-panel" id="inspectionDetails<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="details">
+                                <?php if (!$isInspectionStarted && !$isScheduleDateReached): ?>
+                                    <p class="inspection-schedule-waiting" role="status">This inspection starts on <?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>. Details are available now.</p>
+                                <?php endif; ?>
                                 <div class="inspection-grid">
                                     <div class="inspection-detail"><span>Scheduled Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
@@ -1205,8 +1238,18 @@ require __DIR__ . '/../layout/header.php';
                                             <div><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inspection['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         </div>
                                     </div>
-                                    <?php if (trim((string)($inspection['site_notes'] ?? '')) !== ''): ?>
-                                        <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['site_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php if ($visibleSiteNotes !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($visibleSiteNotes, ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
+                                    <?php if (!$isInspectionStarted && $isScheduleDateReached): ?>
+                                        <div class="inspection-details-action inspection-detail--wide">
+                                            <form method="POST">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                                <input type="hidden" name="workflow_action" value="start">
+                                                <button type="button" class="btn-primary" data-workflow-transition data-confirm-inspection-transition="Start Inspection">Start Inspection</button>
+                                            </form>
+                                        </div>
                                     <?php endif; ?>
                                     <?php if ($currentScheduleReason !== ''): ?>
                                         <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
@@ -1572,7 +1615,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261020-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

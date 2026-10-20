@@ -347,7 +347,8 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
         $inquiryId = (int)$conn->insert_id;
         $inspectionId = 0;
         $scheduledAt = $preferredDate . ' 00:00:00';
-        $siteNotes = 'Walk-in inspection schedule confirmed by Admin.';
+        // Walang default note. Dapat tunay na site note lang ang ilagay dito.
+        $siteNotes = '';
 
         if ($isConfirmed) {
             if (!walk_in_inquiry_table_exists($conn, 'site_inspections')) {

@@ -977,6 +977,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const activateInspectionTab = function (modal, nextTab) {
         if (!modal || !nextTab) return;
 
+        const requestedButton = modal.querySelector('[data-inspection-tab="' + nextTab + '"]');
+        if (!requestedButton || requestedButton.disabled) {
+            nextTab = 'details';
+        }
+
         window.localStorage.setItem(`${activeTabKey}.${modal.id}`, nextTab);
         const modalPanel = modal.querySelector('.inspection-modal__panel');
         if (modalPanel) {
@@ -1206,10 +1211,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 return parseInspectionJsonResponse(response, 'Unable to update the inspection. Please try again.');
             })
             .then(function (payload) {
-                if (action === 'start') {
-                    activateInspectionTab(form.closest('.inspection-modal'), 'report');
-                }
                 return refreshInspectionCard(String(payload.inspection_id || form.elements.inspection_id?.value || ''), true)
+                    .then(function (updatedCard) {
+                        if (action === 'start') {
+                            activateInspectionTab(updatedCard?.querySelector('.inspection-modal'), 'report');
+                        }
+                        return updatedCard;
+                    })
                     .catch(function () {
                         applyWorkflowFallback(form, payload);
                         return null;
@@ -1689,7 +1697,33 @@ document.addEventListener('DOMContentLoaded', function () {
     inspectionRefreshUrl.searchParams.delete('inspection_id');
     let inspectionRefreshInProgress = false;
     let inspectionRefreshDeferred = false;
+    let inspectionSchedulePollInProgress = false;
     const pendingInspectionIds = new Set();
+
+    const replaceInspectionCardSnapshot = function (currentCard, nextCard, keepModalOpen) {
+        const currentModal = currentCard?.querySelector('.inspection-modal');
+        const keepOpen = Boolean(keepModalOpen && currentModal && !currentModal.hidden);
+        const savedScrollTop = currentModal?.querySelector('.inspection-modal__panel')?.scrollTop || 0;
+        const savedTab = currentModal?.querySelector('[data-inspection-tab].is-active')?.getAttribute('data-inspection-tab') || 'details';
+        const importedCard = document.importNode(nextCard, true);
+
+        currentCard.replaceWith(importedCard);
+        bindCostingForm(importedCard.querySelector('[data-costing-form]'));
+
+        if (keepOpen) {
+            const nextModal = importedCard.querySelector('.inspection-modal');
+            const nextPanel = nextModal?.querySelector('.inspection-modal__panel');
+            if (nextModal) {
+                nextModal.hidden = false;
+                document.body.classList.add('inspection-modal-open');
+                window.localStorage.setItem(activeModalKey, nextModal.id);
+                activateInspectionTab(nextModal, savedTab);
+            }
+            if (nextPanel) nextPanel.scrollTop = savedScrollTop;
+        }
+
+        return importedCard;
+    };
 
     const refreshInspectionCard = function (inspectionId, keepModalOpen) {
         if (!inspectionPanel || !inspectionId) {
@@ -1700,11 +1734,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!currentCard) {
             return Promise.reject(new Error('Inspection card is not available.'));
         }
-
-        const currentModal = currentCard.querySelector('.inspection-modal');
-        const keepOpen = Boolean(keepModalOpen && currentModal && !currentModal.hidden);
-        const savedScrollTop = currentModal?.querySelector('.inspection-modal__panel')?.scrollTop || 0;
-        const savedTab = currentModal?.querySelector('[data-inspection-tab].is-active')?.getAttribute('data-inspection-tab') || 'details';
 
         return fetch(inspectionRefreshUrl.toString(), {
             headers: {
@@ -1722,23 +1751,66 @@ document.addEventListener('DOMContentLoaded', function () {
                 const nextCard = nextDocument.querySelector('[data-inspection-card-id="' + CSS.escape(String(inspectionId)) + '"]');
                 if (!nextCard) throw new Error('Updated inspection details were not found.');
 
-                const importedCard = document.importNode(nextCard, true);
-                currentCard.replaceWith(importedCard);
-                bindCostingForm(importedCard.querySelector('[data-costing-form]'));
+                return replaceInspectionCardSnapshot(currentCard, nextCard, keepModalOpen);
+            });
+    };
 
-                if (keepOpen) {
-                    const nextModal = importedCard.querySelector('.inspection-modal');
-                    const nextPanel = nextModal?.querySelector('.inspection-modal__panel');
-                    if (nextModal) {
-                        nextModal.hidden = false;
-                        document.body.classList.add('inspection-modal-open');
-                        window.localStorage.setItem(activeModalKey, nextModal.id);
-                        activateInspectionTab(nextModal, savedTab);
+    const pollInspectionScheduleUpdates = function () {
+        if (!inspectionPanel || inspectionSchedulePollInProgress || document.hidden) return;
+        if (document.querySelector('[data-inspection-action-confirm-modal]:not([hidden]), [data-engineer-reschedule-modal]:not([hidden]), [data-engineer-reschedule-review-modal]:not([hidden])')) return;
+
+        inspectionSchedulePollInProgress = true;
+        fetch(inspectionRefreshUrl.toString(), {
+            headers: {
+                Accept: 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            cache: 'no-store',
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Inspection schedule check failed.');
+                return response.text();
+            })
+            .then(function (html) {
+                const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                let scheduleWasUpdated = false;
+
+                inspectionPanel.querySelectorAll(':scope > [data-inspection-card-id]').forEach(function (currentCard) {
+                    const inspectionId = currentCard.dataset.inspectionCardId || '';
+                    const nextCard = nextDocument.querySelector('[data-inspection-card-id="' + CSS.escape(inspectionId) + '"]');
+                    const costingForm = currentCard.querySelector('[data-costing-form]');
+                    const hasUnsavedReport = costingForm
+                        && !costingForm.classList.contains('inspection-costing-form--readonly')
+                        && isFormDirty(costingForm);
+                    if (hasUnsavedReport) return;
+
+                    if (!nextCard) {
+                        const currentModal = currentCard.querySelector('.inspection-modal');
+                        if (currentModal && !currentModal.hidden) {
+                            document.body.classList.remove('inspection-modal-open');
+                            window.localStorage.removeItem(activeModalKey);
+                        }
+                        currentCard.remove();
+                        scheduleWasUpdated = true;
+                        return;
                     }
-                    if (nextPanel) nextPanel.scrollTop = savedScrollTop;
-                }
+                    if (currentCard.dataset.inspectionSyncKey === nextCard.dataset.inspectionSyncKey) return;
 
-                return importedCard;
+                    const keepModalOpen = !currentCard.querySelector('.inspection-modal')?.hidden;
+                    replaceInspectionCardSnapshot(currentCard, nextCard, keepModalOpen);
+                    scheduleWasUpdated = true;
+                });
+
+                mergeAssignedInspectionCards(nextDocument);
+                if (scheduleWasUpdated && typeof window.showToast === 'function') {
+                    window.showToast('Inspection schedule updated by Admin.', 'success', { duration: 5000 });
+                }
+            })
+            .catch(function () {
+                // Susubok ulit sa next check.
+            })
+            .finally(function () {
+                inspectionSchedulePollInProgress = false;
             });
     };
 
@@ -1834,6 +1906,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     if (inspectionPanel) {
+        pollInspectionScheduleUpdates();
+        window.setInterval(pollInspectionScheduleUpdates, 5000);
+
         const modalStateObserver = new MutationObserver(function () {
             if (inspectionRefreshDeferred && !inspectionRefreshIsBlocked()) {
                 refreshAssignedInspectionCards();
@@ -1843,6 +1918,10 @@ document.addEventListener('DOMContentLoaded', function () {
             subtree: true,
             attributes: true,
             attributeFilter: ['hidden'],
+        });
+
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) pollInspectionScheduleUpdates();
         });
     }
 

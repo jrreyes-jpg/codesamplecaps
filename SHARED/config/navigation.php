@@ -20,9 +20,6 @@ function shared_navigation_items_for_role(string $role): array
         'super_admin' => [
             ['module' => 'users', 'label' => 'User Management', 'mini' => 'Users', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php', 'icon' => 'user', 'active' => ['/SUPERADMIN/sidebar/user_management.php', '/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users', '/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=create']],
             ['module' => 'audit_logs', 'label' => 'Audit Logs', 'mini' => 'Audit', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php', 'icon' => 'activity', 'active' => ['/SUPERADMIN/sidebar/audit_logs.php']],
-            ['module' => 'roles_permissions', 'label' => 'Roles & Permissions', 'mini' => 'Role', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/roles_permissions.php', 'icon' => 'security', 'active' => ['/SUPERADMIN/sidebar/roles_permissions.php']],
-            ['module' => 'security_settings', 'label' => 'Security Settings', 'mini' => 'Sec', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/security_settings.php', 'icon' => 'lock', 'active' => ['/SUPERADMIN/sidebar/security_settings.php']],
-            ['module' => 'system_settings', 'label' => 'System Settings', 'mini' => 'Sys', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/system_settings.php', 'icon' => 'settings', 'active' => ['/SUPERADMIN/sidebar/system_settings.php']],
             ['module' => 'backup_restore', 'label' => 'Backup & Restore', 'mini' => 'Bak', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/backup_restore.php', 'icon' => 'backup', 'active' => ['/SUPERADMIN/sidebar/backup_restore.php']],
         ],
         'foreman' => [

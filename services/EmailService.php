@@ -413,6 +413,55 @@ class EmailService {
         }
     }
 
+    public function sendInspectionReportAdminNotification(
+        string $recipientEmail,
+        string $adminName,
+        string $engineerName,
+        string $clientName,
+        string $service,
+        string $inspectionDate,
+        string $reportUrl
+    ): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeAdmin = htmlspecialchars($adminName !== '' ? $adminName : 'Admin', ENT_QUOTES, 'UTF-8');
+            $safeEngineer = htmlspecialchars($engineerName !== '' ? $engineerName : 'Engineer', ENT_QUOTES, 'UTF-8');
+            $safeClient = htmlspecialchars($clientName !== '' ? $clientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $safeService = htmlspecialchars($service !== '' ? $service : 'Service request', ENT_QUOTES, 'UTF-8');
+            $safeDate = htmlspecialchars($inspectionDate, ENT_QUOTES, 'UTF-8');
+            $safeReportUrl = htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8');
+
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Inspection Report Submitted - Edge Automation';
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        <h2 style='margin:0'>Inspection Report Submitted</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeAdmin},</p>
+                        <p>{$safeEngineer} submitted a site inspection report for your review.</p>
+                        <p><strong>Client:</strong> {$safeClient}</p>
+                        <p><strong>Service:</strong> {$safeService}</p>
+                        <p><strong>Inspection Date:</strong> {$safeDate}</p>
+                        <p><a href='{$safeReportUrl}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>View Inspection Report</a></p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Hello {$adminName},\n\n{$engineerName} submitted a site inspection report for your review.\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionDate}\nView Inspection Report: {$reportUrl}";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Inspection report Admin notification email failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     public function sendInspectionScheduleClientNotification(
         string $recipientEmail,
         string $recipientName,

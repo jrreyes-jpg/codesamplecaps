@@ -19,6 +19,7 @@ require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/user_notifications.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
+require_once __DIR__ . '/../../services/EmailService.php';
 require_once __DIR__ . '/../includes/engineer_helpers.php';
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -96,6 +97,62 @@ function engineer_inspection_saved_report_error(mysqli $conn, int $inspectionId,
     }
 
     return '';
+}
+
+function engineer_notify_admin_report_submitted(mysqli $conn, int $inspectionId, string $engineerName): void
+{
+    $noticeStmt = $conn->prepare(
+        "SELECT si.inquiry_id, si.created_by, si.scheduled_at, si.submitted_at,
+                s.client_name, s.service_category, u.full_name AS admin_name, u.email AS admin_email
+         FROM site_inspections si
+         INNER JOIN service_inquiries s ON s.id = si.inquiry_id
+         INNER JOIN users u ON u.id = si.created_by
+         WHERE si.id = ? AND u.role IN ('admin', 'super_admin') AND u.status = 'active'
+         LIMIT 1"
+    );
+    if (!$noticeStmt) {
+        return;
+    }
+
+    $noticeStmt->bind_param('i', $inspectionId);
+    $noticeStmt->execute();
+    $notice = $noticeStmt->get_result()->fetch_assoc() ?: [];
+    $noticeStmt->close();
+    if (!$notice) {
+        return;
+    }
+
+    $inquiryId = (int)($notice['inquiry_id'] ?? 0);
+    $adminId = (int)($notice['created_by'] ?? 0);
+    $clientName = trim((string)($notice['client_name'] ?? 'Client'));
+    $service = trim((string)($notice['service_category'] ?? 'Service request'));
+    $reportPath = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
+        . $inquiryId . '&tab=inspection';
+    $reportUrl = Config::getInstance()->get('APP_URL') . $reportPath;
+
+    user_notifications_create_if_missing(
+        $conn,
+        $adminId,
+        'engineer_inspection_report_submitted',
+        $inspectionId,
+        'Inspection Report Submitted',
+        ($engineerName !== '' ? $engineerName : 'Engineer') . ' submitted the report for ' . ($clientName !== '' ? $clientName : 'Client') . '.',
+        $reportPath,
+        'engineer_inspection_report_submitted:' . $inspectionId . ':' . (string)($notice['submitted_at'] ?? '')
+    );
+
+    $adminEmail = trim((string)($notice['admin_email'] ?? ''));
+    if (filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+        (new EmailService())->sendInspectionReportAdminNotification(
+            $adminEmail,
+            trim((string)($notice['admin_name'] ?? 'Admin')),
+            $engineerName,
+            $clientName,
+            $service,
+            site_inspection_format_date($notice['scheduled_at'] ?? null),
+            $reportUrl
+        );
+    }
 }
 
 function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId): ?array
@@ -449,7 +506,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ['status' => 'Submitted', 'admin_review_status' => 'Pending']
                     );
                     $conn->commit();
-                    $message = 'Inspection completed and submitted to Admin for review.';
+                    try {
+                        engineer_notify_admin_report_submitted($conn, $inspectionId, (string)($_SESSION['name'] ?? 'Engineer'));
+                    } catch (Throwable $notificationError) {
+                        error_log('Inspection report Admin notification failed: ' . $notificationError->getMessage());
+                    }
+                    $message = 'Inspection report submitted to Admin for review.';
                     $savedStatus = 'Submitted';
                 } catch (Throwable $exception) {
                     $conn->rollback();
@@ -976,7 +1038,7 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
-        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection completed and submitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
+        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection report submitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
             <div class="shared-toast shared-toast--success" data-shared-toast role="status">
                 <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                 <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
@@ -1008,7 +1070,7 @@ require __DIR__ . '/../layout/header.php';
                     $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
-                        : ($inspectionStatus === 'Submitted' ? 'Submitted for Admin Review' : $inspectionStatus);
+                        : ($inspectionStatus === 'Submitted' ? 'Report Submitted' : $inspectionStatus);
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $isReturnedForRevision = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned';
                     // Para sa dating completed report bago ang one-click submit flow.
@@ -1029,27 +1091,24 @@ require __DIR__ . '/../layout/header.php';
                     };
                     $workflowActionLabel = match ($inspectionStatus) {
                         'Assigned', 'Acknowledged' => 'Start Inspection',
-                        'Ongoing' => 'Complete & Submit to Admin',
+                        'Ongoing' => 'Submit Report to Admin',
                         'On Hold' => 'Resume Inspection',
                         default => '',
                     };
                     $statusTimes = [
                         'Assigned' => $inspection['created_at'] ?? null,
                         'Ongoing' => $inspection['started_at'] ?? null,
-                        'Completed' => $inspection['completed_at'] ?? null,
                         'Submitted' => $inspection['submitted_at'] ?? null,
                     ];
                     // Simple lang ang progress na kailangan makita ng Engineer.
                     $engineerProgressSteps = [
                         ['label' => 'Assigned', 'time' => $statusTimes['Assigned']],
                         ['label' => 'Ongoing', 'time' => $statusTimes['Ongoing']],
-                        ['label' => 'Completed', 'time' => $statusTimes['Completed']],
-                        ['label' => 'Submitted', 'time' => $statusTimes['Submitted']],
+                        ['label' => 'Report Submitted', 'time' => $statusTimes['Submitted']],
                     ];
                     $engineerProgressIndex = match ($inspectionStatus) {
                         'Ongoing', 'On Hold' => 1,
-                        'Completed' => 2,
-                        'Submitted' => 3,
+                        'Completed', 'Submitted' => 2,
                         default => 0,
                     };
                     if (empty($costItems)) {
@@ -1136,7 +1195,7 @@ require __DIR__ . '/../layout/header.php';
 
                                 <section class="inspection-tab-panel" id="inspectionDetails<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="details">
                                 <div class="inspection-grid">
-                                    <div class="inspection-detail"><span>Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Scheduled Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-client-details inspection-detail--wide">
                                         <div class="inspection-client-details__grid">
@@ -1236,6 +1295,9 @@ require __DIR__ . '/../layout/header.php';
                             <div class="costing-head">
                                 <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Report'; ?></strong>
                             </div>
+                            <?php if ($inspectionStatus === 'Ongoing' && !$hasSavedFinalReport): ?>
+                                <p class="inspection-report-hint">Required: Engineer Findings and at least one cost item.</p>
+                            <?php endif; ?>
                             <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
@@ -1339,13 +1401,13 @@ require __DIR__ . '/../layout/header.php';
                             <?php endif; ?>
                             </details>
 
-                            <div class="inspection-costing-total" aria-label="Engineer costing total">
-                                <span>Engineer Grand Total</span>
+                            <div class="inspection-costing-total" aria-label="Estimated inspection cost">
+                                <span>Estimated Inspection Cost</span>
                                 <strong data-costing-total><?php echo engineer_format_money($totalCost); ?></strong>
                             </div>
 
                             <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?>>
-                                <summary>Asset Requirements <span>Optional reusable company assets</span></summary>
+                                <summary>Company Assets Needed <span>Optional reusable company assets</span></summary>
                             <section class="asset-requirements" data-asset-requirements>
                                 <?php if (!$assetRequirementsReady): ?>
                                     <p class="inspection-submit-note inspection-submit-note--waiting">Asset Requirements setup is not ready yet. Please apply the required database migration.</p>
@@ -1438,11 +1500,11 @@ require __DIR__ . '/../layout/header.php';
 
         <div class="inspection-confirm-modal" data-complete-inspection-modal hidden>
             <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="completeInspectionTitle">
-                <h2 id="completeInspectionTitle">Complete and submit report?</h2>
-                <p>This will finish the inspection, send the report to Admin, and lock the report. Admin can return it for revision.</p>
+                <h2 id="completeInspectionTitle">Submit report to Admin?</h2>
+                <p>This will send the report to Admin and lock it for review. Admin can return it for revision.</p>
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-complete-inspection-cancel>Cancel</button>
-                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Complete &amp; Submit</button>
+                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Submit Report</button>
                 </div>
             </div>
         </div>

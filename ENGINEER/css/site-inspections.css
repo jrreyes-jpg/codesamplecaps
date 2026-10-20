@@ -148,7 +148,8 @@
 }
 
 .inspection-status[data-status="Submitted"],
-.inspection-status[data-status="Submitted for Admin Review"] {
+.inspection-status[data-status="Submitted for Admin Review"],
+.inspection-status[data-status="Report Submitted"] {
     background: #dbeafe;
     color: #1d4ed8;
 }
@@ -177,7 +178,7 @@
 
 .inspection-workflow {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -224,7 +225,8 @@
     color: #475569;
 }
 
-.inspection-workflow__step[data-phase="Submitted"] {
+.inspection-workflow__step[data-phase="Submitted"],
+.inspection-workflow__step[data-phase="Report Submitted"] {
     border-color: #bfdbfe;
     background: #eff6ff;
     color: #1d4ed8;
@@ -236,10 +238,11 @@
     color: #9a3412;
 }
 
-.inspection-workflow__step[data-phase="Completed"] {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
-    color: #166534;
+.inspection-report-hint {
+    margin: 6px 0 10px;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
 }
 
 .inspection-tabs {

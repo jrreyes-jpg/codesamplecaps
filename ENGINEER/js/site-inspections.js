@@ -978,6 +978,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!modal || !nextTab) return;
 
         window.localStorage.setItem(`${activeTabKey}.${modal.id}`, nextTab);
+        const modalPanel = modal.querySelector('.inspection-modal__panel');
+        if (modalPanel) {
+            modalPanel.scrollTop = 0;
+        }
 
         modal.querySelectorAll('[data-inspection-tab]').forEach(function (button) {
             const isActive = button.getAttribute('data-inspection-tab') === nextTab;
@@ -1140,14 +1144,15 @@ document.addEventListener('DOMContentLoaded', function () {
             Ongoing: 1,
             'On Hold': 1,
             Completed: 2,
-            Submitted: 3,
+            Submitted: 2,
         };
         const currentIndex = progressIndexByStatus[status] ?? -1;
         steps.forEach(function (step, index) {
             step.classList.toggle('is-done', currentIndex > index);
             step.classList.toggle('is-current', currentIndex === index);
             const label = step.querySelector('span')?.textContent.trim() || '';
-            const timestamp = payload.timestamps?.[label] || '';
+            const timestampKey = label === 'Report Submitted' ? 'Submitted' : label;
+            const timestamp = payload.timestamps?.[timestampKey] || '';
             if (timestamp) {
                 let timeNode = step.querySelector('small');
                 if (!timeNode) {
@@ -1163,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const nextAction = {
             Assigned: ['start', 'Start Inspection'],
             Acknowledged: ['start', 'Start Inspection'],
-            Ongoing: ['complete', 'Complete & Submit to Admin'],
+            Ongoing: ['complete', 'Submit Report to Admin'],
         }[status];
         if (!nextAction) {
             form.remove();
@@ -1201,6 +1206,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return parseInspectionJsonResponse(response, 'Unable to update the inspection. Please try again.');
             })
             .then(function (payload) {
+                if (action === 'start') {
+                    activateInspectionTab(form.closest('.inspection-modal'), 'report');
+                }
                 return refreshInspectionCard(String(payload.inspection_id || form.elements.inspection_id?.value || ''), true)
                     .catch(function () {
                         applyWorkflowFallback(form, payload);
@@ -1322,10 +1330,10 @@ document.addEventListener('DOMContentLoaded', function () {
         completionModal.dataset.isCompleting = 'true';
         completionCancelButton.disabled = true;
         completionConfirmButton.disabled = true;
-        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Completing and submitting...';
-        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Complete & Submit to Admin';
+        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting report...';
+        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Submit Report to Admin';
         pendingCompletionButton.disabled = true;
-        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Completing and submitting...';
+        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting report...';
         requestWorkflowTransition(pendingCompletionForm, pendingCompletionButton).then(function (success) {
             if (success) {
                 completionModal.hidden = true;
@@ -1337,7 +1345,7 @@ document.addEventListener('DOMContentLoaded', function () {
             completionModal.dataset.isCompleting = '';
             completionCancelButton.disabled = false;
             completionConfirmButton.disabled = false;
-            completionConfirmButton.textContent = 'Complete & Submit';
+            completionConfirmButton.textContent = 'Submit Report';
         });
     });
 

@@ -121,7 +121,7 @@
                 <div class="input-group input-group-wide">
                     <label for="walk_in_preferred_date">Preferred Inspection Date <span class="required-indicator">*</span></label>
                     <input id="walk_in_preferred_date" name="preferred_inspection_date" type="date" min="<?php echo htmlspecialchars($walkInScheduleRange['min'], ENT_QUOTES); ?>" max="<?php echo htmlspecialchars($walkInScheduleRange['max'], ENT_QUOTES); ?>" value="<?php echo htmlspecialchars((string)($walkInOldInput['preferred_inspection_date'] ?? ''), ENT_QUOTES); ?>" data-walk-in-date required>
-                    <small class="walk-in-field-help">Today up to 30 days ahead. Admin will confirm the final date.</small>
+                    <small class="walk-in-field-help">Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward. Up to 30 days.</small>
                 </div>
 
                 <div class="input-group input-group-wide">

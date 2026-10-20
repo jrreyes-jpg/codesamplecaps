@@ -2609,44 +2609,49 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
 
-                                    <?php $showReviewActions = in_array($currentStatus, ['Pending Review', 'Verified Lead', 'Not Qualified'], true) && !$isWalkInPending; ?>
+                                    <?php $showReviewActions = (string)($inquiry['inquiry_source'] ?? 'online') === 'online'; ?>
                                     <?php if ($showReviewActions): ?>
-                                    <hr class="inquiry-review-divider">
-                                    <div class="inquiry-section-title inquiry-review-section-title">Admin Review &amp; Actions</div>
-                                    <?php $showReviewMetadata = !empty($inquiry['reviewed_at']); ?>
-                                    <?php if ($showReviewMetadata): ?>
-                                        <div class="inquiry-review-metadata">
-                                            <span>Reviewed</span>
-                                            <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['reviewed_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if ($isConvertedToProject): ?>
-                                        <div class="inquiry-readonly-notice">
-                                            This inquiry is already converted to a Project.
-                                            <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">Open Project</a>
-                                        </div>
-                                    <?php elseif (!empty($inquiry['archived_at'])): ?>
-                                        <div class="inquiry-readonly-notice">
-                                            This inquiry is archived. Restore it first before changing status, notes, or inspection schedule.
-                                        </div>
-                                    <?php else: ?>
-                                        <form method="POST" class="inquiry-review-form" data-original-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <label class="inquiry-review-form__status">
-                                                <span>Status</span>
-                                                <input type="hidden" name="status" value="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <output class="inquiry-review-form__status-value inquiry-status" data-status="Pending Review"><?php echo htmlspecialchars(inquiry_center_status_label($currentStatus), ENT_QUOTES, 'UTF-8'); ?></output>
-                                            </label>
-                                            <label class="inquiry-review-form__notes">
+                                        <?php $adminNotesPanelId = 'adminNotesPanel' . (int)$inquiry['id']; ?>
+                                        <?php $hasAdminNotes = trim((string)($inquiry['admin_notes'] ?? '')) !== ''; ?>
+                                        <div class="inquiry-admin-notes">
+                                            <button type="button" class="inquiry-admin-notes__toggle" data-admin-notes-toggle aria-expanded="false" aria-controls="<?php echo $adminNotesPanelId; ?>">
+                                                <span class="inquiry-admin-notes__icon" aria-hidden="true">&#128221;</span>
                                                 <span>Admin Notes</span>
-                                                <textarea name="admin_notes" rows="5" placeholder="Call result or schedule notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                            </label>
-                                            <div class="inquiry-review-actions inquiry-review-form__actions">
-                                                <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Notes</button>
+                                                <?php if ($hasAdminNotes): ?>
+                                                    <span class="inquiry-admin-notes__saved">Saved</span>
+                                                <?php endif; ?>
+                                            </button>
+                                            <div class="inquiry-admin-notes__panel" id="<?php echo $adminNotesPanelId; ?>" data-admin-notes-panel hidden>
+                                                <?php if (!empty($inquiry['reviewed_at'])): ?>
+                                                    <div class="inquiry-review-metadata">
+                                                        <span>Last saved</span>
+                                                        <strong><?php echo htmlspecialchars(inquiry_center_format_compact_datetime($inquiry['reviewed_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($isConvertedToProject): ?>
+                                                    <div class="inquiry-readonly-notice">
+                                                        This inquiry is already converted to a Project.
+                                                        <a href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">Open Project</a>
+                                                    </div>
+                                                <?php elseif (!empty($inquiry['archived_at'])): ?>
+                                                    <div class="inquiry-readonly-notice">
+                                                        This inquiry is archived. Restore it first before changing notes.
+                                                    </div>
+                                                <?php else: ?>
+                                                    <form method="POST" class="inquiry-review-form">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                        <label class="inquiry-review-form__notes">
+                                                            <span>Private note for Admin</span>
+                                                            <textarea name="admin_notes" rows="4" maxlength="2000" placeholder="Call result or schedule notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                                        </label>
+                                                        <div class="inquiry-review-actions inquiry-review-form__actions">
+                                                            <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Notes</button>
+                                                        </div>
+                                                    </form>
+                                                <?php endif; ?>
                                             </div>
-                                        </form>
-                                    <?php endif; ?>
+                                        </div>
 
                                     <?php if (!empty($inquiry['archived_at'])): ?>
                                         <div class="inquiry-archive-output">
@@ -2842,6 +2847,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <?php if (!$showScheduleEditor): ?>
                                                 <strong>Inspection Schedule</strong>
                                             <?php endif; ?>
+                                            <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
+                                                Date rule: Today before 5:00 PM. Tomorrow from 5:00 PM. Up to 30 days.
+                                            </small>
                                             <div class="inquiry-schedule-grid">
                                                 <label>
                                                     <span>Engineer</span>
@@ -2857,10 +2865,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <label class="admin-date-field">
                                                     <span>Inspection Date</span>
                                                     <span class="admin-date-input-wrap">
-                                                        <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo htmlspecialchars($initialInspectionDate, ENT_QUOTES, 'UTF-8'); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required>
+                                                        <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo htmlspecialchars($initialInspectionDate, ENT_QUOTES, 'UTF-8'); ?>" min="<?php echo site_inspection_earliest_schedule_date(); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required aria-describedby="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>">
                                                         <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
                                                     </span>
-                                                    <small class="admin-date-tooltip js-admin-date-tooltip">Choose a date within the next 30 days.</small>
                                                 </label>
                                             </div>
                                             <small class="inquiry-schedule-field-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>

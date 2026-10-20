@@ -1235,17 +1235,72 @@
 
 .inquiry-review-form {
     display: grid;
-    grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
+    grid-template-columns: 1fr;
     grid-template-areas:
-        "status notes"
-        "reason notes"
-        "actions notes";
+        "notes"
+        "actions";
     gap: 10px;
     align-items: start;
+}
+
+.inquiry-admin-notes {
+    margin-top: 14px;
+}
+
+.inquiry-admin-notes__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.inquiry-admin-notes__toggle:hover {
+    border-color: #16a34a;
+    background: #f0fdf4;
+}
+
+.inquiry-admin-notes__toggle:active {
+    transform: translateY(1px);
+}
+
+.inquiry-admin-notes__toggle:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, 0.2);
+    outline-offset: 2px;
+}
+
+.inquiry-admin-notes__icon {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.inquiry-admin-notes__saved {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.72rem;
+}
+
+.inquiry-admin-notes__panel {
+    max-width: 760px;
+    margin-top: 10px;
     padding: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    border: 1px solid #dbe3ee;
     border-radius: 14px;
     background: #ffffff;
+}
+
+.inquiry-admin-notes__panel[hidden] {
+    display: none;
 }
 
 .inquiry-review-divider {
@@ -1296,7 +1351,7 @@
 }
 
 .inquiry-review-form__notes textarea {
-    min-height: 132px;
+    min-height: 110px;
 }
 
 .inquiry-review-form__client-reason,
@@ -1467,7 +1522,25 @@
 .inquiry-schedule-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
+    align-items: start;
+}
+
+.inquiry-schedule-window-note {
+    display: block;
+    width: fit-content;
+    padding: 7px 10px;
+    border-radius: 9px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.inquiry-schedule-form > .inquiry-review-actions {
+    justify-content: flex-end;
+    margin-top: 2px;
 }
 
 .inquiry-review-actions {
@@ -2148,33 +2221,6 @@
     -webkit-appearance: none;
 }
 
-.admin-date-tooltip {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 6px);
-    z-index: 4;
-    display: block;
-    width: max-content;
-    max-width: 260px;
-    padding: 7px 9px;
-    border: 1px solid rgba(14, 116, 144, 0.18);
-    border-radius: 10px;
-    background: rgba(240, 253, 250, 0.96);
-    color: #475569;
-    font-size: 0.75rem;
-    font-weight: 700;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-4px);
-    transition: opacity 0.16s ease, transform 0.16s ease;
-}
-
-.admin-date-tooltip.is-visible {
-    color: #0f766e;
-    opacity: 1;
-    transform: translateY(0);
-}
-
 .inquiry-confirm[hidden] {
     display: none;
 }
@@ -2287,10 +2333,14 @@ body.inquiry-modal-open {
     .inquiry-review-form {
         grid-template-columns: 1fr;
         grid-template-areas:
-            "status"
-            "reason"
             "notes"
             "actions";
+    }
+
+    .inquiry-admin-notes__toggle,
+    .inquiry-admin-notes__panel,
+    .inquiry-review-form__actions .btn-primary {
+        width: 100%;
     }
 
     .inquiry-costing-table__row,

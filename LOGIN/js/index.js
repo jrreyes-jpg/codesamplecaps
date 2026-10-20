@@ -483,8 +483,8 @@ const initInquiryForm = () => {
         const contactInput = inquiryForm.querySelector('.js-inquiry-contact');
         const clientNameInput = inquiryForm.querySelector('input[name="client_name"]');
         const inspectionDateInput = inquiryForm.querySelector('.js-inspection-date');
-        const preferredDateMin = inspectionDateInput?.min || '';
-        const preferredDateMax = inspectionDateInput?.max || '';
+        let preferredDateMin = inspectionDateInput?.min || '';
+        let preferredDateMax = inspectionDateInput?.max || '';
         const datePickerButton = inquiryForm.querySelector('.js-date-picker-button');
         const dateInfoButton = inquiryForm.querySelector('.js-date-info-button');
         const dateTooltip = inquiryForm.querySelector('.js-date-tooltip');
@@ -862,14 +862,45 @@ const initInquiryForm = () => {
 
         normalizeContactNumber(contactInput);
 
+        const syncPreferredDateWindow = () => {
+            if (!inspectionDateInput) {
+                return;
+            }
+
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Manila',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                hourCycle: 'h23',
+            });
+            const parts = formatter.formatToParts(new Date()).reduce((values, part) => {
+                if (part.type !== 'literal') values[part.type] = part.value;
+                return values;
+            }, {});
+            const today = `${parts.year}-${parts.month}-${parts.day}`;
+            const addDays = (dateValue, days) => {
+                const values = dateValue.split('-').map(Number);
+                return new Date(Date.UTC(values[0], values[1] - 1, values[2] + days)).toISOString().slice(0, 10);
+            };
+
+            preferredDateMin = Number.parseInt(parts.hour || '0', 10) >= 17 ? addDays(today, 1) : today;
+            preferredDateMax = addDays(today, 30);
+            inspectionDateInput.min = preferredDateMin;
+            inspectionDateInput.max = preferredDateMax;
+        };
+        syncPreferredDateWindow();
+
         const validatePreferredDateRange = () => {
             if (!inspectionDateInput) {
                 return true;
             }
 
+            syncPreferredDateWindow();
             const value = inspectionDateInput.value;
             if (value !== '' && (value < preferredDateMin || value > preferredDateMax)) {
-                setFieldError(inspectionDateInput, 'Choose a date from today up to 30 days ahead.');
+                setFieldError(inspectionDateInput, 'Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward.');
                 return false;
             }
 
@@ -1503,6 +1534,7 @@ const restoreInquiryDraft = () => {
             }
 
             normalizeContactNumber(contactInput);
+            syncPreferredDateWindow();
             const fields = Array.from(inquiryForm.querySelectorAll('input, select, textarea'));
             let firstInvalidField = null;
 
@@ -1535,7 +1567,7 @@ const restoreInquiryDraft = () => {
 
                 if (field === inspectionDateInput && value !== ''
                     && (value < preferredDateMin || value > preferredDateMax)) {
-                    setFieldError(field, 'Choose a date from today up to 30 days ahead.');
+                    setFieldError(field, 'Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward.');
                     firstInvalidField = firstInvalidField || field;
                 }
 

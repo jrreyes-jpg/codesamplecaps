@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/inspection_date_window.php';
+
 function site_inspection_schedule_token_hash(string $token): string
 {
     return hash('sha256', $token);
@@ -36,11 +38,14 @@ function site_inspection_schedule_window_days(): int
     return 30;
 }
 
+function site_inspection_earliest_schedule_date(?DateTimeImmutable $now = null): string
+{
+    return inspection_date_window($now)['min'];
+}
+
 function site_inspection_latest_schedule_date(?DateTimeImmutable $now = null): string
 {
-    $now = $now ?: new DateTimeImmutable('now', site_inspection_timezone());
-
-    return $now->setTime(0, 0)->modify('+' . site_inspection_schedule_window_days() . ' days')->format('Y-m-d');
+    return inspection_date_window($now)['max'];
 }
 
 function site_inspection_validate_date(string $date, ?DateTimeImmutable $now = null): array
@@ -55,8 +60,8 @@ function site_inspection_validate_date(string $date, ?DateTimeImmutable $now = n
     if (!$candidate || $hasParseErrors || $candidate->format('Y-m-d') !== $date) {
         return ['valid' => false, 'message' => 'Please choose a valid inspection date.', 'datetime' => null];
     }
-    if ($date < $now->format('Y-m-d') || $date > site_inspection_latest_schedule_date($now)) {
-        return ['valid' => false, 'message' => 'Please choose a date within the next 30 days.', 'datetime' => null];
+    if ($date < site_inspection_earliest_schedule_date($now) || $date > site_inspection_latest_schedule_date($now)) {
+        return ['valid' => false, 'message' => 'Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward.', 'datetime' => null];
     }
 
     return ['valid' => true, 'message' => '', 'datetime' => $candidate];

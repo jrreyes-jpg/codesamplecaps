@@ -913,7 +913,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.inquiry-schedule-form').forEach(function (form) {
         const dateInput = form.querySelector('.js-admin-inspection-date');
         const dateButton = form.querySelector('.js-admin-date-picker-button');
-        const dateTooltip = form.querySelector('.js-admin-date-tooltip');
         const modal = form.closest('.inquiry-modal');
         const draftKey = modal?.dataset.inquiryId ? 'edgeInquiryScheduleDraft:' + modal.dataset.inquiryId : '';
         const submitButton = form.querySelector('[data-schedule-submit]');
@@ -963,8 +962,9 @@ document.addEventListener('DOMContentLoaded', function () {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
+            hour: '2-digit',
+            hourCycle: 'h23',
         });
-        let dateNoteTimer = null;
         let engineerBusyOnDate = false;
         let availabilityRequestId = 0;
 
@@ -978,6 +978,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return {
                 date: parts.year + '-' + parts.month + '-' + parts.day,
+                hour: Number.parseInt(parts.hour || '0', 10),
             };
         };
 
@@ -988,7 +989,10 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const getEarliestScheduleDate = function () {
-            return getManilaNow().date;
+            const manilaNow = getManilaNow();
+            return manilaNow.hour >= 17
+                ? addDaysToDate(manilaNow.date, 1)
+                : manilaNow.date;
         };
 
         const syncDateAvailability = function () {
@@ -1126,17 +1130,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const hideDatePickerState = function () {
             dateInput.dataset.pickerOpen = '0';
             dateButton?.classList.remove('is-active');
-            dateTooltip?.classList.remove('is-visible');
-        };
-
-        const showDateNoteBriefly = function () {
-            dateTooltip?.classList.add('is-visible');
-            if (dateNoteTimer) {
-                window.clearTimeout(dateNoteTimer);
-            }
-            dateNoteTimer = window.setTimeout(function () {
-                dateTooltip?.classList.remove('is-visible');
-            }, 2600);
         };
 
         dateButton?.addEventListener('click', function () {
@@ -1150,7 +1143,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             dateInput.dataset.pickerOpen = '1';
             dateButton.classList.add('is-active');
-            showDateNoteBriefly();
 
             if (typeof dateInput.showPicker === 'function') {
                 dateInput.showPicker();
@@ -1161,7 +1153,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         dateInput.addEventListener('change', function () {
             hideDatePickerState();
-            showDateNoteBriefly();
             syncDateAvailability();
         });
         dateInput.addEventListener('blur', function () {
@@ -1324,23 +1315,44 @@ document.addEventListener('DOMContentLoaded', function () {
         syncRescheduleControls(false);
     });
 
+    const bindAdminNotesToggle = function (button) {
+        if (!button || button.dataset.notesToggleBound === '1') {
+            return;
+        }
+        button.dataset.notesToggleBound = '1';
+
+        const notesBlock = button.closest('.inquiry-admin-notes');
+        const notesPanel = notesBlock?.querySelector('[data-admin-notes-panel]');
+        const notesField = notesPanel?.querySelector('textarea[name="admin_notes"]');
+
+        button.addEventListener('click', function () {
+            const willOpen = notesPanel?.hidden !== false;
+            if (notesPanel) {
+                notesPanel.hidden = !willOpen;
+            }
+            button.setAttribute('aria-expanded', String(willOpen));
+            if (willOpen) {
+                notesField?.focus();
+            }
+        });
+    };
+
+    document.querySelectorAll('[data-admin-notes-toggle]').forEach(bindAdminNotesToggle);
+
     const bindInquiryReviewForm = function (form) {
         if (!form || form.dataset.reviewHandlersBound === '1') {
             return;
         }
         form.dataset.reviewHandlersBound = '1';
 
-        const statusField = form.querySelector('[name="status"]');
         const notesField = form.querySelector('textarea[name="admin_notes"]');
         const submitButton = form.querySelector('button[type="submit"]');
-        if (!statusField) {
-            return;
-        }
 
         let originalNotes = notesField ? notesField.value : '';
 
         const syncReviewState = function () {
             const notesChanged = notesField ? notesField.value !== originalNotes : false;
+            form.dataset.reviewDirty = notesChanged ? '1' : '0';
 
             if (submitButton) {
                 submitButton.disabled = !notesChanged || form.dataset.submitting === '1';

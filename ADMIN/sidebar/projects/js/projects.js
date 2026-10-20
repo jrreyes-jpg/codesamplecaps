@@ -1495,6 +1495,34 @@ function initWalkInInquiryPanel() {
 
     if (!panel || !form) return;
 
+    function syncWalkInDateWindow() {
+        if (!dateInput) return;
+
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            hourCycle: 'h23',
+        });
+        const parts = formatter.formatToParts(new Date()).reduce(function (values, part) {
+            if (part.type !== 'literal') values[part.type] = part.value;
+            return values;
+        }, {});
+        const today = parts.year + '-' + parts.month + '-' + parts.day;
+        const addDays = function (dateValue, days) {
+            const values = dateValue.split('-').map(Number);
+            return new Date(Date.UTC(values[0], values[1] - 1, values[2] + days)).toISOString().slice(0, 10);
+        };
+
+        dateInput.min = Number.parseInt(parts.hour || '0', 10) >= 17 ? addDays(today, 1) : today;
+        dateInput.max = addDays(today, 30);
+        if (dateInput.value && (dateInput.value < dateInput.min || dateInput.value > dateInput.max)) {
+            dateInput.value = '';
+        }
+    }
+
     function setValidation(field, errorElement, message) {
         if (!field) return false;
         field.setCustomValidity(message);
@@ -2227,6 +2255,7 @@ function initWalkInInquiryPanel() {
     }
 
     function openPanel() {
+        syncWalkInDateWindow();
         panel.classList.add('is-open');
         panel.setAttribute('aria-hidden', 'false');
         document.body.classList.add('project-modal-open');
@@ -2476,6 +2505,7 @@ function initWalkInInquiryPanel() {
     if (emailAddress?.value) validateEmail();
     if (description?.value) validateDescription();
     if (clientName?.value) validateName();
+    syncWalkInDateWindow();
 
     if (panel.classList.contains('is-open')) {
         panel.setAttribute('aria-hidden', 'false');

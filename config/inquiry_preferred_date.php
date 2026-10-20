@@ -1,19 +1,12 @@
 <?php
 
+require_once __DIR__ . '/inspection_date_window.php';
+
 // Iisang rule para pareho ang date sa form at server check.
 if (!function_exists('inquiry_preferred_date_range')) {
     function inquiry_preferred_date_range(?DateTimeImmutable $now = null): array
     {
-        $timezone = new DateTimeZone('Asia/Manila');
-        $manilaNow = $now === null
-            ? new DateTimeImmutable('now', $timezone)
-            : $now->setTimezone($timezone);
-        $today = $manilaNow->setTime(0, 0, 0);
-
-        return [
-            'min' => $today->format('Y-m-d'),
-            'max' => $today->modify('+30 days')->format('Y-m-d'),
-        ];
+        return inspection_date_window($now);
     }
 }
 

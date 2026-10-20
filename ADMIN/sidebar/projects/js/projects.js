@@ -2238,8 +2238,6 @@ function initWalkInInquiryPanel() {
         if (emailAddress?.value || /^09\d{9}$/.test(contactNumber?.value || '')) {
             checkExistingContact();
         }
-        const firstEmptyField = [clientName, emailAddress].find((field) => !String(field?.value || '').trim());
-        firstEmptyField?.focus({ preventScroll: true });
     }
 
     function closePanel() {

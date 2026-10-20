@@ -508,6 +508,7 @@ const initInquiryForm = () => {
         const otpMessage = otpModal?.querySelector('.js-inquiry-otp-message');
         const otpVerifyButton = otpModal?.querySelector('.js-inquiry-otp-confirm');
         const otpResendButton = otpModal?.querySelector('.js-inquiry-otp-resend');
+        const otpTimer = otpModal?.querySelector('.js-inquiry-otp-timer');
         const contactIdentityFields = [
             clientNameInput,
             inquiryForm.querySelector('input[name="email"]'),
@@ -516,9 +517,16 @@ const initInquiryForm = () => {
         const contactFeedback = inquiryForm.querySelector('[data-inquiry-contact-feedback]');
         const draftKey = 'edgeInquiryFormDraft';
         let isSubmittingInquiry = false;
+        let isSubmitConfirmed = false;
         let verifiedEmail = (inquiryForm.dataset.verifiedEmail || '').toLowerCase();
         let isOtpBusy = false;
-        let otpResendTimer = 0;
+        let otpClock = 0;
+        let otpExpiresAt = 0;
+        let otpResendAt = 0;
+        let contactCheckTimer = 0;
+        let contactCheckId = 0;
+        let contactCanVerifyEmail = true;
+        let contactNote = '';
 
         if (!contactInput || !message) {
             return;
@@ -530,15 +538,92 @@ const initInquiryForm = () => {
             const currentEmail = (emailInput?.value || '').trim().toLowerCase();
             const isVerified = currentEmail !== '' && currentEmail === verifiedEmail;
 
-            emailVerifyStatus.textContent = isVerified ? 'Email verified' : 'Email not verified';
+            emailVerifyStatus.textContent = isVerified
+                ? (contactNote || 'Email verified')
+                : (contactNote || 'Email not verified');
             emailVerifyStatus.classList.toggle('is-verified', isVerified);
             verifyEmailButton.textContent = isVerified ? 'Verified' : 'Verify Email';
-            verifyEmailButton.disabled = isVerified;
+            verifyEmailButton.disabled = isVerified || !contactCanVerifyEmail;
+        };
+
+        const applyContactCheck = (result) => {
+            if (!result || result.status === 'checking') return;
+
+            if (result.complete === false) {
+                contactCanVerifyEmail = result.can_verify_email !== false;
+                contactNote = '';
+                updateEmailVerification();
+                return;
+            }
+
+            if (!result.valid) {
+                const field = result.field || 'email';
+                const error = result.message || 'Invalid client details.';
+                if (field === 'name' || field === 'both') setFieldError(clientNameInput, error);
+                if (field === 'email' || field === 'both') setFieldError(emailInput, error);
+                if (field === 'phone' || field === 'both') setFieldError(contactInput, error);
+                verifiedEmail = '';
+                inquiryForm.dataset.verifiedEmail = '';
+                contactCanVerifyEmail = false;
+                contactNote = 'Email cannot be verified.';
+                updateEmailVerification();
+                return;
+            }
+
+            contactCanVerifyEmail = result.can_verify_email !== false || !!result.email_verified;
+            if (result.status === 'existing_client' && result.email_verified) {
+                verifiedEmail = (emailInput?.value || '').trim().toLowerCase();
+                inquiryForm.dataset.verifiedEmail = verifiedEmail;
+                contactNote = 'Existing client found.';
+            } else if (result.status === 'existing_inquiry') {
+                contactNote = 'Existing inquiry found. Verify email.';
+            } else {
+                contactNote = '';
+            }
+            updateEmailVerification();
+        };
+
+        const checkContactDetails = async () => {
+            const name = (clientNameInput?.value || '').trim();
+            const email = (emailInput?.value || '').trim();
+            const phone = (contactInput?.value || '').trim();
+            if (name === '' || !emailPattern.test(email) || !phonePattern.test(phone)) {
+                contactCanVerifyEmail = emailPattern.test(email);
+                contactNote = '';
+                updateEmailVerification();
+                return;
+            }
+
+            const requestId = ++contactCheckId;
+            try {
+                const response = await fetch('check_inquiry_contact.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body: new URLSearchParams({
+                        client_name: name,
+                        email,
+                        contact_no: phone,
+                        inquiry_form_token: inquiryForm.querySelector('input[name="inquiry_form_token"]')?.value || '',
+                    }),
+                    credentials: 'same-origin',
+                });
+                const result = await response.json();
+                if (requestId === contactCheckId) applyContactCheck(result);
+            } catch (error) {
+                // Server validation will still protect the final submit.
+            }
+        };
+
+        const queueContactCheck = () => {
+            window.clearTimeout(contactCheckTimer);
+            contactCheckTimer = window.setTimeout(checkContactDetails, 450);
         };
 
         const setOtpBusy = (busy, label = '') => {
             isOtpBusy = busy;
             otpModal?.classList.toggle('is-busy', busy);
+            otpModal?.classList.toggle('is-sending', busy);
+            otpModal?.setAttribute('aria-busy', busy ? 'true' : 'false');
             [otpCodeInput, otpVerifyButton, otpResendButton].forEach((control) => {
                 if (control) control.disabled = busy;
             });
@@ -548,7 +633,7 @@ const initInquiryForm = () => {
             }
         };
 
-        const openOtpModal = () => {
+        const openOtpModal = (isSending = false) => {
             if (!otpModal || !emailInput) return;
             otpEmail.textContent = emailInput.value.trim();
             otpCodeInput.value = '';
@@ -557,7 +642,9 @@ const initInquiryForm = () => {
             otpModal.classList.add('is-open');
             otpModal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('has-inquiry-otp-open');
-            window.setTimeout(() => otpCodeInput.focus(), 80);
+            otpModal.classList.toggle('is-sending', isSending);
+            otpModal.setAttribute('aria-busy', isSending ? 'true' : 'false');
+            if (!isSending) window.setTimeout(() => otpCodeInput.focus(), 80);
         };
 
         const closeOtpModal = (force = false) => {
@@ -577,8 +664,12 @@ const initInquiryForm = () => {
                 return;
             }
             otpModal.classList.remove('is-open');
+            otpModal.classList.remove('is-sending');
             otpModal.setAttribute('aria-hidden', 'true');
+            otpModal.removeAttribute('aria-busy');
             document.body.classList.remove('has-inquiry-otp-open');
+            window.clearInterval(otpClock);
+            otpClock = 0;
         };
 
         const otpRequest = async (endpoint, body) => {
@@ -589,32 +680,45 @@ const initInquiryForm = () => {
                 credentials: 'same-origin',
             });
             const data = await response.json().catch(() => ({ success: false, message: 'Could not connect. Check your internet.' }));
-            if (!response.ok || !data.success) throw new Error(data.message || 'Could not complete verification.');
+            if (!response.ok || !data.success) {
+                const error = new Error(data.message || 'Could not complete verification.');
+                error.retryAfter = Number(data.retry_after) || 0;
+                error.expiresIn = Number(data.expires_in) || 0;
+                throw error;
+            }
             return data;
         };
 
-        const startOtpResendCountdown = (seconds) => {
-            window.clearInterval(otpResendTimer);
-            let remaining = Math.max(0, Number(seconds) || 0);
+        const startOtpClock = (expiresIn, resendIn) => {
+            window.clearInterval(otpClock);
+            otpExpiresAt = Date.now() + Math.max(0, Number(expiresIn) || 0) * 1000;
+            otpResendAt = Date.now() + Math.max(0, Number(resendIn) || 0) * 1000;
 
             const render = () => {
+                const expiresInSeconds = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
+                const resendInSeconds = Math.max(0, Math.ceil((otpResendAt - Date.now()) / 1000));
+                const format = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+                if (otpTimer) {
+                    otpTimer.textContent = expiresInSeconds > 0 ? `Code expires in ${format(expiresInSeconds)}` : 'Code expired. Resend a new code.';
+                    otpTimer.classList.toggle('is-warning', expiresInSeconds > 0 && expiresInSeconds <= 60);
+                    otpTimer.classList.toggle('is-expired', expiresInSeconds === 0);
+                }
                 if (!otpResendButton) return;
-                otpResendButton.disabled = remaining > 0;
-                otpResendButton.textContent = remaining > 0
-                    ? `Resend Code (${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')})`
+                otpResendButton.disabled = resendInSeconds > 0;
+                otpResendButton.textContent = resendInSeconds > 0
+                    ? `Resend Code (${format(resendInSeconds)})`
                     : 'Resend Code';
             };
 
             render();
-            if (remaining <= 0) return;
-            otpResendTimer = window.setInterval(() => {
-                remaining -= 1;
+            otpClock = window.setInterval(() => {
+                const expired = Date.now() >= otpExpiresAt;
                 render();
-                if (remaining <= 0) window.clearInterval(otpResendTimer);
+                if (expired && Date.now() >= otpResendAt) window.clearInterval(otpClock);
             }, 1000);
         };
 
-        const sendInquiryOtp = async () => {
+        const sendInquiryOtp = async (isResend = false) => {
             const email = emailInput?.value.trim() || '';
             if (!emailPattern.test(email)) {
                 setFieldError(emailInput, 'Please enter a valid email address.');
@@ -625,26 +729,40 @@ const initInquiryForm = () => {
 
             verifyEmailButton.disabled = true;
             verifyEmailButton.textContent = 'Sending...';
-            openOtpModal();
+            openOtpModal(true);
             setOtpBusy(true, 'Sending verification code...');
             let resendAfter = 0;
+            let expiresIn = 0;
+            let existingCode = false;
             try {
                 const result = await otpRequest('send_inquiry_email_otp.php', {
                     email,
                     inquiry_form_token: inquiryForm.querySelector('input[name="inquiry_form_token"]')?.value || '',
+                    resend: isResend ? '1' : '0',
                 });
                 resendAfter = Number(result.resend_after) || 0;
+                expiresIn = Number(result.expires_in) || 180;
             } catch (error) {
-                setFieldError(emailInput, error.message || 'Could not send code.');
-                closeOtpModal(true);
+                if (error.retryAfter > 0) {
+                    resendAfter = error.retryAfter;
+                    expiresIn = error.expiresIn || 180;
+                    existingCode = true;
+                } else {
+                    setFieldError(emailInput, error.message || 'Could not send code.');
+                    closeOtpModal(true);
+                }
             } finally {
                 setOtpBusy(false);
-                if (resendAfter > 0) startOtpResendCountdown(resendAfter);
+                if (resendAfter > 0) {
+                    startOtpClock(expiresIn, resendAfter);
+                    otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : '';
+                    otpMessage.classList.remove('is-error');
+                }
                 if ((emailInput?.value || '').trim().toLowerCase() !== verifiedEmail) updateEmailVerification();
             }
         };
 
-        verifyEmailButton?.addEventListener('click', sendInquiryOtp);
+        verifyEmailButton?.addEventListener('click', () => sendInquiryOtp(false));
         otpModal?.querySelectorAll('.js-inquiry-otp-close').forEach((button) => {
             button.addEventListener('click', () => closeOtpModal());
         });
@@ -654,7 +772,7 @@ const initInquiryForm = () => {
         otpCodeInput?.addEventListener('input', () => {
             otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
         });
-        otpResendButton?.addEventListener('click', sendInquiryOtp);
+        otpResendButton?.addEventListener('click', () => sendInquiryOtp(true));
         otpVerifyButton?.addEventListener('click', async () => {
             const otp = otpCodeInput?.value.trim() || '';
             if (!/^\d{6}$/.test(otp)) {
@@ -1282,6 +1400,7 @@ const restoreInquiryDraft = () => {
             validateFullNameText(clientNameInput);
             clearFormMessageIfReady();
             saveInquiryDraft();
+            queueContactCheck();
         });
 
         inquiryForm.querySelector('input[name="email"]')?.addEventListener('input', (event) => {
@@ -1291,6 +1410,7 @@ const restoreInquiryDraft = () => {
                 inquiryForm.dataset.verifiedEmail = '';
                 updateEmailVerification();
             }
+            queueContactCheck();
         });
 
         otherServiceInput?.addEventListener('input', () => {
@@ -1321,6 +1441,9 @@ const restoreInquiryDraft = () => {
                 }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
+                if (contactIdentityFields.includes(field) && field !== clientNameInput && field !== emailInput) {
+                    queueContactCheck();
+                }
             });
             field.addEventListener('change', () => {
                 if (field === inspectionDateInput) {
@@ -1470,6 +1593,22 @@ const restoreInquiryDraft = () => {
                 return;
             }
 
+            if (!isSubmitConfirmed && window.EdgePublicConfirmation) {
+                event.preventDefault();
+                window.EdgePublicConfirmation.open({
+                    title: 'Submit inquiry?',
+                    message: 'Your inquiry will be sent to Admin for review.',
+                    cancelLabel: 'Go Back',
+                    confirmLabel: 'Submit Inquiry',
+                    onConfirm: function (controls) {
+                        controls.setBusy('Submitting...');
+                        isSubmitConfirmed = true;
+                        inquiryForm.requestSubmit();
+                    },
+                });
+                return;
+            }
+
             isSubmittingInquiry = true;
             if (submitButton) {
                 submitButton.disabled = true;
@@ -1484,6 +1623,7 @@ const restoreInquiryDraft = () => {
             }
 
             isSubmittingInquiry = false;
+            isSubmitConfirmed = false;
             submitButton.disabled = false;
             submitButton.removeAttribute('aria-busy');
             submitButton.textContent = 'Submit Inquiry';

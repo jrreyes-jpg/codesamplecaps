@@ -71,5 +71,6 @@ $_SESSION['public_inquiry_email_verified'] = [
     'email' => $email,
     'verified_at' => time(),
 ];
+unset($_SESSION['public_inquiry_otp_token'], $_SESSION['public_inquiry_otp_expires_at'], $_SESSION['public_inquiry_otp_resend_count']);
 
 inquiry_verify_json(['success' => true, 'message' => 'Email verified. You can submit your inquiry.']);

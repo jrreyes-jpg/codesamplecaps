@@ -11,8 +11,8 @@ if (!function_exists('inquiry_preferred_date_range')) {
         $today = $manilaNow->setTime(0, 0, 0);
 
         return [
-            'min' => $today->modify('+1 day')->format('Y-m-d'),
-            'max' => $today->modify('+14 days')->format('Y-m-d'),
+            'min' => $today->format('Y-m-d'),
+            'max' => $today->modify('+30 days')->format('Y-m-d'),
         ];
     }
 }

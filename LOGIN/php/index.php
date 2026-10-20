@@ -700,7 +700,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     >
                     <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
                 </span>
-                <small id="preferredInspectionDateHelp" class="field-help">Choose your preferred date. Admin will confirm the final date.</small>
+                <small id="preferredInspectionDateHelp" class="field-help">Choose from today up to 30 days ahead. Admin will confirm the final date.</small>
                 <small class="field-error"></small>
             </label>
 

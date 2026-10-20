@@ -751,7 +751,7 @@ const initInquiryForm = () => {
 
             const value = inspectionDateInput.value;
             if (value !== '' && (value < preferredDateMin || value > preferredDateMax)) {
-                setFieldError(inspectionDateInput, 'Choose a date within the next 14 days, starting tomorrow.');
+                setFieldError(inspectionDateInput, 'Choose a date from today up to 30 days ahead.');
                 return false;
             }
 
@@ -1412,7 +1412,7 @@ const restoreInquiryDraft = () => {
 
                 if (field === inspectionDateInput && value !== ''
                     && (value < preferredDateMin || value > preferredDateMax)) {
-                    setFieldError(field, 'Choose a date within the next 14 days, starting tomorrow.');
+                    setFieldError(field, 'Choose a date from today up to 30 days ahead.');
                     firstInvalidField = firstInvalidField || field;
                 }
 

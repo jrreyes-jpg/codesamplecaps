@@ -10,11 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
-require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
-require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
     'New Automation Installation',
@@ -134,10 +132,8 @@ if (
     $errors[] = 'other_service_details';
 }
 
-if ($preferredInspectionDate !== '') {
-    if (!inquiry_preferred_date_is_allowed($preferredInspectionDate)) {
-        $errors[] = 'preferred_inspection_date';
-    }
+if ($preferredInspectionDate === '' || !inquiry_preferred_date_is_allowed($preferredInspectionDate)) {
+    $errors[] = 'preferred_inspection_date';
 }
 
 if ($errors !== []) {
@@ -149,70 +145,47 @@ if (!$contactValidation['valid']) {
     redirect_to_form((string)$contactValidation['status']);
 }
 
+$verifiedEmail = $_SESSION['public_inquiry_email_verified'] ?? [];
+if (
+    !is_array($verifiedEmail)
+    || strtolower((string)($verifiedEmail['email'] ?? '')) !== strtolower($email)
+    || (int)($verifiedEmail['verified_at'] ?? 0) < (time() - 900)
+) {
+    redirect_to_form('email_not_verified');
+}
+
 $companyName = $companyName !== '' ? $companyName : null;
 if ($otherServiceDetails !== '') {
     $description .= "\n\nOther service details: " . $otherServiceDetails;
 }
 
-$otp = (string)random_int(100000, 999999);
-$token = bin2hex(random_bytes(32));
-$otpValiditySeconds = inquiry_otp_validity_seconds();
-$payload = [
-    'client_name' => $clientName,
-    'company_name' => $companyName,
-    'email' => $email,
-    'contact_no' => $contactNo,
-    'region' => $region,
-    'location_area' => $locationArea,
-    'province' => $province,
-    'city_municipality' => $cityMunicipality,
-    'barangay' => $barangay,
-    'site_address' => $siteAddress,
-    'service_category' => $serviceCategory,
-    'description' => $description,
-    'preferred_inspection_date' => $preferredInspectionDate !== '' ? $preferredInspectionDate : null,
-];
-
 $stmt = $conn->prepare(
-    'INSERT INTO pending_service_inquiries (token, otp_hash, payload_json, expires_at)
-     VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ' . $otpValiditySeconds . ' SECOND))'
+    'INSERT INTO service_inquiries (
+        client_name, company_name, email, contact_no, province,
+        city_municipality, barangay, site_address, service_category,
+        description, preferred_inspection_date
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 if (!$stmt) {
     redirect_to_form('server_error');
 }
 
-$otpHash = password_hash($otp, PASSWORD_DEFAULT);
-$payloadJson = json_encode($payload, JSON_UNESCAPED_SLASHES);
-$stmt->bind_param('sss', $token, $otpHash, $payloadJson);
+$stmt->bind_param(
+    'sssssssssss',
+    $clientName,
+    $companyName,
+    $email,
+    $contactNo,
+    $province,
+    $cityMunicipality,
+    $barangay,
+    $siteAddress,
+    $serviceCategory,
+    $description,
+    $preferredInspectionDate
+);
 if (!$stmt->execute()) {
     redirect_to_form('server_error');
 }
-
-$expiryStmt = $conn->prepare(
-    'SELECT expires_at FROM pending_service_inquiries WHERE token = ? LIMIT 1'
-);
-if (!$expiryStmt) {
-    redirect_to_form('server_error');
-}
-
-$expiryStmt->bind_param('s', $token);
-if (!$expiryStmt->execute()) {
-    redirect_to_form('server_error');
-}
-
-$expiryRow = $expiryStmt->get_result()->fetch_assoc();
-$otpExpiresAt = DateTimeImmutable::createFromFormat(
-    'Y-m-d H:i:s',
-    (string)($expiryRow['expires_at'] ?? ''),
-    new DateTimeZone('Asia/Manila')
-);
-if (!$otpExpiresAt) {
-    redirect_to_form('server_error');
-}
-
-$emailService = new EmailService();
-if (!$emailService->sendInquiryOtp($email, $clientName, $otp, $otpExpiresAt)) {
-    redirect_to_form('email_error');
-}
-
-inquiry_otp_redirect('verify', $token, ['sent' => '1']);
+unset($_SESSION['public_inquiry_email_verified'], $_SESSION['public_inquiry_otp_token']);
+redirect_to_form('success');

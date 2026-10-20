@@ -11,6 +11,7 @@ $serviceHierarchy = service_area_hierarchy();
 $serviceBarangays = service_barangays_hierarchy($conn);
 $preferredInspectionDateRange = inquiry_preferred_date_range();
 $inquiryFormScriptVersion = (string)(filemtime(__DIR__ . '/../js/index.js') ?: 1);
+$verifiedInquiryEmail = strtolower(trim((string)($_SESSION['public_inquiry_email_verified']['email'] ?? '')));
 
 if (empty($_SESSION['inquiry_form_token'])) {
     $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
@@ -528,7 +529,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <p>Send your site details so Edge Automation can review your request.</p>
         </div>
 
-        <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate>
+        <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate data-verified-email="<?php echo htmlspecialchars($verifiedInquiryEmail, ENT_QUOTES, 'UTF-8'); ?>">
             <input type="hidden" name="inquiry_form_token" value="<?php echo htmlspecialchars($_SESSION['inquiry_form_token'], ENT_QUOTES, 'UTF-8'); ?>">
 
             <div class="inquiry-grid inquiry-grid--contact-details" data-inquiry-contact-details>
@@ -555,6 +556,10 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 <label>
                     <span>Email Address <b class="required-mark">*</b></span>
                     <input type="email" name="email" data-label="Email Address" required autocomplete="email">
+                    <span class="inquiry-email-verify-row">
+                        <button type="button" class="inquiry-email-verify-button js-inquiry-email-verify">Verify Email</button>
+                        <small class="inquiry-email-verify-status js-inquiry-email-status" aria-live="polite">Email not verified</small>
+                    </span>
                     <small class="field-error"></small>
                 </label>
 
@@ -650,7 +655,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
                 <label class="preferred-inspection-field">
                     <span class="field-label-with-info">
-                        Preferred Inspection Date
+                        Preferred Inspection Date <b class="required-mark">*</b>
                         <span class="field-info-wrap">
                             <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
                             <small class="field-tooltip js-date-tooltip">This is only your preferred date. We will contact you to confirm the final schedule.</small>
@@ -662,13 +667,14 @@ if (empty($_SESSION['inquiry_form_token'])) {
                             class="js-inspection-date"
                             name="preferred_inspection_date"
                             data-label="Preferred Inspection Date"
+                            required
                             min="<?php echo htmlspecialchars($preferredInspectionDateRange['min'], ENT_QUOTES, 'UTF-8'); ?>"
                             max="<?php echo htmlspecialchars($preferredInspectionDateRange['max'], ENT_QUOTES, 'UTF-8'); ?>"
                             aria-describedby="preferredInspectionDateHelp"
                         >
                         <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
                     </span>
-                    <small id="preferredInspectionDateHelp" class="field-help">Optional: tomorrow up to 14 days ahead. Subject to confirmation.</small>
+                    <small id="preferredInspectionDateHelp" class="field-help">Choose your preferred date. Admin will confirm the final schedule.</small>
                     <small class="field-error"></small>
                 </label>
             </div>
@@ -694,6 +700,22 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 </span>
             </div>
         </form>
+    </div>
+</div>
+<div class="inquiry-otp-modal" data-inquiry-otp-modal aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inquiryOtpTitle">
+    <div class="inquiry-otp-modal__card">
+        <button class="inquiry-otp-modal__close js-inquiry-otp-close" type="button" aria-label="Close email verification">&times;</button>
+        <h3 id="inquiryOtpTitle">Verify Email</h3>
+        <p class="inquiry-otp-modal__text">Enter the 6-digit code sent to <strong class="js-inquiry-otp-email"></strong>.</p>
+        <label class="inquiry-otp-modal__label" for="inquiryOtpCode">Verification Code</label>
+        <input id="inquiryOtpCode" class="inquiry-otp-modal__input js-inquiry-otp-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+        <p class="inquiry-otp-modal__message js-inquiry-otp-message" aria-live="polite"></p>
+        <p class="inquiry-otp-modal__help">Check Spam or Junk if you did not get the code.</p>
+        <div class="inquiry-otp-modal__actions">
+            <button class="consult-close js-inquiry-otp-close" type="button">Close</button>
+            <button class="inquiry-otp-modal__resend js-inquiry-otp-resend" type="button">Resend Code</button>
+            <button class="btn btn-primary js-inquiry-otp-confirm" type="button">Verify Code</button>
+        </div>
     </div>
 </div>
     <script>

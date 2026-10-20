@@ -752,6 +752,150 @@ h4 {
     display: block;
 }
 
+.inquiry-email-verify-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+}
+
+.inquiry-email-verify-button {
+    border: 1px solid #16a34a;
+    border-radius: 8px;
+    background: #f0fdf4;
+    color: #166534;
+    padding: 7px 12px;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.inquiry-email-verify-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.inquiry-email-verify-status {
+    color: #b45309 !important;
+    font-weight: 800;
+}
+
+.inquiry-email-verify-status.is-verified {
+    color: #15803d !important;
+}
+
+.inquiry-otp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: none;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.66);
+}
+
+.inquiry-otp-modal.is-open {
+    display: grid;
+}
+
+.inquiry-otp-modal__card {
+    position: relative;
+    width: min(460px, 100%);
+    border-radius: 18px;
+    padding: 28px;
+    background: #ffffff;
+    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.3);
+}
+
+.inquiry-otp-modal__card h3 {
+    margin: 0 40px 10px 0;
+    color: #172033;
+}
+
+.inquiry-otp-modal__text,
+.inquiry-otp-modal__help {
+    margin: 0 0 16px;
+    color: #51627d;
+    line-height: 1.45;
+}
+
+.inquiry-otp-modal__label {
+    display: block;
+    margin-bottom: 7px;
+    color: #172033;
+    font-weight: 800;
+}
+
+.inquiry-otp-modal__input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #94a3b8;
+    border-radius: 9px;
+    padding: 12px;
+    font: inherit;
+    font-size: 1.2rem;
+    letter-spacing: 0.3em;
+    text-align: center;
+}
+
+.inquiry-otp-modal__message {
+    min-height: 20px;
+    margin: 9px 0 0;
+    color: #15803d;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.inquiry-otp-modal__message.is-error {
+    color: #b91c1c;
+}
+
+.inquiry-otp-modal__close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 1.6rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.inquiry-otp-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.inquiry-otp-modal__actions button {
+    margin: 0;
+}
+
+.inquiry-otp-modal__resend {
+    border: 0;
+    background: transparent;
+    color: #166534;
+    padding: 10px 8px;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.inquiry-otp-modal.is-busy {
+    pointer-events: none;
+}
+
+body.has-inquiry-otp-open {
+    overflow: hidden;
+}
+
 .field-help {
     display: block;
     color: #64748b;

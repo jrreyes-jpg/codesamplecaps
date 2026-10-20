@@ -55,6 +55,7 @@ const inquiryFormReturnStatuses = new Set([
     'contact_not_allowed',
     'contact_mismatch',
     'email_error',
+    'email_not_verified',
     'expired',
     'server_error',
 ]);
@@ -129,6 +130,7 @@ const initInquiryStatusToast = () => {
         contact_not_allowed: ['These contact details cannot be used for this inquiry. Please use your own contact information.', 'error'],
         contact_mismatch: ['The provided contact details do not match our records.', 'error'],
         email_error: ['We could not send the verification code. Please try again later.', 'error'],
+        email_not_verified: ['Please verify your email before submitting.', 'error'],
         expired: ['The verification code expired. Please submit the inquiry again.', 'error'],
     };
     const [message, type] = messages[status] || ['Sorry, the inquiry service had a problem. Please try again later.', 'error'];
@@ -497,6 +499,15 @@ const initInquiryForm = () => {
         const message = inquiryForm.querySelector('.js-inquiry-message');
         const clearDraftButton = inquiryForm.querySelector('.js-clear-inquiry-draft');
         const submitButton = inquiryForm.querySelector('.inquiry-submit');
+        const emailInput = inquiryForm.querySelector('input[name="email"]');
+        const verifyEmailButton = inquiryForm.querySelector('.js-inquiry-email-verify');
+        const emailVerifyStatus = inquiryForm.querySelector('.js-inquiry-email-status');
+        const otpModal = document.querySelector('[data-inquiry-otp-modal]');
+        const otpCodeInput = otpModal?.querySelector('.js-inquiry-otp-code');
+        const otpEmail = otpModal?.querySelector('.js-inquiry-otp-email');
+        const otpMessage = otpModal?.querySelector('.js-inquiry-otp-message');
+        const otpVerifyButton = otpModal?.querySelector('.js-inquiry-otp-confirm');
+        const otpResendButton = otpModal?.querySelector('.js-inquiry-otp-resend');
         const contactIdentityFields = [
             clientNameInput,
             inquiryForm.querySelector('input[name="email"]'),
@@ -505,13 +516,174 @@ const initInquiryForm = () => {
         const contactFeedback = inquiryForm.querySelector('[data-inquiry-contact-feedback]');
         const draftKey = 'edgeInquiryFormDraft';
         let isSubmittingInquiry = false;
-        let isInquirySubmitConfirmed = false;
+        let verifiedEmail = (inquiryForm.dataset.verifiedEmail || '').toLowerCase();
+        let isOtpBusy = false;
+        let otpResendTimer = 0;
 
         if (!contactInput || !message) {
             return;
         }
 
         const inquiryModalContent = inquiryForm.closest('.inquiry-modal-content');
+
+        const updateEmailVerification = () => {
+            const currentEmail = (emailInput?.value || '').trim().toLowerCase();
+            const isVerified = currentEmail !== '' && currentEmail === verifiedEmail;
+
+            emailVerifyStatus.textContent = isVerified ? 'Email verified' : 'Email not verified';
+            emailVerifyStatus.classList.toggle('is-verified', isVerified);
+            verifyEmailButton.textContent = isVerified ? 'Verified' : 'Verify Email';
+            verifyEmailButton.disabled = isVerified;
+        };
+
+        const setOtpBusy = (busy, label = '') => {
+            isOtpBusy = busy;
+            otpModal?.classList.toggle('is-busy', busy);
+            [otpCodeInput, otpVerifyButton, otpResendButton].forEach((control) => {
+                if (control) control.disabled = busy;
+            });
+            if (busy && otpMessage) {
+                otpMessage.textContent = label;
+                otpMessage.classList.remove('is-error');
+            }
+        };
+
+        const openOtpModal = () => {
+            if (!otpModal || !emailInput) return;
+            otpEmail.textContent = emailInput.value.trim();
+            otpCodeInput.value = '';
+            otpMessage.textContent = '';
+            otpMessage.classList.remove('is-error');
+            otpModal.classList.add('is-open');
+            otpModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('has-inquiry-otp-open');
+            window.setTimeout(() => otpCodeInput.focus(), 80);
+        };
+
+        const closeOtpModal = (force = false) => {
+            if (!otpModal || (isOtpBusy && !force)) return;
+            if (!force && otpCodeInput?.value.trim()) {
+                window.EdgePublicConfirmation?.open({
+                    title: 'Close email verification?',
+                    message: 'Your code will not be saved.',
+                    cancelLabel: 'Keep Verifying',
+                    confirmLabel: 'Close',
+                    tone: 'danger',
+                    onConfirm: (controls) => {
+                        controls.close();
+                        closeOtpModal(true);
+                    },
+                });
+                return;
+            }
+            otpModal.classList.remove('is-open');
+            otpModal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('has-inquiry-otp-open');
+        };
+
+        const otpRequest = async (endpoint, body) => {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: new URLSearchParams(body),
+                credentials: 'same-origin',
+            });
+            const data = await response.json().catch(() => ({ success: false, message: 'Could not connect. Check your internet.' }));
+            if (!response.ok || !data.success) throw new Error(data.message || 'Could not complete verification.');
+            return data;
+        };
+
+        const startOtpResendCountdown = (seconds) => {
+            window.clearInterval(otpResendTimer);
+            let remaining = Math.max(0, Number(seconds) || 0);
+
+            const render = () => {
+                if (!otpResendButton) return;
+                otpResendButton.disabled = remaining > 0;
+                otpResendButton.textContent = remaining > 0
+                    ? `Resend Code (${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')})`
+                    : 'Resend Code';
+            };
+
+            render();
+            if (remaining <= 0) return;
+            otpResendTimer = window.setInterval(() => {
+                remaining -= 1;
+                render();
+                if (remaining <= 0) window.clearInterval(otpResendTimer);
+            }, 1000);
+        };
+
+        const sendInquiryOtp = async () => {
+            const email = emailInput?.value.trim() || '';
+            if (!emailPattern.test(email)) {
+                setFieldError(emailInput, 'Please enter a valid email address.');
+                gentlyRevealField(emailInput, true);
+                emailInput?.focus();
+                return;
+            }
+
+            verifyEmailButton.disabled = true;
+            verifyEmailButton.textContent = 'Sending...';
+            openOtpModal();
+            setOtpBusy(true, 'Sending verification code...');
+            let resendAfter = 0;
+            try {
+                const result = await otpRequest('send_inquiry_email_otp.php', {
+                    email,
+                    inquiry_form_token: inquiryForm.querySelector('input[name="inquiry_form_token"]')?.value || '',
+                });
+                resendAfter = Number(result.resend_after) || 0;
+            } catch (error) {
+                setFieldError(emailInput, error.message || 'Could not send code.');
+                closeOtpModal(true);
+            } finally {
+                setOtpBusy(false);
+                if (resendAfter > 0) startOtpResendCountdown(resendAfter);
+                if ((emailInput?.value || '').trim().toLowerCase() !== verifiedEmail) updateEmailVerification();
+            }
+        };
+
+        verifyEmailButton?.addEventListener('click', sendInquiryOtp);
+        otpModal?.querySelectorAll('.js-inquiry-otp-close').forEach((button) => {
+            button.addEventListener('click', () => closeOtpModal());
+        });
+        otpModal?.addEventListener('click', (event) => {
+            if (event.target === otpModal) closeOtpModal();
+        });
+        otpCodeInput?.addEventListener('input', () => {
+            otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
+        });
+        otpResendButton?.addEventListener('click', sendInquiryOtp);
+        otpVerifyButton?.addEventListener('click', async () => {
+            const otp = otpCodeInput?.value.trim() || '';
+            if (!/^\d{6}$/.test(otp)) {
+                otpMessage.textContent = 'Enter the 6-digit code.';
+                otpMessage.classList.add('is-error');
+                otpCodeInput?.focus();
+                return;
+            }
+
+            setOtpBusy(true, 'Verifying code...');
+            try {
+                await otpRequest('verify_inquiry_email_otp.php', {
+                    otp,
+                    inquiry_form_token: inquiryForm.querySelector('input[name="inquiry_form_token"]')?.value || '',
+                });
+                verifiedEmail = (emailInput?.value || '').trim().toLowerCase();
+                inquiryForm.dataset.verifiedEmail = verifiedEmail;
+                clearFieldError(emailInput);
+                updateEmailVerification();
+                closeOtpModal(true);
+            } catch (error) {
+                otpMessage.textContent = error.message || 'Could not verify code.';
+                otpMessage.classList.add('is-error');
+            } finally {
+                setOtpBusy(false);
+            }
+        });
+
+        updateEmailVerification();
 
         const gentlyRevealField = (field, center = false) => {
             if (!field || !inquiryModalContent) {
@@ -1114,6 +1286,11 @@ const restoreInquiryDraft = () => {
 
         inquiryForm.querySelector('input[name="email"]')?.addEventListener('input', (event) => {
             clearContactMismatchFeedback(event.currentTarget);
+            if (event.currentTarget.value.trim().toLowerCase() !== verifiedEmail) {
+                verifiedEmail = '';
+                inquiryForm.dataset.verifiedEmail = '';
+                updateEmailVerification();
+            }
         });
 
         otherServiceInput?.addEventListener('input', () => {
@@ -1166,6 +1343,9 @@ const restoreInquiryDraft = () => {
             inquiryForm.querySelectorAll('.is-invalid').forEach((field) => clearFieldError(field));
             message.textContent = '';
             message.classList.remove('is-error');
+            verifiedEmail = '';
+            inquiryForm.dataset.verifiedEmail = '';
+            updateEmailVerification();
         };
 
         clearDraftButton?.addEventListener('click', () => {
@@ -1187,6 +1367,7 @@ const restoreInquiryDraft = () => {
         });
 
         restoreInquiryDraft();
+        updateEmailVerification();
 
         if (window.edgeInquiryStatus === 'contact_mismatch') {
             showContactMismatchFeedback();
@@ -1279,23 +1460,13 @@ const restoreInquiryDraft = () => {
                 return;
             }
 
-            if (!isInquirySubmitConfirmed) {
+            if ((emailInput?.value || '').trim().toLowerCase() !== verifiedEmail) {
                 event.preventDefault();
-                const confirmation = window.EdgePublicConfirmation?.open({
-                    title: 'Submit inquiry?',
-                    message: 'We will send a 6-digit verification code to your email. Your inquiry will be submitted only after successful verification.',
-                    cancelLabel: 'Cancel',
-                    confirmLabel: 'Send Verification Code',
-                    onConfirm: function (controls) {
-                        controls.setBusy('Sending code...');
-                        isInquirySubmitConfirmed = true;
-                        inquiryForm.requestSubmit();
-                    },
-                });
-                if (!confirmation) {
-                    message.textContent = 'Unable to open confirmation. Please try again.';
-                    message.classList.add('is-error');
-                }
+                setFieldError(emailInput, 'Verify your email before submitting.');
+                message.textContent = 'Please verify your email first.';
+                message.classList.add('is-error');
+                gentlyRevealField(emailInput, true);
+                emailInput?.focus();
                 return;
             }
 
@@ -1313,7 +1484,6 @@ const restoreInquiryDraft = () => {
             }
 
             isSubmittingInquiry = false;
-            isInquirySubmitConfirmed = false;
             submitButton.disabled = false;
             submitButton.removeAttribute('aria-busy');
             submitButton.textContent = 'Submit Inquiry';

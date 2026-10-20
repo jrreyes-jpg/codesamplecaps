@@ -1418,14 +1418,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = (string)$scheduleValidation['message'];
         } else {
             $currentInquiryStatus = '';
-            $currentInquirySource = '';
-            $statusStmt = $conn->prepare('SELECT status, inquiry_source FROM service_inquiries WHERE id = ? LIMIT 1');
+            $statusStmt = $conn->prepare('SELECT status FROM service_inquiries WHERE id = ? LIMIT 1');
             if ($statusStmt) {
                 $statusStmt->bind_param('i', $inquiryId);
                 $statusStmt->execute();
                 $statusRow = $statusStmt->get_result()->fetch_assoc();
                 $currentInquiryStatus = (string)($statusRow['status'] ?? '');
-                $currentInquirySource = (string)($statusRow['inquiry_source'] ?? '');
             }
             if (!in_array($currentInquiryStatus, ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'], true)) {
                 $error = 'This inquiry cannot be scheduled at its current stage.';
@@ -1440,7 +1438,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $existingInspectionStatus = '';
 
             $lockedInquiryStmt = $conn->prepare(
-                'SELECT status, inquiry_source, archived_at FROM service_inquiries WHERE id = ? LIMIT 1 FOR UPDATE'
+                'SELECT status, archived_at FROM service_inquiries WHERE id = ? LIMIT 1 FOR UPDATE'
             );
             if (!$lockedInquiryStmt) {
                 $error = 'Unable to verify the inquiry before saving the schedule.';
@@ -2839,8 +2837,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <button type="button" class="inquiry-modal__close" data-reschedule-inspection-close aria-label="Close reschedule form">&times;</button>
                                                     </div>
                                         <?php endif; ?>
-                                        <?php $initialInspectionDate = $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : (string)($inquiry['preferred_inspection_date'] ?? ''); ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" <?php echo ((!$latestInspection && !$canScheduleInspection) || $scheduleReadOnly || !empty($inquiry['archived_at'])) ? 'hidden' : ''; ?>>
+                                        <?php $initialInspectionDate = $latestInspection ? substr((string)($latestInspection['scheduled_at'] ?? ''), 0, 10) : (string)($inquiry['preferred_inspection_date'] ?? ''); ?>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo htmlspecialchars($latestInspection ? substr((string)($latestInspection['scheduled_at'] ?? ''), 0, 10) : '', ENT_QUOTES, 'UTF-8'); ?>" <?php echo ((!$latestInspection && !$canScheduleInspection) || $scheduleReadOnly || !empty($inquiry['archived_at'])) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">

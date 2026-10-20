@@ -945,7 +945,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (draftKey) {
+        if (draftKey && !hasExistingSchedule) {
             try {
                 const draft = JSON.parse(sessionStorage.getItem(draftKey) || '{}');
                 if (draft.engineer_id) form.querySelector('select[name="engineer_id"]').value = draft.engineer_id;
@@ -955,6 +955,9 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 sessionStorage.removeItem(draftKey);
             }
+        } else if (draftKey && hasExistingSchedule) {
+            // Lumang reschedule draft ay hindi dapat magmukhang bagong change.
+            sessionStorage.removeItem(draftKey);
         }
 
         const manilaDateFormatter = new Intl.DateTimeFormat('en-CA', {

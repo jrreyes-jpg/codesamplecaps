@@ -18,6 +18,9 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 class EmailService {
+    private const COMPANY_CONTACT_NUMBER = '09178789571';
+    private const COMPANY_CONTACT_EMAIL = 'ejimenez.edge@gmail.com';
+
     private $config;
     private $mailer;
     private $error = '';
@@ -443,6 +446,8 @@ class EmailService {
                 ? "<p><a href='{$safeScheduleLink}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>Review &amp; Respond</a></p>"
                 : '';
             $isFinalScheduleNotice = $scheduleLink === '';
+            $companyNumber = self::COMPANY_CONTACT_NUMBER;
+            $companyEmail = self::COMPANY_CONTACT_EMAIL;
             $clientHeading = $isUpdated ? 'Site Inspection Schedule Updated' : 'Site Inspection Scheduled';
             $scheduleIntro = $isFinalScheduleNotice
                 ? ($isUpdated
@@ -471,10 +476,12 @@ class EmailService {
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         {$rescheduleReasonHtml}
                         {$scheduleCta}
-                        <p>For schedule changes, please contact Edge Automation.</p>
+                        <p><strong>Need to change the schedule?</strong><br>
+                        Call or text Edge Automation: <a href='tel:+639178789571'>{$companyNumber}</a><br>
+                        Email: <a href='mailto:{$companyEmail}'>{$companyEmail}</a></p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$recipientName},\n\n{$scheduleIntro}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}\n\nFor schedule changes, please contact Edge Automation.";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\n{$scheduleIntro}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}\n\nNeed to change the schedule? Call or text Edge Automation: {$companyNumber}. Email: {$companyEmail}.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {
@@ -511,6 +518,8 @@ class EmailService {
             $safeAddress = htmlspecialchars($siteAddress, ENT_QUOTES, 'UTF-8');
             $safeContact = htmlspecialchars($contactNumber, ENT_QUOTES, 'UTF-8');
             $safeInspectionUrl = htmlspecialchars($inspectionUrl, ENT_QUOTES, 'UTF-8');
+            $companyNumber = self::COMPANY_CONTACT_NUMBER;
+            $companyEmail = self::COMPANY_CONTACT_EMAIL;
             $isNewAssignment = !$isUpdated || $isReassignment;
             $inspectionHeading = $isNewAssignment ? 'New Site Inspection Assignment' : 'Site Inspection Schedule Updated';
             $inspectionIntro = $isNewAssignment
@@ -537,10 +546,13 @@ class EmailService {
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         <p><strong>Client Contact Number:</strong> {$safeContact}</p>
                         {$inspectionCta}
-                        <p>For schedule changes, please contact the Admin.</p>
+                        <p><strong>Need to change the schedule?</strong><br>
+                        Contact Admin: <a href='tel:+639178789571'>{$companyNumber}</a><br>
+                        Email: <a href='mailto:{$companyEmail}'>{$companyEmail}</a><br>
+                        Admin will inform the Client.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}\n\nFor schedule changes, please contact the Admin.";
+            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}\n\nNeed to change the schedule? Contact Admin: {$companyNumber}. Email: {$companyEmail}. Admin will inform the Client.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

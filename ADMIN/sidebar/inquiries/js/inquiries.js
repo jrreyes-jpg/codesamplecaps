@@ -912,8 +912,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.inquiry-schedule-form').forEach(function (form) {
         const dateInput = form.querySelector('.js-admin-inspection-date');
-        const timeInput = form.querySelector('.js-admin-inspection-time');
-        const hiddenSchedule = form.querySelector('.js-admin-scheduled-at');
         const dateButton = form.querySelector('.js-admin-date-picker-button');
         const dateTooltip = form.querySelector('.js-admin-date-tooltip');
         const modal = form.closest('.inquiry-modal');
@@ -931,8 +929,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const hasAssignmentChanges = function () {
             return (engineerInput?.value || '') !== (form.dataset.originalEngineer || '')
-                || dateInput.value !== (form.dataset.originalDate || '')
-                || timeInput.value !== (form.dataset.originalTime || '');
+                || dateInput.value !== (form.dataset.originalDate || '');
         };
 
         const syncInvalidUi = function () {
@@ -945,7 +942,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         };
 
-        if (!dateInput || !timeInput || !hiddenSchedule) {
+        if (!dateInput) {
             return;
         }
 
@@ -954,7 +951,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const draft = JSON.parse(sessionStorage.getItem(draftKey) || '{}');
                 if (draft.engineer_id) form.querySelector('select[name="engineer_id"]').value = draft.engineer_id;
                 if (draft.inspection_date) dateInput.value = draft.inspection_date;
-                if (draft.inspection_time) timeInput.value = draft.inspection_time;
                 if (draft.site_notes) form.querySelector('textarea[name="site_notes"]').value = draft.site_notes;
                 if (draft.reschedule_reason && reasonInput) reasonInput.value = draft.reschedule_reason;
             } catch (error) {
@@ -967,11 +963,7 @@ document.addEventListener('DOMContentLoaded', function () {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23',
         });
-        const inspectionLeadMinutes = 60;
         let dateNoteTimer = null;
         let engineerBusyOnDate = false;
         let availabilityRequestId = 0;
@@ -986,7 +978,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return {
                 date: parts.year + '-' + parts.month + '-' + parts.day,
-                minutes: (Number.parseInt(parts.hour || '0', 10) * 60) + Number.parseInt(parts.minute || '0', 10),
             };
         };
 
@@ -996,19 +987,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return date.toISOString().slice(0, 10);
         };
 
-        const timeValueToMinutes = function (value) {
-            const parts = value.split(':').map(Number);
-            return (parts[0] * 60) + parts[1];
-        };
-        const inspectionLastStartMinutes = Array.from(timeInput.options)
-            .map(function (option) { return option.value ? timeValueToMinutes(option.value) : -1; })
-            .reduce(function (latest, minutes) { return Math.max(latest, minutes); }, 16 * 60);
-
         const getEarliestScheduleDate = function () {
-            const now = getManilaNow();
-            return now.minutes + inspectionLeadMinutes <= inspectionLastStartMinutes
-                ? now.date
-                : addDaysToDate(now.date, 1);
+            return getManilaNow().date;
         };
 
         const syncDateAvailability = function () {
@@ -1023,53 +1003,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!keepExistingDate && dateInput.value && (dateInput.value < earliestDate || dateInput.value > latestDate)) {
                 dateInput.value = '';
-                timeInput.value = '';
-            }
-        };
-
-        const syncTimeOptions = function () {
-            const now = getManilaNow();
-            const minimumTodayTime = now.minutes + inspectionLeadMinutes;
-
-            Array.from(timeInput.options).forEach(function (option) {
-                if (!option.value) {
-                    return;
-                }
-
-                const isPastTodayTime = dateInput.value === now.date
-                    && timeValueToMinutes(option.value) < minimumTodayTime;
-                const isOldSchedule = form.dataset.hasExistingSchedule === '1'
-                    && dateInput.value === (form.dataset.originalDate || '')
-                    && option.value === (form.dataset.originalTime || '');
-                const isEngineerBusy = engineerBusyOnDate;
-                const isUnavailable = isPastTodayTime || isOldSchedule || isEngineerBusy;
-                option.disabled = isUnavailable;
-                option.hidden = isUnavailable;
-            });
-
-            if (timeInput.selectedOptions[0]?.disabled) {
-                timeInput.value = '';
-            }
-        };
-
-        const isInvalidSelectedTime = function () {
-            if (!dateInput.value || !timeInput.value) {
-                return false;
-            }
-
-            const now = getManilaNow();
-            return dateInput.value < getEarliestScheduleDate()
-                || dateInput.value > addDaysToDate(getManilaNow().date, 30)
-                || (dateInput.value === now.date && timeValueToMinutes(timeInput.value) < now.minutes + inspectionLeadMinutes);
-        };
-
-        const validateScheduleTime = function () {
-            syncDateAvailability();
-            syncTimeOptions();
-            if (isInvalidSelectedTime()) {
-                timeInput.setCustomValidity('Select a time at least 1 hour from now.');
-            } else {
-                timeInput.setCustomValidity('');
             }
         };
 
@@ -1080,7 +1013,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (engineerId <= 0 || selectedDate === '') {
                 engineerBusyOnDate = false;
-                syncTimeOptions();
                 return;
             }
 
@@ -1097,14 +1029,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(function (data) {
                     if (requestId !== availabilityRequestId || !data.success) return;
                     engineerBusyOnDate = data.engineer_busy === true;
-                    syncTimeOptions();
                     syncRescheduleControls(false);
                 })
                 .catch(function () {
                     if (requestId !== availabilityRequestId) return;
                     // Server validation ang huling safety kapag may temporary connection problem.
                     engineerBusyOnDate = false;
-                    syncTimeOptions();
                 });
         };
 
@@ -1112,12 +1042,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!engineerInput?.value) return 'Select an Engineer.';
             if (!dateInput.value) return 'Choose an inspection date.';
             if (!dateInput.checkValidity()) return 'Choose a valid inspection date.';
-            if (!timeInput.value) {
-                return timeInput.dataset.invalidated === '1'
-                    ? 'Select an available inspection time.'
-                    : 'Choose an available inspection time.';
-            }
-            if (isInvalidSelectedTime()) return 'Select an available inspection time.';
+            if (engineerBusyOnDate) return 'This Engineer already has an inspection on this date.';
             return '';
         };
 
@@ -1136,8 +1061,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const wasScheduleFieldEdited = function () {
             return engineerInput?.dataset.touched === '1'
-                || dateInput.dataset.touched === '1'
-                || timeInput.dataset.touched === '1';
+                || dateInput.dataset.touched === '1';
         };
 
         const validRescheduleReason = function () {
@@ -1153,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            validateScheduleTime();
+            syncDateAvailability();
             if (!hasExistingSchedule) {
                 submitButton.disabled = initialSubmitDisabled;
                 return;
@@ -1191,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', function () {
             submitButton.disabled = !hasValidScheduleChange || reasonMessage !== '';
 
             if (!changed) {
-                setRescheduleGuidance('Change the assigned Engineer, date, or time to reschedule.', 'neutral');
+                setRescheduleGuidance('Change the assigned Engineer or date to reschedule.', 'neutral');
             } else if (!hasValidScheduleChange && form.dataset.submitAttempted === '1') {
                 setRescheduleGuidance(scheduleMessage, 'error');
             } else {
@@ -1236,26 +1160,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         dateInput.addEventListener('change', function () {
-            const previousTime = timeInput.value;
             hideDatePickerState();
             showDateNoteBriefly();
             syncDateAvailability();
-            syncTimeOptions();
-            if (previousTime !== '' && timeInput.value === '') {
-                timeInput.dataset.invalidated = '1';
-            }
-            validateScheduleTime();
         });
         dateInput.addEventListener('blur', function () {
             dateInput.dataset.pickerOpen = '0';
             dateButton?.classList.remove('is-active');
         });
-        timeInput.addEventListener('change', function () {
-            timeInput.dataset.invalidated = '';
-            validateScheduleTime();
-        });
         syncDateAvailability();
-        syncTimeOptions();
 
         const saveDraft = function () {
             if (!draftKey) {
@@ -1265,7 +1178,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const draft = {
                 engineer_id: form.querySelector('select[name="engineer_id"]')?.value || '',
                 inspection_date: dateInput.value,
-                inspection_time: timeInput.value,
                 site_notes: form.querySelector('textarea[name="site_notes"]')?.value || '',
                 reschedule_reason: reasonInput?.value || '',
             };
@@ -1310,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!changed || scheduleMessage !== '' || reasonMessage !== '') {
                     event.preventDefault();
                     if (scheduleMessage !== '') {
-                        (engineerInput?.value ? (dateInput.value ? timeInput : dateInput) : engineerInput)?.focus();
+                        (engineerInput?.value ? dateInput : engineerInput)?.focus();
                     } else if (changed && reasonMessage !== '') {
                         reasonInput?.focus();
                     } else {
@@ -1324,10 +1236,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 form.reportValidity();
                 return;
             }
-
-            hiddenSchedule.value = dateInput.value && timeInput.value
-                ? dateInput.value + ' ' + timeInput.value
-                : '';
 
             if (form.dataset.confirmed === '1') {
                 const scheduleRequestData = new FormData(form);

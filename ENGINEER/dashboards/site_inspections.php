@@ -293,15 +293,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($scheduleResponseAction === 'request_reschedule') {
         $reason = trim((string)($_POST['schedule_response_note'] ?? ''));
         $preferredDate = trim((string)($_POST['schedule_preferred_date'] ?? ''));
-        $preferredTime = trim((string)($_POST['schedule_preferred_time'] ?? ''));
-        $preferredAt = ($preferredDate !== '' && $preferredTime !== '') ? $preferredDate . ' ' . $preferredTime . ':00' : null;
+        $preferredAt = $preferredDate !== '' ? $preferredDate . ' 00:00:00' : null;
         $reasonWithoutWhitespace = preg_replace('/\s+/u', '', $reason) ?? '';
         if (in_array($currentStatus, ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true) || mb_strlen($reasonWithoutWhitespace, 'UTF-8') < 5) {
             $error = 'Enter a reschedule reason with at least 5 characters before inspection starts.';
-        } elseif ($preferredDate === '' || $preferredTime === '') {
-            $error = 'Choose a preferred new date and time.';
+        } elseif ($preferredDate === '') {
+            $error = 'Choose a preferred new date.';
         } else {
-            $scheduleValidation = site_inspection_validate_start($preferredDate, $preferredTime);
+            $scheduleValidation = site_inspection_validate_date($preferredDate);
             if (!$scheduleValidation['valid']) {
                 $error = (string)$scheduleValidation['message'];
             }
@@ -325,8 +324,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     || (string)$currentSchedule['client_schedule_response'] === 'reschedule_requested') {
                     throw new RuntimeException('This schedule response is already recorded or is waiting for Admin review.');
                 }
-                if (site_inspection_engineer_has_conflict($conn, $userId, $preferredDt, $inspectionId, true)) {
-                    throw new RuntimeException('You already have an overlapping inspection schedule. Choose another time.');
+                if (site_inspection_engineer_has_schedule_on_date($conn, $userId, $preferredDt, $inspectionId, true)) {
+                    throw new RuntimeException('You already have an inspection on this date. Choose another date.');
                 }
 
                 $update = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'reschedule_requested', engineer_schedule_response_note = ?, engineer_schedule_preferred_at = ?, engineer_schedule_responded_at = NOW(), status = 'Assigned', acknowledged_at = NULL WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
@@ -344,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $safeMessages = [
                     'This schedule response is already recorded or is waiting for Admin review.',
-                    'You already have an overlapping inspection schedule. Choose another time.',
+                    'You already have an inspection on this date. Choose another date.',
                     'This schedule response was already updated. Please refresh the page.',
                 ];
                 $error = in_array($exception->getMessage(), $safeMessages, true)
@@ -1106,7 +1105,7 @@ require __DIR__ . '/../layout/header.php';
                                 <span class="inspection-status" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <div class="inspection-card__schedule">
-                                <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>
+                                <?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>
                             </div>
                             <button type="button" class="btn-primary inspection-view-button" data-inspection-modal-open="inspectionModal<?php echo $inspectionId; ?>">
                                 View Details
@@ -1169,7 +1168,7 @@ require __DIR__ . '/../layout/header.php';
 
                                 <section class="inspection-tab-panel" id="inspectionDetails<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="details">
                                 <div class="inspection-grid">
-                                    <div class="inspection-detail"><span>Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <div class="inspection-client-details inspection-detail--wide">
                                         <div class="inspection-client-details__grid">
@@ -1214,7 +1213,7 @@ require __DIR__ . '/../layout/header.php';
                                         <section class="inspection-schedule-pending" aria-live="polite">
                                             <strong>Pending Admin Review</strong>
                                             <p>Your requested schedule is waiting for Admin review. The official schedule stays unchanged.</p>
-                                            <?php if (!empty($inspection['engineer_schedule_preferred_at'])): ?><p><span>Requested schedule</span><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['engineer_schedule_preferred_at']), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+                                            <?php if (!empty($inspection['engineer_schedule_preferred_at'])): ?><p><span>Requested date</span><?php echo htmlspecialchars(site_inspection_format_date($inspection['engineer_schedule_preferred_at']), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
                                             <?php if (!empty($inspection['engineer_schedule_response_note'])): ?><p><span>Your reason</span><?php echo htmlspecialchars((string)$inspection['engineer_schedule_response_note'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
                                             <button type="button" class="btn-secondary" disabled>Request Pending</button>
                                         </section>
@@ -1224,7 +1223,7 @@ require __DIR__ . '/../layout/header.php';
                                         <button type="button" class="btn-secondary inspection-schedule-change-button"
                                             data-engineer-reschedule-open
                                             data-inspection-id="<?php echo $inspectionId; ?>"
-                                            data-official-schedule="<?php echo htmlspecialchars(site_inspection_format_datetime($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>">
+                                            data-official-schedule="<?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>">
                                             Request a Schedule Change
                                         </button>
                                     <?php endif; ?>
@@ -1510,11 +1509,11 @@ require __DIR__ . '/../layout/header.php';
             </div>
         </div>
 
-        <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-modal data-available-time-slots='<?php echo htmlspecialchars(json_encode(site_inspection_available_time_slots()), ENT_QUOTES, 'UTF-8'); ?>' data-reschedule-sent="<?php echo $message === 'Reschedule request sent to Admin.' ? '1' : '0'; ?>" hidden>
+        <div class="inspection-confirm-modal inspection-reschedule-modal" data-engineer-reschedule-modal data-reschedule-sent="<?php echo $message === 'Reschedule request sent to Admin.' ? '1' : '0'; ?>" hidden>
             <div class="inspection-confirm-modal__panel inspection-reschedule-modal__panel" role="dialog" aria-modal="true" aria-labelledby="engineerRescheduleTitle">
                 <button type="button" class="inspection-modal__close" data-engineer-reschedule-close aria-label="Close schedule change form">&times;</button>
                 <h2 id="engineerRescheduleTitle">Request a Schedule Change</h2>
-                <p class="inspection-reschedule-modal__notice">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved. Choose an available time at least 1 hour from now, within the next 14 days.</p>
+                <p class="inspection-reschedule-modal__notice">Your requested date will be reviewed by Admin. The official date stays unchanged until approved.</p>
                 <p class="inspection-reschedule-modal__official"><span>Current official schedule</span><strong data-engineer-reschedule-official></strong></p>
                 <form method="POST" data-engineer-reschedule-form novalidate>
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -1528,15 +1527,6 @@ require __DIR__ . '/../layout/header.php';
                         <label class="inspection-reschedule-field">Preferred new date
                             <input type="date" name="schedule_preferred_date" min="<?php echo (new DateTimeImmutable('today', site_inspection_timezone()))->format('Y-m-d'); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required data-engineer-reschedule-date>
                             <small data-engineer-reschedule-error="date" hidden></small>
-                        </label>
-                        <label class="inspection-reschedule-field">Preferred new time
-                            <select name="schedule_preferred_time" required data-engineer-reschedule-time disabled>
-                                <option value="">Select a date first</option>
-                                <?php foreach (site_inspection_available_time_slots() as $val => $label): ?>
-                                    <option value="<?php echo htmlspecialchars($val, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <small data-engineer-reschedule-error="time" hidden></small>
                         </label>
                     </div>
                     <div class="inspection-confirm-modal__actions inspection-reschedule-modal__actions">

@@ -1412,63 +1412,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const rescheduleReviewSubmitButton = rescheduleReviewModal?.querySelector('[data-engineer-reschedule-review-submit]');
     let rescheduleTrigger = null;
 
-    // Load available time slots provided by server (value => label)
-    const availableTimeSlots = (function () {
-        if (!rescheduleModal) return {};
-        const raw = rescheduleModal.dataset.availableTimeSlots || '{}';
-        try { return JSON.parse(raw); } catch (e) { return {}; }
-    })();
-    const rescheduleDateField = rescheduleModal?.querySelector('[data-engineer-reschedule-date]');
-    const rescheduleTimeSelect = rescheduleModal?.querySelector('[data-engineer-reschedule-time]');
-
-    const parseManila = function (date, time) {
-        // returns ms since epoch for Asia/Manila
-        return Date.parse(date + 'T' + time + ':00+08:00');
-    };
-
-    const refreshTimeOptions = function () {
-        if (!rescheduleTimeSelect || !rescheduleDateField) return;
-        const dateVal = rescheduleDateField.value;
-        rescheduleTimeSelect.innerHTML = '';
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = dateVal ? 'Select a time' : 'Select a date first';
-        placeholder.disabled = true;
-        placeholder.selected = true;
-        rescheduleTimeSelect.appendChild(placeholder);
-        if (!dateVal) { rescheduleTimeSelect.disabled = true; setRescheduleFieldError(rescheduleTimeSelect, ''); return; }
-        if (rescheduleDateField.max && dateVal > rescheduleDateField.max) {
-            rescheduleTimeSelect.disabled = true;
-            setRescheduleFieldError(rescheduleTimeSelect, 'Choose a date within the next 14 days.');
-            return;
-        }
-        rescheduleTimeSelect.disabled = false;
-        const slots = Object.entries(availableTimeSlots);
-        const nowMs = Date.now();
-        const manilaNowStr = new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Manila' });
-        const selectedDateIsToday = manilaNowStr === new Date(dateVal + 'T00:00:00+08:00').toLocaleDateString('en-GB', { timeZone: 'Asia/Manila' });
-        const cutoff = nowMs + 60 * 60 * 1000; // one hour ahead
-        let added = 0;
-        slots.forEach(function ([val, label]) {
-            const slotMs = Date.parse(dateVal + 'T' + val + ':00+08:00');
-            if (selectedDateIsToday && slotMs < cutoff) return; // skip past or less-than-1h slots
-            const opt = document.createElement('option'); opt.value = val; opt.textContent = label;
-            rescheduleTimeSelect.appendChild(opt); added++;
-        });
-        if (added === 0) {
-            const opt2 = document.createElement('option'); opt2.value = ''; opt2.disabled = true; opt2.selected = true; opt2.textContent = 'No slots available — choose another date';
-            rescheduleTimeSelect.appendChild(opt2);
-            rescheduleTimeSelect.disabled = true;
-        }
-        // clear selection if no longer valid
-        if (rescheduleTimeSelect.value && !Array.from(rescheduleTimeSelect.options).some(function (o) { return o.value === rescheduleTimeSelect.value; })) {
-            rescheduleTimeSelect.value = '';
-            setRescheduleFieldError(rescheduleTimeSelect, 'Selected time is no longer available for this date.');
-        } else {
-            setRescheduleFieldError(rescheduleTimeSelect, '');
-        }
-    };
-
     const setRescheduleFieldError = function (field, message) {
         if (!field) return;
         const error = rescheduleModal?.querySelector('[data-engineer-reschedule-error="' + field.name.replace('schedule_preferred_', '') + '"]')
@@ -1506,38 +1449,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!rescheduleForm) return false;
         const reason = rescheduleForm.elements.schedule_response_note;
         const date = rescheduleForm.elements.schedule_preferred_date;
-        const time = rescheduleForm.elements.schedule_preferred_time;
         const checks = [
-                [reason, reason.value.trim().replace(/\s+/g, '').length >= 5, 'Enter at least 5 characters.'],
+            [reason, reason.value.trim().replace(/\s+/g, '').length >= 5, 'Enter at least 5 characters.'],
             [date, date.value !== '', 'Choose a preferred new date.'],
-            [time, time.value !== '', 'Choose a preferred new time.'],
         ];
         let firstInvalid = null;
         checks.forEach(function ([field, isValid, message]) {
             setRescheduleFieldError(field, isValid ? '' : message);
             if (!isValid && !firstInvalid) firstInvalid = field;
         });
-
-        // additional check: ensure selected time is still allowed client-side
-        if (!firstInvalid && time && time.value) {
-                const allowed = Object.prototype.hasOwnProperty.call(availableTimeSlots, time.value);
-                if (!allowed) {
-                    setRescheduleFieldError(time, 'Selected time is not available.');
-                    firstInvalid = time;
-                } else {
-                    // if date is today, ensure at least 1 hour ahead
-                    const nowMs = Date.now();
-                    const manilaNowStr = new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Manila' });
-                    const selectedDateIsToday = manilaNowStr === new Date(date.value + 'T00:00:00+08:00').toLocaleDateString('en-GB', { timeZone: 'Asia/Manila' });
-                    if (selectedDateIsToday) {
-                        const slotMs = parseManila(date.value, time.value);
-                        if (slotMs < (nowMs + 60 * 60 * 1000)) {
-                            setRescheduleFieldError(time, 'Choose a time at least 1 hour from now for today.');
-                            firstInvalid = time;
-                        }
-                    }
-                }
-        }
 
         firstInvalid?.focus();
         return !firstInvalid;
@@ -1549,7 +1469,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const details = [
             ['Official schedule', official],
             ['Requested date', rescheduleForm.elements.schedule_preferred_date.value],
-            ['Requested time', rescheduleForm.elements.schedule_preferred_time.value],
             ['Reason', rescheduleForm.elements.schedule_response_note.value],
         ];
         const list = rescheduleReviewModal.querySelector('[data-engineer-reschedule-review-details]');
@@ -1583,8 +1502,6 @@ document.addEventListener('DOMContentLoaded', function () {
             field.dataset.touched = '';
         });
 
-        refreshTimeOptions();
-
         try {
             const draftKey = 'reschedule-draft-' + inspectionIdForDraft;
             const raw = sessionStorage.getItem(draftKey);
@@ -1592,8 +1509,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const draft = JSON.parse(raw);
                 if (draft) {
                     if (draft.date) rescheduleForm.elements.schedule_preferred_date.value = draft.date;
-                    refreshTimeOptions();
-                    if (draft.time) rescheduleForm.elements.schedule_preferred_time.value = draft.time;
                     if (draft.reason) rescheduleForm.elements.schedule_response_note.value = draft.reason;
                     rescheduleForm.querySelectorAll('textarea, input, select').forEach(function (field) {
                         if (field.value) field.dataset.touched = 'true';
@@ -1616,15 +1531,9 @@ document.addEventListener('DOMContentLoaded', function () {
             field.dataset.touched = 'true';
             setRescheduleFieldError(field, '');
             if (field.name === 'schedule_response_note') return;
-            // if date changed, refresh time options
-            if (field.name === 'schedule_preferred_date') {
-                refreshTimeOptions();
-            }
         });
-        // also handle change for selects (date/time)
         field.addEventListener('change', function () {
             field.dataset.touched = 'true';
-            if (field.name === 'schedule_preferred_date') refreshTimeOptions();
             setRescheduleFieldError(field, '');
         });
         field.addEventListener('blur', function () {
@@ -1634,9 +1543,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 setRescheduleFieldError(field, valid ? '' : 'Enter at least 5 characters.');
             } else if (field.name === 'schedule_preferred_date') {
                 setRescheduleFieldError(field, field.value ? '' : 'Choose a preferred new date.');
-            } else if (field.name === 'schedule_preferred_time') {
-                if (!rescheduleTimeSelect || rescheduleTimeSelect.disabled) return;
-                setRescheduleFieldError(field, field.value ? '' : 'Choose a preferred new time.');
             }
         });
     });
@@ -1667,7 +1573,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const draft = {
                 reason: rescheduleForm.elements.schedule_response_note.value,
                 date: rescheduleForm.elements.schedule_preferred_date.value,
-                time: rescheduleForm.elements.schedule_preferred_time.value,
             };
             sessionStorage.setItem(draftKey, JSON.stringify(draft));
         } catch (e) { /* ignore */ }

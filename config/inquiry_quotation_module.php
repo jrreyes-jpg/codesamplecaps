@@ -1048,7 +1048,7 @@ function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void
             (string)($quotation['quotation_no'] ?? ''),
             (float)($quotation['grand_total'] ?? 0),
             (string)$quotation['engineer_name'],
-            site_inspection_format_datetime($quotation['scheduled_at']),
+            site_inspection_format_date($quotation['scheduled_at']),
             $finalQuotationLink
         )) {
             throw new RuntimeException('Inspection was saved, but the final email could not be sent. Please try again.');

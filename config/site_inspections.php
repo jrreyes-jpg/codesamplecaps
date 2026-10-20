@@ -31,16 +31,6 @@ function site_inspection_timezone(): DateTimeZone
     return new DateTimeZone('Asia/Manila');
 }
 
-function site_inspection_duration_minutes(): int
-{
-    return 60;
-}
-
-function site_inspection_minimum_lead_minutes(): int
-{
-    return 60;
-}
-
 function site_inspection_schedule_window_days(): int
 {
     return 30;
@@ -53,43 +43,20 @@ function site_inspection_latest_schedule_date(?DateTimeImmutable $now = null): s
     return $now->setTime(0, 0)->modify('+' . site_inspection_schedule_window_days() . ' days')->format('Y-m-d');
 }
 
-function site_inspection_available_time_slots(): array
-{
-    $slots = [];
-    foreach ([[8 * 60, 11 * 60], [13 * 60, 16 * 60]] as [$start, $end]) {
-        for ($minutes = $start; $minutes <= $end; $minutes += 60) {
-            $hour = intdiv($minutes, 60);
-            $minute = $minutes % 60;
-            $value = sprintf('%02d:%02d', $hour, $minute);
-            $slots[$value] = (new DateTimeImmutable($value, site_inspection_timezone()))->format('g:i A');
-        }
-    }
-
-    return $slots;
-}
-
-function site_inspection_validate_start(string $date, string $time, ?DateTimeImmutable $now = null): array
+function site_inspection_validate_date(string $date, ?DateTimeImmutable $now = null): array
 {
     $timezone = site_inspection_timezone();
-    $candidate = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, $timezone);
+    $now = ($now ?: new DateTimeImmutable('now', $timezone))->setTimezone($timezone);
+    $candidate = DateTimeImmutable::createFromFormat('!Y-m-d', $date, $timezone);
     $parseErrors = DateTimeImmutable::getLastErrors();
     $hasParseErrors = is_array($parseErrors)
         && ((int)$parseErrors['warning_count'] > 0 || (int)$parseErrors['error_count'] > 0);
 
-    if (!$candidate || $hasParseErrors || $candidate->format('Y-m-d') !== $date || $candidate->format('H:i') !== $time) {
-        return ['valid' => false, 'message' => 'Please choose a valid inspection date and time.', 'datetime' => null];
+    if (!$candidate || $hasParseErrors || $candidate->format('Y-m-d') !== $date) {
+        return ['valid' => false, 'message' => 'Please choose a valid inspection date.', 'datetime' => null];
     }
-    if (!array_key_exists($time, site_inspection_available_time_slots())) {
-        return ['valid' => false, 'message' => 'Please choose an available inspection time.', 'datetime' => null];
-    }
-
-    $now = $now ?: new DateTimeImmutable('now', $timezone);
-    if ($candidate->format('Y-m-d') > site_inspection_latest_schedule_date($now)) {
-        return ['valid' => false, 'message' => 'Please choose a schedule within the next 30 days.', 'datetime' => null];
-    }
-    $minimum = $now->setTime((int)$now->format('H'), (int)$now->format('i'))->modify('+' . site_inspection_minimum_lead_minutes() . ' minutes');
-    if ($candidate < $minimum) {
-        return ['valid' => false, 'message' => 'Please choose a schedule at least 1 hour from now.', 'datetime' => null];
+    if ($date < $now->format('Y-m-d') || $date > site_inspection_latest_schedule_date($now)) {
+        return ['valid' => false, 'message' => 'Please choose a date within the next 30 days.', 'datetime' => null];
     }
 
     return ['valid' => true, 'message' => '', 'datetime' => $candidate];
@@ -145,31 +112,6 @@ function site_inspection_current_admin_reschedule_reason(
     return $cache[$cacheKey];
 }
 
-function site_inspection_engineer_has_conflict(
-    mysqli $conn,
-    int $engineerId,
-    DateTimeImmutable $candidate,
-    int $excludeInspectionId = 0,
-    bool $lockRows = false
-): bool {
-    $duration = site_inspection_duration_minutes();
-    $start = $candidate->format('Y-m-d H:i:s');
-    $end = $candidate->modify('+' . $duration . ' minutes')->format('Y-m-d H:i:s');
-    $sql = 'SELECT id FROM site_inspections
-            WHERE engineer_id = ? AND id <> ?
-              AND scheduled_at < ?
-              AND DATE_ADD(scheduled_at, INTERVAL ' . $duration . ' MINUTE) > ?
-            LIMIT 1' . ($lockRows ? ' FOR UPDATE' : '');
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        return true;
-    }
-    $stmt->bind_param('iiss', $engineerId, $excludeInspectionId, $end, $start);
-    $stmt->execute();
-
-    return (bool)$stmt->get_result()->fetch_assoc();
-}
-
 function site_inspection_engineer_has_schedule_on_date(
     mysqli $conn,
     int $engineerId,
@@ -203,6 +145,21 @@ if (!function_exists('site_inspection_format_datetime')) {
 
         try {
             return (new DateTimeImmutable($dateTime, site_inspection_timezone()))->format('M j, Y, g:i A');
+        } catch (Throwable $exception) {
+            return 'Not set';
+        }
+    }
+}
+
+if (!function_exists('site_inspection_format_date')) {
+    function site_inspection_format_date(?string $dateTime): string
+    {
+        if (!$dateTime) {
+            return 'Not set';
+        }
+
+        try {
+            return (new DateTimeImmutable($dateTime, site_inspection_timezone()))->format('M j, Y');
         } catch (Throwable $exception) {
             return 'Not set';
         }

@@ -177,7 +177,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         <div><span>Valid Until</span><strong><?php echo htmlspecialchars($validUntil, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                         <?php if ($hasInspectionSchedule): ?>
                             <div><span>Assigned Engineer</span><strong><?php echo htmlspecialchars((string)$quotation['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                            <div><span>Inspection Schedule</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                            <div><span>Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($quotation['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                         <?php endif; ?>
                         <div class="public-quote-grid__wide">
                             <span>Site Address</span>

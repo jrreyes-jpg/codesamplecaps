@@ -573,6 +573,41 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <p class="inquiry-contact-feedback" data-inquiry-contact-feedback aria-live="polite"></p>
 
             <div class="inquiry-grid">
+                <div class="inquiry-service-group">
+                    <label>
+                        <span>Service Category <b class="required-mark">*</b></span>
+                        <select name="service_category" data-label="Service Category" required>
+                            <option value="" selected disabled>Select service</option>
+                            <option>New Automation Installation</option>
+                            <option>System Upgrade/Retrofitting</option>
+                            <option>Preventive Maintenance</option>
+                            <option>Emergency Troubleshooting</option>
+                            <option>Other / Not sure yet</option>
+                        </select>
+                        <small class="field-error"></small>
+                    </label>
+
+                    <label class="other-service-field is-hidden">
+                        <span>Other Service Details <b class="required-mark">*</b></span>
+                        <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed" disabled>
+                        <small class="field-error"></small>
+                    </label>
+                </div>
+
+                <label>
+                    <span>Estimated Budget <small>(Optional)</small></span>
+                    <select name="estimated_budget" data-label="Estimated Budget">
+                        <option value="" selected disabled>Select budget range</option>
+                        <?php foreach (inquiry_budget_options() as $budgetValue => $budgetLabel): ?>
+                            <option value="<?php echo htmlspecialchars($budgetValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="field-help">This is only a guide. The final cost may change after inspection.</small>
+                    <small class="field-error"></small>
+                </label>
+            </div>
+
+            <div class="inquiry-grid">
                 <label>
                     <span class="inquiry-location-label">
                         <span>Region <b class="required-mark">*</b></span>
@@ -632,66 +667,6 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 <small class="field-error"></small>
             </label>
 
-            <div class="inquiry-grid inquiry-grid--service-preference">
-                <div class="inquiry-service-group">
-                    <label>
-                        <span>Service Category <b class="required-mark">*</b></span>
-                        <select name="service_category" data-label="Service Category" required>
-                            <option value="" selected disabled>Select service</option>
-                            <option>New Automation Installation</option>
-                            <option>System Upgrade/Retrofitting</option>
-                            <option>Preventive Maintenance</option>
-                            <option>Emergency Troubleshooting</option>
-                            <option>Other / Not sure yet</option>
-                        </select>
-                        <small class="field-error"></small>
-                    </label>
-
-                    <label class="other-service-field is-hidden">
-                        <span>Other Service Details <b class="required-mark">*</b></span>
-                        <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed" disabled>
-                        <small class="field-error"></small>
-                    </label>
-                </div>
-
-                <label class="preferred-inspection-field">
-                    <span class="field-label-with-info">
-                        Preferred Inspection Date <b class="required-mark">*</b>
-                        <span class="field-info-wrap">
-                            <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
-                            <small class="field-tooltip js-date-tooltip">This is only your preferred date. We will contact you to confirm the final schedule.</small>
-                        </span>
-                    </span>
-                    <span class="date-input-wrap">
-                        <input
-                            type="date"
-                            class="js-inspection-date"
-                            name="preferred_inspection_date"
-                            data-label="Preferred Inspection Date"
-                            required
-                            min="<?php echo htmlspecialchars($preferredInspectionDateRange['min'], ENT_QUOTES, 'UTF-8'); ?>"
-                            max="<?php echo htmlspecialchars($preferredInspectionDateRange['max'], ENT_QUOTES, 'UTF-8'); ?>"
-                            aria-describedby="preferredInspectionDateHelp"
-                        >
-                        <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
-                    </span>
-                    <small id="preferredInspectionDateHelp" class="field-help">Choose your preferred date. Admin will confirm the final schedule.</small>
-                    <small class="field-error"></small>
-                </label>
-            </div>
-
-            <label>
-                <span>Estimated Budget <small>(Optional)</small></span>
-                <select name="estimated_budget" data-label="Estimated Budget">
-                    <option value="" selected disabled>Select budget range</option>
-                    <?php foreach (inquiry_budget_options() as $budgetValue => $budgetLabel): ?>
-                        <option value="<?php echo htmlspecialchars($budgetValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <small class="field-help">This is only a guide. The final cost may change after inspection.</small>
-                <small class="field-error"></small>
-            </label>
-
             <label class="project-description-field">
                 <span class="field-label-with-info">
                     Project Description <b class="required-mark">*</b>
@@ -701,6 +676,31 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     </span>
                 </span>
                 <textarea name="description" data-label="Project Description" rows="4" required minlength="3" data-help-tooltip-target placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <small class="field-error"></small>
+            </label>
+
+            <label class="preferred-inspection-field">
+                <span class="field-label-with-info">
+                    Preferred Inspection Date <b class="required-mark">*</b>
+                    <span class="field-info-wrap">
+                        <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
+                        <small class="field-tooltip js-date-tooltip">This is only your preferred date. We will contact you to confirm the final date.</small>
+                    </span>
+                </span>
+                <span class="date-input-wrap">
+                    <input
+                        type="date"
+                        class="js-inspection-date"
+                        name="preferred_inspection_date"
+                        data-label="Preferred Inspection Date"
+                        required
+                        min="<?php echo htmlspecialchars($preferredInspectionDateRange['min'], ENT_QUOTES, 'UTF-8'); ?>"
+                        max="<?php echo htmlspecialchars($preferredInspectionDateRange['max'], ENT_QUOTES, 'UTF-8'); ?>"
+                        aria-describedby="preferredInspectionDateHelp"
+                    >
+                    <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
+                </span>
+                <small id="preferredInspectionDateHelp" class="field-help">Choose your preferred date. Admin will confirm the final date.</small>
                 <small class="field-error"></small>
             </label>
 

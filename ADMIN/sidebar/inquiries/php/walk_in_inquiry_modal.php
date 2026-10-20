@@ -6,7 +6,7 @@
         <div class="project-create-header">
             <div>
                 <h6 class="section-title-inline project-create-title" id="walk-in-inquiry-title">Create Walk-in Inquiry</h6>
-                <p class="walk-in-inquiry-note">Save the request first. Engineer stays Unassigned until confirmed.</p>
+                <p class="walk-in-inquiry-note">Save the request first. Confirm the final date later.</p>
             </div>
             <button type="button" class="project-modal-close" data-walk-in-inquiry-close aria-label="Close walk-in inquiry">&times;</button>
         </div>
@@ -15,10 +15,16 @@
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($walkInCsrfToken, ENT_QUOTES); ?>">
             <input type="hidden" name="next_action" value="pending" data-walk-in-next-action>
             <div class="walk-in-inquiry-grid">
-                <div class="input-group input-group-wide">
+                <div class="input-group">
                     <label for="walk_in_client_name">Contact Person's Full Name <span class="required-indicator">*</span></label>
                     <input id="walk_in_client_name" name="client_name" type="text" maxlength="150" value="<?php echo htmlspecialchars((string)($walkInOldInput['client_name'] ?? ''), ENT_QUOTES); ?>" placeholder="e.g., Juan Dela Cruz" data-walk-in-client-name required>
                     <small class="walk-in-field-error" data-walk-in-name-error></small>
+                </div>
+
+                <div class="input-group">
+                    <label for="walk_in_company_name">Company / Organization Name <span class="optional-indicator">(Optional)</span></label>
+                    <input id="walk_in_company_name" name="company_name" type="text" maxlength="150" value="<?php echo htmlspecialchars((string)($walkInOldInput['company_name'] ?? ''), ENT_QUOTES); ?>" placeholder="Leave blank for an individual client">
+                    <small class="walk-in-field-help">Blank will be shown as Individual Client.</small>
                 </div>
 
                 <div class="input-group">
@@ -39,7 +45,7 @@
                 </div>
 
                 <div class="input-group input-group-wide">
-                    <label for="walk_in_service">Service Type <span class="required-indicator">*</span></label>
+                    <label for="walk_in_service">Service Category <span class="required-indicator">*</span></label>
                     <select id="walk_in_service" name="service_category" required>
                         <option value="" disabled<?php echo empty($walkInOldInput['service_category']) ? ' selected' : ''; ?>>Select service</option>
                         <?php foreach (['New Automation Installation', 'System Upgrade/Retrofitting', 'Preventive Maintenance', 'Emergency Troubleshooting', 'Other Service'] as $service): ?>
@@ -112,26 +118,14 @@
                     <small class="walk-in-field-error" data-walk-in-description-error></small>
                 </div>
 
-                <div class="input-group">
+                <div class="input-group input-group-wide">
                     <label for="walk_in_preferred_date">Preferred Inspection Date <span class="required-indicator">*</span></label>
                     <input id="walk_in_preferred_date" name="preferred_inspection_date" type="date" min="<?php echo htmlspecialchars($walkInScheduleRange['min'], ENT_QUOTES); ?>" max="<?php echo htmlspecialchars($walkInScheduleRange['max'], ENT_QUOTES); ?>" value="<?php echo htmlspecialchars((string)($walkInOldInput['preferred_inspection_date'] ?? ''), ENT_QUOTES); ?>" data-walk-in-date required>
-                    <small class="walk-in-field-help">Today up to 30 days ahead. Subject to Engineer confirmation.</small>
-                </div>
-
-                <div class="input-group">
-                    <label for="walk_in_preferred_time">Preferred Inspection Time <span class="required-indicator">*</span></label>
-                    <select id="walk_in_preferred_time" name="preferred_inspection_time" data-walk-in-time disabled required>
-                        <option value="" disabled<?php echo empty($walkInOldInput['preferred_inspection_time']) ? ' selected' : ''; ?>>Select time</option>
-                        <?php foreach ($walkInTimeSlots as $timeValue => $timeLabel): ?>
-                            <option value="<?php echo htmlspecialchars($timeValue, ENT_QUOTES); ?>" <?php echo (string)($walkInOldInput['preferred_inspection_time'] ?? '') === $timeValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($timeLabel); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="walk-in-field-help">Lunch time is not available. Last start is 4:00 PM.</small>
-                    <small class="walk-in-field-error" data-walk-in-schedule-error></small>
+                    <small class="walk-in-field-help">Today up to 30 days ahead. Admin will confirm the final date.</small>
                 </div>
 
                 <div class="input-group input-group-wide">
-                    <label for="walk_in_engineer">Confirmed Engineer <span class="optional-indicator">(Optional)</span></label>
+                    <label for="walk_in_engineer">Preferred Engineer <span class="optional-indicator">(Optional)</span></label>
                     <select id="walk_in_engineer" name="preferred_engineer_id">
                         <option value="">Unassigned</option>
                         <?php foreach ($engineers as $engineer): ?>
@@ -139,14 +133,14 @@
                             <option value="<?php echo (int)$engineer['id']; ?>" <?php echo (int)($walkInOldInput['preferred_engineer_id'] ?? 0) === (int)$engineer['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$engineer['full_name'], ENT_QUOTES, 'UTF-8'); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="walk-in-field-help" data-walk-in-engineer-help>Select only after the Engineer confirms the client's preferred date and time.</small>
+                    <small class="walk-in-field-help" data-walk-in-engineer-help>Choose an Engineer to contact, or leave it Unassigned.</small>
                 </div>
             </div>
 
             <div class="form-actions walk-in-inquiry-actions">
                 <button type="button" class="btn-secondary walk-in-clear-button" data-walk-in-clear>Clear Form</button>
                 <button type="button" class="btn-secondary" data-walk-in-inquiry-close>Cancel</button>
-                <button type="submit" class="btn-primary" value="pending" data-walk-in-submit-action>Save as Pending</button>
+                <button type="submit" class="btn-primary" value="pending" data-walk-in-submit-action>Save Walk-in Inquiry</button>
             </div>
         </form>
     </div>

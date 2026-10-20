@@ -72,14 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action !== 'request_reschedule') $reply(false, 'Invalid schedule response.');
     $note = (string)($_POST['reason'] ?? '');
     $date = trim((string)($_POST['preferred_date'] ?? ''));
-    $time = trim((string)($_POST['preferred_time'] ?? ''));
     $timeZone = site_inspection_timezone();
     $meaningfulNote = preg_replace('/\s+/', '', $note) ?? '';
     if (trim($note) === '' || mb_strlen($meaningfulNote) < 5) $reply(false, 'Please enter a reason with at least 5 characters.');
     if (mb_strlen($note) > 2000) $reply(false, 'Please keep the reason under 2000 characters.');
-    if ($date === '' || $time === '') $reply(false, 'Please choose both a preferred date and time.');
+    if ($date === '') $reply(false, 'Please choose a preferred date.');
 
-    $scheduleValidation = site_inspection_validate_start($date, $time);
+    $scheduleValidation = site_inspection_validate_date($date);
     if (!$scheduleValidation['valid']) $reply(false, (string)$scheduleValidation['message']);
     $preferredDateTime = $scheduleValidation['datetime'];
     $preferred = $preferredDateTime->format('Y-m-d H:i:s');
@@ -102,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             || (string)$current['engineer_schedule_response'] === 'reschedule_requested') {
             throw new RuntimeException('This schedule was updated. Please refresh the page.');
         }
-        if (site_inspection_engineer_has_conflict($conn, (int)$current['engineer_id'], $preferredDateTime, $inspectionId, true)) {
-            throw new RuntimeException('The assigned Engineer already has an overlapping inspection schedule. Please choose another time.');
+        if (site_inspection_engineer_has_schedule_on_date($conn, (int)$current['engineer_id'], $preferredDateTime, $inspectionId, true)) {
+            throw new RuntimeException('The assigned Engineer already has an inspection on this date. Please choose another date.');
         }
 
         $update = $conn->prepare(
@@ -124,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->rollback();
         $safeMessages = [
             'This schedule was updated. Please refresh the page.',
-            'The assigned Engineer already has an overlapping inspection schedule. Please choose another time.',
+            'The assigned Engineer already has an inspection on this date. Please choose another date.',
             'Unable to send the request. Please try again.',
         ];
         $reply(false, in_array($exception->getMessage(), $safeMessages, true)
@@ -132,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : 'Unable to send the request. Please try again.');
     }
 
-    $schedule = site_inspection_format_datetime((string)$inspection['scheduled_at']) . ' PHT';
+    $schedule = site_inspection_format_date((string)$inspection['scheduled_at']);
     user_notifications_create_if_missing(
         $conn, (int)$inspection['created_by'], 'client_inspection_reschedule_requested', $inspectionId,
         'Client Requested Inspection Reschedule',
@@ -155,7 +154,7 @@ $rescheduleStateTitle = $clientResponse === 'reschedule_requested' ? 'Pending Ad
 $rescheduleStateMessage = $clientResponse === 'reschedule_requested'
     ? 'Your reschedule request has been sent to Admin. Your current inspection schedule remains unchanged while your request is being reviewed.'
     : 'A schedule change was requested. Admin will send a new official schedule for confirmation.';
-$scheduleText = $inspection ? site_inspection_format_datetime((string)$inspection['scheduled_at']) . ' PHT' : '';
+$scheduleText = $inspection ? site_inspection_format_date((string)$inspection['scheduled_at']) : '';
 $currentScheduleReason = $inspection
     ? site_inspection_current_admin_reschedule_reason(
         $conn,
@@ -165,7 +164,7 @@ $currentScheduleReason = $inspection
     )
     : '';
 $preferredScheduleText = $inspection && !empty($inspection['client_schedule_preferred_at'])
-    ? site_inspection_format_datetime((string)$inspection['client_schedule_preferred_at']) . ' PHT'
+    ? site_inspection_format_date((string)$inspection['client_schedule_preferred_at'])
     : '';
 $canRequestScheduleChange = $inspection
     && !$isWorkflowLocked
@@ -206,7 +205,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
         <?php elseif ($isWorkflowLocked): ?>
             <section class="schedule-response-state"><strong>Schedule actions are closed</strong><p>This inspection is already in progress or finished.</p></section>
         <?php else: ?>
-            <section class="schedule-actions" data-schedule-actions><p>Please confirm the official date and time, or ask Admin to review a schedule change request.</p>
+            <section class="schedule-actions" data-schedule-actions><p>Please confirm the official date, or ask Admin to review a schedule change request.</p>
                 <form method="post" class="schedule-action-form" data-schedule-action-form><input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>"><button name="action" value="confirm" type="submit" class="schedule-button schedule-button--primary">Confirm Schedule</button></form>
                 <button type="button" class="schedule-button schedule-button--secondary" data-schedule-reschedule-open>Request a Schedule Change</button>
             </section>
@@ -228,7 +227,7 @@ $siteAddress = $inspection ? implode(', ', array_filter([
             <form method="post" class="schedule-reschedule-form schedule-modal__request-form" data-schedule-reschedule-form hidden novalidate>
                 <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="request_reschedule">
-                <p id="scheduleRequestDescription" class="schedule-reschedule-form__description">Your requested date and time will be reviewed by Admin. The official schedule will remain unchanged until approved. Choose an available time at least 1 hour from now, within the next 14 days.</p>
+                <p id="scheduleRequestDescription" class="schedule-reschedule-form__description">Your requested date will be reviewed by Admin. The official date stays unchanged until approved.</p>
                 <p class="schedule-reschedule-form__official"><span>Current official schedule</span><?php echo htmlspecialchars($scheduleText, ENT_QUOTES, 'UTF-8'); ?></p>
                 <label><span class="schedule-field-label">Reason for Request <b class="schedule-required-mark" aria-hidden="true">*</b></span>
                     <textarea name="reason" required minlength="5" maxlength="2000" placeholder="Please explain why you need to change the schedule." aria-describedby="scheduleReasonError"></textarea>
@@ -240,19 +239,6 @@ $siteAddress = $inspection ? implode(', ', array_filter([
                         <span class="schedule-field-feedback">
                             <small id="scheduleDateHelp" class="schedule-field-helper">Select your preferred date.</small>
                             <small id="scheduleDateError" data-field-error="preferred_date"></small>
-                        </span>
-                    </label>
-                    <label class="schedule-time-field"><span class="schedule-field-label">Preferred New Time <b class="schedule-required-mark" aria-hidden="true">*</b></span>
-                        <select name="preferred_time" required aria-describedby="scheduleTimeHelp scheduleTimeError">
-                            <option value="">Select time</option>
-                            <?php foreach (site_inspection_available_time_slots() as $timeValue => $timeLabel): ?>
-                                <option value="<?php echo $timeValue; ?>" data-schedule-time-option><?php echo $timeLabel; ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <span class="schedule-field-feedback">
-                            <small id="scheduleTimeHelp" class="schedule-field-helper">Available times depend on the date you select.</small>
-                            <small class="schedule-time-availability" data-schedule-time-availability aria-live="polite"></small>
-                            <small id="scheduleTimeError" data-field-error="preferred_time"></small>
                         </span>
                     </label>
                 </div>

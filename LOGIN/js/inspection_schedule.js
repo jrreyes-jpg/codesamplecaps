@@ -190,23 +190,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const manilaParts = function (timestamp) {
         const parts = new Intl.DateTimeFormat('en-CA', {
             timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
         }).formatToParts(new Date(timestamp));
         const value = function (type) { return parts.find(function (part) { return part.type === type; })?.value || ''; };
         const date = value('year') + '-' + value('month') + '-' + value('day');
-        const time = value('hour') + ':' + value('minute') + ':' + value('second');
-const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
-        // Pareho sa server: minuto lang ang base ng 1-hour lead time.
-        return { date: date, timestamp: manilaTimestamp - (manilaTimestamp % 60000)
- };
+        return { date: date };
     };
 
     const manilaNow = function () {
         return manilaParts(Date.now());
-    };
-
-    const selectedTimeTimestamp = function (date, time) {
-        return Date.parse(date + 'T' + time + ':00+08:00');
     };
 
     const addCalendarDays = function (date, days) {
@@ -214,118 +205,28 @@ const manilaTimestamp = Date.parse(date + 'T' + time + '+08:00');
         return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days)).toISOString().slice(0, 10);
     };
 
-    const isTimeAvailable = function (date, time, now) {
-        if (!date || !time) return false;
-        if (date > addCalendarDays(now.date, 14)) return false;
-        if (date > now.date) return true;
-        if (date < now.date) return false;
-        return selectedTimeTimestamp(date, time) >= now.timestamp + (60 * 60 * 1000);
+    const validateReason = function (reason) {
+        const meaningfulLength = reason.value.replace(/\s+/g, '').length;
+        const message = meaningfulLength >= 5
+            ? ''
+            : 'Please provide at least 5 characters explaining your request.';
+
+        setFieldError(reason, message);
+        return message === '';
     };
 
-    const availableTimeSlots = function (slots, date, now) {
-        return slots.filter(function (slot) {
-            return isTimeAvailable(date, slot.value, now);
-        });
-    };
-
-    const refreshTimeOptions = function (form) {
+    const validateDate = function (form) {
         const date = form.elements.preferred_date;
-        const time = form.elements.preferred_time;
-        const availability = form.querySelector('[data-schedule-time-availability]');
         const now = manilaNow();
-        const slots = form._scheduleTimeSlots || Array.from(time.querySelectorAll('[data-schedule-time-option]')).map(function (option) {
-            return { value: option.value, label: option.textContent };
-        });
-        form._scheduleTimeSlots = slots;
-        const todayHasAvailableTime = availableTimeSlots(slots, now.date, now).length > 0;
-        const noTimesToday = !todayHasAvailableTime;
-        const minimumDate = todayHasAvailableTime
-            ? now.date
-            : manilaParts(now.timestamp + (24 * 60 * 60 * 1000)).date;
-        const maximumDate = addCalendarDays(now.date, 14);
-
-        date.min = minimumDate;
-        date.max = maximumDate;
-        if (date.value && date.value < minimumDate) {
-            date.value = '';
-        }
-
-        const previousValue = time.value;
-        const visibleSlots = date.value ? availableTimeSlots(slots, date.value, now) : [];
-        const selectedTimeIsAvailable = previousValue !== '' && visibleSlots.some(function (slot) {
-            return slot.value === previousValue;
-        });
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.disabled = true;
-        placeholder.selected = !selectedTimeIsAvailable;
-        if (!date.value && noTimesToday) {
-            placeholder.textContent = 'No available times remain today';
-        } else if (!date.value) {
-            placeholder.textContent = 'Select a date first';
-        } else if (date.value === now.date && visibleSlots.length === 0) {
-            placeholder.textContent = 'No available times remain today';
-        } else {
-            placeholder.textContent = 'Select time';
-        }
-
-        time.replaceChildren(placeholder);
-        visibleSlots.forEach(function (slot) {
-            const option = document.createElement('option');
-            option.value = slot.value;
-            option.textContent = slot.label;
-            option.selected = slot.value === previousValue;
-            time.append(option);
-        });
-        time.value = selectedTimeIsAvailable ? previousValue : '';
-        time.disabled = !date.value || visibleSlots.length === 0;
-
-        if (availability) {
-            availability.textContent = noTimesToday && (!date.value || date.value === now.date)
-                ? 'No available times remain today. Please choose another date.'
-                : '';
-        }
-        if (previousValue && !selectedTimeIsAvailable) {
-            // Tahimik na alisin ang lumang error kapag nagbago ang date.
-            setFieldError(time, '');
-        }
-
-        return now;
-    };
-
-const validateReason = function (reason) {
-    const meaningfulLength = reason.value.replace(/\s+/g, '').length;
-    const message = meaningfulLength >= 5
-        ? ''
-        : 'Please provide at least 5 characters explaining your request.';
-
-setFieldError(reason, message);
-    return message === '';
-};
-
-
-    const validateDateTime = function (form) {
-        const date = form.elements.preferred_date;
-        const time = form.elements.preferred_time;
-        const now = refreshTimeOptions(form);
         let valid = true;
         if (!date.value) {
             setFieldError(date, 'Choose a preferred date.');
             valid = false;
-        } else if (date.value > addCalendarDays(now.date, 14)) {
-            setFieldError(date, 'Choose a date within the next 14 days.');
+        } else if (date.value < now.date || date.value > addCalendarDays(now.date, 30)) {
+            setFieldError(date, 'Choose a date from today up to 30 days ahead.');
             valid = false;
         } else {
             setFieldError(date, '');
-        }
-        if (!time.value) {
-            setFieldError(time, 'Choose an available preferred time.');
-            valid = false;
-        } else if (!isTimeAvailable(date.value, time.value, now)) {
-            setFieldError(time, 'Choose a time at least 1 hour from now.');
-            valid = false;
-        } else {
-            setFieldError(time, '');
         }
         return valid;
     };
@@ -334,30 +235,23 @@ setFieldError(reason, message);
         const reason = form.elements.reason;
         const date = form.elements.preferred_date;
         const reasonValid = validateReason(reason);
-        const dateTimeValid = validateDateTime(form);
+        const dateValid = validateDate(form);
         if (!reasonValid && shouldFocus) reason.focus();
-        else if (!dateTimeValid && shouldFocus) date.focus();
-        return reasonValid && dateTimeValid;
+        else if (!dateValid && shouldFocus) date.focus();
+        return reasonValid && dateValid;
     };
 
     document.querySelectorAll('[data-schedule-reschedule-form]').forEach(function (form) {
         const reason = form.elements.reason;
         const date = form.elements.preferred_date;
-        const time = form.elements.preferred_time;
         const hasSubmitAttempt = function () { return form.dataset.submitAttempted === '1'; };
-        refreshTimeOptions(form);
         reason.addEventListener('input', function () { setFieldError(reason, ''); });
         reason.addEventListener('blur', function () { validateReason(reason); });
         date.addEventListener('change', function () {
-            refreshTimeOptions(form);
             // Date change lang ito. Error ay lalabas lang sa Submit.
             setFieldError(date, '');
-            setFieldError(time, '');
+            if (hasSubmitAttempt()) validateDate(form);
         });
-        time.addEventListener('change', function () {
-            if (hasSubmitAttempt()) validateDateTime(form);
-        });
-        window.setInterval(function () { refreshTimeOptions(form); }, 60000);
     });
 
     const submitResponse = function (form, action, button, originalLabel) {
@@ -397,9 +291,8 @@ const payload = new FormData(form);
                     requested.className = 'schedule-response-state__requested';
                     const label = document.createElement('span');
                     const date = form.elements.preferred_date.value;
-                    const time = form.elements.preferred_time.options[form.elements.preferred_time.selectedIndex]?.textContent || '';
-                    label.textContent = 'Requested schedule';
-                    requested.append(label, document.createTextNode(date + ' ' + time + ' PHT'));
+                    label.textContent = 'Requested date';
+                    requested.append(label, document.createTextNode(date));
                     actionArea.append(requested);
                     const reason = document.createElement('p');
                     reason.className = 'schedule-response-state__note';
@@ -464,7 +357,6 @@ const payload = new FormData(form);
                 details: isRescheduleRequest ? [
                     { label: 'Official schedule', value: document.querySelector('[data-schedule-official-schedule]')?.textContent.trim() || 'Not set' },
                     { label: 'Requested date', value: form.elements.preferred_date.value },
-                    { label: 'Requested time', value: form.elements.preferred_time.options[form.elements.preferred_time.selectedIndex]?.textContent || '' },
                     { label: 'Reason', value: form.elements.reason.value },
                 ] : [],
                 onCancel: function () {

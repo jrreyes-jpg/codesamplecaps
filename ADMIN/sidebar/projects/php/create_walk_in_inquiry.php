@@ -32,7 +32,6 @@ try {
     $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''))
         || !empty($contactCheck['email_verified']);
     $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
-    $isConfirmedInspection = $preferredEngineerId > 0;
     $notificationResult = [];
     $inquiryId = create_walk_in_inquiry($conn, $_POST, $notificationResult);
     audit_log_event(
@@ -43,7 +42,7 @@ try {
         $inquiryId,
         null,
         [
-            'status' => $isConfirmedInspection ? 'For Inspection' : 'Pending Review',
+            'status' => 'Pending Review',
             'email_verified' => $emailWasVerified,
             'preferred_engineer_id' => $preferredEngineerId ?: null,
         ]
@@ -55,25 +54,12 @@ try {
         (int)($_SESSION['admin_inquiry_notification_last_id'] ?? 0),
         $inquiryId
     );
-    if ($isConfirmedInspection) {
-        $clientSent = !empty($notificationResult['client_sent']);
-        $engineerSent = !empty($notificationResult['engineer_sent']);
-        $_SESSION['inquiry_center_flash'] = $clientSent && $engineerSent
-            ? 'Confirmed inspection saved. Client and Engineer were notified by email.'
-            : 'Confirmed inspection saved. Check email setup if a notice was not sent.';
-    } else {
-        $_SESSION['inquiry_center_flash'] = 'Pending inquiry saved. Contact an Engineer to confirm the schedule.';
-    }
+    $_SESSION['inquiry_center_flash'] = 'Walk-in inquiry saved. Confirm the final date with the Client and Engineer.';
     $_SESSION['inquiry_center_flash_type'] = 'success';
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
-        'status' => $isConfirmedInspection ? 'For Inspection' : 'Pending Review',
+        'status' => 'Pending Review',
         'source' => 'walk_in',
         'walk_in_saved' => '1',
-        // Pending walk-in stays on the list. Admin opens the details only when ready.
-        ...($isConfirmedInspection ? [
-            'open' => 'inquiryModal' . $inquiryId,
-            'tab' => 'inspection',
-        ] : []),
     ]));
     exit();
 } catch (Throwable $exception) {

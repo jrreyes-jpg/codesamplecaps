@@ -412,7 +412,7 @@ class EmailService {
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Inspection Schedule Confirmed - Edge Automation';
+            $this->mailer->Subject = 'Inspection Date Confirmed - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
@@ -420,10 +420,10 @@ class EmailService {
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeName},</p>
-                        <p>Your Accepted Quotation <strong>{$safeQuotationNo}</strong> now has a confirmed inspection schedule.</p>
+                        <p>Your Accepted Quotation <strong>{$safeQuotationNo}</strong> now has a confirmed inspection date.</p>
                         <p>Accepted Quotation Total: <strong>{$safeGrandTotal}</strong></p>
                         <p>Assigned Engineer: <strong>{$safeEngineerName}</strong></p>
-                        <p>Inspection Schedule: <strong>{$safeInspectionSchedule}</strong></p>
+                        <p>Inspection Date: <strong>{$safeInspectionSchedule}</strong></p>
                         <p><a href='{$safeFinalQuotationLink}' style='display:inline-block;background:#166534;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>View Accepted Quotation</a></p>
                         <p>You may open the link and use Print / Save as PDF for your official copy.</p>
                     </div>
@@ -494,7 +494,7 @@ class EmailService {
                         <p>Hello {$safeName},</p>
                         <p>{$scheduleIntro}</p>
                         <p><strong>Service:</strong> {$safeService}</p>
-                        <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
+                        <p><strong>Inspection Date:</strong> {$safeSchedule}</p>
                         <p><strong>Assigned Engineer:</strong> {$safeEngineer}</p>
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         {$rescheduleReasonHtml}
@@ -502,7 +502,7 @@ class EmailService {
                         <p>Our team will contact you if more details are needed.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$recipientName},\n\n{$scheduleIntro}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\n{$scheduleIntro}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {
@@ -561,13 +561,13 @@ class EmailService {
                         <p>{$inspectionIntro}</p>
                         <p><strong>Client:</strong> {$safeClient}</p>
                         <p><strong>Service:</strong> {$safeService}</p>
-                        <p><strong>Inspection Date and Time:</strong> {$safeSchedule}</p>
+                        <p><strong>Inspection Date:</strong> {$safeSchedule}</p>
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         <p><strong>Client Contact Number:</strong> {$safeContact}</p>
                         {$inspectionCta}
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date and Time: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}";
+            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

@@ -241,6 +241,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
             $done = $conn->prepare('UPDATE pending_service_inquiries SET verified_at = NOW() WHERE id = ?');
             $done->bind_param('i', $pendingId);
             $done->execute();
+            $mailer = new EmailService();
+            if (!$mailer->sendInquiryReceivedConfirmation($email, $clientName)) {
+                error_log('Inquiry received email failed: ' . $mailer->getError());
+            }
             verify_inquiry_redirect_home('success');
         }
 

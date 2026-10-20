@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
+require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
     'New Automation Installation',
@@ -221,5 +222,14 @@ if ($hasEstimatedBudget) {
 if (!$stmt->execute()) {
     redirect_to_form('server_error');
 }
+
+// Natanggap na ang inquiry. Hindi ito final schedule email.
+if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $mailer = new EmailService();
+    if (!$mailer->sendInquiryReceivedConfirmation($email, $clientName)) {
+        error_log('Inquiry received email failed: ' . $mailer->getError());
+    }
+}
+
 unset($_SESSION['public_inquiry_email_verified'], $_SESSION['public_inquiry_otp_token']);
 redirect_to_form('success');

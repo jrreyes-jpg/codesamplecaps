@@ -234,38 +234,13 @@ class EmailService {
         }
     }
 
-    public function sendInquiryReviewStatusUpdate(string $recipientEmail, string $recipientName, string $status, string $clientReason = ''): bool {
+    public function sendInquiryReceivedConfirmation(string $recipientEmail, string $recipientName): bool {
         try {
             if ($this->error !== '') {
                 return false;
             }
 
-            $messages = [
-                'Verified Lead' => [
-                    'heading' => 'Inquiry Qualified',
-                    'body' => 'Your inquiry has been marked as Qualified. Our team will contact you regarding the next step in the quotation process.',
-                    'plain' => 'Your inquiry has been marked as Qualified. Our team will contact you regarding the next step in the quotation process.',
-                ],
-                'Not Qualified' => [
-                    'heading' => 'Inquiry Not Qualified',
-                    'body' => 'Your inquiry has been marked as Not Qualified after review.',
-                    'plain' => 'Your inquiry has been marked as Not Qualified after review.',
-                ],
-            ];
-
-            if (!isset($messages[$status])) {
-                return false;
-            }
-
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
-            $content = $messages[$status];
-            $safeReason = htmlspecialchars(trim($clientReason), ENT_QUOTES, 'UTF-8');
-            $reasonHtml = $status === 'Not Qualified' && $safeReason !== ''
-                ? '<p><strong>Reason:</strong> ' . nl2br($safeReason) . '</p>'
-                : '';
-            $reasonPlain = $status === 'Not Qualified' && trim($clientReason) !== ''
-                ? "\n\nReason: " . trim($clientReason)
-                : '';
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
@@ -276,28 +251,25 @@ class EmailService {
                 $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
             }
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Inquiry Status Update - ' . $this->config->get('APP_NAME');
+            $this->mailer->Subject = 'Inquiry Received - ' . $this->config->get('APP_NAME');
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#0f766e;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
                         {$logoHtml}
-                        <h2 style='margin:0'>{$content['heading']}</h2>
+                        <h2 style='margin:0'>Inquiry Received</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px;color:#0f172a;line-height:1.55'>
                         <p>Hello {$safeName},</p>
-                        <p>{$content['body']}</p>
-                        {$reasonHtml}
+                        <p>We received your inquiry. Our Admin will contact you to confirm the inspection schedule.</p>
                         <p>Thank you,<br>Edge Automation</p>
-                        <p style='margin-top:20px;color:#475569;font-size:14px;line-height:1.5'><strong>This is an automated email.</strong> Please submit inquiries through our website.</p>
                     </div>
                 </div>";
             $this->mailer->AltBody = 'Hello ' . ($recipientName !== '' ? $recipientName : 'Client')
-                . ".\n\n" . $content['plain'] . $reasonPlain
-                . "\n\nThank you,\nEdge Automation\n\nThis is an automated email. Please submit inquiries through our website.";
+                . ".\n\nWe received your inquiry. Our Admin will contact you to confirm the inspection schedule.\n\nThank you,\nEdge Automation";
             $this->mailer->send();
             return true;
         } catch (Exception $exception) {
-            error_log('Inquiry status email failed: ' . $exception->getMessage());
+            error_log('Inquiry received email failed: ' . $exception->getMessage());
             $this->error = 'Email service cannot send right now.';
             return false;
         }
@@ -499,10 +471,10 @@ class EmailService {
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         {$rescheduleReasonHtml}
                         {$scheduleCta}
-                        <p>Our team will contact you if more details are needed.</p>
+                        <p>For schedule changes, please contact Edge Automation.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$recipientName},\n\n{$scheduleIntro}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\n{$scheduleIntro}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nAssigned Engineer: {$engineerName}\nSite Address: {$siteAddress}{$rescheduleReasonText}\n\nFor schedule changes, please contact Edge Automation.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {
@@ -565,9 +537,10 @@ class EmailService {
                         <p><strong>Site Address:</strong><br>{$safeAddress}</p>
                         <p><strong>Client Contact Number:</strong> {$safeContact}</p>
                         {$inspectionCta}
+                        <p>For schedule changes, please contact the Admin.</p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}";
+            $this->mailer->AltBody = "Hello {$engineerName},\n\n{$inspectionIntro}\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionSchedule}\nSite Address: {$siteAddress}\nClient Contact Number: {$contactNumber}\n\nFor schedule changes, please contact the Admin.";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

@@ -1330,99 +1330,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         form.dataset.reviewHandlersBound = '1';
 
-        const statusSelect = form.querySelector('select[name="status"]');
         const statusField = form.querySelector('[name="status"]');
         const notesField = form.querySelector('textarea[name="admin_notes"]');
-        const clientReasonField = form.querySelector('textarea[name="client_review_reason"]');
-        const clientReasonWrap = form.querySelector('[data-client-reason-field]');
         const submitButton = form.querySelector('button[type="submit"]');
         if (!statusField) {
             return;
         }
 
-        let originalStatus = form.dataset.originalStatus || statusField.value;
         let originalNotes = notesField ? notesField.value : '';
-        const modal = form.closest('.inquiry-modal');
-        const statusChip = modal?.querySelector('[data-modal-status-chip]');
-        const statusClasses = [
-            'status-select--pending',
-            'status-select--verified',
-            'status-select--inspection',
-            'status-select--not-qualified',
-        ];
-
-        const statusLabel = function (status) {
-            return status === 'Verified Lead' ? 'Qualified' : status;
-        };
-
-        const actionLabel = function (statusChanged, notesChanged) {
-            if (statusChanged && ['Verified Lead', 'Not Qualified'].includes(statusField.value)) {
-                return 'Save & Notify Client';
-            }
-
-            if (!statusSelect && notesChanged) {
-                return 'Save Notes';
-            }
-
-            return 'Save Review';
-        };
 
         const syncReviewState = function () {
-            const status = statusField.value;
-            const statusChanged = status !== '' && status !== originalStatus;
             const notesChanged = notesField ? notesField.value !== originalNotes : false;
-            const reasonChanged = clientReasonField
-                ? clientReasonField.value.trim() !== '' && status === 'Not Qualified'
-                : false;
-            const isDirty = statusChanged || notesChanged || reasonChanged;
-            form.dataset.reviewDirty = isDirty ? '1' : '0';
-
-            if (clientReasonWrap && clientReasonField) {
-                const needsReason = status === 'Not Qualified';
-                clientReasonWrap.hidden = !needsReason;
-                clientReasonField.disabled = !needsReason;
-                clientReasonField.required = needsReason;
-            }
 
             if (submitButton) {
-                submitButton.disabled = !isDirty || form.dataset.submitting === '1';
-                submitButton.setAttribute('aria-disabled', String(!isDirty || form.dataset.submitting === '1'));
+                submitButton.disabled = !notesChanged || form.dataset.submitting === '1';
+                submitButton.setAttribute('aria-disabled', String(!notesChanged || form.dataset.submitting === '1'));
                 if (form.dataset.submitting !== '1') {
                     submitButton.classList.remove('inquiry-send-button--loading');
-                    submitButton.textContent = actionLabel(statusChanged, notesChanged);
+                    submitButton.textContent = 'Save Notes';
                 }
-            }
-
-            if (!statusSelect) {
-                return;
-            }
-
-            const displayStatus = status || originalStatus;
-            statusSelect.dataset.status = displayStatus;
-            statusSelect.classList.remove(...statusClasses);
-
-            if (displayStatus === 'Pending Review') {
-                statusSelect.classList.add('status-select--pending');
-            } else if (displayStatus === 'Verified Lead') {
-                statusSelect.classList.add('status-select--verified');
-            } else if (displayStatus === 'For Inspection') {
-                statusSelect.classList.add('status-select--inspection');
-            } else if (displayStatus === 'Not Qualified') {
-                statusSelect.classList.add('status-select--not-qualified');
-            }
-
-            if (statusChip) {
-                statusChip.textContent = statusLabel(displayStatus);
-                statusChip.dataset.status = displayStatus;
             }
         };
 
-        statusSelect?.addEventListener('change', syncReviewState);
         notesField?.addEventListener('input', syncReviewState);
-        clientReasonField?.addEventListener('input', syncReviewState);
         form.addEventListener('edge:review-discard', function () {
             form.reset();
-            delete form.dataset.confirmed;
             delete form.dataset.submitting;
             syncReviewState();
         });
@@ -1431,88 +1363,17 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (event) {
             event.preventDefault();
 
-            const statusChanged = statusField.value !== '' && statusField.value !== originalStatus;
             const notesChanged = notesField ? notesField.value !== originalNotes : false;
-            const reasonChanged = clientReasonField
-                ? clientReasonField.value.trim() !== '' && statusField.value === 'Not Qualified'
-                : false;
-            if (!statusChanged && !notesChanged && !reasonChanged) {
+            if (!notesChanged || form.dataset.submitting === '1') {
                 return;
             }
 
-            if (statusSelect && statusField.value === '') {
-                if (typeof window.showToast === 'function') {
-                    window.showToast('Select Qualified or Not Qualified before saving.', 'warning', { duration: 3000 });
-                } else {
-                    return;
-                }
-                statusSelect?.focus();
-                return;
-            }
-
-            if (statusChanged && statusField.value === 'Not Qualified'
-                && (!clientReasonField || clientReasonField.value.trim().length < 5)) {
-                if (typeof window.showToast === 'function') {
-                    window.showToast('Enter a brief client-facing reason.', 'warning', { duration: 3000 });
-                }
-                clientReasonField?.focus();
-                return;
-            }
-
-            if (form.dataset.submitting === '1') {
-                return;
-            }
-
-            if (form.dataset.confirmed !== '1' && statusChanged) {
-                if (statusField.value === 'Verified Lead') {
-                    showConfirm(
-                        form,
-                        'This will mark the inquiry as Qualified, save your review, and notify the client.',
-                        null,
-                        {
-                            title: 'Confirm inquiry qualification?',
-                            cancel: 'Cancel',
-                            confirm: 'Confirm & Notify',
-                        }
-                    );
-                } else if (statusField.value === 'Not Qualified') {
-                    showConfirm(
-                        form,
-                        'This will mark the inquiry as Not Qualified, save your review, and notify the client.',
-                        null,
-                        {
-                            title: 'Confirm inquiry decision?',
-                            cancel: 'Cancel',
-                            confirm: 'Confirm & Notify',
-                        }
-                    );
-                } else {
-                    showConfirm(form, 'Change inquiry status from ' + statusLabel(originalStatus) + ' to ' + statusLabel(statusField.value) + '?');
-                }
-                return;
-            }
-
-            delete form.dataset.confirmed;
             form.dataset.submitting = '1';
-            const willNotifyClient = statusChanged
-                && ['Verified Lead', 'Not Qualified'].includes(statusField.value);
             const reviewRequestData = new FormData(form);
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.setAttribute('aria-disabled', 'true');
-
-                if (willNotifyClient) {
-                    const spinner = document.createElement('span');
-                    const label = document.createElement('span');
-                    spinner.className = 'inquiry-send-spinner';
-                    spinner.setAttribute('aria-hidden', 'true');
-                    label.textContent = 'Saving & notifying client...';
-                    submitButton.classList.add('inquiry-send-button--loading');
-                    submitButton.replaceChildren(spinner, label);
-                }
-            }
-            if (willNotifyClient) {
-                setReviewSavingState(modal, true);
+                submitButton.textContent = 'Saving...';
             }
 
             fetch(form.getAttribute('action') || window.location.href, {
@@ -1533,19 +1394,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         throw new Error(result.data.message || 'Unable to save inquiry review.');
                     }
 
-                    originalStatus = result.data.status || statusField.value;
-                    form.dataset.originalStatus = originalStatus;
                     originalNotes = notesField ? notesField.value : '';
-                    if (willNotifyClient) {
-                        setReviewSavingState(modal, false);
-                    }
                     window.location.assign(result.data.redirect || window.location.href);
                 })
                 .catch(function (error) {
                     form.dataset.submitting = '0';
-                    if (willNotifyClient) {
-                        setReviewSavingState(modal, false);
-                    }
                     syncReviewState();
                     if (typeof window.showToast === 'function') {
                         window.showToast(error.message || 'Unable to save inquiry review.', 'error');
@@ -1674,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const target = tab.getAttribute('data-inquiry-tab');
         if (tab.classList.contains('chip-disabled')) {
             if (target === 'quotation') {
-                showPrerequisiteNotice("Notice: This stage is locked. Please review the inquiry and set the status to 'Qualified' at the bottom of the 'Contact & Review' tab to activate pricing tools.");
+                showPrerequisiteNotice('Quotation is handled by the Engineer after site inspection.');
             } else if (target === 'inspection') {
                 const prerequisite = modal.querySelector('[data-prerequisite-check="client-quotation-approval"]');
                 showPrerequisiteNotice(

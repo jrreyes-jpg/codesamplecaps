@@ -12,8 +12,8 @@ require_once __DIR__ . '/../../../../services/EmailService.php';
 $message = '';
 $error = '';
 $ajaxErrorStatus = 422;
-$allowedStatuses = ['Pending Review', 'Verified Lead', 'Not Qualified', 'For Inspection'];
-$inquiryFilterStatuses = array_merge($allowedStatuses, ['Rejected', 'Converted to Project']);
+$allowedStatuses = ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'];
+$inquiryFilterStatuses = ['Pending Review', 'For Inspection', 'Rejected', 'Converted to Project'];
 
 function inquiry_center_csrf_token(): string
 {
@@ -83,8 +83,8 @@ function inquiry_center_format_money(float $amount): string
 
 function inquiry_center_status_label(string $status): string
 {
-    // Pang Admin UI lang ito. Hindi binabago ang value sa database.
-    return $status === 'Verified Lead' ? 'Qualified' : $status;
+    // Lumang records lang ang old status. Pending Review ang ipakita sa bagong flow.
+    return in_array($status, ['Verified Lead', 'Not Qualified'], true) ? 'Pending Review' : $status;
 }
 
 function inquiry_center_filter_url(array $params = []): string
@@ -95,12 +95,11 @@ function inquiry_center_filter_url(array $params = []): string
 
 function inquiry_center_allowed_next_statuses(string $currentStatus): array
 {
-    // Status rules para hindi basta-basta tumalon ang lead sa maling stage.
+    // Simple flow: pending muna hanggang final ang engineer at date.
     $rules = [
-        'Pending Review' => ['Verified Lead', 'Not Qualified'],
-        // Final na ang review decision. Notes lang ang puwedeng i-save dito.
+        'Pending Review' => ['Pending Review'],
+        'For Inspection' => ['For Inspection'],
         'Verified Lead' => ['Verified Lead'],
-        'For Inspection' => ['For Inspection', 'Verified Lead'],
         'Not Qualified' => ['Not Qualified'],
     ];
 
@@ -444,7 +443,7 @@ function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere
     $counts = array_fill_keys(['all', 'pending_review', 'qualified', 'for_inspection', 'not_qualified', 'archived'], 0);
     $sql = 'SELECT
                 COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS all_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status = \'Pending Review\' THEN 1 END) AS pending_review_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status IN (\'Pending Review\', \'Verified Lead\', \'Not Qualified\') THEN 1 END) AS pending_review_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = \'Verified Lead\' THEN 1 END) AS qualified_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = \'For Inspection\' THEN 1 END) AS for_inspection_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = \'Not Qualified\' THEN 1 END) AS not_qualified_count,
@@ -1428,34 +1427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $currentInquiryStatus = (string)($statusRow['status'] ?? '');
                 $currentInquirySource = (string)($statusRow['inquiry_source'] ?? '');
             }
-            $isWalkInPendingSchedule = $currentInquiryStatus === 'Pending Review'
-                && $currentInquirySource === 'walk_in';
-
-            if (!in_array($currentInquiryStatus, ['Verified Lead', 'For Inspection'], true) && !$isWalkInPendingSchedule) {
-                $error = 'Only verified leads or pending walk-in inquiries can be scheduled.';
-            }
-
-            // Para sa existing inspection, puwedeng mag-reschedule si Admin kahit walk-in ito.
-            // Para sa bagong inspection lang kailangan ang accepted quotation.
-            if ($error === '' && $existingScheduleValue === '' && !$isWalkInPendingSchedule) {
-                $quotationStmt = $conn->prepare(
-                    'SELECT id, status FROM inquiry_quotation_drafts
-                     WHERE inquiry_id = ?
-                     ORDER BY updated_at DESC, id DESC
-                     LIMIT 1'
-                );
-                if (!$quotationStmt) {
-                    $error = 'Unable to check the quotation status.';
-                } else {
-                    $quotationStmt->bind_param('i', $inquiryId);
-                    $quotationStmt->execute();
-                    $quotationRow = $quotationStmt->get_result()->fetch_assoc();
-                    if (!inquiry_center_has_client_quotation_approval((string)($quotationRow['status'] ?? ''))) {
-                        $error = 'Client must accept the quotation before assigning an engineer or scheduling inspection.';
-                    } else {
-                        $acceptedQuotationId = (int)$quotationRow['id'];
-                    }
-                }
+            if (!in_array($currentInquiryStatus, ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'], true)) {
+                $error = 'This inquiry cannot be scheduled at its current stage.';
             }
         }
 
@@ -1479,10 +1452,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Inquiry not found.';
                 } elseif (!empty($lockedInquiry['archived_at'])) {
                     $error = 'This inquiry is archived. Restore it before changing the inspection schedule.';
-                } elseif (!in_array((string)$lockedInquiry['status'], ['Verified Lead', 'For Inspection'], true)
-                    && !((string)$lockedInquiry['status'] === 'Pending Review'
-                        && (string)($lockedInquiry['inquiry_source'] ?? '') === 'walk_in')) {
-                    $error = 'Only verified leads or pending walk-in inquiries can be scheduled.';
+                } elseif (!in_array((string)$lockedInquiry['status'], ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'], true)) {
+                    $error = 'This inquiry cannot be scheduled at its current stage.';
                 }
             }
 
@@ -1830,14 +1801,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } else {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
-        $newStatus = trim((string)($_POST['status'] ?? ''));
         $adminNotes = trim((string)($_POST['admin_notes'] ?? ''));
-        $clientReviewReason = trim((string)($_POST['client_review_reason'] ?? ''));
 
-        if ($inquiryId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
+        if ($inquiryId <= 0) {
             $error = 'Invalid inquiry update request.';
         } else {
-            $stmt = $conn->prepare('SELECT status, admin_notes, client_review_reason, client_id, client_name, email, archived_at FROM service_inquiries WHERE id = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT status, admin_notes, archived_at FROM service_inquiries WHERE id = ? LIMIT 1');
             if (!$stmt) {
                 $error = 'Unable to load inquiry.';
             } else {
@@ -1849,152 +1818,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Inquiry not found.';
                 } elseif (!empty($current['archived_at'])) {
                     $error = 'This inquiry is archived. Restore it before making changes.';
-                } elseif (!inquiry_center_can_change_status((string)($current['status'] ?? 'Pending Review'), $newStatus)) {
-                    $error = 'This status change is not allowed for the current inquiry stage.';
-                } else {
-                    $previousStatus = (string)($current['status'] ?? 'Pending Review');
-                    $statusChanged = $previousStatus !== $newStatus;
-                    $reasonToStore = null;
-                    if ($newStatus === 'Not Qualified') {
-                        $reasonToStore = $statusChanged
-                            ? $clientReviewReason
-                            : trim((string)($current['client_review_reason'] ?? ''));
-                        if (mb_strlen($reasonToStore, 'UTF-8') < 5 || mb_strlen($reasonToStore, 'UTF-8') > 500) {
-                            $error = 'Enter a brief client-facing reason between 5 and 500 characters.';
-                        }
-                    }
+                } elseif (mb_strlen($adminNotes, 'UTF-8') > 2000) {
+                    $error = 'Admin notes must not exceed 2000 characters.';
                 }
 
                 if ($error === '') {
                     $updateStmt = $conn->prepare(
                         'UPDATE service_inquiries
-                         SET status = ?, admin_notes = ?, client_review_reason = ?, reviewed_at = NOW()
-                         WHERE id = ? AND status = ?'
+                         SET admin_notes = ?, reviewed_at = NOW()
+                         WHERE id = ?'
                     );
 
                     if (!$updateStmt) {
-                        $error = 'Failed to prepare inquiry update.';
+                        $error = 'Failed to prepare notes update.';
                     } else {
-                        $updateStmt->bind_param('sssis', $newStatus, $adminNotes, $reasonToStore, $inquiryId, $previousStatus);
-                        if ($updateStmt->execute() && $updateStmt->affected_rows === 1) {
+                        $updateStmt->bind_param('si', $adminNotes, $inquiryId);
+                        if ($updateStmt->execute()) {
                             audit_log_event(
                                 $conn,
                                 (int)($_SESSION['user_id'] ?? 0),
-                                'update_inquiry_status',
+                                'update_inquiry_notes',
                                 'service_inquiry',
                                 $inquiryId,
-                                [
-                                    'status' => (string)($current['status'] ?? ''),
-                                    'admin_notes' => (string)($current['admin_notes'] ?? ''),
-                                    'client_review_reason' => (string)($current['client_review_reason'] ?? ''),
-                                ],
-                                [
-                                    'status' => $newStatus,
-                                    'admin_notes' => $adminNotes,
-                                    'client_review_reason' => (string)($reasonToStore ?? ''),
-                                ]
+                                ['admin_notes' => (string)($current['admin_notes'] ?? '')],
+                                ['admin_notes' => $adminNotes]
                             );
-                            $shouldNotifyClient = $previousStatus === 'Pending Review'
-                                && in_array($newStatus, ['Verified Lead', 'Not Qualified'], true);
-                            $emailNotificationFailed = false;
-                            $inAppNotificationFailed = false;
-                            $hasLinkedClient = false;
-
-                            if ($shouldNotifyClient) {
-                                $emailService = new EmailService();
-                                $wasSent = filter_var((string)($current['email'] ?? ''), FILTER_VALIDATE_EMAIL)
-                                    && $emailService->sendInquiryReviewStatusUpdate(
-                                        (string)$current['email'],
-                                        (string)($current['client_name'] ?? ''),
-                                        $newStatus,
-                                        (string)($reasonToStore ?? '')
-                                    );
-
-                                if (!$wasSent) {
-                                    $emailNotificationFailed = true;
-                                    error_log(
-                                        'Inquiry status email failed for inquiry #' . $inquiryId
-                                        . ': ' . $emailService->getError()
-                                    );
-                                }
-
-                                $linkedClientId = (int)($current['client_id'] ?? 0);
-                                if ($linkedClientId > 0) {
-                                    $clientStmt = $conn->prepare(
-                                        "SELECT id FROM users
-                                         WHERE id = ? AND role = 'client'
-                                           AND status IN ('active', 'pending_activation')
-                                           AND deleted_at IS NULL
-                                         LIMIT 1"
-                                    );
-                                    if ($clientStmt) {
-                                        $clientStmt->bind_param('i', $linkedClientId);
-                                        $clientStmt->execute();
-                                        $hasLinkedClient = (bool)$clientStmt->get_result()->fetch_assoc();
-                                    }
-                                }
-
-                                if ($hasLinkedClient) {
-                                    $notificationTitle = $newStatus === 'Verified Lead'
-                                        ? 'Inquiry Qualified'
-                                        : 'Inquiry Not Qualified';
-                                    $notificationMessage = $newStatus === 'Verified Lead'
-                                        ? 'Your inquiry has been marked as Qualified. Our team will contact you regarding the next step in the quotation process.'
-                                        : 'Your inquiry has been marked as Not Qualified after review. Reason: ' . (string)$reasonToStore;
-                                    $createdNotification = user_notifications_create_if_missing(
-                                        $conn,
-                                        $linkedClientId,
-                                        'client_inquiry_review',
-                                        $inquiryId,
-                                        $notificationTitle,
-                                        $notificationMessage,
-                                        '/codesamplecaps/CLIENT/dashboards/client_dashboard.php',
-                                        'client_inquiry_review:' . $linkedClientId . ':' . $inquiryId . ':' . $newStatus
-                                    );
-                                    $inAppNotificationFailed = $createdNotification === null;
-                                }
-                            }
-
-                            if ($shouldNotifyClient && $emailNotificationFailed) {
-                                $successMessage = 'Review saved, but the client email notification could not be sent.';
-                                $_SESSION['inquiry_center_flash_type'] = 'warning';
-                            } elseif ($shouldNotifyClient && $inAppNotificationFailed) {
-                                $successMessage = 'Review saved and email sent, but the Client in-app notification could not be created.';
-                                $_SESSION['inquiry_center_flash_type'] = 'warning';
-                            } elseif ($shouldNotifyClient && $hasLinkedClient) {
-                                $successMessage = 'Review saved. Client notified by email and in-app.';
-                            } elseif ($shouldNotifyClient) {
-                                $successMessage = 'Review saved. Client notified by email.';
-                            } elseif ($previousStatus === $newStatus) {
-                                $successMessage = 'Review saved.';
-                            } elseif ($newStatus === 'Verified Lead') {
-                                $successMessage = 'Inquiry marked as qualified.';
-                            } else {
-                                $successMessage = 'Inquiry updated successfully.';
-                            }
-                            $targetTab = $newStatus === 'Verified Lead' ? 'quotation' : 'client';
+                            $successMessage = 'Admin notes saved.';
+                            $currentStatus = (string)($current['status'] ?? 'Pending Review');
 
                             if ($isAjaxRequest) {
                                 $_SESSION['inquiry_center_flash'] = $successMessage;
                                 header('Content-Type: application/json; charset=UTF-8');
                                 echo json_encode([
                                     'success' => true,
-                                    'status' => $newStatus,
-                                    'target_tab' => $targetTab,
+                                    'status' => $currentStatus,
+                                    'target_tab' => 'client',
                                     'redirect' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
-                                        'status' => $newStatus,
                                         'open' => 'inquiryModal' . $inquiryId,
-                                        'tab' => $targetTab,
+                                        'tab' => 'client',
                                     ]),
                                 ]);
                                 exit();
                             }
 
-                            inquiry_center_redirect_to_open_modal($inquiryId, $newStatus, $successMessage, $targetTab);
+                            inquiry_center_redirect_to_open_modal($inquiryId, '', $successMessage, 'client');
                         } else {
-                            $error = $updateStmt->errno === 0
-                                ? 'The inquiry changed before this review was saved. Please refresh and try again.'
-                                : 'Failed to update inquiry.';
+                            $error = 'Failed to save Admin notes.';
                         }
                     }
                 }
@@ -2048,9 +1917,8 @@ $quotationFilterOptions = ['needs_quotation', 'draft', 'awaiting_client', 'accep
 if (!in_array($quotationFilter, $quotationFilterOptions, true)) {
     $quotationFilter = '';
 }
-if (!in_array($statusFilter, ['Verified Lead', 'For Inspection'], true)) {
-    $quotationFilter = '';
-}
+// Quotation is handled by the Engineer after inspection.
+$quotationFilter = '';
 if (!in_array($sourceFilter, ['online', 'walk_in'], true)) {
     $sourceFilter = '';
 }
@@ -2109,9 +1977,13 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
             AND quote_filter.project_id IS NOT NULL
         )';
     } elseif ($statusFilter !== '') {
-        $where[] = 'status = ?';
-        $types .= 's';
-        $params[] = $statusFilter;
+        if ($statusFilter === 'Pending Review') {
+            $where[] = "status IN ('Pending Review', 'Verified Lead', 'Not Qualified')";
+        } else {
+            $where[] = 'status = ?';
+            $types .= 's';
+            $params[] = $statusFilter;
+        }
 
         if ($hasQuotationProjectLink) {
             $where[] = 'NOT EXISTS (
@@ -2497,8 +2369,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <span>All</span>
                 <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:all"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
             </a>
-            <?php foreach (['Pending Review', 'Verified Lead', 'For Inspection', 'Not Qualified'] as $status): ?>
-                <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Verified Lead' => 'qualified', 'For Inspection' => 'for_inspection', 'Not Qualified' => 'not_qualified' }; ?>
+            <?php foreach (['Pending Review', 'For Inspection'] as $status): ?>
+                <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'For Inspection' => 'for_inspection' }; ?>
                 <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search, 'source' => $sourceFilter]), ENT_QUOTES, 'UTF-8'); ?>">
                     <span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span>
                     <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:<?php echo htmlspecialchars($lifecycleCountKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
@@ -2510,7 +2382,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </a>
         </nav>
 
-        <?php $showQuotationFilters = $view === 'active' && $hasInquiryQuotationTable && in_array($statusFilter, ['Verified Lead', 'For Inspection'], true); ?>
+        <?php $showQuotationFilters = false; ?>
         <?php if ($showQuotationFilters): ?>
             <nav class="inquiry-status-strip inquiry-status-strip--quotation" aria-label="Initial quotation filters">
                 <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Client Approved', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
@@ -2561,7 +2433,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $postInspectionDecision = $latestInspection ? ($postInspectionDecisionByInspection[(int)$latestInspection['id']] ?? null) : null; ?>
                     <?php $quotationListStatus = $quotationDraft ? inquiry_quote_normalize_status((string)$quotationDraft['status']) : ''; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
-                    <?php $displayStatus = $isConvertedToProject ? 'Converted to Project' : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus); ?>
+                    <?php
+                        $displayStatus = $isConvertedToProject
+                            ? 'Converted to Project'
+                            : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus);
+                        if (in_array($displayStatus, ['Verified Lead', 'Not Qualified'], true)) {
+                            $displayStatus = 'Pending Review';
+                        }
+                    ?>
                     <?php $displayStatusLabel = inquiry_center_status_label($displayStatus); ?>
                     <?php
                         $addressParts = array_filter([
@@ -2593,10 +2472,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $showCosting = $costingReview && !empty($latestCostItems); ?>
                     <?php
                         $quotationStage = $quotationListStatus;
-                        $canScheduleInspection = inquiry_center_has_client_quotation_approval($quotationStage);
+                        $canScheduleInspection = in_array($currentStatus, ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'], true);
                         $quotationPrerequisiteMessage = inquiry_center_quotation_prerequisite_message($quotationDraft);
-                        $showInspection = $latestInspection || $canScheduleInspection || $isWalkInPending;
-                        $showQuotation = $quotationDraft || $showCosting || $currentStatus === 'Verified Lead';
+                        $showInspection = $latestInspection || $canScheduleInspection;
+                        $showQuotation = false;
                         // Simple lang para kay Admin: details at inspection lang ang tingnan.
                         $nextActionLabel = $isWalkInPending ? 'Set Inspection Schedule' : 'View Details';
                         $nextActionTab = ($latestInspection || $isWalkInPending) ? 'inspection' : 'client';
@@ -2659,11 +2538,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <?php if ($currentStatus !== 'Verified Lead'): ?>
-                                                <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                    <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                                </span>
-                                            <?php endif; ?>
+                                            <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
                                         </div>
                                     </div>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
@@ -2699,7 +2576,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry details">&times;</button>
                                     </div>
                                 </div>
-                                <?php $showInspectionTab = (bool)$showInspection && $currentStatus !== 'Not Qualified'; ?>
+                                <?php $showInspectionTab = (bool)$showInspection; ?>
                                 <div class="inquiry-modal-tabs inquiry-workflow inquiry-workflow--admin" role="tablist" aria-label="Inquiry details tabs">
                                     <button type="button" class="inquiry-modal-tab inquiry-workflow__step is-active is-current" data-inquiry-tab="client" aria-selected="true" aria-current="step">
                                         <span class="inquiry-workflow__marker" aria-hidden="true"><span>1</span><b>&#10003;</b></span>
@@ -2722,7 +2599,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail inquiry-detail--wide"><span>Complete Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php if (!empty($inquiry['preferred_inspection_date'])): ?>
-                                            <div class="inquiry-detail"><span>Preferred Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Client Preferred Inspection Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
                                         <div class="inquiry-detail"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inquiry['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     </div>
@@ -2732,11 +2609,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
 
-                                    <?php $showReviewActions = $currentStatus !== 'For Inspection' && !$isWalkInPending; ?>
+                                    <?php $showReviewActions = in_array($currentStatus, ['Pending Review', 'Verified Lead', 'Not Qualified'], true) && !$isWalkInPending; ?>
                                     <?php if ($showReviewActions): ?>
                                     <hr class="inquiry-review-divider">
                                     <div class="inquiry-section-title inquiry-review-section-title">Admin Review &amp; Actions</div>
-                                    <?php $showReviewMetadata = in_array($currentStatus, ['Verified Lead', 'Not Qualified'], true) && !empty($inquiry['reviewed_at']); ?>
+                                    <?php $showReviewMetadata = !empty($inquiry['reviewed_at']); ?>
                                     <?php if ($showReviewMetadata): ?>
                                         <div class="inquiry-review-metadata">
                                             <span>Reviewed</span>
@@ -2756,43 +2633,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <form method="POST" class="inquiry-review-form" data-original-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <?php $isFinalReviewDecision = in_array($currentStatus, ['Verified Lead', 'Not Qualified'], true); ?>
                                             <label class="inquiry-review-form__status">
                                                 <span>Status</span>
-                                                <?php if ($isFinalReviewDecision): ?>
-                                                    <input type="hidden" name="status" value="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                                                    <output class="inquiry-review-form__status-value inquiry-status" data-status="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(inquiry_center_status_label($currentStatus), ENT_QUOTES, 'UTF-8'); ?></output>
-                                                <?php else: ?>
-                                                    <select name="status" required>
-                                                        <?php if ($currentStatus === 'Pending Review'): ?>
-                                                            <option value="" selected disabled>Select review result</option>
-                                                        <?php endif; ?>
-                                                        <?php foreach (inquiry_center_allowed_next_statuses($currentStatus) as $status): ?>
-                                                            <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentStatus === $status ? 'selected' : ''; ?>>
-                                                                <?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?>
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                <?php endif; ?>
+                                                <input type="hidden" name="status" value="<?php echo htmlspecialchars($currentStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <output class="inquiry-review-form__status-value inquiry-status" data-status="Pending Review"><?php echo htmlspecialchars(inquiry_center_status_label($currentStatus), ENT_QUOTES, 'UTF-8'); ?></output>
                                             </label>
-                                            <?php if ($currentStatus === 'Pending Review'): ?>
-                                                <label class="inquiry-review-form__client-reason" data-client-reason-field hidden>
-                                                    <span>Client-facing Reason</span>
-                                                    <textarea name="client_review_reason" rows="3" minlength="5" maxlength="500" placeholder="Briefly explain why the inquiry is not qualified." disabled></textarea>
-                                                    <small>This reason is shown to the client. Private Admin Notes stay internal.</small>
-                                                </label>
-                                            <?php elseif ($currentStatus === 'Not Qualified' && trim((string)($inquiry['client_review_reason'] ?? '')) !== ''): ?>
-                                                <div class="inquiry-review-form__client-reason-output">
-                                                    <span>Client-facing Reason</span>
-                                                    <strong><?php echo nl2br(htmlspecialchars((string)$inquiry['client_review_reason'], ENT_QUOTES, 'UTF-8')); ?></strong>
-                                                </div>
-                                            <?php endif; ?>
                                             <label class="inquiry-review-form__notes">
                                                 <span>Admin Notes</span>
-                                                <textarea name="admin_notes" rows="5" placeholder="Call result, scope clarification, or validation notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                                <textarea name="admin_notes" rows="5" placeholder="Call result or schedule notes..."><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions inquiry-review-form__actions">
-                                                <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Review</button>
+                                                <button type="submit" class="btn-primary" disabled aria-disabled="true">Save Notes</button>
                                             </div>
                                         </form>
                                     <?php endif; ?>
@@ -2946,7 +2797,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php endif; ?>
                                     <?php endif; ?>
 
-                                    <?php if (($latestInspection || in_array($quotationStage, ['sent', 'accepted'], true) || $isWalkInPending) && in_array($currentStatus, ['Pending Review', 'Verified Lead', 'For Inspection'], true)): ?>
+                                    <?php if (($latestInspection || in_array($currentStatus, ['Pending Review', 'Verified Lead', 'Not Qualified'], true)) && in_array($currentStatus, ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'], true)): ?>
                                         <?php $inspectionTimestamp = !empty($latestInspection['scheduled_at']) ? strtotime((string)$latestInspection['scheduled_at']) : false; ?>
                                         <?php $inspectionScheduleLocked = inquiry_center_inspection_schedule_is_locked($latestInspection); ?>
                                         <?php $scheduleReadOnly = $inspectionScheduleLocked; ?>
@@ -2967,7 +2818,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 && hash_equals($storedScheduleHash, $currentScheduleHash);
                                             $scheduleSubmitLabel = $latestInspection
                                                 ? 'Update Schedule'
-                                                : ($isWalkInPending ? 'Set Inspection Schedule' : 'Confirm Schedule');
+                                                : 'Set Inspection Schedule';
                                             $showScheduleEditor = $latestInspection
                                                 && !$scheduleReadOnly
                                                 && empty($inquiry['archived_at']);
@@ -2983,7 +2834,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <button type="button" class="inquiry-modal__close" data-reschedule-inspection-close aria-label="Close reschedule form">&times;</button>
                                                     </div>
                                         <?php endif; ?>
-                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" <?php echo ((!$latestInspection && !$canScheduleInspection && !$isWalkInPending) || $scheduleReadOnly || !empty($inquiry['archived_at'])) ? 'hidden' : ''; ?>>
+                                        <?php $initialInspectionDate = $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : (string)($inquiry['preferred_inspection_date'] ?? ''); ?>
+                                        <form method="POST" class="inquiry-schedule-form" data-inquiry-inspection-form data-schedule-confirmed="<?php echo $isScheduleConfirmed ? '1' : '0'; ?>" data-has-existing-schedule="<?php echo $latestInspection ? '1' : '0'; ?>" data-original-engineer="<?php echo (int)($latestInspection['engineer_id'] ?? 0); ?>" data-original-date="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" <?php echo ((!$latestInspection && !$canScheduleInspection) || $scheduleReadOnly || !empty($inquiry['archived_at'])) ? 'hidden' : ''; ?>>
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
@@ -3005,7 +2857,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <label class="admin-date-field">
                                                     <span>Inspection Date</span>
                                                     <span class="admin-date-input-wrap">
-                                                        <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo $inspectionTimestamp ? date('Y-m-d', $inspectionTimestamp) : ''; ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required>
+                                                        <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo htmlspecialchars($initialInspectionDate, ENT_QUOTES, 'UTF-8'); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required>
                                                         <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
                                                     </span>
                                                     <small class="admin-date-tooltip js-admin-date-tooltip">Choose a date within the next 30 days.</small>

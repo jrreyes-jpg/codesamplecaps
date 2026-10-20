@@ -44,7 +44,7 @@
                     <small class="walk-in-field-help">Enter 11 digits starting with 09.</small>
                 </div>
 
-                <div class="input-group input-group-wide">
+                <div class="input-group">
                     <label for="walk_in_service">Service Category <span class="required-indicator">*</span></label>
                     <select id="walk_in_service" name="service_category" required>
                         <option value="" disabled<?php echo empty($walkInOldInput['service_category']) ? ' selected' : ''; ?>>Select service</option>
@@ -54,13 +54,7 @@
                     </select>
                 </div>
 
-                <div class="input-group" data-walk-in-other-service hidden>
-                    <label for="walk_in_other_service">Other Service Details <span class="required-indicator">*</span></label>
-                    <input id="walk_in_other_service" name="other_service_details" type="text" minlength="3" maxlength="250" value="<?php echo htmlspecialchars((string)($walkInOldInput['other_service_details'] ?? ''), ENT_QUOTES); ?>" placeholder="Briefly describe the service" disabled>
-                    <small class="walk-in-field-error" data-walk-in-other-error></small>
-                </div>
-
-                <div class="input-group input-group-wide">
+                <div class="input-group">
                     <label for="walk_in_estimated_budget">Estimated Budget <span class="optional-indicator">(Optional)</span></label>
                     <select id="walk_in_estimated_budget" name="estimated_budget">
                         <option value="" disabled<?php echo empty($walkInOldInput['estimated_budget']) ? ' selected' : ''; ?>>Select budget range</option>
@@ -69,6 +63,12 @@
                         <?php endforeach; ?>
                     </select>
                     <small class="walk-in-field-help">Guide only. Final cost may change after inspection.</small>
+                </div>
+
+                <div class="input-group input-group-wide" data-walk-in-other-service hidden>
+                    <label for="walk_in_other_service">Other Service Details <span class="required-indicator">*</span></label>
+                    <input id="walk_in_other_service" name="other_service_details" type="text" minlength="3" maxlength="250" value="<?php echo htmlspecialchars((string)($walkInOldInput['other_service_details'] ?? ''), ENT_QUOTES); ?>" placeholder="Briefly describe the service" disabled>
+                    <small class="walk-in-field-error" data-walk-in-other-error></small>
                 </div>
 
                 <div class="input-group">

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS service_inquiries (
     contact_no VARCHAR(30) NOT NULL,
     site_address TEXT NOT NULL,
     service_category VARCHAR(80) NOT NULL,
+    estimated_budget VARCHAR(30) NULL,
     description TEXT NOT NULL,
     preferred_inspection_date DATE NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Pending Review',

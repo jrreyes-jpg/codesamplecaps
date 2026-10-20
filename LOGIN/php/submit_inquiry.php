@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
+require_once __DIR__ . '/../../config/inquiry_budget.php';
 
 $allowedCategories = [
     'New Automation Installation',
@@ -69,6 +70,7 @@ $cityMunicipality = normalize_text($_POST['city_municipality'] ?? '');
 $barangay = normalize_text($_POST['barangay'] ?? '');
 $siteAddress = normalize_text($_POST['site_address'] ?? '');
 $serviceCategory = normalize_text($_POST['service_category'] ?? '');
+$estimatedBudget = normalize_text($_POST['estimated_budget'] ?? '');
 $otherServiceDetails = normalize_text($_POST['other_service_details'] ?? '');
 $description = normalize_text($_POST['description'] ?? '');
 $preferredInspectionDate = normalize_text($_POST['preferred_inspection_date'] ?? '');
@@ -121,6 +123,10 @@ if ($serviceCategory === '' || !in_array($serviceCategory, $allowedCategories, t
     $errors[] = 'service_category';
 }
 
+if (!inquiry_budget_is_valid($estimatedBudget)) {
+    $errors[] = 'estimated_budget';
+}
+
 if ($description === '' || mb_strlen($description, 'UTF-8') < 3 || !has_meaningful_letters($description, 3)) {
     $errors[] = 'description';
 }
@@ -159,31 +165,59 @@ if ($otherServiceDetails !== '') {
     $description .= "\n\nOther service details: " . $otherServiceDetails;
 }
 
-$stmt = $conn->prepare(
-    'INSERT INTO service_inquiries (
-        client_name, company_name, email, contact_no, province,
-        city_municipality, barangay, site_address, service_category,
-        description, preferred_inspection_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-);
+$hasEstimatedBudget = inquiry_column_exists($conn, 'estimated_budget');
+$stmt = $hasEstimatedBudget
+    ? $conn->prepare(
+        'INSERT INTO service_inquiries (
+            client_name, company_name, email, contact_no, province,
+            city_municipality, barangay, site_address, service_category,
+            estimated_budget, description, preferred_inspection_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+    : $conn->prepare(
+        'INSERT INTO service_inquiries (
+            client_name, company_name, email, contact_no, province,
+            city_municipality, barangay, site_address, service_category,
+            description, preferred_inspection_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
 if (!$stmt) {
     redirect_to_form('server_error');
 }
 
-$stmt->bind_param(
-    'sssssssssss',
-    $clientName,
-    $companyName,
-    $email,
-    $contactNo,
-    $province,
-    $cityMunicipality,
-    $barangay,
-    $siteAddress,
-    $serviceCategory,
-    $description,
-    $preferredInspectionDate
-);
+if ($hasEstimatedBudget) {
+    $budgetValue = $estimatedBudget !== '' ? $estimatedBudget : null;
+    $stmt->bind_param(
+        'ssssssssssss',
+        $clientName,
+        $companyName,
+        $email,
+        $contactNo,
+        $province,
+        $cityMunicipality,
+        $barangay,
+        $siteAddress,
+        $serviceCategory,
+        $budgetValue,
+        $description,
+        $preferredInspectionDate
+    );
+} else {
+    $stmt->bind_param(
+        'sssssssssss',
+        $clientName,
+        $companyName,
+        $email,
+        $contactNo,
+        $province,
+        $cityMunicipality,
+        $barangay,
+        $siteAddress,
+        $serviceCategory,
+        $description,
+        $preferredInspectionDate
+    );
+}
 if (!$stmt->execute()) {
     redirect_to_form('server_error');
 }

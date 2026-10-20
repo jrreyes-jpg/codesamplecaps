@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_name_validation.php';
+require_once __DIR__ . '/../../config/inquiry_budget.php';
 require_once __DIR__ . '/../../config/service_areas.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/walk_in_inquiry_schedule.php';
@@ -155,6 +156,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     $cityMunicipality = trim((string)($input['city_municipality'] ?? ''));
     $barangay = trim((string)($input['barangay'] ?? ''));
     $serviceCategory = trim((string)($input['service_category'] ?? ''));
+    $estimatedBudget = trim((string)($input['estimated_budget'] ?? ''));
     $otherServiceDetails = trim((string)($input['other_service_details'] ?? ''));
     $siteAddress = trim((string)($input['site_address'] ?? ''));
     $description = trim((string)($input['description'] ?? ''));
@@ -187,6 +189,9 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     }
     if (!in_array($serviceCategory, $allowedServices, true)) {
         throw new InvalidArgumentException('Select a service type.');
+    }
+    if (!inquiry_budget_is_valid($estimatedBudget)) {
+        throw new InvalidArgumentException('Select a valid budget range or leave it blank.');
     }
     if (!service_area_selection_is_allowed($region, $locationArea, $cityMunicipality)) {
         throw new InvalidArgumentException('Select a valid Region, Province, and City.');
@@ -247,24 +252,26 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     }
     $conn->begin_transaction();
     try {
+    $hasEstimatedBudget = walk_in_inquiry_has_column($conn, 'estimated_budget');
     if (
         walk_in_inquiry_has_column($conn, 'inquiry_source')
         && walk_in_inquiry_has_column($conn, 'contact_person')
         && walk_in_inquiry_has_column($conn, 'preferred_inspection_time')
+        && $hasEstimatedBudget
     ) {
         $source = 'walk_in';
         $stmt = $conn->prepare(
             'INSERT INTO service_inquiries
                 (inquiry_source, client_name, contact_person, email, contact_no,
                  province, city_municipality, barangay, site_address, service_category,
-                 description, preferred_inspection_date, preferred_inspection_time, status, admin_notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                 estimated_budget, description, preferred_inspection_date, preferred_inspection_time, status, admin_notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$stmt) {
             throw new RuntimeException('Unable to save the walk-in inquiry.');
         }
         $stmt->bind_param(
-            'sssssssssssssss',
+            'ssssssssssssssss',
             $source,
             $clientName,
             $clientName,
@@ -275,6 +282,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
             $barangay,
             $siteAddress,
             $serviceCategory,
+            $estimatedBudget,
             $description,
             $preferredDate,
             $preferredTime,

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/service_location_dataset.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
+require_once __DIR__ . '/../../config/inquiry_budget.php';
 
 service_location_dataset_maybe_refresh();
 $serviceHierarchy = service_area_hierarchy();
@@ -678,6 +679,18 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     <small class="field-error"></small>
                 </label>
             </div>
+
+            <label>
+                <span>Estimated Budget <small>(Optional)</small></span>
+                <select name="estimated_budget" data-label="Estimated Budget">
+                    <option value="" selected disabled>Select budget range</option>
+                    <?php foreach (inquiry_budget_options() as $budgetValue => $budgetLabel): ?>
+                        <option value="<?php echo htmlspecialchars($budgetValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="field-help">This is only a guide. The final cost may change after inspection.</small>
+                <small class="field-error"></small>
+            </label>
 
             <label class="project-description-field">
                 <span class="field-label-with-info">

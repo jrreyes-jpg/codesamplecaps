@@ -54,6 +54,17 @@
                     <small class="walk-in-field-error" data-walk-in-other-error></small>
                 </div>
 
+                <div class="input-group input-group-wide">
+                    <label for="walk_in_estimated_budget">Estimated Budget <span class="optional-indicator">(Optional)</span></label>
+                    <select id="walk_in_estimated_budget" name="estimated_budget">
+                        <option value="" disabled<?php echo empty($walkInOldInput['estimated_budget']) ? ' selected' : ''; ?>>Select budget range</option>
+                        <?php foreach (inquiry_budget_options() as $budgetValue => $budgetLabel): ?>
+                            <option value="<?php echo htmlspecialchars($budgetValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo (string)($walkInOldInput['estimated_budget'] ?? '') === $budgetValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="walk-in-field-help">Guide only. Final cost may change after inspection.</small>
+                </div>
+
                 <div class="input-group">
                     <label for="walk_in_region">Region <span class="required-indicator">*</span></label>
                     <span class="walk-in-combobox" data-walk-in-combobox>

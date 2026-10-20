@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../../config/site_inspections.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 require_once __DIR__ . '/../../../../config/user_notifications.php';
 require_once __DIR__ . '/../../../../config/walk_in_inquiry_schedule.php';
+require_once __DIR__ . '/../../../../config/inquiry_budget.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
@@ -2068,6 +2069,7 @@ $hasQuotationProjectLink = $hasInquiryQuotationTable
     && inquiry_quote_column_exists($conn, 'inquiry_quotation_drafts', 'project_id');
 $hasPreferredInspectionTime = inquiry_quote_column_exists($conn, 'service_inquiries', 'preferred_inspection_time');
 $hasInquirySource = inquiry_quote_column_exists($conn, 'service_inquiries', 'inquiry_source');
+$hasEstimatedBudget = inquiry_budget_column_exists($conn);
 $inquiryRows = [];
 $quotationFilterCounts = array_fill_keys($quotationFilterOptions, 0);
 $lifecycleFilterCounts = array_fill_keys(['all', 'pending_review', 'qualified', 'for_inspection', 'not_qualified', 'archived'], 0);
@@ -2159,8 +2161,11 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
     $sourceSelect = $hasInquirySource
         ? 'inquiry_source'
         : "CASE WHEN admin_notes LIKE '[Walk-in inquiry]%' THEN 'walk_in' ELSE 'online' END AS inquiry_source";
+    $budgetSelect = $hasEstimatedBudget
+        ? 'estimated_budget'
+        : 'NULL AS estimated_budget';
     $sql = 'SELECT id, client_id, client_name, company_name, email, contact_no, site_address,
-                   province, city_municipality, barangay, service_category, description, preferred_inspection_date,
+                   province, city_municipality, barangay, service_category, ' . $budgetSelect . ', description, preferred_inspection_date,
                    ' . $preferredTimeSelect . ',
                    ' . $sourceSelect . ',
                    status, admin_notes, client_review_reason, reviewed_at, viewed_at, archived_at, archive_reason, created_at
@@ -2731,6 +2736,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php if (!empty($inquiry['preferred_inspection_time'])): ?>
                                             <div class="inquiry-detail"><span>Preferred Time</span><strong><?php echo htmlspecialchars(date('g:i A', strtotime((string)$inquiry['preferred_inspection_time'])), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
+                                        <div class="inquiry-detail"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inquiry['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     </div>
 
                                     <div class="inquiry-description">

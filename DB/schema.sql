@@ -906,6 +906,7 @@ CREATE TABLE `service_inquiries` (
   `barangay` varchar(150) DEFAULT NULL,
   `site_address` text NOT NULL,
   `service_category` varchar(80) NOT NULL,
+  `estimated_budget` varchar(30) DEFAULT NULL,
   `description` text NOT NULL,
   `preferred_inspection_date` date DEFAULT NULL,
   `preferred_inspection_time` time DEFAULT NULL,

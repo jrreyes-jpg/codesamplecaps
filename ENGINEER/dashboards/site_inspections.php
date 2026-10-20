@@ -276,7 +276,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $workflowAction = (string)($_POST['workflow_action'] ?? '');
     $scheduleResponseAction = (string)($_POST['schedule_response_action'] ?? '');
     $workflowTargets = [
-        'acknowledge' => 'Acknowledged',
         'start' => 'Ongoing',
         'complete' => 'Completed',
     ];
@@ -404,18 +403,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($workflowAction !== '') {
         $targetStatus = $workflowTargets[$workflowAction] ?? '';
         $savedStatus = $currentStatus;
-        $savedAcknowledgedAt = null;
 
         if ($targetStatus === '' || !site_inspection_can_transition($currentStatus, $targetStatus)) {
             $error = 'Invalid inspection status change. Please refresh the page.';
-        } elseif ($workflowAction === 'acknowledge' && $currentStatus === 'Acknowledged') {
-            $message = 'Assignment already acknowledged.';
-        } elseif ($workflowAction === 'acknowledge' && ((string)($inspectionState['engineer_schedule_response'] ?? 'pending') !== 'pending'
-            || (string)($inspectionState['client_schedule_response'] ?? 'pending') === 'reschedule_requested')) {
-            $error = 'This schedule response is already recorded or is waiting for Admin review.';
-        } elseif ($workflowAction === 'start' && ((string)($inspectionState['client_schedule_response'] ?? '') !== 'confirmed'
-            || (string)($inspectionState['engineer_schedule_response'] ?? '') !== 'confirmed')) {
-            $error = 'Wait until both the Client and Engineer confirm the official schedule.';
         } elseif ($workflowAction === 'start' && (string)($inspectionState['client_schedule_response'] ?? '') === 'reschedule_requested') {
             $error = 'A schedule change has been requested. Wait for Admin to resolve the schedule before starting the inspection.';
         } elseif ($workflowAction === 'start' && (string)($inspectionState['engineer_schedule_response'] ?? '') === 'reschedule_requested') {
@@ -467,12 +457,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } elseif (site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
-            if ($workflowAction === 'acknowledge') {
-                $confirmSchedule = $conn->prepare("UPDATE site_inspections SET engineer_schedule_response = 'confirmed', engineer_schedule_response_note = NULL, engineer_schedule_preferred_at = NULL, engineer_schedule_responded_at = NOW() WHERE id = ? AND engineer_id = ? AND engineer_schedule_response = 'pending' AND client_schedule_response <> 'reschedule_requested'");
-                if ($confirmSchedule) { $confirmSchedule->bind_param('ii', $inspectionId, $userId); $confirmSchedule->execute(); }
-            }
             $message = match ($targetStatus) {
-                'Acknowledged' => 'Assignment acknowledged.',
                 'Ongoing' => 'Site inspection started.',
                 'Completed' => 'Inspection marked as completed.',
                 default => 'Inspection status updated.',
@@ -480,17 +465,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $savedStatus = $targetStatus;
         } else {
             $error = 'Inspection status was not changed. Please refresh the page.';
-        }
-
-        if ($workflowAction === 'acknowledge') {
-            $stateStmt = $conn->prepare('SELECT status, acknowledged_at FROM site_inspections WHERE id = ? AND engineer_id = ? LIMIT 1');
-            if ($stateStmt) {
-                $stateStmt->bind_param('ii', $inspectionId, $userId);
-                $stateStmt->execute();
-                $savedState = $stateStmt->get_result()->fetch_assoc() ?: [];
-                $savedStatus = (string)($savedState['status'] ?? $savedStatus);
-                $savedAcknowledgedAt = $savedState['acknowledged_at'] ?? null;
-            }
         }
 
         if ($isAjaxRequest) {
@@ -501,10 +475,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode([
                 'success' => $error === '',
                 'message' => $error !== '' ? $error : $message,
-                'status' => $error === '' ? (string)($freshInspectionState['status'] ?? ($workflowAction === 'acknowledge' ? $savedStatus : $targetStatus)) : 'error',
+                'status' => $error === '' ? (string)($freshInspectionState['status'] ?? $targetStatus) : 'error',
                 'timestamps' => [
                     'Assigned' => site_inspection_format_datetime($freshInspectionState['created_at'] ?? null),
-                    'Acknowledged' => site_inspection_format_datetime($freshInspectionState['acknowledged_at'] ?? $savedAcknowledgedAt),
                     'Ongoing' => site_inspection_format_datetime($freshInspectionState['started_at'] ?? null),
                     'Completed' => site_inspection_format_datetime($freshInspectionState['completed_at'] ?? null),
                     'Submitted' => site_inspection_format_datetime($freshInspectionState['submitted_at'] ?? null),
@@ -1049,22 +1022,19 @@ require __DIR__ . '/../layout/header.php';
                     );
                     $hasSavedFinalReport = $savedReportError === '';
                     $workflowAction = match ($inspectionStatus) {
-                        'Assigned' => 'acknowledge',
-                        'Acknowledged' => 'start',
+                        'Assigned', 'Acknowledged' => 'start',
                         'Ongoing' => 'complete',
                         'On Hold' => 'resume',
                         default => '',
                     };
                     $workflowActionLabel = match ($inspectionStatus) {
-                        'Assigned' => 'Acknowledge Assignment',
-                        'Acknowledged' => 'Start Inspection',
+                        'Assigned', 'Acknowledged' => 'Start Inspection',
                         'Ongoing' => 'Complete & Submit to Admin',
                         'On Hold' => 'Resume Inspection',
                         default => '',
                     };
                     $statusTimes = [
                         'Assigned' => $inspection['created_at'] ?? null,
-                        'Acknowledged' => $inspection['acknowledged_at'] ?? null,
                         'Ongoing' => $inspection['started_at'] ?? null,
                         'Completed' => $inspection['completed_at'] ?? null,
                         'Submitted' => $inspection['submitted_at'] ?? null,
@@ -1072,16 +1042,14 @@ require __DIR__ . '/../layout/header.php';
                     // Simple lang ang progress na kailangan makita ng Engineer.
                     $engineerProgressSteps = [
                         ['label' => 'Assigned', 'time' => $statusTimes['Assigned']],
-                        ['label' => 'Acknowledged', 'time' => $statusTimes['Acknowledged']],
                         ['label' => 'Ongoing', 'time' => $statusTimes['Ongoing']],
                         ['label' => 'Completed', 'time' => $statusTimes['Completed']],
                         ['label' => 'Submitted', 'time' => $statusTimes['Submitted']],
                     ];
                     $engineerProgressIndex = match ($inspectionStatus) {
-                        'Acknowledged' => 1,
-                        'Ongoing', 'On Hold' => 2,
-                        'Completed' => 3,
-                        'Submitted' => 4,
+                        'Ongoing', 'On Hold' => 1,
+                        'Completed' => 2,
+                        'Submitted' => 3,
                         default => 0,
                     };
                     if (empty($costItems)) {
@@ -1158,7 +1126,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                                                 <input type="hidden" name="workflow_action" value="<?php echo htmlspecialchars($workflowAction, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <button type="button" class="btn-primary<?php echo $workflowAction === 'complete' && !$hasSavedFinalReport ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedFinalReport ? 'true' : 'false') . '" aria-disabled="' . ($hasSavedFinalReport ? 'false' : 'true') . '" title="' . htmlspecialchars($hasSavedFinalReport ? '' : $savedReportError, ENT_QUOTES, 'UTF-8') . '"' : ''; ?> <?php echo $workflowAction === 'acknowledge' ? 'data-confirm-acknowledge' : ''; ?>>
+                                                <button type="button" class="btn-primary<?php echo $workflowAction === 'complete' && !$hasSavedFinalReport ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedFinalReport ? 'true' : 'false') . '" aria-disabled="' . ($hasSavedFinalReport ? 'false' : 'true') . '" title="' . htmlspecialchars($hasSavedFinalReport ? '' : $savedReportError, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
                                                     <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                                 </button>
                                             </form>
@@ -1475,17 +1443,6 @@ require __DIR__ . '/../layout/header.php';
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-complete-inspection-cancel>Cancel</button>
                     <button type="button" class="btn-primary" data-complete-inspection-confirm>Complete &amp; Submit</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="inspection-confirm-modal" data-acknowledge-modal hidden>
-            <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="acknowledgeInspectionTitle">
-                <h2 id="acknowledgeInspectionTitle">Acknowledge Assignment</h2>
-                <p>Confirm that you acknowledge this assignment. This records that you received the task.</p>
-                <div class="inspection-confirm-modal__actions">
-                    <button type="button" class="btn-secondary" data-acknowledge-cancel>Cancel</button>
-                    <button type="button" class="btn-primary" data-acknowledge-confirm>Acknowledge Assignment</button>
                 </div>
             </div>
         </div>

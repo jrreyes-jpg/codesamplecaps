@@ -177,7 +177,7 @@
 
 .inspection-workflow {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -224,7 +224,6 @@
     color: #475569;
 }
 
-.inspection-workflow__step[data-phase="Acknowledged"],
 .inspection-workflow__step[data-phase="Submitted"] {
     border-color: #bfdbfe;
     background: #eff6ff;

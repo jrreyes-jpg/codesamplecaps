@@ -223,7 +223,8 @@ if (!function_exists('site_inspection_next_status')) {
     function site_inspection_next_status(string $status): ?string
     {
         $transitions = [
-            'Assigned' => 'Acknowledged',
+            // Kapag handa na ang Engineer, puwede na siyang magsimula agad.
+            'Assigned' => 'Ongoing',
             'Acknowledged' => 'Ongoing',
             'Ongoing' => 'Completed',
             'Completed' => 'Submitted',

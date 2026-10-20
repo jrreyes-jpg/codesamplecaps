@@ -1136,11 +1136,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const steps = Array.from(card.querySelectorAll('.inspection-workflow__step'));
         const progressIndexByStatus = {
             Assigned: 0,
-            Acknowledged: 1,
-            Ongoing: 2,
-            'On Hold': 2,
-            Completed: 3,
-            Submitted: 4,
+            Acknowledged: 0,
+            Ongoing: 1,
+            'On Hold': 1,
+            Completed: 2,
+            Submitted: 3,
         };
         const currentIndex = progressIndexByStatus[status] ?? -1;
         steps.forEach(function (step, index) {
@@ -1161,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const actionButton = form.querySelector('[data-workflow-transition]');
         const actionField = form.elements.workflow_action;
         const nextAction = {
+            Assigned: ['start', 'Start Inspection'],
             Acknowledged: ['start', 'Start Inspection'],
             Ongoing: ['complete', 'Complete & Submit to Admin'],
         }[status];
@@ -1171,7 +1172,6 @@ document.addEventListener('DOMContentLoaded', function () {
         actionField.value = nextAction[0];
         actionButton.textContent = nextAction[1];
         actionButton.disabled = false;
-        actionButton.removeAttribute('data-confirm-acknowledge');
         actionButton.toggleAttribute('data-complete-inspection', nextAction[0] === 'complete');
     };
 
@@ -1338,69 +1338,6 @@ document.addEventListener('DOMContentLoaded', function () {
             completionCancelButton.disabled = false;
             completionConfirmButton.disabled = false;
             completionConfirmButton.textContent = 'Complete & Submit';
-        });
-    });
-
-    const acknowledgeModal = document.querySelector('[data-acknowledge-modal]');
-    const acknowledgeCancelButton = acknowledgeModal?.querySelector('[data-acknowledge-cancel]');
-    const acknowledgeConfirmButton = acknowledgeModal?.querySelector('[data-acknowledge-confirm]');
-    let pendingAcknowledgeForm = null;
-    let pendingAcknowledgeButton = null;
-
-    document.addEventListener('click', function (event) {
-        const button = event.target.closest('[data-confirm-acknowledge]');
-        if (!button) return;
-
-        event.preventDefault();
-        pendingAcknowledgeForm = button.closest('form');
-        pendingAcknowledgeButton = button;
-        if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
-        acknowledgeModal.hidden = false;
-        acknowledgeCancelButton?.focus();
-    });
-
-    acknowledgeCancelButton?.addEventListener('click', function () {
-        if (!acknowledgeModal || acknowledgeModal.dataset.isAcknowledging === 'true') return;
-        acknowledgeModal.hidden = true;
-        pendingAcknowledgeForm = null;
-        pendingAcknowledgeButton = null;
-    });
-    acknowledgeModal?.addEventListener('click', function (event) {
-        if (event.target === acknowledgeModal) {
-            acknowledgeModal.hidden = true;
-            pendingAcknowledgeForm = null;
-            pendingAcknowledgeButton = null;
-        }
-    });
-
-    const resetAcknowledgeLoadingState = function (isSuccess) {
-        if (!acknowledgeModal) return;
-        acknowledgeModal.dataset.isAcknowledging = '';
-        acknowledgeCancelButton.disabled = false;
-        acknowledgeConfirmButton.disabled = isSuccess;
-        acknowledgeConfirmButton.innerHTML = isSuccess ? 'Acknowledged' : 'Acknowledge Assignment';
-        if (pendingAcknowledgeButton) {
-            pendingAcknowledgeButton.disabled = isSuccess;
-            const originalLabel = pendingAcknowledgeButton.dataset.originalLabel || 'Acknowledge Assignment';
-            pendingAcknowledgeButton.innerHTML = isSuccess ? 'Acknowledged' : originalLabel;
-        }
-    };
-
-    acknowledgeConfirmButton?.addEventListener('click', function () {
-        if (!pendingAcknowledgeForm || !pendingAcknowledgeButton || acknowledgeModal.dataset.isAcknowledging === 'true') return;
-        acknowledgeModal.dataset.isAcknowledging = 'true';
-        acknowledgeCancelButton.disabled = true;
-        acknowledgeConfirmButton.disabled = true;
-        acknowledgeConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Acknowledging...';
-        requestWorkflowTransition(pendingAcknowledgeForm, pendingAcknowledgeButton).then(function (success) {
-            if (success) {
-                acknowledgeModal.hidden = true;
-                pendingAcknowledgeForm = null;
-                pendingAcknowledgeButton = null;
-                acknowledgeModal.dataset.isAcknowledging = '';
-                return;
-            }
-            resetAcknowledgeLoadingState(false);
         });
     });
 
@@ -1587,7 +1524,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-workflow-transition]');
-        if (!button || button.hasAttribute('data-confirm-acknowledge')) return;
+        if (!button) return;
         const form = button.closest('form');
         const action = form?.elements.workflow_action?.value || '';
         if (!form || form.dataset.isTransitioning === 'true') return;
@@ -1717,11 +1654,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeCompletionModal();
                 return;
             }
-            if (acknowledgeModal && !acknowledgeModal.hidden) {
-                event.preventDefault();
-                acknowledgeModal.hidden = true;
-                return;
-            }
             if (inspectionActionConfirmModal && !inspectionActionConfirmModal.hidden) {
                 event.preventDefault();
                 closeInspectionActionConfirm(true);
@@ -1806,7 +1738,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return Boolean(document.querySelector([
             '.inspection-modal:not([hidden])',
             '[data-complete-inspection-modal]:not([hidden])',
-            '[data-acknowledge-modal]:not([hidden])',
             '[data-engineer-reschedule-modal]:not([hidden])',
             '[data-engineer-reschedule-review-modal]:not([hidden])',
         ].join(', ')));

@@ -2035,15 +2035,19 @@ function initWalkInInquiryPanel() {
     }
 
     function syncWalkInSaveAction() {
-        if (nextActionInput) nextActionInput.value = 'pending';
+        const hasConfirmedEngineer = Number(engineerSelect?.value || 0) > 0;
+        const nextAction = hasConfirmedEngineer ? 'confirmed' : 'pending';
+        if (nextActionInput) nextActionInput.value = nextAction;
         if (submitActionButton) {
-            submitActionButton.value = 'pending';
-            submitActionButton.textContent = 'Save Walk-in Inquiry';
+            submitActionButton.value = nextAction;
+            submitActionButton.textContent = hasConfirmedEngineer
+                ? 'Save Confirmed Inspection'
+                : 'Save as Pending';
         }
         if (engineerHelp) {
-            engineerHelp.textContent = Number(engineerSelect?.value || 0) > 0
-                ? 'This Engineer will be contacted to confirm the final date.'
-                : 'Choose an Engineer to contact, or leave it Unassigned.';
+            engineerHelp.textContent = hasConfirmedEngineer
+                ? 'Use this only after the Engineer confirms the date.'
+                : 'Leave Unassigned while waiting for Engineer confirmation.';
         }
     }
 
@@ -2440,7 +2444,7 @@ function initWalkInInquiryPanel() {
     form.addEventListener('submit', async function (event) {
         if (saveConfirmed) return;
         event.preventDefault();
-        const nextAction = 'pending';
+        const nextAction = Number(engineerSelect?.value || 0) > 0 ? 'confirmed' : 'pending';
         if (nextActionInput) nextActionInput.value = nextAction;
         const nameIsValid = validateName();
         const emailIsValid = validateEmail();
@@ -2472,10 +2476,13 @@ function initWalkInInquiryPanel() {
         }
         const engineerName = engineerSelect?.selectedOptions[0]?.textContent?.trim() || 'Unassigned';
         const displayDate = formatWalkInDate(dateInput.value);
+        const isConfirmedInspection = nextAction === 'confirmed';
         showConfirm({
-            title: 'Save walk-in inquiry?',
-            message: 'Preferred date: ' + displayDate + '. Engineer: ' + engineerName + '. Confirm the final date later.',
-            accept: 'Save Inquiry',
+            title: isConfirmedInspection ? 'Save confirmed inspection?' : 'Save as pending?',
+            message: isConfirmedInspection
+                ? engineerName + ' - ' + displayDate + '. Client and Engineer will be notified by email.'
+                : 'This inquiry will stay Pending Review until an Engineer confirms the date.',
+            accept: isConfirmedInspection ? 'Confirm Inspection' : 'Save as Pending',
             cancel: 'Back',
             tone: 'primary',
         }, function () {

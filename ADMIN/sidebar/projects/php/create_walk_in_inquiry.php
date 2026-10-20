@@ -34,6 +34,8 @@ try {
     $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
     $notificationResult = [];
     $inquiryId = create_walk_in_inquiry($conn, $_POST, $notificationResult);
+    $savedAction = (string)($notificationResult['action'] ?? 'pending');
+    $savedStatus = $savedAction === 'confirmed' ? 'For Inspection' : 'Pending Review';
     audit_log_event(
         $conn,
         (int)($_SESSION['user_id'] ?? 0),
@@ -42,9 +44,10 @@ try {
         $inquiryId,
         null,
         [
-            'status' => 'Pending Review',
+            'status' => $savedStatus,
             'email_verified' => $emailWasVerified,
             'preferred_engineer_id' => $preferredEngineerId ?: null,
+            'inspection_id' => (int)($notificationResult['inspection_id'] ?? 0) ?: null,
         ]
     );
     walk_in_email_verification_clear();
@@ -54,10 +57,19 @@ try {
         (int)($_SESSION['admin_inquiry_notification_last_id'] ?? 0),
         $inquiryId
     );
-    $_SESSION['inquiry_center_flash'] = 'Walk-in inquiry saved. Confirm the final date with the Client and Engineer.';
-    $_SESSION['inquiry_center_flash_type'] = 'success';
+    if ($savedAction === 'confirmed') {
+        $clientSent = !empty($notificationResult['client_sent']);
+        $engineerSent = !empty($notificationResult['engineer_sent']);
+        $_SESSION['inquiry_center_flash'] = $clientSent && $engineerSent
+            ? 'Inspection saved. Client and Engineer notified.'
+            : 'Inspection saved, but one or more emails were not sent.';
+        $_SESSION['inquiry_center_flash_type'] = $clientSent && $engineerSent ? 'success' : 'warning';
+    } else {
+        $_SESSION['inquiry_center_flash'] = 'Walk-in inquiry saved as pending.';
+        $_SESSION['inquiry_center_flash_type'] = 'success';
+    }
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
-        'status' => 'Pending Review',
+        'status' => $savedStatus,
         'source' => 'walk_in',
         'walk_in_saved' => '1',
     ]));

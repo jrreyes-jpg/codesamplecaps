@@ -185,7 +185,48 @@ function initAuditLogsUI() {
         window.__auditSearchFocusState = null;
     }
 
-    const modal = section?.querySelector('[data-audit-modal]');
+    const unlockModal = section?.parentElement?.querySelector('[data-login-security-modal]');
+    const unlockForm = unlockModal?.querySelector('form');
+    const unlockIpInput = unlockModal?.querySelector('[data-login-security-ip-input]');
+    const unlockIpLabel = unlockModal?.querySelector('[data-login-security-ip-label]');
+
+    const closeUnlockModal = () => {
+        if (!unlockModal) return;
+        unlockModal.hidden = true;
+        document.body.style.overflow = '';
+    };
+
+    section?.querySelectorAll('[data-unlock-login]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const ipAddress = button.getAttribute('data-ip-address') || '';
+            if (!unlockModal || !unlockIpInput || !unlockIpLabel || ipAddress === '') return;
+            unlockIpInput.value = ipAddress;
+            unlockIpLabel.textContent = ipAddress;
+            unlockModal.hidden = false;
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    unlockModal?.querySelector('[data-login-security-close]')?.addEventListener('click', closeUnlockModal);
+    unlockModal?.querySelector('[data-login-security-cancel]')?.addEventListener('click', closeUnlockModal);
+    unlockModal?.addEventListener('click', (event) => {
+        if (event.target === unlockModal) closeUnlockModal();
+    });
+    unlockForm?.addEventListener('submit', () => {
+        const submitButton = unlockForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Unlocking...';
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && unlockModal && !unlockModal.hidden) {
+            closeUnlockModal();
+        }
+    });
+
+    const modal = section?.parentElement?.querySelector('[data-audit-modal]');
     if (!modal) {
         return;
     }

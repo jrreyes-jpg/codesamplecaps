@@ -2,6 +2,46 @@
 require_once __DIR__ . '/../includes/page_shell.php';
 require_once __DIR__ . '/../../config/audit_log.php';
 
+$loginSecurityNotice = $_SESSION['superadmin_login_security_notice'] ?? null;
+unset($_SESSION['superadmin_login_security_notice']);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['login_security_action'] ?? '') === 'unlock_ip') {
+    $targetIp = trim((string)($_POST['ip_address'] ?? ''));
+    $csrfToken = (string)($_POST['csrf_token'] ?? '');
+    $notice = ['type' => 'error', 'message' => 'Unable to unlock this login.'];
+
+    if (!auth_is_valid_csrf($csrfToken, 'superadmin_login_security')) {
+        $notice['message'] = 'Your session expired. Please try again.';
+    } elseif (filter_var($targetIp, FILTER_VALIDATE_IP) === false) {
+        $notice['message'] = 'Invalid IP address.';
+    } else {
+        $summaryStmt = $conn->prepare('SELECT COALESCE(SUM(attempts), 0) AS attempts FROM login_attempts WHERE ip_address = ?');
+        $deleteStmt = $conn->prepare('DELETE FROM login_attempts WHERE ip_address = ?');
+        if ($summaryStmt && $deleteStmt) {
+            $summaryStmt->bind_param('s', $targetIp);
+            $summaryStmt->execute();
+            $attemptCount = (int)(($summaryStmt->get_result()->fetch_assoc()['attempts'] ?? 0));
+
+            $deleteStmt->bind_param('s', $targetIp);
+            $deleteStmt->execute();
+            audit_log_event(
+                $conn,
+                (int)($_SESSION['user_id'] ?? 0),
+                'unlock_login_ip',
+                'login_security',
+                null,
+                ['ip_address' => $targetIp, 'failed_attempts' => $attemptCount],
+                ['ip_address' => $targetIp, 'status' => 'unlocked']
+            );
+            $notice = ['type' => 'success', 'message' => 'Login unlocked for ' . $targetIp . '.'];
+        }
+    }
+
+    $_SESSION['superadmin_login_security_notice'] = $notice;
+    header('Location: /codesamplecaps/SUPERADMIN/sidebar/audit_logs.php?view=login_security');
+    exit;
+}
+
 function audit_logs_relative_time(?string $dateTime): string {
     if (!$dateTime) {
         return 'Unknown time';
@@ -242,6 +282,7 @@ $quickFilter = trim((string)($_GET['quick'] ?? ''));
 $roleFilter = strtolower(trim((string)($_GET['role'] ?? '')));
 $actorFilter = (int)($_GET['actor'] ?? 0);
 $viewAllActivity = (string)($_GET['view'] ?? '') === 'all';
+$viewLoginSecurity = (string)($_GET['view'] ?? '') === 'login_security';
 $exportCsv = (string)($_GET['export'] ?? '') === 'csv';
 $allowedEntities = ['user', 'project', 'inventory', 'asset', 'scan', 'task', 'quotation'];
 $allowedQuickFilters = ['today', 'week', 'month'];
@@ -294,6 +335,30 @@ $roleLabels = [
     'client' => 'Client',
 ];
 $selectedActorName = '';
+$loginAttemptRows = [];
+$loginSecurityCsrfToken = auth_csrf_token('superadmin_login_security');
+$loginMaxAccountAttempts = (int)Config::getInstance()->get('LOGIN_MAX_ATTEMPTS', 5);
+$loginMaxIpAttempts = 15;
+$loginLockSeconds = (int)Config::getInstance()->get('LOGIN_LOCKOUT_MINUTES', 15) * 60;
+
+if ($viewLoginSecurity) {
+    $loginAttemptResult = $conn->query(
+        "SELECT
+            ip_address,
+            COALESCE(SUM(attempts), 0) AS total_attempts,
+            COALESCE(MAX(CASE WHEN email <> '__ip_only__' THEN attempts ELSE 0 END), 0) AS max_account_attempts,
+            COALESCE(SUM(CASE WHEN email = '__ip_only__' THEN attempts ELSE 0 END), 0) AS unknown_account_attempts,
+            MAX(last_attempt) AS last_attempt
+         FROM login_attempts
+         WHERE ip_address IS NOT NULL AND ip_address <> ''
+         GROUP BY ip_address
+         ORDER BY last_attempt DESC
+         LIMIT 100"
+    );
+    if ($loginAttemptResult) {
+        $loginAttemptRows = $loginAttemptResult->fetch_all(MYSQLI_ASSOC);
+    }
+}
 
 if ($roleFilter !== '') {
     $actorStmt = $conn->prepare(
@@ -494,7 +559,7 @@ if ($exportCsv) {
 }
 superadmin_render_page(
     'Audit Logs',
-    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName): void {
+    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $viewLoginSecurity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName, $loginAttemptRows, $loginSecurityCsrfToken, $loginMaxAccountAttempts, $loginMaxIpAttempts, $loginLockSeconds, $loginSecurityNotice): void {
         ?>
         <section class="dashboard-panel audit-logs-panel" id="audit-logs-section" data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">
             <div class="audit-explorer-header">
@@ -515,7 +580,7 @@ superadmin_render_page(
                         </label>
                     </form>
                 </div>
-                <?php if ($roleFilter !== '' || $search !== '' || $viewAllActivity): ?>
+                <?php if ($roleFilter !== '' || $search !== '' || $viewAllActivity || $viewLoginSecurity): ?>
                     <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="btn-secondary">Back to Folders</a>
                 <?php endif; ?>
             </div>
@@ -531,6 +596,12 @@ superadmin_render_page(
                     <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">Audit Logs</a>
                     <span>&gt;</span>
                     <strong>All Recent Activity</strong>
+                </nav>
+            <?php elseif ($viewLoginSecurity): ?>
+                <nav class="audit-breadcrumb" aria-label="Audit breadcrumb">
+                    <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">Audit Logs</a>
+                    <span>&gt;</span>
+                    <strong>Failed Login Attempts</strong>
                 </nav>
             <?php elseif ($roleFilter !== ''): ?>
                 <nav class="audit-breadcrumb" aria-label="Audit breadcrumb">
@@ -570,8 +641,83 @@ superadmin_render_page(
                 </div>
             <?php endif; ?>
 
-            <?php if ($roleFilter === '' && $search === '' && !$viewAllActivity): ?>
+            <?php if ($viewLoginSecurity): ?>
+                <section class="login-security-panel" aria-labelledby="loginSecurityTitle">
+                    <div class="login-security-panel__header">
+                        <div>
+                            <h2 id="loginSecurityTitle">Failed Login Attempts</h2>
+                            <p>Fake or unknown accounts are counted using their IP address.</p>
+                        </div>
+                    </div>
+
+                    <?php if (is_array($loginSecurityNotice) && !empty($loginSecurityNotice['message'])): ?>
+                        <div class="login-security-notice login-security-notice--<?php echo ($loginSecurityNotice['type'] ?? '') === 'success' ? 'success' : 'error'; ?>" role="status">
+                            <?php echo htmlspecialchars((string)$loginSecurityNotice['message'], ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="table-wrapper">
+                        <table class="responsive-table mobile-card-table login-security-table">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Source</th>
+                                    <th>Attempts</th>
+                                    <th>Last Attempt</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($loginAttemptRows)): ?>
+                                    <tr><td colspan="6" class="table-empty-cell">No failed login attempts.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($loginAttemptRows as $loginAttempt): ?>
+                                        <?php
+                                        $targetIp = (string)($loginAttempt['ip_address'] ?? '');
+                                        $totalAttempts = (int)($loginAttempt['total_attempts'] ?? 0);
+                                        $unknownAttempts = (int)($loginAttempt['unknown_account_attempts'] ?? 0);
+                                        $maxAccountAttempts = (int)($loginAttempt['max_account_attempts'] ?? 0);
+                                        $lastAttempt = (string)($loginAttempt['last_attempt'] ?? '');
+                                        $lastAttemptTime = $lastAttempt !== '' ? strtotime($lastAttempt) : false;
+                                        $remainingSeconds = $lastAttemptTime === false ? 0 : max(0, ($lastAttemptTime + $loginLockSeconds) - time());
+                                        $isLocked = $remainingSeconds > 0
+                                            && ($totalAttempts >= $loginMaxIpAttempts || $maxAccountAttempts >= $loginMaxAccountAttempts);
+                                        $remainingMinutes = max(1, (int)ceil($remainingSeconds / 60));
+                                        $sourceLabel = $unknownAttempts > 0
+                                            ? 'Unknown account / IP attempt'
+                                            : 'Existing account attempt';
+                                        ?>
+                                        <tr>
+                                            <td data-label="IP Address"><strong><?php echo htmlspecialchars($targetIp, ENT_QUOTES, 'UTF-8'); ?></strong></td>
+                                            <td data-label="Source"><?php echo htmlspecialchars($sourceLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td data-label="Attempts"><?php echo $totalAttempts; ?></td>
+                                            <td data-label="Last Attempt"><?php echo htmlspecialchars(audit_logs_format_datetime($lastAttempt), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td data-label="Status">
+                                                <span class="login-security-status <?php echo $isLocked ? 'is-locked' : 'is-monitoring'; ?>">
+                                                    <?php echo $isLocked ? 'Locked · ' . $remainingMinutes . ' min left' : 'Not locked'; ?>
+                                                </span>
+                                            </td>
+                                            <td data-label="Action">
+                                                <?php if ($isLocked): ?>
+                                                    <button type="button" class="login-security-unlock-btn" data-unlock-login data-ip-address="<?php echo htmlspecialchars($targetIp, ENT_QUOTES, 'UTF-8'); ?>">Unlock Login</button>
+                                                <?php else: ?>
+                                                    <span class="login-security-no-action">No action needed</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            <?php elseif ($roleFilter === '' && $search === '' && !$viewAllActivity): ?>
                 <div class="audit-folder-grid">
+                    <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="failed login attempts security ip" href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php?view=login_security">
+                        <span class="audit-folder-card__icon" aria-hidden="true">&#128274;</span>
+                        <strong>Failed Login Attempts</strong>
+                    </a>
                     <?php foreach ($roleLabels as $roleValue => $roleLabel): ?>
                         <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="<?php echo htmlspecialchars(strtolower($roleLabel), ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['role' => $roleValue, 'actor' => '', 'q' => '', 'entity' => '', 'action' => '', 'date' => '', 'quick' => '']), ENT_QUOTES, 'UTF-8'); ?>">
                             <span class="audit-folder-card__icon" aria-hidden="true">&#128193;</span>
@@ -796,10 +942,30 @@ superadmin_render_page(
                 </div>
             </section>
         </div>
+
+        <div class="audit-modal" data-login-security-modal hidden>
+            <form method="POST" class="audit-modal__panel login-security-modal__panel" role="dialog" aria-modal="true" aria-labelledby="loginSecurityModalTitle">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($loginSecurityCsrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="login_security_action" value="unlock_ip">
+                <input type="hidden" name="ip_address" value="" data-login-security-ip-input>
+                <header class="audit-modal__header">
+                    <div>
+                        <p>Login Security</p>
+                        <h2 id="loginSecurityModalTitle">Unlock this login?</h2>
+                    </div>
+                    <button type="button" class="audit-modal__close" data-login-security-close aria-label="Close unlock login confirmation">&times;</button>
+                </header>
+                <p class="login-security-modal__copy">Failed attempts for <strong data-login-security-ip-label></strong> will be cleared. The device can try to log in again.</p>
+                <div class="login-security-modal__actions">
+                    <button type="button" class="btn-secondary" data-login-security-cancel>Cancel</button>
+                    <button type="submit" class="login-security-unlock-btn">Unlock Login</button>
+                </div>
+            </form>
+        </div>
         <?php
     },
-    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css'],
-    ['/codesamplecaps/SUPERADMIN/js/audit-logs.js'],
+    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261020-1'],
+    ['/codesamplecaps/SUPERADMIN/js/audit-logs.js?v=20261020-1'],
     'audit-logs-content'
 );
 

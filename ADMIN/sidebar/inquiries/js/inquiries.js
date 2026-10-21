@@ -1702,14 +1702,27 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.querySelector('.inquiry-modal__head')?.classList.add('has-inspection-monitor');
     };
 
-    const applyFinalScheduleLock = function (modal, isFinal, phase) {
-        if (!modal || !isFinal) return;
+    const applyFinalScheduleLock = function (modal, isFinal, phase, isLocked) {
+        if (!modal) return;
+        const inspectionStarted = isLocked === true
+            || ['Ongoing', 'On Hold', 'Completed', 'Submitted'].includes(phase || 'Assigned');
         const scheduleForm = modal.querySelector('[data-inquiry-inspection-form]');
         const responseGrid = modal.querySelector('.inquiry-schedule-responses');
-        if (responseGrid) responseGrid.hidden = true;
-        modal.querySelector('[data-schedule-final-badge]')?.removeAttribute('hidden');
+        if (isFinal) {
+            if (responseGrid) responseGrid.hidden = true;
+        }
+
+        if (inspectionStarted) {
+            const scheduleEditor = modal.querySelector('[data-inspection-schedule-editor]');
+            const rescheduleButton = modal.querySelector('[data-reschedule-inspection-open]');
+            if (scheduleForm) scheduleForm.hidden = true;
+            if (scheduleEditor) scheduleEditor.hidden = true;
+            if (rescheduleButton) rescheduleButton.hidden = true;
+            sessionStorage.removeItem('edgeOpenRescheduleModal');
+        }
+
         const monitorButton = modal.querySelector('[data-inspection-monitor-open]');
-        const canMonitor = ['Ongoing', 'Completed', 'Submitted'].includes(phase || 'Assigned');
+        const canMonitor = inspectionStarted;
         if (monitorButton && canMonitor && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {
             monitorButton.removeAttribute('hidden');
         } else if (monitorButton) {
@@ -1792,7 +1805,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 ['client', 'engineer'].forEach(function (party) {
                     previousResponses[party] = modal.querySelector('[data-schedule-response-party="' + party + '"]')?.dataset.scheduleResponse || '';
                 });
-                applyFinalScheduleLock(modal, isFinal, String(data.inspection.phase || 'Assigned'));
+                applyFinalScheduleLock(
+                    modal,
+                    isFinal,
+                    String(data.inspection.phase || 'Assigned'),
+                    data.inspection.locked === true
+                );
                 ['client', 'engineer'].forEach(function (party) {
                     const response = data.inspection[party] || {};
                     const badge = modal.querySelector('[data-schedule-response-party="' + party + '"]');

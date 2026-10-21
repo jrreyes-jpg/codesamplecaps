@@ -721,13 +721,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_in
     $response = [
         'scheduled' => false,
         'final' => false,
+        'locked' => false,
         'client' => ['response' => 'not_scheduled', 'label' => 'Not Scheduled', 'note' => ''],
         'engineer' => ['response' => 'not_scheduled', 'label' => 'Not Scheduled', 'note' => ''],
     ];
 
     if ($inquiryId > 0) {
         $stmt = $conn->prepare(
-            'SELECT scheduled_at, status, client_schedule_response, client_schedule_response_note,
+            'SELECT scheduled_at, status, started_at, client_schedule_response, client_schedule_response_note,
                     client_schedule_responded_at, engineer_schedule_response,
                     engineer_schedule_response_note, engineer_schedule_responded_at
              FROM site_inspections
@@ -746,6 +747,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_in
                     'scheduled' => true,
                     'final' => $clientResponse === 'confirmed' && $engineerResponse === 'confirmed',
                     'phase' => (string)($inspectionResponse['status'] ?? 'Assigned'),
+                    'locked' => inquiry_center_inspection_schedule_is_locked($inspectionResponse),
                     'client' => [
                         'response' => $clientResponse,
                         'label' => site_inspection_schedule_response_label($clientResponse),
@@ -2618,7 +2620,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
                                     <?php
-                                    $hasOfficialInspectionSchedule = $latestInspection && !empty($latestInspection['scheduled_at']);
                                     $latestInspectionStatus = $latestInspection
                                         ? (string)($latestInspection['status'] ?? 'Assigned')
                                         : 'Not Scheduled';
@@ -2627,7 +2628,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         && !inquiry_center_inspection_schedule_is_locked($latestInspection);
                                     $canMonitorInspection = $latestInspection
                                         && in_array($latestInspectionStatus, ['Ongoing', 'Completed', 'Submitted'], true);
-                                    $scheduleIsFinal = $hasOfficialInspectionSchedule;
                                     ?>
                                     <?php if ($latestInspection): ?>
                                         <?php
@@ -2646,7 +2646,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <div class="inquiry-inspection-summary-card__value-line"><strong><?php echo htmlspecialchars((string)$latestInspection['engineer_name'], ENT_QUOTES, 'UTF-8'); ?></strong><button type="button" class="btn-secondary inquiry-inspection-summary-card__monitor" data-inspection-monitor-open data-inspection-id="<?php echo (int)$latestInspection['id']; ?>" <?php echo !$canMonitorInspection ? 'hidden' : ''; ?>>Monitor Inspection</button></div>
                                             </div>
                                             <div class="inquiry-detail inquiry-inspection-summary-card" data-inspection-date-detail>
-                                                <div class="inquiry-inspection-summary-card__head"><span>Inspection Date</span><strong class="inquiry-schedule-final" data-schedule-final-badge <?php echo !$scheduleIsFinal ? 'hidden' : ''; ?>>Scheduled</strong></div>
+                                                <div class="inquiry-inspection-summary-card__head"><span>Scheduled Inspection Date</span></div>
                                                 <div class="inquiry-inspection-summary-card__value-line">
                                                     <strong><?php echo htmlspecialchars(site_inspection_format_date($latestInspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                     <?php if ($canRescheduleInspection): ?>

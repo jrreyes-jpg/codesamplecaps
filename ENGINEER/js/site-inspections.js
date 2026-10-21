@@ -322,15 +322,32 @@ document.addEventListener('DOMContentLoaded', function () {
         const type = row.querySelector('select[name="item_type[]"]')?.value || '';
         const materialField = row.querySelector('[data-material-field]');
         const picker = row.querySelector('[data-material-picker]');
+        const itemNameField = row.querySelector('[data-item-name-field]');
+        const itemNameLabel = row.querySelector('[data-item-name-label]');
         const itemName = row.querySelector('input[name="item_name[]"]');
         const unit = row.querySelector('select[name="unit[]"]');
         const inventoryId = row.querySelector('input[name="inventory_id[]"]');
         const isMaterial = type === 'material';
 
+        const fieldDetails = {
+            material: ['Material Name', 'Enter material name'],
+            labor: ['Labor Description', 'Enter labor description'],
+            equipment: ['Equipment Name', 'Enter equipment name'],
+            other: ['Item Description', 'Enter item description'],
+        };
+        const [label, placeholder] = fieldDetails[type] || fieldDetails.other;
+        if (itemNameLabel) {
+            itemNameLabel.childNodes[0].nodeValue = `${label} `;
+        }
+        if (itemName) {
+            itemName.placeholder = placeholder;
+        }
+
         materialField?.toggleAttribute('hidden', !isMaterial);
         if (!isMaterial) {
             if (picker) picker.value = '';
             if (inventoryId) inventoryId.value = '';
+            itemNameField?.removeAttribute('hidden');
             itemName?.removeAttribute('readonly');
             unit?.removeAttribute('data-locked');
             unit?.removeAttribute('aria-disabled');
@@ -343,11 +360,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const linkedUnit = option?.getAttribute('data-unit') || '';
         if (linkedName && linkedUnit) {
             itemName.value = linkedName;
+            itemNameField?.setAttribute('hidden', '');
             itemName.setAttribute('readonly', 'readonly');
             unit.value = linkedUnit;
             unit.setAttribute('data-locked', 'true');
             unit.setAttribute('aria-disabled', 'true');
         } else {
+            itemNameField?.removeAttribute('hidden');
             itemName?.removeAttribute('readonly');
             unit?.removeAttribute('data-locked');
             unit?.removeAttribute('aria-disabled');

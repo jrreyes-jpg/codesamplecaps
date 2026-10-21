@@ -1071,7 +1071,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-8',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-9',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1384,7 +1384,7 @@ require __DIR__ . '/../layout/header.php';
                                 </label>
                             </div>
 
-                            <details class="inspection-disclosure inspection-disclosure--notes"<?php echo (trim((string)($inspection['risk_notes'] ?? '')) !== '' || trim((string)($inspection['client_requests'] ?? '')) !== '') ? ' open' : ''; ?>>
+                            <details class="inspection-disclosure inspection-disclosure--notes">
                                 <summary>Additional Notes (Optional)</summary>
                                 <div class="inspection-costing-notes inspection-costing-notes--optional">
                                     <label>
@@ -1398,7 +1398,7 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
                             </details>
 
-                            <details class="inspection-disclosure"<?php echo !empty($costItemsByInspection[$inspectionId]) ? ' open' : ''; ?>>
+                            <details class="inspection-disclosure" open>
                                 <summary>Cost Items <span>Materials, labor, and estimated costs</span></summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($costItems as $item): ?>
@@ -1412,7 +1412,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <option value="other" <?php echo in_array(($item['item_type'] ?? ''), ['other', 'service'], true) ? 'selected' : ''; ?>>Other</option>
                                             </select>
                                         </label>
-                                        <label data-material-field>
+                                        <label data-material-field<?php echo ($item['item_type'] ?? 'material') !== 'material' ? ' hidden' : ''; ?>>
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
                                             <select name="material_id[]" data-material-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
@@ -1431,9 +1431,9 @@ require __DIR__ . '/../layout/header.php';
                                             </select>
                                             <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                         </label>
-                                        <label>
-                                            <span>Item / Labor <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="item_name[]" placeholder="Item or labor name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                        <label data-item-name-field<?php echo ($item['item_type'] ?? 'material') === 'material' && (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
+                                            <span data-item-name-label>Item Description <b aria-hidden="true">*</b></span>
+                                            <input type="text" name="item_name[]" placeholder="Enter item description" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
@@ -1640,7 +1640,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-8',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-9',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

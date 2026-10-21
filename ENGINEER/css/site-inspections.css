@@ -1070,6 +1070,11 @@ body.inspection-modal-open {
     padding-bottom: 28px;
 }
 
+.costing-row [data-material-field][hidden],
+.costing-row [data-item-name-field][hidden] {
+    display: none;
+}
+
 .costing-row label span {
     color: #475569;
     font-size: 0.72rem;

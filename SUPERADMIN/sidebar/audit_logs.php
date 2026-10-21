@@ -319,6 +319,20 @@ if ($actorFilter < 1) {
     $actorFilter = 0;
 }
 
+$auditToday = (new DateTimeImmutable('today'))->format('Y-m-d');
+$auditFirstDate = '';
+$auditLogTableExists = function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : true;
+if ($auditLogTableExists) {
+    $firstAuditDateResult = $conn->query('SELECT MIN(DATE(created_at)) AS first_date FROM audit_logs');
+    if ($firstAuditDateResult) {
+        $auditFirstDate = (string)($firstAuditDateResult->fetch_assoc()['first_date'] ?? '');
+    }
+}
+
+if ($dateFilter !== '' && ($dateFilter > $auditToday || ($auditFirstDate !== '' && $dateFilter < $auditFirstDate))) {
+    $dateFilter = '';
+}
+
 $quickStartDate = '';
 $quickEndDate = '';
 if ($quickFilter !== '' && $dateFilter === '') {
@@ -396,7 +410,7 @@ if ($roleFilter !== '') {
     }
 }
 
-if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : true) {
+if ($auditLogTableExists) {
     $actionResult = $conn->query('SELECT DISTINCT action FROM audit_logs ORDER BY action ASC');
     if ($actionResult) {
         while ($actionRow = $actionResult->fetch_assoc()) {
@@ -596,7 +610,7 @@ if ($exportCsv) {
 }
 superadmin_render_page(
     'Audit Logs',
-    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $viewLoginSecurity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName, $loginAttemptRows, $loginSecurityCsrfToken, $loginMaxAccountAttempts, $loginMaxIpAttempts, $loginLockSeconds, $loginSecurityNotice, $auditPage, $auditTotalRows, $auditTotalPages): void {
+    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $viewLoginSecurity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName, $loginAttemptRows, $loginSecurityCsrfToken, $loginMaxAccountAttempts, $loginMaxIpAttempts, $loginLockSeconds, $loginSecurityNotice, $auditPage, $auditTotalRows, $auditTotalPages, $auditToday, $auditFirstDate): void {
         ?>
         <section class="dashboard-panel audit-logs-panel" id="audit-logs-section" data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">
             <div class="audit-explorer-header">
@@ -615,7 +629,14 @@ superadmin_render_page(
                         </label>
                         <label class="audit-logs-smart-field audit-logs-smart-field--date">
                             <span class="audit-logs-smart-field__label">Date</span>
-                            <input type="date" name="date" value="<?php echo htmlspecialchars($dateFilter); ?>" data-audit-date-filter>
+                            <input
+                                type="date"
+                                name="date"
+                                value="<?php echo htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>"
+                                min="<?php echo htmlspecialchars($auditFirstDate !== '' ? $auditFirstDate : $auditToday, ENT_QUOTES, 'UTF-8'); ?>"
+                                max="<?php echo htmlspecialchars($auditToday, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-audit-date-filter
+                            >
                         </label>
                         <label class="audit-logs-smart-field audit-logs-smart-field--select">
                             <span class="audit-logs-smart-field__label">Action</span>
@@ -846,7 +867,7 @@ superadmin_render_page(
                 </div>
             <?php else: ?>
                 <div class="table-wrapper">
-                <table class="responsive-table mobile-card-table">
+                <table class="responsive-table mobile-card-table audit-activity-table">
                     <thead>
                         <tr>
                             <th>Time</th>
@@ -987,7 +1008,7 @@ superadmin_render_page(
         </div>
         <?php
     },
-    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261021-6'],
+    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261021-7'],
     ['/codesamplecaps/SUPERADMIN/js/audit-logs.js?v=20261021-2'],
     'audit-logs-content'
 );

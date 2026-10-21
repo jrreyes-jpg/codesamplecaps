@@ -68,7 +68,7 @@ function engineer_inspection_valid_quantity(string $value, string $unit): bool
         return preg_match('/^[1-9]\d*$/', $value) === 1;
     }
 
-    return preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $value) === 1 && (float)$value > 0;
+    return preg_match('/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/', $value) === 1 && (float)$value > 0;
 }
 
 function engineer_inspection_valid_unit_cost(string $value): bool
@@ -639,7 +639,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!engineer_inspection_valid_quantity($rawQuantityText, $unit)) {
                 $error = engineer_inspection_is_whole_count_unit($unit)
                     ? 'Quantity must be a whole number greater than 0 for ' . $unit . '.'
-                    : 'Quantity must be greater than 0.';
+                    : 'Quantity must be greater than 0 with up to 2 decimal places.';
                 break;
             }
 
@@ -1071,7 +1071,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-9',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-10',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1401,8 +1401,9 @@ require __DIR__ . '/../layout/header.php';
                             <details class="inspection-disclosure" open>
                                 <summary>Cost Items <span>Materials, labor, and estimated costs</span></summary>
                             <div class="costing-rows" data-costing-rows>
-                                <?php foreach ($costItems as $item): ?>
+                                <?php foreach ($costItems as $itemIndex => $item): ?>
                                     <div class="costing-row">
+                                        <strong class="costing-row__number" data-costing-row-number>Cost Entry <?php echo $itemIndex + 1; ?></strong>
                                         <label>
                                             <span>Type <b aria-hidden="true">*</b></span>
                                             <select name="item_type[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
@@ -1437,7 +1438,7 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Unit <b aria-hidden="true">*</b></span>
@@ -1451,11 +1452,11 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label>
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="15" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
-                                            <span>Notes</span>
-                                            <input type="text" name="notes[]" placeholder="Notes" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <span>Notes (Optional)</span>
+                                            <input type="text" name="notes[]" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <?php if ($canEditCosting): ?>
                                             <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
@@ -1465,7 +1466,7 @@ require __DIR__ . '/../layout/header.php';
                             </div>
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-section-action">
-                                    <button type="button" class="btn-secondary" data-add-costing-row>Add Cost Item</button>
+                                    <button type="button" class="btn-secondary" data-add-costing-row>Add Cost Entry</button>
                                 </div>
                             <?php endif; ?>
                             </details>
@@ -1640,7 +1641,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-9',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-12',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

@@ -559,7 +559,56 @@ document.addEventListener('DOMContentLoaded', function () {
             return /^[1-9]\d*$/.test(value);
         }
 
-        return /^(?:0|[1-9]\d*)(\.\d+)?$/.test(value) && Number(value) > 0;
+        return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) > 0;
+    };
+
+    const cleanQuantityInput = function (field, unit) {
+        if (!field) return;
+
+        let value = field.value.replace(/[^\d.]/g, '');
+        if (isWholeCountUnit(unit)) {
+            value = value.replace(/\D/g, '');
+        } else {
+            const parts = value.split('.');
+            const whole = parts.shift() || '';
+            const decimal = parts.join('').slice(0, 2);
+            value = whole === '' && (parts.length > 0 || decimal !== '')
+                ? `0.${decimal}`
+                : `${whole}${parts.length > 0 ? `.${decimal}` : ''}`;
+        }
+
+        if (field.value !== value) field.value = value;
+    };
+
+    const cleanUnitCostInput = function (field) {
+        if (!field) return;
+
+        const cleanValue = field.value.replace(/[^\d.]/g, '');
+        const parts = cleanValue.split('.');
+        const whole = parts.shift() || '';
+        const decimal = parts.join('').slice(0, 2);
+        const value = whole === '' && (parts.length > 0 || decimal !== '')
+            ? `0.${decimal}`
+            : `${whole}${parts.length > 0 ? `.${decimal}` : ''}`;
+
+        if (field.value !== value) field.value = value;
+    };
+
+    const updateCostEntryNumbers = function (form) {
+        form.querySelectorAll('.costing-row').forEach(function (row, index) {
+            const number = row.querySelector('[data-costing-row-number]');
+            if (number) number.textContent = `Cost Entry ${index + 1}`;
+        });
+    };
+
+    const quantityErrorMessage = function (value, unit) {
+        if (isWholeCountUnit(unit)) {
+            return `Enter a whole number greater than 0 for ${unit || 'this unit'}.`;
+        }
+        if (/^(?:0|[1-9]\d*)\.\d{3,}$/.test(value)) {
+            return 'Maximum 2 decimal places.';
+        }
+        return 'Qty must be greater than 0.';
     };
 
     const addCostingRow = function (form, type = 'material') {
@@ -588,6 +637,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         rowsBox.appendChild(row);
         bindRow(form, row);
+        updateCostEntryNumbers(form);
         syncTotal(form);
         saveFormDraft(form);
         updateSaveDraftState(form);
@@ -641,9 +691,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (!isValidQuantityText(quantityText, unitValue)) {
-                setFieldError(quantity, isWholeCountUnit(unitValue)
-                    ? `Enter a whole number for ${unitValue || 'this unit'}.`
-                    : 'Qty must be greater than 0.');
+                setFieldError(quantity, quantityErrorMessage(quantityText, unitValue));
                 firstInvalid = firstInvalid || quantity;
             }
 
@@ -767,6 +815,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         row.querySelectorAll('[data-costing-decimal]').forEach(function (field) {
             field.addEventListener('input', function () {
+                if (field.name === 'quantity[]') {
+                    const unit = row.querySelector('select[name="unit[]"]')?.value || '';
+                    cleanQuantityInput(field, unit);
+                } else if (field.name === 'unit_cost[]') {
+                    cleanUnitCostInput(field);
+                }
                 clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
                 syncTotal(form);
@@ -782,10 +836,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 const valid = field.name === 'unit_cost[]'
                     ? isValidCostText(value)
                     : isValidQuantityText(value, unit);
-                if (!valid && form.dataset.validationAttempted === 'true') {
-                    setFieldError(field, field.name === 'unit_cost[]'
-                        ? costErrorMessage(value)
-                        : (isWholeCountUnit(unit) ? `Enter a whole number for ${unit}.` : 'Qty must be greater than 0.'));
+                if (value !== '') {
+                    if (valid) {
+                        clearFieldError(field);
+                    } else {
+                        setFieldError(field, field.name === 'unit_cost[]'
+                            ? costErrorMessage(value)
+                            : quantityErrorMessage(value, unit));
+                    }
                 }
                 syncTotal(form);
                 updateMaterialAvailability(row);
@@ -817,10 +875,12 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelector('select[name="unit[]"]')?.addEventListener('change', function (event) {
             const quantity = row.querySelector('input[name="quantity[]"]');
             const value = quantity?.value.trim() || '';
-            if (form.dataset.validationAttempted === 'true' && value !== '' && !isValidQuantityText(value, event.target.value)) {
-                setFieldError(quantity, isWholeCountUnit(event.target.value)
-                    ? `Enter a whole number for ${event.target.value}.`
-                    : 'Qty must be greater than 0.');
+            if (value !== '') {
+                if (isValidQuantityText(value, event.target.value)) {
+                    clearFieldError(quantity);
+                } else {
+                    setFieldError(quantity, quantityErrorMessage(value, event.target.value));
+                }
             }
             syncTotal(form);
             updateMaterialAvailability(row);
@@ -861,6 +921,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     row.remove();
                 }
+                updateCostEntryNumbers(form);
                 syncTotal(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
@@ -895,6 +956,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('.costing-row').forEach(function (row) {
             bindRow(form, row);
         });
+        updateCostEntryNumbers(form);
         form.querySelectorAll('[data-asset-requirement-row]').forEach(function (row) {
             bindAssetRequirementRow(form, row);
         });
@@ -902,6 +964,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Kunin muna ang saved server values bago mag-restore ng unsaved browser draft.
         form.dataset.savedSnapshot = formSnapshot(form);
         restoreFormDraft(form);
+        updateCostEntryNumbers(form);
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
             addCostingRow(form);

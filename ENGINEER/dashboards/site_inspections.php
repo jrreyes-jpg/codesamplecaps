@@ -1071,7 +1071,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-6',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-8',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1640,7 +1640,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-6',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-8',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

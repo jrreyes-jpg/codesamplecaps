@@ -209,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
         feedback.hidden = !hasLinkedMaterial || !hasValidRequiredQuantity;
         feedback.classList.remove('is-available', 'is-shortage');
         feedback.textContent = '';
+        feedback.removeAttribute('title');
 
         if (feedback.hidden) return;
 
@@ -222,8 +223,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         feedback.classList.add('is-shortage');
         feedback.textContent = available <= 0
-            ? 'Out of stock — Admin may need to purchase this material.'
+            ? 'Out of stock — Purchase required.'
             : `Stock shortage: ${availableLabel} available, ${requiredLabel} needed.`;
+        feedback.title = feedback.textContent;
     };
 
     const assetRequirementHasMeaningfulData = function (row) {

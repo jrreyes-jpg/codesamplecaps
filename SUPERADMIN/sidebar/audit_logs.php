@@ -611,11 +611,24 @@ if ($exportCsv) {
 superadmin_render_page(
     'Audit Logs',
     function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $viewLoginSecurity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName, $loginAttemptRows, $loginSecurityCsrfToken, $loginMaxAccountAttempts, $loginMaxIpAttempts, $loginLockSeconds, $loginSecurityNotice, $auditPage, $auditTotalRows, $auditTotalPages, $auditToday, $auditFirstDate): void {
+        $latestAuditId = 0;
+        foreach ($recentActivityRows as $latestRow) {
+            $latestAuditId = max($latestAuditId, (int)($latestRow['id'] ?? 0));
+        }
         ?>
-        <section class="dashboard-panel audit-logs-panel" id="audit-logs-section" data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">
+        <section class="dashboard-panel audit-logs-panel" id="audit-logs-section" data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" data-audit-latest-id="<?php echo $latestAuditId; ?>">
             <div class="audit-explorer-header">
                 <div class="audit-explorer-header__main">
-                    <h1 class="audit-logs-title">Audit Logs</h1>
+                    <div class="audit-title-row">
+                        <h1 class="audit-logs-title">Audit Logs</h1>
+                        <div class="audit-refresh-tools">
+                            <span class="audit-refresh-status"><span class="audit-live-dot" aria-hidden="true"></span>Live updates</span>
+                            <button type="button" class="audit-refresh-button" data-audit-refresh aria-label="Refresh audit logs">
+                                <span class="audit-refresh-button__icon" aria-hidden="true">&#8635;</span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
                     <form method="GET" class="audit-header-search" data-audit-global-search>
                         <input type="hidden" name="quick" value="<?php echo htmlspecialchars($quickFilter, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="role" value="<?php echo htmlspecialchars($roleFilter, ENT_QUOTES, 'UTF-8'); ?>">
@@ -834,6 +847,7 @@ superadmin_render_page(
                                     data-audit-time="<?php echo htmlspecialchars($recentTime, ENT_QUOTES, 'UTF-8'); ?>"
                                     data-audit-actor="<?php echo htmlspecialchars((string)($recentRow['actor_name'] ?: 'System'), ENT_QUOTES, 'UTF-8'); ?>"
                                     data-audit-role="<?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string)($recentRow['actor_role'] ?: 'System'))), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-audit-action-key="<?php echo htmlspecialchars((string)($recentRow['action'] ?? 'activity'), ENT_QUOTES, 'UTF-8'); ?>"
                                     data-audit-action="<?php echo htmlspecialchars(audit_logs_action_label((string)($recentRow['action'] ?? 'activity')), ENT_QUOTES, 'UTF-8'); ?>"
                                     data-audit-target="<?php echo htmlspecialchars($recentTarget, ENT_QUOTES, 'UTF-8'); ?>"
                                     data-audit-ip="<?php echo htmlspecialchars((string)($recentRow['ip_address'] ?? 'N/A'), ENT_QUOTES, 'UTF-8'); ?>"
@@ -926,6 +940,7 @@ superadmin_render_page(
                                             data-audit-time="<?php echo htmlspecialchars($auditTime, ENT_QUOTES, 'UTF-8'); ?>"
                                             data-audit-actor="<?php echo htmlspecialchars((string)($row['actor_name'] ?: 'System'), ENT_QUOTES, 'UTF-8'); ?>"
                                             data-audit-role="<?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string)($row['actor_role'] ?: 'System'))), ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-audit-action-key="<?php echo htmlspecialchars((string)($row['action'] ?? 'activity'), ENT_QUOTES, 'UTF-8'); ?>"
                                             data-audit-action="<?php echo htmlspecialchars(audit_logs_action_label((string)($row['action'] ?? 'activity')), ENT_QUOTES, 'UTF-8'); ?>"
                                             data-audit-target="<?php echo htmlspecialchars($auditTarget, ENT_QUOTES, 'UTF-8'); ?>"
                                             data-audit-ip="<?php echo htmlspecialchars((string)($row['ip_address'] ?? 'N/A'), ENT_QUOTES, 'UTF-8'); ?>"
@@ -971,10 +986,11 @@ superadmin_render_page(
                     <div><span>Time</span><strong data-audit-modal-time></strong></div>
                     <div><span>Actor</span><strong data-audit-modal-actor></strong></div>
                     <div><span>Role</span><strong data-audit-modal-role></strong></div>
-                    <div><span>Target</span><strong data-audit-modal-target></strong></div>
+                    <div data-audit-modal-target-card><span>Target</span><strong data-audit-modal-target></strong></div>
+                    <div data-audit-modal-login-result-card hidden><span>Result</span><strong data-audit-modal-login-result>Successful</strong></div>
                     <div><span>IP Address</span><strong data-audit-modal-ip></strong></div>
                 </div>
-                <div class="audit-modal__values">
+                <div class="audit-modal__values" data-audit-modal-values>
                     <article>
                         <h3>Previous Value</h3>
                         <pre data-audit-modal-old>No data</pre>

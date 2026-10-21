@@ -21,19 +21,6 @@ $superAdminProfilePhotoUrl = '';
 $superAdminProfileInitials = '';
 $superAdminUserId = (int)($_SESSION['user_id'] ?? ($_SESSION['id'] ?? 0));
 
-$superAdminNotificationData = isset($conn) && $conn instanceof mysqli
-    ? super_admin_fetch_notification_data($conn)
-    : [
-        'project_risk_count' => 0,
-        'stock_alert_count' => 0,
-        'inactive_assignment_count' => 0,
-        'urgent_count' => 0,
-        'project_risk_alerts' => [],
-        'stock_alerts' => [],
-        'inactive_assignment_alerts' => [],
-        'recent_activity' => [],
-    ];
-
 if (
     isset($conn)
     && $conn instanceof mysqli
@@ -81,77 +68,6 @@ ob_start();
 include __DIR__ . '/../SHARED/header/profile/php/profile.php';
 $operationsHeaderProfileHtml = ob_get_clean();
 ?>
-
-        <div class="topbar-notifications" data-notification-root>
-            <button
-            title="Notifications"
-                id="topbarNotificationToggle"
-                class="topbar-notifications__toggle"
-                type="button"
-                aria-label="Open notifications"
-                aria-controls="topbarNotificationDropdown"
-                aria-expanded="false"
-            >
-                <span class="topbar-notifications__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M12 3a4 4 0 0 0-4 4v1.1a7 7 0 0 1-1.52 4.33L5 14.5V16h14v-1.5l-1.48-2.07A7 7 0 0 1 16 8.1V7a4 4 0 0 0-4-4Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z" fill="currentColor"/>
-                    </svg>
-                </span>
-                <?php if (($superAdminNotificationData['urgent_count'] ?? 0) > 0): ?>
-                    <span class="topbar-notifications__badge">
-                        <?php echo $superAdminNotificationData['urgent_count'] > 99 ? '99+' : (int)$superAdminNotificationData['urgent_count']; ?>
-                    </span>
-                <?php endif; ?>
-            </button>
-
-                <div id="topbarNotificationDropdown" class="topbar-notifications__dropdown" hidden>
-                <div class="topbar-notifications__panel-head">
-                    <div>
-                        <strong>Notifications</strong>
-                        <span>
-                            <?php echo (int)($superAdminNotificationData['urgent_count'] ?? 0); ?> need attention
-                        </span>
-                    </div>
-                </div>
-
-                <?php if (($superAdminNotificationData['project_risk_count'] ?? 0) > 0): ?>
-                    <div class="topbar-notifications__summary">
-                        <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="notification-summary-chip notification-summary-chip--danger">
-                            <strong><?php echo (int)($superAdminNotificationData['project_risk_count'] ?? 0); ?></strong>
-                            <span>Project risks</span>
-                        </a>
-                    </div>
-                <?php endif; ?>
-
-                <div class="topbar-notifications__section">
-                    <div class="topbar-notifications__section-title">Needs attention</div>
-                    <?php if (($superAdminNotificationData['urgent_count'] ?? 0) === 0): ?>
-                        <div class="topbar-notifications__empty">
-                            No project alerts right now.
-                        </div>
-                    <?php else: ?>
-                        <?php foreach ($superAdminNotificationData['project_risk_alerts'] as $projectAlert): ?>
-                            <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="notification-item notification-item--danger">
-                                <span class="notification-item__dot"></span>
-                                <div class="notification-item__copy">
-                                    <strong><?php echo htmlspecialchars((string)$projectAlert['project_name']); ?></strong>
-                                    <span>
-                                        <?php
-                                        $parts = [];
-                                        if ((int)($projectAlert['delayed_tasks'] ?? 0) > 0) {
-                                            $parts[] = (int)$projectAlert['delayed_tasks'] . ' delayed task(s)';
-                                        }
-                                        echo htmlspecialchars(implode(' | ', $parts) ?: 'Needs checking');
-                                        ?>
-                                    </span>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-
-            </div>
-</div>
 
 <?php
 echo $operationsHeaderProfileHtml;

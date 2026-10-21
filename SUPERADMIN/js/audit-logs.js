@@ -1,5 +1,9 @@
 // JS ng Audit Logs page. Search lang ang ibabalik ang focus pagkatapos mag-refresh.
 function initAuditLogsUI() {
+    if (window.__auditAutoRefreshTimer) {
+        window.clearInterval(window.__auditAutoRefreshTimer);
+    }
+
     const section = document.getElementById('audit-logs-section');
     const globalSearchForm = section?.querySelector('[data-audit-global-search]');
     const searchInput = globalSearchForm?.querySelector('input[name="q"]');
@@ -10,8 +14,17 @@ function initAuditLogsUI() {
     const emptyRow = section?.querySelector('[data-audit-empty-row]');
     const folderCards = Array.from(section?.querySelectorAll('[data-audit-folder-card]') || []);
     const folderEmpty = section?.querySelector('[data-audit-folder-empty]');
+    const refreshButton = section?.querySelector('[data-audit-refresh]');
+    const refreshStatus = section?.querySelector('.audit-refresh-status');
     const savedFocusState = window.__auditSearchFocusState || null;
     let searchDebounceId = null;
+    let refreshInProgress = false;
+
+    if (window.__auditNewActivityNotice && refreshStatus) {
+        refreshStatus.textContent = 'New activity loaded';
+        refreshStatus.classList.add('is-new');
+        window.__auditNewActivityNotice = false;
+    }
 
     function syncHiddenSearchFields() {
         section?.querySelectorAll('input[type="hidden"][name="q"]').forEach((hiddenInput) => {
@@ -96,6 +109,11 @@ function initAuditLogsUI() {
             return;
         }
 
+        if (refreshInProgress) {
+            return;
+        }
+        refreshInProgress = true;
+
         if (preserveSearchFocus && searchInput) {
             window.__auditSearchFocusState = {
                 value: searchInput.value,
@@ -122,6 +140,12 @@ function initAuditLogsUI() {
                     return;
                 }
 
+                const currentLatestId = Number(section.getAttribute('data-audit-latest-id') || 0);
+                const nextLatestId = Number(nextSection.getAttribute('data-audit-latest-id') || 0);
+                if (nextLatestId > currentLatestId) {
+                    window.__auditNewActivityNotice = true;
+                }
+
                 section.replaceWith(nextSection);
                 if (window.history?.replaceState) {
                     window.history.replaceState(null, '', url);
@@ -132,6 +156,29 @@ function initAuditLogsUI() {
                 window.location.href = url;
             });
     }
+
+    function currentAuditUrl() {
+        return window.location.pathname + window.location.search;
+    }
+
+    function auditModalIsOpen() {
+        return Array.from(document.querySelectorAll('.audit-modal'))
+            .some((auditModal) => !auditModal.hidden);
+    }
+
+    refreshButton?.addEventListener('click', () => {
+        refreshButton.disabled = true;
+        refreshButton.classList.add('is-loading');
+        refreshAuditSection(currentAuditUrl(), false);
+    });
+
+    window.__auditAutoRefreshTimer = window.setInterval(() => {
+        const isUsingSearch = searchInput && document.activeElement === searchInput;
+        if (document.hidden || isUsingSearch || searchDebounceId || auditModalIsOpen()) {
+            return;
+        }
+        refreshAuditSection(currentAuditUrl(), false);
+    }, 10000);
 
     function triggerSearchRefresh(immediate) {
         if (!globalSearchForm) {
@@ -222,12 +269,6 @@ function initAuditLogsUI() {
         }
     });
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && unlockModal && !unlockModal.hidden) {
-            closeUnlockModal();
-        }
-    });
-
     const modal = section?.parentElement?.querySelector('[data-audit-modal]');
     if (!modal) {
         return;
@@ -239,9 +280,13 @@ function initAuditLogsUI() {
         actor: modal.querySelector('[data-audit-modal-actor]'),
         role: modal.querySelector('[data-audit-modal-role]'),
         target: modal.querySelector('[data-audit-modal-target]'),
+        targetCard: modal.querySelector('[data-audit-modal-target-card]'),
+        loginResultCard: modal.querySelector('[data-audit-modal-login-result-card]'),
+        loginResult: modal.querySelector('[data-audit-modal-login-result]'),
         ip: modal.querySelector('[data-audit-modal-ip]'),
         oldValue: modal.querySelector('[data-audit-modal-old]'),
         newValue: modal.querySelector('[data-audit-modal-new]'),
+        values: modal.querySelector('[data-audit-modal-values]'),
     };
 
     const closeModal = () => {
@@ -249,8 +294,26 @@ function initAuditLogsUI() {
         document.body.style.overflow = '';
     };
 
+    if (window.__auditDocumentKeydownHandler) {
+        document.removeEventListener('keydown', window.__auditDocumentKeydownHandler);
+    }
+    window.__auditDocumentKeydownHandler = (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        if (unlockModal && !unlockModal.hidden) {
+            closeUnlockModal();
+        }
+        if (!modal.hidden) {
+            closeModal();
+        }
+    };
+    document.addEventListener('keydown', window.__auditDocumentKeydownHandler);
+
     section.querySelectorAll('[data-audit-open]').forEach((button) => {
         button.addEventListener('click', () => {
+            const actionKey = (button.getAttribute('data-audit-action-key') || '').toLowerCase();
+            const isLogin = actionKey === 'login';
             fields.action.textContent = button.getAttribute('data-audit-action') || 'Activity';
             fields.time.textContent = button.getAttribute('data-audit-time') || 'Unknown';
             fields.actor.textContent = button.getAttribute('data-audit-actor') || 'System';
@@ -259,12 +322,18 @@ function initAuditLogsUI() {
             fields.ip.textContent = button.getAttribute('data-audit-ip') || 'N/A';
             fields.oldValue.textContent = button.getAttribute('data-audit-old') || 'No data';
             fields.newValue.textContent = button.getAttribute('data-audit-new') || 'No data';
+            fields.targetCard.hidden = isLogin;
+            fields.loginResultCard.hidden = !isLogin;
+            fields.values.hidden = isLogin;
+            if (isLogin) {
+                fields.loginResult.textContent = 'Successful';
+            }
             modal.hidden = false;
             document.body.style.overflow = 'hidden';
         });
     });
 
-    section.querySelector('[data-audit-close]')?.addEventListener('click', closeModal);
+    modal.querySelector('[data-audit-close]')?.addEventListener('click', closeModal);
 
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
@@ -272,11 +341,6 @@ function initAuditLogsUI() {
         }
     });
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !modal.hidden) {
-            closeModal();
-        }
-    });
 }
 
 document.addEventListener('DOMContentLoaded', initAuditLogsUI);

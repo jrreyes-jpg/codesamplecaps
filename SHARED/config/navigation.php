@@ -20,7 +20,6 @@ function shared_navigation_items_for_role(string $role): array
         'super_admin' => [
             ['module' => 'users', 'label' => 'User Management', 'mini' => 'Users', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php', 'icon' => 'user', 'active' => ['/SUPERADMIN/sidebar/user_management.php', '/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users', '/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=create']],
             ['module' => 'audit_logs', 'label' => 'Audit Logs', 'mini' => 'Audit', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php', 'icon' => 'activity', 'active' => ['/SUPERADMIN/sidebar/audit_logs.php']],
-            ['module' => 'backup_restore', 'label' => 'Backup & Restore', 'mini' => 'Bak', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/backup_restore.php', 'icon' => 'backup', 'active' => ['/SUPERADMIN/sidebar/backup_restore.php']],
         ],
         'foreman' => [
             ['module' => 'overview', 'label' => 'Overview', 'mini' => 'Home', 'href' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php', 'icon' => 'dashboard', 'active' => ['/FOREMAN/dashboards/foreman_dashboard.php']],

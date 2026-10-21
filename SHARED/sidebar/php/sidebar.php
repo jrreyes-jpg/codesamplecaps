@@ -36,7 +36,6 @@ if (!function_exists('shared_sidebar_icon')) {
             'security' => '<path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"></path><path d="M9 12l2 2 4-4"></path>',
             'lock' => '<rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path>',
             'settings' => '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.05.05-2.12 2.12-.05-.05a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.66V20h-3v-.08A1.8 1.8 0 0 0 10.4 18.3a1.8 1.8 0 0 0-2 .36l-.05.05-2.12-2.12.05-.05a1.8 1.8 0 0 0 .36-2A1.8 1.8 0 0 0 5 13.5H4v-3h1a1.8 1.8 0 0 0 1.66-1.1 1.8 1.8 0 0 0-.36-2l-.05-.05 2.12-2.12.05.05a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 11.5 4h3a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 2-.36l.05-.05 2.12 2.12-.05.05a1.8 1.8 0 0 0-.36 2A1.8 1.8 0 0 0 21 10.5h1v3h-1A1.8 1.8 0 0 0 19.4 15z"></path>',
-            'backup' => '<path d="M4 7h16v12H4z"></path><path d="M8 7V5h8v2"></path><path d="M12 11v5"></path><path d="M9.5 13.5 12 16l2.5-2.5"></path>',
             'scan' => '<path d="M7 4H5a1 1 0 0 0-1 1v2"></path><path d="M17 4h2a1 1 0 0 1 1 1v2"></path><path d="M20 17v2a1 1 0 0 1-1 1h-2"></path><path d="M4 17v2a1 1 0 0 0 1 1h2"></path><path d="M7 12h10"></path><path d="M12 7v10"></path>',
             'stock-in' => '<path d="M12 5v14"></path><path d="M7 10l5-5 5 5"></path><path d="M5 19h14"></path>',
             'stock-out' => '<path d="M12 19V5"></path><path d="M7 14l5 5 5-5"></path><path d="M5 5h14"></path>',

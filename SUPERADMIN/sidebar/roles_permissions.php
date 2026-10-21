@@ -10,7 +10,6 @@ $rolePermissions = [
             'Audit Logs',
             'System Settings',
             'Security Settings',
-            'Backup & Restore',
             'View All Modules',
         ],
     ],

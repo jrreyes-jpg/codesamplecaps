@@ -15,7 +15,6 @@ $isActivityHistory = str_contains($currentPath, '/SUPERADMIN/sidebar/audit_logs.
 $isRolesPermissions = str_contains($currentPath, '/SUPERADMIN/sidebar/roles_permissions.php');
 $isSecuritySettings = str_contains($currentPath, '/SUPERADMIN/sidebar/security_settings.php');
 $isSystemSettings = str_contains($currentPath, '/SUPERADMIN/sidebar/system_settings.php');
-$isBackupRestore = str_contains($currentPath, '/SUPERADMIN/sidebar/backup_restore.php');
 $superAdminProfileName = (string)($_SESSION['name'] ?? 'Super Admin');
 $superAdminProfileRole = ucfirst(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'super_admin')));
 $superAdminProfilePhotoUrl = '';

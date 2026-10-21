@@ -733,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const valid = field.name === 'unit_cost[]'
                     ? isValidCostText(value)
                     : isValidQuantityText(value, unit);
-                if (!valid) {
+                if (!valid && form.dataset.validationAttempted === 'true') {
                     setFieldError(field, field.name === 'unit_cost[]'
                         ? costErrorMessage(value)
                         : (isWholeCountUnit(unit) ? `Enter a whole number for ${unit}.` : 'Qty must be greater than 0.'));
@@ -768,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelector('select[name="unit[]"]')?.addEventListener('change', function (event) {
             const quantity = row.querySelector('input[name="quantity[]"]');
             const value = quantity?.value.trim() || '';
-            if (value !== '' && !isValidQuantityText(value, event.target.value)) {
+            if (form.dataset.validationAttempted === 'true' && value !== '' && !isValidQuantityText(value, event.target.value)) {
                 setFieldError(quantity, isWholeCountUnit(event.target.value)
                     ? `Enter a whole number for ${event.target.value}.`
                     : 'Qty must be greater than 0.');
@@ -880,45 +880,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        form.querySelector('[data-clear-costing-form]')?.addEventListener('click', function () {
-            const clearForm = function () {
-                window.localStorage.removeItem(storageKeyForForm(form));
-                form.querySelectorAll('textarea').forEach(function (field) {
-                    field.value = '';
-                });
-                form.querySelectorAll('.costing-row').forEach(function (row, index) {
-                    if (index > 0) {
-                        row.remove();
-                        return;
-                    }
-
-                    row.querySelectorAll('input').forEach(function (field) {
-                        field.value = field.name === 'quantity[]' ? '1' : '';
-                    });
-                    row.querySelectorAll('select').forEach(function (field) {
-                        field.selectedIndex = 0;
-                    });
-                });
-                form.querySelector('[data-asset-requirement-rows]')?.replaceChildren();
-                clearCostingError(form);
-                form.querySelectorAll('.costing-field-error, .is-invalid').forEach(function (field) {
-                    field.classList?.remove('is-invalid');
-                    if (field.classList?.contains('costing-field-error')) {
-                        field.remove();
-                    }
-                });
-                syncTotal(form);
-                updateSaveDraftState(form);
-            };
-            openInspectionActionConfirm({
-                trigger: this,
-                title: 'Clear Unsaved Costing?',
-                message: 'This will clear all unsaved costing inputs.',
-                confirm: 'Clear Form',
-                onConfirm: clearForm,
-            });
-        });
-
         form.addEventListener('submit', function (event) {
             if (form.dataset.isSaving === 'true') {
                 event.preventDefault();
@@ -935,6 +896,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             form.querySelectorAll('[data-costing-decimal]').forEach(normalizeDecimalField);
+            form.dataset.validationAttempted = 'true';
 
             if (!validateCosting(form, isFinalSubmit)) {
                 event.preventDefault();
@@ -945,8 +907,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.preventDefault();
                 openInspectionActionConfirm({
                     trigger: event.submitter,
-                    title: 'Submit Inspection to Admin?',
-                    message: 'This will submit the completed inspection and costing to Admin for review.',
+                    title: 'Submit Costing to Admin?',
+                    message: 'This will submit the inspection findings and costing to Admin for review.',
                     confirm: 'Submit to Admin',
                     onConfirm: function () {
                         form.dataset.submitConfirmed = 'true';
@@ -1138,8 +1100,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const statusNode = card.querySelector('.inspection-status');
         if (statusNode) {
-            statusNode.dataset.status = status;
-            statusNode.textContent = status;
+            const displayStatus = status === 'Submitted' ? 'Costing Submitted' : status;
+            statusNode.dataset.status = displayStatus;
+            statusNode.textContent = displayStatus;
         }
 
         const steps = Array.from(card.querySelectorAll('.inspection-workflow__step'));
@@ -1156,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', function () {
             step.classList.toggle('is-done', currentIndex > index);
             step.classList.toggle('is-current', currentIndex === index);
             const label = step.querySelector('span')?.textContent.trim() || '';
-            const timestampKey = label === 'Report Submitted' ? 'Submitted' : label;
+            const timestampKey = label === 'Costing Submitted' ? 'Submitted' : label;
             const timestamp = payload.timestamps?.[timestampKey] || '';
             if (timestamp) {
                 let timeNode = step.querySelector('small');
@@ -1168,14 +1131,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const actionButton = form.querySelector('[data-workflow-transition]');
+        const actionButton = form.querySelector('[data-workflow-transition]')
+            || (form.id ? document.querySelector('[data-workflow-transition][form="' + CSS.escape(form.id) + '"]') : null);
         const actionField = form.elements.workflow_action;
         const nextAction = {
             Assigned: ['start', 'Start Inspection'],
             Acknowledged: ['start', 'Start Inspection'],
-            Ongoing: ['complete', 'Submit Report to Admin'],
+            Ongoing: ['complete', 'Submit Costing to Admin'],
         }[status];
         if (!nextAction) {
+            actionButton?.remove();
             form.remove();
             return;
         }
@@ -1338,10 +1303,10 @@ document.addEventListener('DOMContentLoaded', function () {
         completionModal.dataset.isCompleting = 'true';
         completionCancelButton.disabled = true;
         completionConfirmButton.disabled = true;
-        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting report...';
-        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Submit Report to Admin';
+        completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting costing...';
+        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Submit Costing to Admin';
         pendingCompletionButton.disabled = true;
-        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting report...';
+        pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting costing...';
         requestWorkflowTransition(pendingCompletionForm, pendingCompletionButton).then(function (success) {
             if (success) {
                 completionModal.hidden = true;
@@ -1353,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', function () {
             completionModal.dataset.isCompleting = '';
             completionCancelButton.disabled = false;
             completionConfirmButton.disabled = false;
-            completionConfirmButton.textContent = 'Submit Report';
+            completionConfirmButton.textContent = 'Submit Costing';
         });
     });
 
@@ -1541,7 +1506,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-workflow-transition]');
         if (!button) return;
-        const form = button.closest('form');
+        const linkedFormId = button.getAttribute('form') || '';
+        const form = linkedFormId ? document.getElementById(linkedFormId) : button.closest('form');
         const action = form?.elements.workflow_action?.value || '';
         if (!form || form.dataset.isTransitioning === 'true') return;
 
@@ -1550,6 +1516,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const costingForm = modal?.querySelector('[data-costing-form]');
             const findings = costingForm?.querySelector('textarea[name="engineer_findings"]');
             activateInspectionTab(modal, 'report');
+            if (costingForm) costingForm.dataset.validationAttempted = 'true';
             const reportIsValid = costingForm ? validateCosting(costingForm, true) : false;
             const findingsAreValid = hasMeaningfulFindings(findings?.value || '');
 

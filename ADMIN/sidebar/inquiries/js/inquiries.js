@@ -2072,12 +2072,12 @@ document.addEventListener('DOMContentLoaded', function () {
             showConfirm(
                 form,
                 isApprove
-                    ? 'This locks the Engineer report and keeps the approved costing for the next quotation step.'
-                    : 'The Engineer can edit the report, fix the costing, and submit it again.',
+                    ? 'This approves the Engineer costing for the next quotation step.'
+                    : 'The Engineer can fix the findings and costing, then submit it again.',
                 null,
                 isApprove
-                    ? { title: 'Approve Inspection Report?', cancel: 'Cancel', confirm: 'Approve Report', mode: 'inspection-approve' }
-                    : { title: 'Return Report to Engineer?', cancel: 'Keep Reviewing', confirm: 'Return Report', mode: 'inspection-return' }
+                    ? { title: 'Approve Inspection Costing?', cancel: 'Cancel', confirm: 'Approve Costing', mode: 'inspection-approve' }
+                    : { title: 'Return Costing to Engineer?', cancel: 'Keep Reviewing', confirm: 'Return Costing', mode: 'inspection-return' }
             );
         });
 

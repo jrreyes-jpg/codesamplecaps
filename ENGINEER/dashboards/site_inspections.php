@@ -97,7 +97,7 @@ function engineer_inspection_saved_report_error(mysqli $conn, int $inspectionId,
          WHERE inspection_id = ?"
     );
     if (!$stmt) {
-        return 'Unable to check the saved inspection report.';
+        return 'Unable to check the saved inspection costing.';
     }
 
     $stmt->bind_param('i', $inspectionId);
@@ -151,8 +151,8 @@ function engineer_notify_admin_report_submitted(mysqli $conn, int $inspectionId,
         $adminId,
         'engineer_inspection_report_submitted',
         $inspectionId,
-        'Inspection Report Submitted',
-        ($engineerName !== '' ? $engineerName : 'Engineer') . ' submitted the report for ' . ($clientName !== '' ? $clientName : 'Client') . '.',
+        'Inspection Costing Submitted',
+        ($engineerName !== '' ? $engineerName : 'Engineer') . ' submitted the inspection costing for ' . ($clientName !== '' ? $clientName : 'Client') . '.',
         $reportPath,
         'engineer_inspection_report_submitted:' . $inspectionId . ':' . (string)($notice['submitted_at'] ?? '')
     );
@@ -501,7 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     if (!site_inspection_transition($conn, $inspectionId, $userId, 'Ongoing', 'Completed')
                         || !site_inspection_transition($conn, $inspectionId, $userId, 'Completed', 'Submitted')) {
-                        throw new RuntimeException('Unable to finalize the inspection report.');
+                        throw new RuntimeException('Unable to finalize the inspection costing.');
                     }
 
                     $resetReview = $conn->prepare(
@@ -531,7 +531,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Throwable $notificationError) {
                         error_log('Inspection report Admin notification failed: ' . $notificationError->getMessage());
                     }
-                    $message = 'Inspection report submitted to Admin for review.';
+                    $message = 'Inspection costing submitted to Admin for review.';
                     $savedStatus = 'Submitted';
                 } catch (Throwable $exception) {
                     $conn->rollback();
@@ -614,13 +614,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 : 'material';
             $inventoryId = (int)($inventoryIds[$index] ?? 0);
             $materialId = (int)($materialIds[$index] ?? 0);
+            $itemNotes = trim((string)($notes[$index] ?? ''));
 
             if ($itemType !== 'material') {
                 $materialId = 0;
                 $inventoryId = 0;
             }
 
-            if ($itemName === '' && $rawQuantityText === '' && $rawUnitCostText === '') {
+            // Huwag bilangin ang default na blank row bilang draft item.
+            if ($itemName === ''
+                && $materialId <= 0
+                && $rawUnitCostText === ''
+                && $itemNotes === ''
+                && in_array($rawQuantityText, ['', '1'], true)) {
                 continue;
             }
 
@@ -674,7 +680,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'unit' => $unit,
                 'unit_cost' => $unitCost,
                 'line_total' => $lineTotal,
-                'notes' => trim((string)($notes[$index] ?? '')),
+                'notes' => $itemNotes,
             ];
         }
 
@@ -893,6 +899,8 @@ $materialOptions = material_stock_fetch_active_materials($conn);
 $assetRequirementOptions = [];
 $assetRequirementsByInspection = [];
 $assetRequirementsReady = engineer_inspection_asset_requirements_table_exists($conn);
+// Nakatago muna habang hinihintay kung sino ang hahawak ng company assets.
+$showCompanyAssetRequirements = false;
 
 if ($assetRequirementsReady) {
     $assetOptionsResult = $conn->query(
@@ -1046,7 +1054,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-4',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1058,7 +1066,7 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
-        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection report submitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
+        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection costing submitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
             <div class="shared-toast shared-toast--success" data-shared-toast role="status">
                 <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                 <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
@@ -1094,7 +1102,7 @@ require __DIR__ . '/../layout/header.php';
                     $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
-                        : ($inspectionStatus === 'Submitted' ? 'Report Submitted' : $inspectionStatus);
+                        : ($inspectionStatus === 'Submitted' ? 'Costing Submitted' : $inspectionStatus);
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $isReturnedForRevision = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned';
                     // Para sa dating completed report bago ang one-click submit flow.
@@ -1122,7 +1130,7 @@ require __DIR__ . '/../layout/header.php';
                     }
                     $workflowActionLabel = match ($inspectionStatus) {
                         'Assigned', 'Acknowledged' => 'Start Inspection',
-                        'Ongoing' => 'Submit Report to Admin',
+                        'Ongoing' => 'Submit Costing to Admin',
                         'On Hold' => 'Resume Inspection',
                         default => '',
                     };
@@ -1135,7 +1143,7 @@ require __DIR__ . '/../layout/header.php';
                     $engineerProgressSteps = [
                         ['label' => 'Assigned', 'time' => $statusTimes['Assigned']],
                         ['label' => 'Ongoing', 'time' => $statusTimes['Ongoing']],
-                        ['label' => 'Report Submitted', 'time' => $statusTimes['Submitted']],
+                        ['label' => 'Costing Submitted', 'time' => $statusTimes['Submitted']],
                     ];
                     $engineerProgressIndex = match ($inspectionStatus) {
                         'Ongoing', 'On Hold' => 1,
@@ -1214,7 +1222,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <button type="button" class="btn-secondary" data-workflow-transition>Put On Hold</button>
                                             </form>
                                         <?php endif; ?>
-                                        <?php if ($workflowAction !== '' && $workflowAction !== 'start'): ?>
+                                        <?php if ($workflowAction !== '' && !in_array($workflowAction, ['start', 'complete'], true)): ?>
                                             <form method="POST">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
@@ -1222,6 +1230,13 @@ require __DIR__ . '/../layout/header.php';
                                                 <button type="button" class="btn-primary<?php echo $workflowAction === 'complete' && !$hasSavedFinalReport ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedFinalReport ? 'true' : 'false') . '" aria-disabled="' . ($hasSavedFinalReport ? 'false' : 'true') . '" title="' . htmlspecialchars($hasSavedFinalReport ? '' : $savedReportError, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
                                                     <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                                 </button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <?php if ($workflowAction === 'complete'): ?>
+                                            <form method="POST" id="inspectionCompleteWorkflow<?php echo $inspectionId; ?>" hidden>
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                                <input type="hidden" name="workflow_action" value="complete">
                                             </form>
                                         <?php endif; ?>
                                     </div>
@@ -1340,16 +1355,13 @@ require __DIR__ . '/../layout/header.php';
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
-                                <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Report'; ?></strong>
+                                <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Costing'; ?></strong>
                             </div>
-                            <?php if ($inspectionStatus === 'Ongoing' && !$hasSavedFinalReport): ?>
-                                <p class="inspection-report-hint">Required: Engineer Findings and at least one cost item.</p>
-                            <?php endif; ?>
                             <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
                             <?php elseif ($isLegacyCompletedPending): ?>
-                                <div class="inspection-submit-note inspection-submit-note--waiting">This completed report is not yet sent. Review it, then submit it to Admin to lock the report.</div>
+                                <div class="inspection-submit-note inspection-submit-note--waiting">This costing is not yet sent. Review it, then submit it to Admin.</div>
                             <?php elseif (!$canEditCosting): ?>
                                 <div class="inspection-submit-note inspection-submit-note--waiting">Start the inspection before adding findings and costing.</div>
                             <?php endif; ?>
@@ -1448,12 +1460,12 @@ require __DIR__ . '/../layout/header.php';
                             <?php endif; ?>
                             </details>
 
-                            <div class="inspection-costing-total" aria-label="Estimated inspection cost">
-                                <span>Estimated Inspection Cost</span>
+                            <div class="inspection-costing-total" aria-label="Estimated costing total">
+                                <span>Estimated Costing Total</span>
                                 <strong data-costing-total><?php echo engineer_format_money($totalCost); ?></strong>
                             </div>
 
-                            <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?>>
+                            <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?><?php echo !$showCompanyAssetRequirements ? ' hidden' : ''; ?>>
                                 <summary>Company Assets Needed <span>Optional reusable company assets</span></summary>
                             <section class="asset-requirements" data-asset-requirements>
                                 <?php if (!$assetRequirementsReady): ?>
@@ -1526,8 +1538,12 @@ require __DIR__ . '/../layout/header.php';
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
                                     <div class="inspection-actions__group inspection-actions__group--save">
-                                        <button type="button" class="btn-clear-form" data-clear-costing-form>Clear Form</button>
                                         <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
+                                        <?php if ($workflowAction === 'complete'): ?>
+                                            <button type="button" form="inspectionCompleteWorkflow<?php echo $inspectionId; ?>" class="btn-primary<?php echo !$hasSavedFinalReport ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" data-complete-inspection data-complete-ready="<?php echo $hasSavedFinalReport ? 'true' : 'false'; ?>" aria-disabled="<?php echo $hasSavedFinalReport ? 'false' : 'true'; ?>" title="<?php echo htmlspecialchars($hasSavedFinalReport ? '' : $savedReportError, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($canSubmitToAdmin): ?>
                                             <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
                                         <?php endif; ?>
@@ -1535,7 +1551,7 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
                             <?php endif; ?>
                                 </form><?php if (!$canEditCosting && $inspectionStatus === 'On Hold'): ?>
-                                    <p class="inspection-submit-note inspection-submit-note--waiting">Inspection is on hold. Resume to edit this report.</p>
+                                    <p class="inspection-submit-note inspection-submit-note--waiting">Inspection is on hold. Resume to edit this costing.</p>
                                 <?php endif; ?>
                                 </section>
                             </div>
@@ -1547,11 +1563,11 @@ require __DIR__ . '/../layout/header.php';
 
         <div class="inspection-confirm-modal" data-complete-inspection-modal hidden>
             <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="completeInspectionTitle">
-                <h2 id="completeInspectionTitle">Submit report to Admin?</h2>
-                <p>This will send the report to Admin and lock it for review. Admin can return it for revision.</p>
+                <h2 id="completeInspectionTitle">Submit costing to Admin?</h2>
+                <p>This will send the findings and costing to Admin. Admin can approve or return it.</p>
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-complete-inspection-cancel>Cancel</button>
-                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Submit Report</button>
+                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Submit Costing</button>
                 </div>
             </div>
         </div>
@@ -1619,7 +1635,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-4',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

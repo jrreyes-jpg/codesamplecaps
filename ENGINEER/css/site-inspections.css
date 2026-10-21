@@ -149,7 +149,7 @@
 
 .inspection-status[data-status="Submitted"],
 .inspection-status[data-status="Submitted for Admin Review"],
-.inspection-status[data-status="Report Submitted"] {
+.inspection-status[data-status="Costing Submitted"] {
     background: #dbeafe;
     color: #1d4ed8;
 }
@@ -226,7 +226,7 @@
 }
 
 .inspection-workflow__step[data-phase="Submitted"],
-.inspection-workflow__step[data-phase="Report Submitted"] {
+.inspection-workflow__step[data-phase="Costing Submitted"] {
     border-color: #bfdbfe;
     background: #eff6ff;
     color: #1d4ed8;
@@ -1168,7 +1168,6 @@ body.inspection-modal-open {
 
 .btn-primary,
 .btn-secondary,
-.btn-clear-form,
 .btn-remove-row {
     min-height: 40px;
     border: 0;
@@ -1218,12 +1217,6 @@ body.inspection-modal-open {
     opacity: 0.82;
 }
 
-.btn-clear-form {
-    background: #fff7ed;
-    color: #c2410c;
-    border: 1px solid rgba(234, 88, 12, 0.24);
-}
-
 .btn-remove-row {
     background: #fee2e2;
     color: #991b1b;
@@ -1233,7 +1226,7 @@ body.inspection-modal-open {
 }
 
 .inspection-costing-form .inspection-actions {
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
     margin-top: 16px;
     padding-top: 14px;

@@ -944,12 +944,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  WHERE id = ? AND inquiry_id = ? AND admin_review_status = 'Approved' LIMIT 1"
             );
             if (!$inspectionStmt) {
-                throw new RuntimeException('Unable to check the inspection report.');
+                throw new RuntimeException('Unable to check the inspection costing.');
             }
             $inspectionStmt->bind_param('ii', $inspectionId, $inquiryId);
             $inspectionStmt->execute();
             if (!$inspectionStmt->get_result()->fetch_assoc()) {
-                throw new RuntimeException('Approve the inspection report before choosing the quotation decision.');
+                throw new RuntimeException('Approve the inspection costing before choosing the quotation decision.');
             }
 
             $costStmt = $conn->prepare(
@@ -1251,7 +1251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $reviewStmt->execute();
                 $inspectionBeforeReview = $reviewStmt->get_result()->fetch_assoc();
                 if (!$inspectionBeforeReview) {
-                    throw new RuntimeException('Inspection report was not found.');
+                    throw new RuntimeException('Inspection costing was not found.');
                 }
 
                 $currentInspectionStatus = (string)($inspectionBeforeReview['status'] ?? '');
@@ -1261,7 +1261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $currentReviewStatus,
                     $targetReviewStatus
                 )) {
-                    throw new RuntimeException('This inspection report was already reviewed or is not ready for review.');
+                    throw new RuntimeException('This inspection costing was already reviewed or is not ready for review.');
                 }
 
                 if ($targetReviewStatus === 'Approved') {
@@ -1337,13 +1337,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $conn->commit();
                 $message = $targetReviewStatus === 'Returned'
-                    ? 'Inspection report returned to the Engineer for revision.'
-                    : 'Inspection report approved.';
+                    ? 'Inspection costing returned to the Engineer for revision.'
+                    : 'Inspection costing approved.';
             } catch (Throwable $exception) {
                 $conn->rollback();
                 $safeReviewErrors = [
-                    'Inspection report was not found.',
-                    'This inspection report was already reviewed or is not ready for review.',
+                    'Inspection costing was not found.',
+                    'This inspection costing was already reviewed or is not ready for review.',
                     'Inspection review was not saved. Please refresh the page.',
                     'Engineer findings are required before approval.',
                     'Add at least one costing item with a total above PHP 0 before approval.',
@@ -2303,12 +2303,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261021-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261021-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2670,7 +2670,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <section class="submitted-inspection-report">
                                                 <div class="submitted-inspection-report__head">
                                                     <div>
-                                                        <span>Submitted Inspection Report</span>
+                                                    <span>Submitted Inspection Costing</span>
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
@@ -2747,7 +2747,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         </label>
                                                         <div class="inquiry-review-actions">
                                                             <button type="submit" name="review_decision" value="return" class="btn-secondary">Return to Engineer</button>
-                                                            <button type="submit" name="review_decision" value="approve" class="btn-primary">Approve Inspection Report</button>
+                                                            <button type="submit" name="review_decision" value="approve" class="btn-primary">Approve Costing</button>
                                                         </div>
                                                     </form>
                                                 <?php endif; ?>

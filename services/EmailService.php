@@ -438,22 +438,22 @@ class EmailService {
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Inspection Report Submitted - Edge Automation';
+            $this->mailer->Subject = 'Inspection Costing Submitted - Edge Automation';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
-                        <h2 style='margin:0'>Inspection Report Submitted</h2>
+                        <h2 style='margin:0'>Inspection Costing Submitted</h2>
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
                         <p>Hello {$safeAdmin},</p>
-                        <p>{$safeEngineer} submitted a site inspection report for your review.</p>
+                        <p>{$safeEngineer} submitted site findings and costing for your review.</p>
                         <p><strong>Client:</strong> {$safeClient}</p>
                         <p><strong>Service:</strong> {$safeService}</p>
                         <p><strong>Inspection Date:</strong> {$safeDate}</p>
-                        <p><a href='{$safeReportUrl}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>View Inspection Report</a></p>
+                        <p><a href='{$safeReportUrl}' style='display:inline-block;padding:10px 16px;border-radius:8px;background:#166534;color:#fff;text-decoration:none;font-weight:bold'>Review Inspection Costing</a></p>
                     </div>
                 </div>";
-            $this->mailer->AltBody = "Hello {$adminName},\n\n{$engineerName} submitted a site inspection report for your review.\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionDate}\nView Inspection Report: {$reportUrl}";
+            $this->mailer->AltBody = "Hello {$adminName},\n\n{$engineerName} submitted site findings and costing for your review.\nClient: {$clientName}\nService: {$service}\nInspection Date: {$inspectionDate}\nReview Inspection Costing: {$reportUrl}";
             $this->mailer->send();
             return true;
         } catch (Exception $e) {

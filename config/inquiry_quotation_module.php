@@ -514,12 +514,12 @@ function inquiry_quote_create_post_inspection_revision(
              FOR UPDATE"
         );
         if (!$inspectionStmt) {
-            throw new RuntimeException('Unable to check the inspection report.');
+            throw new RuntimeException('Unable to check the inspection costing.');
         }
         $inspectionStmt->bind_param('ii', $inspectionId, $inquiryId);
         $inspectionStmt->execute();
         if (!$inspectionStmt->get_result()->fetch_assoc()) {
-            throw new RuntimeException('Approve the inspection report before creating a revised quotation.');
+            throw new RuntimeException('Approve the inspection costing before creating a revised quotation.');
         }
 
         if (inquiry_quote_fetch_post_inspection_decision($conn, $inspectionId)) {

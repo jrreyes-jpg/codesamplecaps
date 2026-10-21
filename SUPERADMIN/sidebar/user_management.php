@@ -89,7 +89,10 @@ $messageType = $messageType ?? 'success';
                         <input type="search" id="userSearch" placeholder="Search name, email, phone, or role" data-user-search>
                     </label>
                 </div>
-                <button type="button" class="btn-primary user-management-trigger" data-open-create-modal>Create Account</button>
+                <button type="button" class="btn-primary user-management-trigger" data-open-create-modal>
+                    <span class="user-management-trigger__icon" aria-hidden="true">+</span>
+                    <span>Create Account</span>
+                </button>
             </div>
 
             <div class="dashboard-actions user-filters">
@@ -200,7 +203,6 @@ $messageType = $messageType ?? 'success';
                                                         data-user-status="<?php echo htmlspecialchars((string)$status, ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-user-status-date="<?php echo htmlspecialchars(superadmin_user_format_date($user['status_changed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
                                                     >Edit Details</button>
-                                                    <button type="button" class="user-actions-menu__item" data-open-reset-modal data-user-id="<?php echo $rowId; ?>" data-user-name="<?php echo htmlspecialchars((string)$user['full_name'], ENT_QUOTES, 'UTF-8'); ?>">Reset Password</button>
                                                     <?php if ($status === 'active' && !empty($deactivationBlockers)): ?>
                                                         <button
                                                             type="button"
@@ -335,40 +337,6 @@ $messageType = $messageType ?? 'success';
                     <div class="user-create-modal__actions">
                         <button type="button" class="btn-secondary" data-close-edit-modal>Cancel</button>
                         <button type="submit" class="btn-primary">Save Changes</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="modal-backdrop user-create-modal" data-reset-password-modal hidden>
-            <div class="modal-panel user-create-modal__panel user-reset-modal__panel" role="dialog" aria-modal="true" aria-labelledby="resetPasswordModalTitle">
-                <div class="user-create-modal__header">
-                    <div>
-                        <p class="section-kicker">Reset Password</p>
-                        <h2 id="resetPasswordModalTitle" class="dashboard-section-title">Set temporary password</h2>
-                        <p class="user-reset-target" data-reset-password-target>User account</p>
-                    </div>
-                    <button type="button" class="modal-close-button" aria-label="Close reset password modal" data-close-reset-modal>&times;</button>
-                </div>
-                <form method="POST" class="user-create-form" data-reset-password-form novalidate>
-                    <input type="hidden" name="action" value="reset_password">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                    <input type="hidden" name="user_id" data-reset-password-user-id>
-                    <div class="form-row">
-                        <div class="form-group password-field">
-                            <label for="reset_new_password">New Temporary Password <span class="required-indicator">*</span></label>
-                            <div class="password-input-wrap">
-                                <input type="password" id="reset_new_password" name="new_password" minlength="12" required>
-                                <button type="button" class="togglePassword" data-target="reset_new_password">Show</button>
-                            </div>
-                            <small class="field-error" data-field-error hidden></small>
-                            <small class="password-tip">Tell the user to change this after login.</small>
-                            <small id="resetPassStrength" class="pass-indicator">Strength: -</small>
-                        </div>
-                    </div>
-                    <div class="user-create-modal__actions">
-                        <button type="button" class="btn-secondary" data-close-reset-modal>Cancel</button>
-                        <button type="submit" class="btn-primary">Update Password</button>
                     </div>
                 </form>
             </div>

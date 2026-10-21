@@ -400,31 +400,6 @@ function superadmin_user_handle_post(mysqli $conn, array $allowedRoles, array $a
         superadmin_user_redirect('users');
     }
 
-    if ($action === 'reset_password') {
-        $userId = (int)($_POST['user_id'] ?? 0);
-        $newPassword = trim((string)($_POST['new_password'] ?? ''));
-        $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;
-
-        if ($userId <= 0 || !$user || normalizeRole((string)$user['role']) === 'super_admin' || !isStrongPassword($newPassword)) {
-            superadmin_user_flash('error', 'Password reset failed. Use a strong temporary password.');
-            superadmin_user_redirect('users');
-        }
-
-        $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare('UPDATE users SET password = ? WHERE id = ?');
-        $stmt->bind_param('si', $passwordHash, $userId);
-        if ($stmt->execute()) {
-            audit_log_event($conn, (int)($_SESSION['user_id'] ?? 0), 'reset_user_password', 'user', $userId, null, [
-                'email' => $user['email'] ?? null,
-                'role' => normalizeRole((string)($user['role'] ?? '')),
-            ]);
-            superadmin_user_flash('success', 'Temporary password updated successfully.');
-        } else {
-            superadmin_user_flash('error', 'Failed to reset password.');
-        }
-        superadmin_user_redirect('users');
-    }
-
     if ($action === 'delete_user') {
         $userId = (int)($_POST['user_id'] ?? 0);
         $user = $userId > 0 ? getUserForStatusChange($conn, $userId) : null;

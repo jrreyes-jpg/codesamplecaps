@@ -149,7 +149,7 @@ body:has([data-user-management-shell]) .user-management-panel {
 }
 
 .main-content.superadmin-user-management-page .user-table-toolbar {
-    grid-template-columns: minmax(160px, 0.8fr) minmax(280px, 1.5fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 620px) minmax(0, 1fr);
     gap: 16px;
     padding: 0;
 }
@@ -661,15 +661,6 @@ body:has([data-user-management-shell]) .user-management-panel {
     color: #ffffff;
 }
 
-.action-btn.reset-password {
-    background: #2563eb;
-    color: #ffffff;
-}
-
-.action-btn.reset-password:hover {
-    background: #1d4ed8;
-}
-
 .user-management-shell {
     display: grid;
     gap: 24px;
@@ -776,7 +767,17 @@ body:has([data-user-management-shell]) .user-management-panel {
     min-height: 46px;
     align-self: center;
     justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     white-space: nowrap;
+}
+
+.user-management-trigger__icon {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
 .user-search-field input:focus {
@@ -1490,12 +1491,6 @@ body:has([data-user-management-shell]) .user-management-panel {
     pointer-events: none;
 }
 
-.user-reset-target {
-    margin: 6px 0 0;
-    color: #64748b;
-    font-weight: 700;
-}
-
 .user-edit-modal__panel {
     width: min(720px, 100%);
 }
@@ -1563,10 +1558,6 @@ body:has([data-user-management-shell]) .user-management-panel {
     .user-edit-modal__panel .form-row {
         grid-template-columns: 1fr;
     }
-}
-
-.user-reset-modal__panel {
-    width: min(560px, 100%);
 }
 
 /* User Management-only helpers */

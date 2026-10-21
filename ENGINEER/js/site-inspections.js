@@ -116,12 +116,13 @@ document.addEventListener('DOMContentLoaded', function () {
         saveButton.classList.toggle('is-disabled', !isDirty);
         saveButton.setAttribute('aria-disabled', isDirty ? 'false' : 'true');
 
-        const completeButton = form.closest('.inspection-modal')?.querySelector('[data-complete-inspection]');
-        if (completeButton) {
-            const canComplete = completeButton.getAttribute('data-complete-ready') === 'true' && !isDirty;
-            completeButton.classList.toggle('is-locked', !canComplete);
-            completeButton.setAttribute('aria-disabled', canComplete ? 'false' : 'true');
-            completeButton.title = canComplete ? '' : 'Save Engineer Findings and report changes first.';
+        const submitButton = form.querySelector('[data-submit-costing]');
+        if (submitButton) {
+            const canSubmit = isCostingReadyForSubmit(form);
+            submitButton.disabled = !canSubmit;
+            submitButton.classList.toggle('is-locked', !canSubmit);
+            submitButton.setAttribute('aria-disabled', canSubmit ? 'false' : 'true');
+            submitButton.title = canSubmit ? '' : 'Complete the required findings and cost item.';
         }
 
         if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
@@ -137,7 +138,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const fillRow = function (row, data) {
-        row.querySelector('select[name="item_type[]"]').value = data.item_type || 'material';
+        row.querySelector('select[name="item_type[]"]').value = data.item_type === 'service'
+            ? 'other'
+            : (data.item_type || 'material');
         const materialPicker = row.querySelector('select[name="material_id[]"]');
         if (materialPicker) {
             materialPicker.value = data.material_id || '';
@@ -219,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         feedback.classList.add('is-shortage');
         feedback.textContent = available <= 0
-            ? `Out of stock · ${availableLabel} available`
+            ? 'Out of stock — Admin may need to purchase this material.'
             : `Stock shortage: ${availableLabel} available, ${requiredLabel} needed.`;
     };
 
@@ -506,7 +509,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const hasMeaningfulFindings = function (value) {
         const text = String(value || '').trim();
-        return text !== '' && /[a-z]/i.test(text);
+        return text.length >= 10 && text.length <= 1000 && /[a-z]/i.test(text);
+    };
+
+    const updateFindingsCount = function (form) {
+        const field = form.querySelector('textarea[name="engineer_findings"]');
+        const counter = form.querySelector('[data-findings-count]');
+        if (field && counter) counter.textContent = `${field.value.length} / 1000`;
     };
 
     const costErrorMessage = function (value) {
@@ -662,7 +671,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (requireFinal && findings && !hasMeaningfulFindings(findings.value)) {
-            setFieldError(findings, 'Enter Engineer Findings.');
+            setFieldError(findings, 'Enter 10 to 1,000 characters.');
             firstInvalid = firstInvalid || findings;
         }
 
@@ -674,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (firstInvalid) {
-            showCostingError(form, 'Please fix the highlighted fields below.');
+            showCostingError(form, 'Complete the highlighted fields before submitting.');
             firstInvalid.closest('details')?.setAttribute('open', '');
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof firstInvalid.focus === 'function') {
@@ -684,6 +693,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         return true;
+    };
+
+    const isCostingReadyForSubmit = function (form) {
+        const findings = form.querySelector('textarea[name="engineer_findings"]');
+        if (!findings || !hasMeaningfulFindings(findings.value)) return false;
+
+        const rows = Array.from(form.querySelectorAll('.costing-row')).filter(rowHasMeaningfulData);
+        if (rows.length < 1) return false;
+
+        return rows.every(function (row) {
+            const name = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
+            const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
+            const unit = row.querySelector('select[name="unit[]"]')?.value || '';
+            const unitCost = row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
+            return name !== ''
+                && unit !== ''
+                && isValidQuantityText(quantity, unit)
+                && isValidCostText(unitCost);
+        });
     };
 
     const bindRow = function (form, row) {
@@ -873,12 +901,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         form.querySelectorAll('textarea').forEach(function (field) {
             field.addEventListener('input', function () {
+                if (field.name === 'engineer_findings') updateFindingsCount(form);
                 clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
         });
+        updateFindingsCount(form);
 
         form.addEventListener('submit', function (event) {
             if (form.dataset.isSaving === 'true') {
@@ -907,7 +937,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.preventDefault();
                 openInspectionActionConfirm({
                     trigger: event.submitter,
-                    title: 'Submit Costing to Admin?',
+                    title: 'Submit to Admin?',
                     message: 'This will submit the inspection findings and costing to Admin for review.',
                     confirm: 'Submit to Admin',
                     onConfirm: function () {
@@ -1137,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const nextAction = {
             Assigned: ['start', 'Start Inspection'],
             Acknowledged: ['start', 'Start Inspection'],
-            Ongoing: ['complete', 'Submit Costing to Admin'],
+            Ongoing: ['complete', 'Submit to Admin'],
         }[status];
         if (!nextAction) {
             actionButton?.remove();
@@ -1304,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function () {
         completionCancelButton.disabled = true;
         completionConfirmButton.disabled = true;
         completionConfirmButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting costing...';
-        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Submit Costing to Admin';
+        pendingCompletionButton.dataset.originalLabel = pendingCompletionButton.textContent.trim() || 'Submit to Admin';
         pendingCompletionButton.disabled = true;
         pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting costing...';
         requestWorkflowTransition(pendingCompletionForm, pendingCompletionButton).then(function (success) {
@@ -1520,13 +1550,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const reportIsValid = costingForm ? validateCosting(costingForm, true) : false;
             const findingsAreValid = hasMeaningfulFindings(findings?.value || '');
 
-            if (!reportIsValid || !findingsAreValid || button.getAttribute('data-complete-ready') !== 'true' || (costingForm && isFormDirty(costingForm))) {
+            if (!reportIsValid || !findingsAreValid) {
                 if (!findingsAreValid && findings) {
-                    setFieldError(findings, 'Enter Engineer Findings.');
+                    setFieldError(findings, 'Enter 10 to 1,000 characters.');
                 }
-                showCostingError(costingForm, 'Fix and save the highlighted report fields before completing.');
+                showCostingError(costingForm, 'Complete the highlighted fields before submitting.');
                 (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.focus();
+                return;
+            }
+            if (button.getAttribute('data-complete-ready') !== 'true' || (costingForm && isFormDirty(costingForm))) {
+                showCostingError(costingForm, 'Save the costing first before submitting.');
+                costingForm?.querySelector('[data-save-draft]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             openCompletionModal(form, button);

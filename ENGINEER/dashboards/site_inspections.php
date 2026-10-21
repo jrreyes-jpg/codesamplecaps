@@ -79,8 +79,8 @@ function engineer_inspection_valid_unit_cost(string $value): bool
 function engineer_inspection_has_meaningful_findings(string $value): bool
 {
     $value = trim($value);
-    // Kahit maikling malinaw na finding ay puwede.
-    return $value !== '' && preg_match('/\p{L}/u', $value) === 1;
+    $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+    return $length >= 10 && $length <= 1000 && preg_match('/\p{L}/u', $value) === 1;
 }
 
 function engineer_inspection_saved_report_error(mysqli $conn, int $inspectionId, string $findings): string
@@ -574,8 +574,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'This inspection was already submitted to Admin.';
     } elseif (!in_array($currentStatus, ['Ongoing', 'Completed'], true)) {
         $error = 'Start the inspection before saving findings or costing.';
-    } elseif ($costingAction === 'submit_to_admin' && $currentStatus !== 'Completed') {
-        $error = 'Mark the inspection completed before submitting to Admin.';
     } else {
         $itemTypes = $_POST['item_type'] ?? [];
         $inventoryIds = $_POST['inventory_id'] ?? [];
@@ -589,6 +587,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $assetRequirementQuantities = $_POST['asset_requirement_quantity'] ?? [];
         $assetRequirementNotes = $_POST['asset_requirement_notes'] ?? [];
         $engineerFindings = trim((string)($_POST['engineer_findings'] ?? ''));
+        $engineerFindingsLength = function_exists('mb_strlen')
+            ? mb_strlen($engineerFindings, 'UTF-8')
+            : strlen($engineerFindings);
         $riskNotes = trim((string)($_POST['risk_notes'] ?? ''));
         $clientRequests = trim((string)($_POST['client_requests'] ?? ''));
         $rows = [];
@@ -609,7 +610,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $unit = trim((string)($units[$index] ?? 'unit'));
             $quantity = (float)($quantities[$index] ?? 0);
             $unitCost = (float)($unitCosts[$index] ?? 0);
-            $itemType = in_array(($itemTypes[$index] ?? 'material'), ['material', 'labor', 'equipment', 'service', 'other'], true)
+            $itemType = in_array(($itemTypes[$index] ?? 'material'), ['material', 'labor', 'equipment', 'other'], true)
                 ? (string)$itemTypes[$index]
                 : 'material';
             $inventoryId = (int)($inventoryIds[$index] ?? 0);
@@ -722,6 +723,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
 
+        if ($error === '' && $engineerFindingsLength > 1000) {
+            $error = 'Engineer Findings must not exceed 1,000 characters.';
+        }
+
         if ($error === '' && $costingAction === 'submit_to_admin' && empty($rows)) {
             $error = 'Please add at least one costing item.';
         }
@@ -732,7 +737,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === '' && $costingAction === 'submit_to_admin') {
             if (!engineer_inspection_has_meaningful_findings($engineerFindings)) {
-                $error = 'Enter Engineer Findings before submitting.';
+                $error = 'Engineer Findings must be 10 to 1,000 characters.';
             } elseif ($grandTotal <= 0) {
                 $error = 'Total costing must be greater than 0 before submitting.';
             }
@@ -832,9 +837,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notesStmt->bind_param('sssii', $engineerFindings, $riskNotes, $clientRequests, $inspectionId, $userId);
                 $notesStmt->execute();
 
-                if ($costingAction === 'submit_to_admin'
-                    && !site_inspection_transition($conn, $inspectionId, $userId, 'Completed', 'Submitted')) {
-                    throw new RuntimeException('Failed to submit the inspection status.');
+                if ($costingAction === 'submit_to_admin') {
+                    if ($currentStatus === 'Ongoing'
+                        && !site_inspection_transition($conn, $inspectionId, $userId, 'Ongoing', 'Completed')) {
+                        throw new RuntimeException('Failed to complete the inspection status.');
+                    }
+                    if (!site_inspection_transition($conn, $inspectionId, $userId, 'Completed', 'Submitted')) {
+                        throw new RuntimeException('Failed to submit the inspection status.');
+                    }
                 }
 
                 if ($costingAction === 'submit_to_admin') {
@@ -873,6 +883,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = $costingAction === 'submit_to_admin'
                     ? 'Costing submitted to Admin.'
                     : 'Inspection draft saved.';
+                if ($costingAction === 'submit_to_admin') {
+                    try {
+                        engineer_notify_admin_report_submitted($conn, $inspectionId, (string)($_SESSION['name'] ?? 'Engineer'));
+                    } catch (Throwable $notificationError) {
+                        error_log('Inspection costing Admin notification failed: ' . $notificationError->getMessage());
+                    }
+                }
             } catch (Throwable $exception) {
                 $conn->rollback();
                 $error = 'Failed to save costing.';
@@ -1054,7 +1071,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-4',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-6',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1130,7 +1147,7 @@ require __DIR__ . '/../layout/header.php';
                     }
                     $workflowActionLabel = match ($inspectionStatus) {
                         'Assigned', 'Acknowledged' => 'Start Inspection',
-                        'Ongoing' => 'Submit Costing to Admin',
+                        'Ongoing' => 'Submit to Admin',
                         'On Hold' => 'Resume Inspection',
                         default => '',
                     };
@@ -1158,7 +1175,7 @@ require __DIR__ . '/../layout/header.php';
                             'item_name' => '',
                             'quantity' => 1,
                             'unit' => 'unit',
-                            'unit_cost' => 0,
+                            'unit_cost' => '',
                             'notes' => '',
                         ]];
                     }
@@ -1230,13 +1247,6 @@ require __DIR__ . '/../layout/header.php';
                                                 <button type="button" class="btn-primary<?php echo $workflowAction === 'complete' && !$hasSavedFinalReport ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $workflowAction === 'complete' ? 'data-complete-inspection data-complete-ready="' . ($hasSavedFinalReport ? 'true' : 'false') . '" aria-disabled="' . ($hasSavedFinalReport ? 'false' : 'true') . '" title="' . htmlspecialchars($hasSavedFinalReport ? '' : $savedReportError, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
                                                     <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                                                 </button>
-                                            </form>
-                                        <?php endif; ?>
-                                        <?php if ($workflowAction === 'complete'): ?>
-                                            <form method="POST" id="inspectionCompleteWorkflow<?php echo $inspectionId; ?>" hidden>
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
-                                                <input type="hidden" name="workflow_action" value="complete">
                                             </form>
                                         <?php endif; ?>
                                     </div>
@@ -1369,7 +1379,8 @@ require __DIR__ . '/../layout/header.php';
                             <div class="inspection-costing-notes">
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
-                                    <textarea name="engineer_findings" rows="3" placeholder="Actual problem found, site condition, or recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    <textarea name="engineer_findings" rows="3" maxlength="1000" aria-describedby="engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Actual problem found, site condition, or recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    <small id="engineerFindingsCount<?php echo $inspectionId; ?>" class="inspection-findings-count" data-findings-count>0 / 1000</small>
                                 </label>
                             </div>
 
@@ -1398,8 +1409,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <option value="material" <?php echo ($item['item_type'] ?? '') === 'material' ? 'selected' : ''; ?>>Material</option>
                                                 <option value="labor" <?php echo ($item['item_type'] ?? '') === 'labor' ? 'selected' : ''; ?>>Labor</option>
                                                 <option value="equipment" <?php echo ($item['item_type'] ?? '') === 'equipment' ? 'selected' : ''; ?>>Equipment (Billable / Rental)</option>
-                                                <option value="service" <?php echo ($item['item_type'] ?? '') === 'service' ? 'selected' : ''; ?>>Service</option>
-                                                <option value="other" <?php echo ($item['item_type'] ?? '') === 'other' ? 'selected' : ''; ?>>Other</option>
+                                                <option value="other" <?php echo in_array(($item['item_type'] ?? ''), ['other', 'service'], true) ? 'selected' : ''; ?>>Other</option>
                                             </select>
                                         </label>
                                         <label data-material-field>
@@ -1441,7 +1451,7 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label>
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Notes</span>
@@ -1538,14 +1548,9 @@ require __DIR__ . '/../layout/header.php';
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
                                     <div class="inspection-actions__group inspection-actions__group--save">
-                                        <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft disabled>Save Draft</button>
-                                        <?php if ($workflowAction === 'complete'): ?>
-                                            <button type="button" form="inspectionCompleteWorkflow<?php echo $inspectionId; ?>" class="btn-primary<?php echo !$hasSavedFinalReport ? ' is-locked' : ''; ?>" data-workflow-transition data-confirm-inspection-transition="<?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>" data-complete-inspection data-complete-ready="<?php echo $hasSavedFinalReport ? 'true' : 'false'; ?>" aria-disabled="<?php echo $hasSavedFinalReport ? 'false' : 'true'; ?>" title="<?php echo htmlspecialchars($hasSavedFinalReport ? '' : $savedReportError, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <?php echo htmlspecialchars($workflowActionLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                            </button>
-                                        <?php endif; ?>
-                                        <?php if ($canSubmitToAdmin): ?>
-                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-confirm-submit-costing><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
+                                        <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft formnovalidate disabled>Save Draft</button>
+                                        <?php if ($workflowAction === 'complete' || $canSubmitToAdmin): ?>
+                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary is-locked" data-submit-costing data-confirm-submit-costing aria-disabled="true" disabled><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -1635,7 +1640,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-4',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-6',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

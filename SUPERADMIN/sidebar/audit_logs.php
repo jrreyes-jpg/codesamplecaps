@@ -292,6 +292,10 @@ $actorFilter = (int)($_GET['actor'] ?? 0);
 $viewAllActivity = (string)($_GET['view'] ?? '') === 'all';
 $viewLoginSecurity = (string)($_GET['view'] ?? '') === 'login_security';
 $exportCsv = (string)($_GET['export'] ?? '') === 'csv';
+$auditPage = max(1, (int)($_GET['page'] ?? 1));
+$auditRowsPerPage = 10;
+$auditTotalRows = 0;
+$auditTotalPages = 1;
 $allowedEntities = ['user', 'project', 'inventory', 'asset', 'scan', 'task', 'quotation'];
 $allowedQuickFilters = ['today', 'week', 'month'];
 $allowedRoleFilters = ['admin', 'engineer', 'foreman', 'inventory_clerk', 'client'];
@@ -430,7 +434,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
     }
 
     if ($shouldLoadActivityRows) {
-        $sql = "SELECT
+        $selectSql = "SELECT
                 l.id,
                 l.created_at,
                 l.action,
@@ -440,16 +444,17 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
                 l.new_values,
                 l.ip_address,
                 actor.full_name AS actor_name,
-                actor.role AS actor_role
-            FROM audit_logs l
+                actor.role AS actor_role";
+        $fromSql = " FROM audit_logs l
             LEFT JOIN users actor ON actor.id = l.user_id
             WHERE 1 = 1";
+        $whereSql = '';
 
         $params = [];
         $types = '';
 
         if ($search !== '') {
-            $sql .= " AND (
+            $whereSql .= " AND (
             LOWER(l.action) LIKE ?
             OR LOWER(REPLACE(l.action, '_', ' ')) LIKE ?
             OR LOWER(l.entity_type) LIKE ?
@@ -481,57 +486,80 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
 
         if ($entityFilter !== '') {
             if ($entityFilter === 'scan') {
-                $sql .= " AND l.entity_type IN ('scan', 'scan_history', 'asset_scan_history')";
+                $whereSql .= " AND l.entity_type IN ('scan', 'scan_history', 'asset_scan_history')";
             } elseif ($entityFilter === 'project') {
-                $sql .= " AND l.entity_type IN ('project', 'projects')";
+                $whereSql .= " AND l.entity_type IN ('project', 'projects')";
             } elseif ($entityFilter === 'user') {
-                $sql .= " AND l.entity_type IN ('user', 'users')";
+                $whereSql .= " AND l.entity_type IN ('user', 'users')";
             } elseif ($entityFilter === 'asset') {
-                $sql .= " AND l.entity_type IN ('asset', 'assets')";
+                $whereSql .= " AND l.entity_type IN ('asset', 'assets')";
             } elseif ($entityFilter === 'inventory') {
-                $sql .= " AND l.entity_type = 'inventory'";
+                $whereSql .= " AND l.entity_type = 'inventory'";
             } elseif ($entityFilter === 'task') {
-                $sql .= " AND l.entity_type IN ('task', 'tasks')";
+                $whereSql .= " AND l.entity_type IN ('task', 'tasks')";
             } elseif ($entityFilter === 'quotation') {
-                $sql .= " AND l.entity_type IN ('quotation', 'quotations')";
+                $whereSql .= " AND l.entity_type IN ('quotation', 'quotations')";
             }
         }
 
         if ($actionFilter !== '') {
-            $sql .= ' AND l.action = ?';
+            $whereSql .= ' AND l.action = ?';
             $params[] = $actionFilter;
             $types .= 's';
         }
 
         if ($dateFilter !== '') {
-            $sql .= ' AND DATE(l.created_at) = ?';
+            $whereSql .= ' AND DATE(l.created_at) = ?';
             $params[] = $dateFilter;
             $types .= 's';
         } elseif ($quickStartDate !== '' && $quickEndDate !== '') {
-            $sql .= ' AND DATE(l.created_at) BETWEEN ? AND ?';
+            $whereSql .= ' AND DATE(l.created_at) BETWEEN ? AND ?';
             $params[] = $quickStartDate;
             $params[] = $quickEndDate;
             $types .= 'ss';
         }
 
         if ($roleFilter !== '') {
-            $sql .= ' AND actor.role = ?';
+            $whereSql .= ' AND actor.role = ?';
             $params[] = $roleFilter;
             $types .= 's';
         }
 
         if ($actorFilter > 0) {
-            $sql .= ' AND l.user_id = ?';
+            $whereSql .= ' AND l.user_id = ?';
             $params[] = $actorFilter;
             $types .= 'i';
         }
 
-        $sql .= ' ORDER BY l.created_at DESC LIMIT 300';
+        $countStmt = $conn->prepare('SELECT COUNT(*) AS total' . $fromSql . $whereSql);
+        if ($countStmt) {
+            if ($types !== '') {
+                $countStmt->bind_param($types, ...$params);
+            }
+            $countStmt->execute();
+            $countResult = $countStmt->get_result();
+            $auditTotalRows = (int)(($countResult ? $countResult->fetch_assoc()['total'] : 0) ?? 0);
+        }
+
+        $auditTotalPages = max(1, (int)ceil($auditTotalRows / $auditRowsPerPage));
+        $auditPage = min($auditPage, $auditTotalPages);
+
+        $sql = $selectSql . $fromSql . $whereSql . ' ORDER BY l.created_at DESC';
+        $queryParams = $params;
+        $queryTypes = $types;
+        if ($exportCsv) {
+            $sql .= ' LIMIT 300';
+        } else {
+            $sql .= ' LIMIT ? OFFSET ?';
+            $queryParams[] = $auditRowsPerPage;
+            $queryParams[] = ($auditPage - 1) * $auditRowsPerPage;
+            $queryTypes .= 'ii';
+        }
         $stmt = $conn->prepare($sql);
 
         if ($stmt) {
-            if ($types !== '') {
-                $stmt->bind_param($types, ...$params);
+            if ($queryTypes !== '') {
+                $stmt->bind_param($queryTypes, ...$queryParams);
             }
 
             $stmt->execute();
@@ -568,7 +596,7 @@ if ($exportCsv) {
 }
 superadmin_render_page(
     'Audit Logs',
-    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $viewLoginSecurity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName, $loginAttemptRows, $loginSecurityCsrfToken, $loginMaxAccountAttempts, $loginMaxIpAttempts, $loginLockSeconds, $loginSecurityNotice): void {
+    function () use ($search, $entityFilter, $actionFilter, $dateFilter, $quickFilter, $roleFilter, $actorFilter, $viewAllActivity, $viewLoginSecurity, $actorOptions, $actionOptions, $activityRows, $recentActivityRows, $roleLabels, $selectedActorName, $loginAttemptRows, $loginSecurityCsrfToken, $loginMaxAccountAttempts, $loginMaxIpAttempts, $loginLockSeconds, $loginSecurityNotice, $auditPage, $auditTotalRows, $auditTotalPages): void {
         ?>
         <section class="dashboard-panel audit-logs-panel" id="audit-logs-section" data-reset-url="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php">
             <div class="audit-explorer-header">
@@ -893,6 +921,19 @@ superadmin_render_page(
                     </tbody>
                 </table>
                 </div>
+                <nav class="audit-pagination" aria-label="Audit log pages">
+                    <?php if ($auditPage > 1): ?>
+                        <a class="audit-pagination__button" href="<?php echo htmlspecialchars(audit_logs_filter_url(['page' => $auditPage - 1]), ENT_QUOTES, 'UTF-8'); ?>">Previous</a>
+                    <?php else: ?>
+                        <span class="audit-pagination__button is-disabled" aria-disabled="true">Previous</span>
+                    <?php endif; ?>
+                    <span class="audit-pagination__status">Page <?php echo (int)$auditPage; ?> of <?php echo (int)$auditTotalPages; ?> - <?php echo (int)$auditTotalRows; ?> logs</span>
+                    <?php if ($auditPage < $auditTotalPages): ?>
+                        <a class="audit-pagination__button" href="<?php echo htmlspecialchars(audit_logs_filter_url(['page' => $auditPage + 1]), ENT_QUOTES, 'UTF-8'); ?>">Next</a>
+                    <?php else: ?>
+                        <span class="audit-pagination__button is-disabled" aria-disabled="true">Next</span>
+                    <?php endif; ?>
+                </nav>
             <?php endif; ?>
         </section>
 
@@ -946,7 +987,7 @@ superadmin_render_page(
         </div>
         <?php
     },
-    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261021-5'],
+    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261021-6'],
     ['/codesamplecaps/SUPERADMIN/js/audit-logs.js?v=20261021-2'],
     'audit-logs-content'
 );

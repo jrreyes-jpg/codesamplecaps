@@ -1046,7 +1046,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1102,6 +1102,7 @@ require __DIR__ . '/../layout/header.php';
                     $isScheduleDateReached = engineer_inspection_schedule_date_is_reached($inspection['scheduled_at'] ?? null);
                     $isInspectionStarted = in_array($inspectionStatus, ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true);
                     $canOpenInspectionReport = $isScheduleDateReached && $isInspectionStarted;
+                    $showReportRequiredBadge = $isInspectionStarted && !$isSubmittedToAdmin;
                     $canEditCosting = $inspectionStatus === 'Ongoing' || $isReturnedForRevision || $isLegacyCompletedPending;
                     $canSubmitToAdmin = $isReturnedForRevision || $isLegacyCompletedPending;
                     $savedReportError = engineer_inspection_saved_report_error(
@@ -1169,7 +1170,7 @@ require __DIR__ . '/../layout/header.php';
                             </button>
                         </div>
 
-                        <div class="inspection-modal" id="inspectionModal<?php echo $inspectionId; ?>" hidden>
+                        <div class="inspection-modal" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>" hidden>
                             <div class="inspection-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
                                 <div class="inspection-modal__head">
                                     <div>
@@ -1199,7 +1200,10 @@ require __DIR__ . '/../layout/header.php';
                                 <div class="inspection-tab-toolbar">
                                     <div class="inspection-tabs" role="tablist" aria-label="Site inspection sections">
                                         <button type="button" class="inspection-tabs__button is-active" role="tab" aria-selected="true" aria-controls="inspectionDetails<?php echo $inspectionId; ?>" id="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab="details">Details</button>
-                                        <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report" <?php echo !$canOpenInspectionReport ? 'disabled aria-disabled="true" title="Start the inspection on its scheduled date to open this report."' : ''; ?>>Inspection Report</button>
+                                        <button type="button" class="inspection-tabs__button" role="tab" aria-selected="false" aria-controls="inspectionReport<?php echo $inspectionId; ?>" id="inspectionReportTab<?php echo $inspectionId; ?>" data-inspection-tab="report" <?php echo !$canOpenInspectionReport ? 'disabled aria-disabled="true" title="Start the inspection on its scheduled date to open this report."' : ''; ?>>
+                                            <span>Inspection Report</span>
+                                            <?php if ($showReportRequiredBadge): ?><small class="inspection-tabs__required">Required</small><?php endif; ?>
+                                        </button>
                                     </div>
                                     <div class="inspection-report-actions" data-inspection-report-actions hidden>
                                         <?php if ($inspectionStatus === 'Ongoing'): ?>
@@ -1615,7 +1619,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261020-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

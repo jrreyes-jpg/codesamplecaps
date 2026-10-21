@@ -1625,7 +1625,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.classList.add('inspection-modal-open');
         window.localStorage.setItem(activeModalKey, modal.id);
         const savedTab = window.localStorage.getItem(`${activeTabKey}.${modal.id}`);
-        if (savedTab === 'details' || savedTab === 'report') {
+        if (modal.dataset.reportSubmitted === 'true') {
+            activateInspectionTab(modal, 'report');
+        } else if (savedTab === 'details' || savedTab === 'report') {
             activateInspectionTab(modal, savedTab);
         }
         modal.querySelector('[data-inspection-modal-close]')?.focus();

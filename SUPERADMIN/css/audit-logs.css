@@ -47,19 +47,14 @@
 }
 
 .audit-explorer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
+    display: block;
     margin-bottom: 12px;
 }
 
 .audit-explorer-header__main {
-    display: flex;
-    align-items: center;
+    display: grid;
     gap: 14px;
     min-width: 0;
-    flex: 1 1 auto;
 }
 
 .audit-header-search {
@@ -67,12 +62,51 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    flex: 1 1 auto;
-    min-width: 260px;
+    width: 100%;
+    min-width: 0;
 }
 
 .audit-header-search .audit-logs-smart-field {
-    width: 100%;
+    width: auto;
+}
+
+.audit-header-search .audit-header-search__query {
+    flex: 1 1 320px;
+    min-width: 220px;
+}
+
+.audit-header-search .audit-logs-smart-field--date {
+    flex: 0 0 220px;
+    min-width: 220px;
+}
+
+.audit-header-search .audit-logs-smart-field--select {
+    flex: 0 0 220px;
+    min-width: 220px;
+}
+
+.audit-logs-smart-field__label {
+    flex: 0 0 auto;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.audit-header-clear {
+    flex: 0 0 auto;
+    min-height: 44px;
+    min-width: 118px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.audit-header-clear.is-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: default;
 }
 
 .audit-breadcrumb {
@@ -770,10 +804,23 @@
         grid-template-columns: 1fr;
     }
 
-    .audit-explorer-header,
     .audit-explorer-header__main {
         align-items: stretch;
-        flex-direction: column;
+    }
+
+    .audit-header-search {
+        flex-wrap: wrap;
+    }
+
+    .audit-header-search .audit-header-search__query {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .audit-header-search .audit-logs-smart-field--date,
+    .audit-header-search .audit-logs-smart-field--select {
+        flex: 1 1 220px;
+        min-width: 220px;
     }
 
     .audit-logs-toolbar__filters {
@@ -793,6 +840,18 @@
 
     .audit-header-search {
         flex-wrap: wrap;
+    }
+
+    .audit-header-search .audit-header-search__query,
+    .audit-header-search .audit-logs-smart-field--date,
+    .audit-header-search .audit-logs-smart-field--select {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .audit-header-clear {
+        width: 100%;
     }
 
     .audit-logs-toolbar__search,

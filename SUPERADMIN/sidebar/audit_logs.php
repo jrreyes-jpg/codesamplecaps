@@ -101,6 +101,10 @@ function audit_logs_format_datetime(?string $dateTime): string {
 }
 
 function audit_logs_action_class(string $action): string {
+    if ($action === 'login') {
+        return 'audit-action-info';
+    }
+
     if (strpos($action, 'fail') !== false || strpos($action, 'delete') !== false || strpos($action, 'trash') !== false) {
         return 'audit-action-danger';
     }
@@ -198,6 +202,10 @@ function audit_logs_build_details(array $entry): string {
     $actorName = (string)($entry['actor_name'] ?? 'System');
     $oldValues = audit_logs_decode_payload($entry['old_values'] ?? null);
     $newValues = audit_logs_decode_payload($entry['new_values'] ?? null);
+
+    if ($action === 'login') {
+        return 'Successful login';
+    }
 
     if ($action === 'create_user') {
         return ($newValues['full_name'] ?? 'Unknown user') . ' | ' . ucwords(str_replace('_', ' ', (string)($newValues['role'] ?? 'user')));
@@ -340,6 +348,7 @@ $loginSecurityCsrfToken = auth_csrf_token('superadmin_login_security');
 $loginMaxAccountAttempts = (int)Config::getInstance()->get('LOGIN_MAX_ATTEMPTS', 5);
 $loginMaxIpAttempts = 15;
 $loginLockSeconds = (int)Config::getInstance()->get('LOGIN_LOCKOUT_MINUTES', 15) * 60;
+$shouldLoadActivityRows = !$viewLoginSecurity;
 
 if ($viewLoginSecurity) {
     $loginAttemptResult = $conn->query(
@@ -420,7 +429,7 @@ if (function_exists('audit_log_table_exists') ? audit_log_table_exists($conn) : 
         }
     }
 
-    if ($actorFilter > 0 || $search !== '' || $viewAllActivity) {
+    if ($shouldLoadActivityRows) {
         $sql = "SELECT
                 l.id,
                 l.created_at,
@@ -571,18 +580,46 @@ superadmin_render_page(
                         <input type="hidden" name="actor" value="<?php echo $actorFilter > 0 ? (int)$actorFilter : ''; ?>">
                         <input type="hidden" name="view" value="<?php echo $viewAllActivity ? 'all' : ''; ?>">
                         <input type="hidden" name="entity" value="<?php echo htmlspecialchars($entityFilter, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="action" value="<?php echo htmlspecialchars($actionFilter, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="date" value="<?php echo htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>">
-                        <label class="audit-logs-smart-field">
+                        <label class="audit-logs-smart-field audit-header-search__query">
                             <span class="audit-logs-smart-field__icon" aria-hidden="true">&#128269;</span>
                             <span class="sr-only">Search audit logs</span>
-                            <input type="search" name="q" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search folder, user, action, date, or keyword" autocomplete="off">
+                            <input type="search" name="q" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search user, action, or details" autocomplete="off">
                         </label>
+                        <label class="audit-logs-smart-field audit-logs-smart-field--date">
+                            <span class="audit-logs-smart-field__label">Date</span>
+                            <input type="date" name="date" value="<?php echo htmlspecialchars($dateFilter); ?>" data-audit-date-filter>
+                        </label>
+                        <label class="audit-logs-smart-field audit-logs-smart-field--select">
+                            <span class="audit-logs-smart-field__label">Action</span>
+                            <select name="action" data-audit-action-filter>
+                                <option value="">All Actions</option>
+                                <option value="login" <?php echo $actionFilter === 'login' ? 'selected' : ''; ?>>Login</option>
+                                <?php foreach ($actionOptions as $actionOption): ?>
+                                    <?php if ($actionOption === 'login') continue; ?>
+                                    <option value="<?php echo htmlspecialchars($actionOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $actionFilter === $actionOption ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars(audit_logs_action_label($actionOption), ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <?php
+                        $hasHeaderFilters = $roleFilter !== ''
+                            || $actorFilter > 0
+                            || $search !== ''
+                            || $entityFilter !== ''
+                            || $actionFilter !== ''
+                            || $dateFilter !== ''
+                            || $quickFilter !== ''
+                            || $viewAllActivity
+                            || $viewLoginSecurity;
+                        ?>
+                        <a
+                            href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php"
+                            class="btn-secondary audit-header-clear<?php echo $hasHeaderFilters ? '' : ' is-disabled'; ?>"
+                            <?php echo $hasHeaderFilters ? '' : 'aria-disabled="true" tabindex="-1"'; ?>
+                        >Clear Filters</a>
                     </form>
                 </div>
-                <?php if ($roleFilter !== '' || $search !== '' || $viewAllActivity || $viewLoginSecurity): ?>
-                    <a href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php" class="btn-secondary">Back to Folders</a>
-                <?php endif; ?>
             </div>
 
             <?php if ($search !== ''): ?>
@@ -712,7 +749,7 @@ superadmin_render_page(
                         </table>
                     </div>
                 </section>
-            <?php elseif ($roleFilter === '' && $search === '' && !$viewAllActivity): ?>
+            <?php elseif ($roleFilter !== '' && $search === '' && !$viewAllActivity): ?>
                 <div class="audit-folder-grid">
                     <a class="audit-folder-card" data-audit-folder-card data-audit-folder-search="failed login attempts security ip" href="/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php?view=login_security">
                         <span class="audit-folder-card__icon" aria-hidden="true">&#128274;</span>
@@ -765,7 +802,7 @@ superadmin_render_page(
                         </div>
                     <?php endif; ?>
                 </section>
-            <?php elseif ($actorFilter === 0 && $search === '' && !$viewAllActivity): ?>
+            <?php elseif ($roleFilter !== '' && $actorFilter === 0 && $search === '' && !$viewAllActivity): ?>
                 <div class="audit-folder-grid audit-folder-grid--users">
                     <?php if (empty($actorOptions)): ?>
                         <div class="audit-empty-card">No users found for this folder.</div>
@@ -780,57 +817,6 @@ superadmin_render_page(
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <form method="GET" class="audit-logs-toolbar">
-                    <input type="hidden" name="q" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>">
-                    <input type="hidden" name="quick" value="<?php echo htmlspecialchars($quickFilter, ENT_QUOTES, 'UTF-8'); ?>">
-                    <input type="hidden" name="role" value="<?php echo htmlspecialchars($roleFilter, ENT_QUOTES, 'UTF-8'); ?>">
-                    <input type="hidden" name="actor" value="<?php echo (int)$actorFilter; ?>">
-                    <input type="hidden" name="view" value="<?php echo $viewAllActivity ? 'all' : ''; ?>">
-                    <div class="audit-logs-quick-filters" aria-label="Quick audit filters">
-                        <a class="audit-quick-chip <?php echo $quickFilter === 'today' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['quick' => 'today', 'date' => '']), ENT_QUOTES, 'UTF-8'); ?>">Today</a>
-                        <a class="audit-quick-chip <?php echo $quickFilter === 'week' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['quick' => 'week', 'date' => '']), ENT_QUOTES, 'UTF-8'); ?>">This Week</a>
-                        <a class="audit-quick-chip <?php echo $quickFilter === 'month' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(audit_logs_filter_url(['quick' => 'month', 'date' => '']), ENT_QUOTES, 'UTF-8'); ?>">This Month</a>
-                    </div>
-                    <div class="audit-logs-toolbar__filters">
-                        <label class="audit-logs-smart-field audit-logs-smart-field--date">
-                            <span class="audit-logs-smart-field__icon" aria-hidden="true">&#128197;</span>
-                            <span class="sr-only">Filter date</span>
-                            <input type="date" name="date" value="<?php echo htmlspecialchars($dateFilter); ?>" data-audit-date-filter>
-                        </label>
-                        <label class="audit-logs-smart-field audit-logs-smart-field--select">
-                            <span class="audit-logs-smart-field__icon" aria-hidden="true">&#9881;</span>
-                            <span class="sr-only">Filter activity type</span>
-                            <select name="entity" data-audit-entity-filter>
-                                <option value="">All types</option>
-                                <option value="user" <?php echo $entityFilter === 'user' ? 'selected' : ''; ?>>Users</option>
-                                <option value="project" <?php echo $entityFilter === 'project' ? 'selected' : ''; ?>>Projects</option>
-                                <option value="inventory" <?php echo $entityFilter === 'inventory' ? 'selected' : ''; ?>>Inventory</option>
-                                <option value="asset" <?php echo $entityFilter === 'asset' ? 'selected' : ''; ?>>Assets</option>
-                                <option value="scan" <?php echo $entityFilter === 'scan' ? 'selected' : ''; ?>>Scans</option>
-                                <option value="task" <?php echo $entityFilter === 'task' ? 'selected' : ''; ?>>Tasks</option>
-                                <option value="quotation" <?php echo $entityFilter === 'quotation' ? 'selected' : ''; ?>>Quotations</option>
-                            </select>
-                        </label>
-                        <label class="audit-logs-smart-field audit-logs-smart-field--select">
-                            <span class="audit-logs-smart-field__icon" aria-hidden="true">&#9679;</span>
-                            <span class="sr-only">Filter action</span>
-                            <select name="action" data-audit-action-filter>
-                                <option value="">All actions</option>
-                                <?php foreach ($actionOptions as $actionOption): ?>
-                                    <option value="<?php echo htmlspecialchars($actionOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $actionFilter === $actionOption ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars(audit_logs_action_label($actionOption), ENT_QUOTES, 'UTF-8'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </label>
-                        <?php $hasActiveFilters = $entityFilter !== '' || $actionFilter !== '' || $dateFilter !== '' || $quickFilter !== ''; ?>
-                        <a href="<?php echo htmlspecialchars(audit_logs_filter_url(['export' => 'csv']), ENT_QUOTES, 'UTF-8'); ?>" class="btn-secondary audit-export-btn">Export CSV</a>
-                        <?php if ($hasActiveFilters): ?>
-                            <a href="<?php echo htmlspecialchars(audit_logs_filter_url(['entity' => '', 'action' => '', 'date' => '', 'quick' => '']), ENT_QUOTES, 'UTF-8'); ?>" class="btn-secondary">Clear Filters</a>
-                        <?php endif; ?>
-                    </div>
-                </form>
-
                 <div class="table-wrapper">
                 <table class="responsive-table mobile-card-table">
                     <thead>
@@ -838,7 +824,6 @@ superadmin_render_page(
                             <th>Time</th>
                             <th>Actor</th>
                             <th>Action</th>
-                            <th>Target</th>
                             <th>Summary</th>
                             <th>Full Details</th>
                         </tr>
@@ -846,7 +831,7 @@ superadmin_render_page(
                     <tbody>
                         <?php if (count($activityRows) === 0): ?>
                             <tr>
-                                <td colspan="6" class="table-empty-cell">No audit logs matched your filters.</td>
+                                <td colspan="5" class="table-empty-cell">No audit logs matched your filters.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($activityRows as $row): ?>
@@ -879,9 +864,6 @@ superadmin_render_page(
                                             <?php echo htmlspecialchars(audit_logs_action_label((string)($row['action'] ?? 'activity'))); ?>
                                         </span>
                                     </td>
-                                    <td data-label="Target">
-                                        <span class="audit-target-line"><?php echo htmlspecialchars($auditTarget); ?></span>
-                                    </td>
                                     <td data-label="Summary">
                                         <span class="audit-detail-line" title="<?php echo htmlspecialchars($auditDetails, ENT_QUOTES, 'UTF-8'); ?>">
                                             <?php echo htmlspecialchars($auditDetails); ?>
@@ -905,7 +887,7 @@ superadmin_render_page(
                                 </tr>
                             <?php endforeach; ?>
                             <tr data-audit-empty-row hidden>
-                                <td colspan="6" class="table-empty-cell">No audit logs match your search.</td>
+                                <td colspan="5" class="table-empty-cell">No audit logs match your search.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -964,8 +946,8 @@ superadmin_render_page(
         </div>
         <?php
     },
-    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261020-1'],
-    ['/codesamplecaps/SUPERADMIN/js/audit-logs.js?v=20261020-1'],
+    ['/codesamplecaps/SUPERADMIN/css/audit-logs.css?v=20261021-5'],
+    ['/codesamplecaps/SUPERADMIN/js/audit-logs.js?v=20261021-2'],
     'audit-logs-content'
 );
 

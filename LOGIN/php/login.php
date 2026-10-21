@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/auth_middleware.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/includes/login_attempt_helpers.php';
 
 auth_start_session();
@@ -395,6 +396,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $error = 'Your account role is not allowed to access this system.';
                             } else {
                                 auth_login_user($user);
+                                audit_log_event(
+                                    $conn,
+                                    (int)$user['id'],
+                                    'login',
+                                    'user',
+                                    (int)$user['id'],
+                                    null,
+                                    ['role' => (string)($user['role'] ?? '')]
+                                );
                                 login_debug_log('login_success_redirect', [
                                     'user_id' => (int)($user['id'] ?? 0),
                                     'role' => (string)($user['role'] ?? ''),

@@ -1,4 +1,4 @@
-// JS ng Audit Logs page. Search pattern gaya ng Projects: AJAX refresh, focus restore, at clear button.
+// JS ng Audit Logs page. Search lang ang ibabalik ang focus pagkatapos mag-refresh.
 function initAuditLogsUI() {
     const section = document.getElementById('audit-logs-section');
     const globalSearchForm = section?.querySelector('[data-audit-global-search]');
@@ -90,18 +90,20 @@ function initAuditLogsUI() {
         return '/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php' + (queryString ? '?' + queryString : '');
     }
 
-    function refreshAuditSection(url) {
+    function refreshAuditSection(url, preserveSearchFocus = false) {
         if (!section) {
             window.location.href = url;
             return;
         }
 
-        if (searchInput) {
+        if (preserveSearchFocus && searchInput) {
             window.__auditSearchFocusState = {
                 value: searchInput.value,
                 selectionStart: searchInput.selectionStart ?? searchInput.value.length,
                 selectionEnd: searchInput.selectionEnd ?? searchInput.value.length,
             };
+        } else {
+            window.__auditSearchFocusState = null;
         }
 
         fetch(url, {
@@ -140,7 +142,7 @@ function initAuditLogsUI() {
             window.clearTimeout(searchDebounceId);
         }
 
-        const runSearch = () => refreshAuditSection(buildAuditUrl());
+        const runSearch = () => refreshAuditSection(buildAuditUrl(), true);
 
         if (immediate) {
             runSearch();
@@ -152,7 +154,7 @@ function initAuditLogsUI() {
 
     [entityFilter, actionFilter, dateFilter].forEach((filter) => {
         filter?.addEventListener('change', () => {
-            filter.form?.requestSubmit();
+            refreshAuditSection(buildAuditUrl(), false);
         });
     });
 

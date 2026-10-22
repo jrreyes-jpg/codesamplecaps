@@ -38,13 +38,39 @@ if (!$pending) {
     inquiry_verify_json(['success' => false, 'message' => 'Code is no longer active. Send a new code.'], 422);
 }
 
+if (!inquiry_otp_prepare_rate_limit_table($conn)) {
+    inquiry_verify_json(['success' => false, 'message' => 'Could not check the code. Try again.'], 500);
+}
+
+$payload = json_decode((string)$pending['payload_json'], true);
+$email = strtolower(trim((string)($payload['email'] ?? '')));
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    inquiry_verify_json(['success' => false, 'message' => 'Verification failed. Send a new code.'], 422);
+}
+
+$verificationLock = inquiry_otp_rate_status($conn, 'email_verify', $email);
+if (!$verificationLock['ok']) {
+    inquiry_verify_json([
+        'success' => false,
+        'message' => 'Too many wrong codes. Try again after 15 minutes.',
+        'retry_after' => (int)$verificationLock['retry_after'],
+        'locked' => true,
+    ], 429);
+}
+
 $expiresAt = new DateTimeImmutable((string)$pending['expires_at'], new DateTimeZone('Asia/Manila'));
 if ($expiresAt->getTimestamp() < time()) {
     inquiry_verify_json(['success' => false, 'message' => 'Code expired. Send a new code.'], 422);
 }
 
 if ((int)$pending['attempts'] >= inquiry_otp_max_attempts()) {
-    inquiry_verify_json(['success' => false, 'message' => 'Too many wrong tries. Send a new code.'], 429);
+    inquiry_otp_lock_scope($conn, 'email_verify', $email, inquiry_otp_lock_seconds());
+    inquiry_verify_json([
+        'success' => false,
+        'message' => 'Too many wrong codes. Email verification is locked for 15 minutes.',
+        'retry_after' => inquiry_otp_lock_seconds(),
+        'locked' => true,
+    ], 429);
 }
 
 if (!password_verify($otp, (string)$pending['otp_hash'])) {
@@ -53,13 +79,22 @@ if (!password_verify($otp, (string)$pending['otp_hash'])) {
     $limit = inquiry_otp_max_attempts();
     $update->bind_param('ii', $id, $limit);
     $update->execute();
-    inquiry_verify_json(['success' => false, 'message' => 'Wrong code. Please try again.'], 422);
-}
+    $newAttempts = (int)$pending['attempts'] + 1;
+    if ($newAttempts >= $limit) {
+        inquiry_otp_lock_scope($conn, 'email_verify', $email, inquiry_otp_lock_seconds());
+        inquiry_verify_json([
+            'success' => false,
+            'message' => 'Too many wrong codes. Email verification is locked for 15 minutes.',
+            'retry_after' => inquiry_otp_lock_seconds(),
+            'locked' => true,
+        ], 429);
+    }
 
-$payload = json_decode((string)$pending['payload_json'], true);
-$email = strtolower(trim((string)($payload['email'] ?? '')));
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    inquiry_verify_json(['success' => false, 'message' => 'Verification failed. Send a new code.'], 422);
+    inquiry_verify_json([
+        'success' => false,
+        'message' => 'Wrong code. Please try again.',
+        'attempts_left' => max(0, $limit - $newAttempts),
+    ], 422);
 }
 
 $id = (int)$pending['id'];
@@ -71,6 +106,7 @@ $_SESSION['public_inquiry_email_verified'] = [
     'email' => $email,
     'verified_at' => time(),
 ];
+inquiry_otp_clear_scope($conn, 'email_verify', $email);
 unset($_SESSION['public_inquiry_otp_token'], $_SESSION['public_inquiry_otp_expires_at'], $_SESSION['public_inquiry_otp_resend_count']);
 
 inquiry_verify_json(['success' => true, 'message' => 'Email verified. You can submit your inquiry.']);

@@ -539,11 +539,24 @@ const initInquiryForm = () => {
             const isVerified = currentEmail !== '' && currentEmail === verifiedEmail;
 
             emailVerifyStatus.textContent = isVerified
-                ? (contactNote || 'Email verified')
+                ? 'Email verified'
                 : (contactNote || 'Email not verified');
             emailVerifyStatus.classList.toggle('is-verified', isVerified);
-            verifyEmailButton.textContent = isVerified ? 'Verified' : 'Verify Email';
-            verifyEmailButton.disabled = isVerified || !contactCanVerifyEmail;
+            emailInput.readOnly = isVerified;
+            emailInput.classList.toggle('is-email-locked', isVerified);
+            verifyEmailButton.textContent = isVerified ? 'Change Email' : 'Verify Email';
+            verifyEmailButton.disabled = !isVerified && !contactCanVerifyEmail;
+        };
+
+        const unlockVerifiedEmail = () => {
+            verifiedEmail = '';
+            inquiryForm.dataset.verifiedEmail = '';
+            contactNote = '';
+            updateEmailVerification();
+            clearFieldError(emailInput);
+            message.textContent = '';
+            message.classList.remove('is-error');
+            emailInput?.focus();
         };
 
         const applyContactCheck = (result) => {
@@ -684,6 +697,7 @@ const initInquiryForm = () => {
                 const error = new Error(data.message || 'Could not complete verification.');
                 error.retryAfter = Number(data.retry_after) || 0;
                 error.expiresIn = Number(data.expires_in) || 0;
+                error.locked = data.locked === true;
                 throw error;
             }
             return data;
@@ -734,6 +748,7 @@ const initInquiryForm = () => {
             let resendAfter = 0;
             let expiresIn = 0;
             let existingCode = false;
+            let successMessage = '';
             try {
                 const result = await otpRequest('send_inquiry_email_otp.php', {
                     email,
@@ -742,8 +757,12 @@ const initInquiryForm = () => {
                 });
                 resendAfter = Number(result.resend_after) || 0;
                 expiresIn = Number(result.expires_in) || 180;
+                successMessage = result.message || 'If the email is valid, a verification code was sent.';
             } catch (error) {
-                if (error.retryAfter > 0) {
+                if (error.locked) {
+                    setFieldError(emailInput, error.message || 'Email verification is locked. Try again later.');
+                    closeOtpModal(true);
+                } else if (error.retryAfter > 0) {
                     resendAfter = error.retryAfter;
                     expiresIn = error.expiresIn || 180;
                     existingCode = true;
@@ -755,14 +774,21 @@ const initInquiryForm = () => {
                 setOtpBusy(false);
                 if (resendAfter > 0) {
                     startOtpClock(expiresIn, resendAfter);
-                    otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : '';
+                    otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : successMessage;
                     otpMessage.classList.remove('is-error');
                 }
                 if ((emailInput?.value || '').trim().toLowerCase() !== verifiedEmail) updateEmailVerification();
             }
         };
 
-        verifyEmailButton?.addEventListener('click', () => sendInquiryOtp(false));
+        verifyEmailButton?.addEventListener('click', () => {
+            const currentEmail = (emailInput?.value || '').trim().toLowerCase();
+            if (currentEmail !== '' && currentEmail === verifiedEmail) {
+                unlockVerifiedEmail();
+                return;
+            }
+            sendInquiryOtp(false);
+        });
         otpModal?.querySelectorAll('.js-inquiry-otp-close').forEach((button) => {
             button.addEventListener('click', () => closeOtpModal());
         });
@@ -791,6 +817,8 @@ const initInquiryForm = () => {
                 verifiedEmail = (emailInput?.value || '').trim().toLowerCase();
                 inquiryForm.dataset.verifiedEmail = verifiedEmail;
                 clearFieldError(emailInput);
+                message.textContent = '';
+                message.classList.remove('is-error');
                 updateEmailVerification();
                 closeOtpModal(true);
             } catch (error) {

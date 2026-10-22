@@ -31,6 +31,20 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     inquiry_otp_json(['success' => false, 'message' => 'Enter a valid email address.'], 422);
 }
 
+if (!inquiry_otp_prepare_rate_limit_table($conn)) {
+    inquiry_otp_json(['success' => false, 'message' => 'Could not start email verification. Try again.'], 500);
+}
+
+$verificationLock = inquiry_otp_rate_status($conn, 'email_verify', $email);
+if (!$verificationLock['ok']) {
+    inquiry_otp_json([
+        'success' => false,
+        'message' => 'Email verification is locked for 15 minutes. Please try again later.',
+        'retry_after' => (int)$verificationLock['retry_after'],
+        'locked' => true,
+    ], 429);
+}
+
 // Hindi puwedeng gamitin ang staff email sa public client inquiry.
 $userCheck = $conn->prepare('SELECT role FROM users WHERE deleted_at IS NULL AND LOWER(email) = ? LIMIT 1');
 if (!$userCheck) {
@@ -39,10 +53,6 @@ if (!$userCheck) {
 $userCheck->bind_param('s', $email);
 $userCheck->execute();
 $existingUser = $userCheck->get_result()->fetch_assoc();
-if ($existingUser && strtolower((string)($existingUser['role'] ?? '')) !== 'client') {
-    inquiry_otp_json(['success' => false, 'message' => 'This email cannot be used for a client inquiry.'], 422);
-}
-
 $lastSentAt = (int)($_SESSION['public_inquiry_otp_sent_at'] ?? 0);
 $cooldown = inquiry_otp_resend_cooldown_seconds();
 if ($lastSentAt > 0 && (time() - $lastSentAt) < $cooldown) {
@@ -55,10 +65,56 @@ if ($lastSentAt > 0 && (time() - $lastSentAt) < $cooldown) {
     ], 429);
 }
 
-$resendCount = (int)($_SESSION['public_inquiry_otp_resend_count'] ?? 0);
-if ($isResend && $resendCount >= inquiry_otp_max_resends()) {
-    inquiry_otp_json(['success' => false, 'message' => 'Resend limit reached. Please refresh the form and try again.'], 429);
+$emailLimit = inquiry_otp_consume_rate_limit(
+    $conn,
+    'email_send',
+    $email,
+    inquiry_otp_email_send_limit(),
+    inquiry_otp_email_window_seconds(),
+    inquiry_otp_lock_seconds()
+);
+if (!$emailLimit['ok']) {
+    inquiry_otp_json([
+        'success' => false,
+        'message' => 'Too many code requests. Email verification is locked for 15 minutes.',
+        'retry_after' => (int)$emailLimit['retry_after'],
+        'locked' => true,
+    ], 429);
 }
+
+$ipLimit = inquiry_otp_consume_rate_limit(
+    $conn,
+    'ip_send',
+    inquiry_otp_client_ip(),
+    inquiry_otp_ip_send_limit(),
+    inquiry_otp_ip_window_seconds(),
+    inquiry_otp_lock_seconds()
+);
+if (!$ipLimit['ok']) {
+    inquiry_otp_json([
+        'success' => false,
+        'message' => 'Too many code requests. Email verification is locked for 15 minutes.',
+        'retry_after' => (int)$ipLimit['retry_after'],
+        'locked' => true,
+    ], 429);
+}
+
+$genericMessage = 'If the email is valid, a verification code was sent.';
+
+// Pareho ang sagot para hindi malaman kung staff email ito.
+if ($existingUser && strtolower((string)($existingUser['role'] ?? '')) !== 'client') {
+    $_SESSION['public_inquiry_otp_sent_at'] = time();
+    $_SESSION['public_inquiry_otp_expires_at'] = time() + inquiry_otp_validity_seconds();
+    unset($_SESSION['public_inquiry_otp_token'], $_SESSION['public_inquiry_email_verified']);
+    inquiry_otp_json([
+        'success' => true,
+        'message' => $genericMessage,
+        'expires_in' => inquiry_otp_validity_seconds(),
+        'resend_after' => $cooldown,
+    ]);
+}
+
+$resendCount = (int)($_SESSION['public_inquiry_otp_resend_count'] ?? 0);
 
 $otp = (string)random_int(100000, 999999);
 $pendingToken = bin2hex(random_bytes(32));
@@ -92,7 +148,7 @@ unset($_SESSION['public_inquiry_email_verified']);
 
 inquiry_otp_json([
     'success' => true,
-    'message' => 'Verification code sent.',
+    'message' => $genericMessage,
     'expires_in' => $validity,
     'resend_after' => $cooldown,
 ]);

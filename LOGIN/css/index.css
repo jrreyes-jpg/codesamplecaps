@@ -776,6 +776,13 @@ h4 {
     opacity: 0.62;
 }
 
+.inquiry-form input.is-email-locked {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+    cursor: not-allowed;
+}
+
 .inquiry-email-verify-status {
     color: #b45309 !important;
     font-weight: 800;

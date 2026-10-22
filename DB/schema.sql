@@ -924,6 +924,17 @@ CREATE TABLE `service_inquiries` (
   KEY `idx_service_inquiries_source_status` (`inquiry_source`,`status`,`archived_at`),
   CONSTRAINT `fk_service_inquiries_client` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `inquiry_otp_rate_limits` (
+  `scope_key` char(64) NOT NULL,
+  `scope_type` varchar(30) NOT NULL,
+  `attempt_count` int(11) NOT NULL DEFAULT 0,
+  `window_started_at` datetime NOT NULL,
+  `blocked_until` datetime DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`scope_key`),
+  KEY `idx_inquiry_otp_scope_type` (`scope_type`),
+  KEY `idx_inquiry_otp_blocked_until` (`blocked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `project_material_reservations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `project_id` int(11) NOT NULL,

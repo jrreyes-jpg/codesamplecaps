@@ -55,10 +55,10 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
     }
 
     if ($emailClient !== null || $phoneClient !== null) {
-        if ($emailClient === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
-        if ($phoneClient === null) return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
+        if ($emailClient === null) return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
+        if ($phoneClient === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
         if ((int)$emailClient['id'] !== (int)$phoneClient['id']) {
-            return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
+            return ['valid' => false, 'status' => 'contact_mismatch', 'field' => 'both'];
         }
         if (inquiry_contact_normalize_name((string)$emailClient['full_name']) !== inquiry_contact_normalize_name($name)) {
             return ['valid' => false, 'status' => 'name_mismatch', 'field' => 'name'];
@@ -103,10 +103,10 @@ function inquiry_contact_validation_result(mysqli $conn, string $name, string $e
         return ['valid' => true, 'status' => 'new_contact', 'email_verified' => false];
     }
 
-    if ($emailInquiry === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
-    if ($phoneInquiry === null) return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
+    if ($emailInquiry === null) return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
+    if ($phoneInquiry === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
     if ((int)$emailInquiry['id'] !== (int)$phoneInquiry['id']) {
-        return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
+        return ['valid' => false, 'status' => 'contact_mismatch', 'field' => 'both'];
     }
     if (inquiry_contact_normalize_name((string)$emailInquiry['client_name']) !== inquiry_contact_normalize_name($name)) {
         return ['valid' => false, 'status' => 'name_mismatch', 'field' => 'name'];

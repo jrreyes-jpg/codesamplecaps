@@ -258,6 +258,7 @@ const initConsultationModal = () => {
     const inquiryModal = document.getElementById('inquiryModal');
     const closeInquiryButton = document.getElementById('closeInquiryModal');
     const closeInquiryXButton = document.getElementById('closeInquiryModalX');
+    const inquiryModalStateKey = 'edgeInquiryModalOpen';
 
     if (openButtons.length === 0 || !closeButton || !modal) {
         return;
@@ -277,6 +278,10 @@ const initConsultationModal = () => {
 
         inquiryModal.classList.add('is-open');
         inquiryModal.setAttribute('aria-hidden', 'false');
+        try {
+            window.sessionStorage.setItem(inquiryModalStateKey, '1');
+        } catch (error) {
+        }
     };
 
     const closeInquiryModal = () => {
@@ -286,6 +291,10 @@ const initConsultationModal = () => {
 
         inquiryModal.classList.remove('is-open');
         inquiryModal.setAttribute('aria-hidden', 'true');
+        try {
+            window.sessionStorage.removeItem(inquiryModalStateKey);
+        } catch (error) {
+        }
     };
 
     openButtons.forEach((button) => {
@@ -333,7 +342,17 @@ const initConsultationModal = () => {
         }
     });
 
-    if (shouldAutoOpenInquiryModal()) {
+    let reopenInquiryAfterRefresh = false;
+    try {
+        reopenInquiryAfterRefresh = window.sessionStorage.getItem(inquiryModalStateKey) === '1';
+        if (window.edgeInquiryStatus === 'success') {
+            window.sessionStorage.removeItem(inquiryModalStateKey);
+            reopenInquiryAfterRefresh = false;
+        }
+    } catch (error) {
+    }
+
+    if (shouldAutoOpenInquiryModal() || reopenInquiryAfterRefresh) {
         openInquiryModal();
         consumeInquiryAutoOpenRequest();
     } else {
@@ -388,6 +407,7 @@ const initInquiryForm = () => {
     const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     const clearFieldError = (field) => {
         field.classList.remove('is-invalid');
+        field.removeAttribute('aria-invalid');
         const error = field.closest('label')?.querySelector('.field-error');
         if (error) {
             error.textContent = '';
@@ -395,8 +415,21 @@ const initInquiryForm = () => {
         }
     };
 
+    const resetFieldState = (field) => {
+        clearFieldError(field);
+        field.classList.remove('is-valid');
+    };
+
+    const setFieldValid = (field) => {
+        clearFieldError(field);
+        field.classList.add('is-valid');
+        field.setAttribute('aria-invalid', 'false');
+    };
+
     const setFieldError = (field, text) => {
+        field.classList.remove('is-valid');
         field.classList.add('is-invalid');
+        field.setAttribute('aria-invalid', 'true');
         const error = field.closest('label')?.querySelector('.field-error');
         if (error) {
             error.textContent = text;
@@ -431,7 +464,7 @@ const initInquiryForm = () => {
             return false;
         }
 
-        clearFieldError(field);
+        setFieldValid(field);
         return true;
     };
 
@@ -447,7 +480,43 @@ const initInquiryForm = () => {
             return false;
         }
 
-        clearFieldError(field);
+        setFieldValid(field);
+        return true;
+    };
+
+    const validateCompanyName = (field) => {
+        const value = field.value.trim();
+        if (value === '') {
+            resetFieldState(field);
+            return true;
+        }
+        if (Array.from(value).length < 2 || Array.from(value).length > 150) {
+            setFieldError(field, 'Company name must be 2 to 150 characters.');
+            return false;
+        }
+        if (!/^[\p{L}\p{M}\p{N} .,'\u2019&()\-]+$/u.test(value) || !hasMeaningfulText(value, 1)) {
+            setFieldError(field, 'Use a real company name. Numbers and common business symbols are allowed.');
+            return false;
+        }
+        setFieldValid(field);
+        return true;
+    };
+
+    const validateSiteAddress = (field) => {
+        const value = field.value.trim();
+        if (value === '') {
+            resetFieldState(field);
+            return true;
+        }
+        if (Array.from(value).length < 5) {
+            setFieldError(field, 'Enter at least 5 characters.');
+            return false;
+        }
+        if (!/^[\p{L}\p{M}\p{N}\s#.,'\u2019\/()&\-]+$/u.test(value) || !hasMeaningfulText(value, 3)) {
+            setFieldError(field, 'Enter a real address with at least 3 letters. Common address symbols are allowed.');
+            return false;
+        }
+        setFieldValid(field);
         return true;
     };
 
@@ -455,16 +524,16 @@ const initInquiryForm = () => {
         const value = field.value.trim();
 
         if (value === '') {
-            clearFieldError(field);
+            resetFieldState(field);
             return true;
         }
 
-        if (Array.from(value).length < 3) {
-            setFieldError(field, 'Enter at least 3 characters.');
+        if (Array.from(value).length < 10) {
+            setFieldError(field, 'Enter at least 10 characters.');
             return false;
         }
 
-        return validateMeaningfulTextField(field, 'Project Description', 3);
+        return validateMeaningfulTextField(field, 'Project Description', 5);
     };
 
     const normalizeContactNumber = (field) => {
@@ -525,7 +594,7 @@ const initInquiryForm = () => {
         let otpResendAt = 0;
         let contactCheckTimer = 0;
         let contactCheckId = 0;
-        let contactCanVerifyEmail = true;
+        let contactCanVerifyEmail = false;
         let contactNote = '';
 
         if (!contactInput || !message) {
@@ -546,6 +615,11 @@ const initInquiryForm = () => {
             emailInput.classList.toggle('is-email-locked', isVerified);
             verifyEmailButton.textContent = isVerified ? 'Change Email' : 'Verify Email';
             verifyEmailButton.disabled = !isVerified && !contactCanVerifyEmail;
+            if (isVerified) {
+                setFieldValid(emailInput);
+            } else if (emailInput.classList.contains('is-valid')) {
+                resetFieldState(emailInput);
+            }
         };
 
         const unlockVerifiedEmail = () => {
@@ -553,20 +627,20 @@ const initInquiryForm = () => {
             inquiryForm.dataset.verifiedEmail = '';
             contactNote = '';
             updateEmailVerification();
-            clearFieldError(emailInput);
+            resetFieldState(emailInput);
             message.textContent = '';
             message.classList.remove('is-error');
             emailInput?.focus();
         };
 
         const applyContactCheck = (result) => {
-            if (!result || result.status === 'checking') return;
+            if (!result || result.status === 'checking') return false;
 
             if (result.complete === false) {
-                contactCanVerifyEmail = result.can_verify_email !== false;
+                contactCanVerifyEmail = false;
                 contactNote = '';
                 updateEmailVerification();
-                return;
+                return false;
             }
 
             if (!result.valid) {
@@ -580,7 +654,7 @@ const initInquiryForm = () => {
                 contactCanVerifyEmail = false;
                 contactNote = 'Email cannot be verified.';
                 updateEmailVerification();
-                return;
+                return false;
             }
 
             contactCanVerifyEmail = result.can_verify_email !== false || !!result.email_verified;
@@ -594,20 +668,21 @@ const initInquiryForm = () => {
                 contactNote = '';
             }
             updateEmailVerification();
+            return contactCanVerifyEmail || !!result.email_verified;
         };
 
         const checkContactDetails = async () => {
             const name = (clientNameInput?.value || '').trim();
             const email = (emailInput?.value || '').trim();
             const phone = (contactInput?.value || '').trim();
+            const requestId = ++contactCheckId;
             if (name === '' || !emailPattern.test(email) || !phonePattern.test(phone)) {
-                contactCanVerifyEmail = emailPattern.test(email);
+                contactCanVerifyEmail = false;
                 contactNote = '';
                 updateEmailVerification();
-                return;
+                return false;
             }
 
-            const requestId = ++contactCheckId;
             try {
                 const response = await fetch('check_inquiry_contact.php', {
                     method: 'POST',
@@ -621,9 +696,13 @@ const initInquiryForm = () => {
                     credentials: 'same-origin',
                 });
                 const result = await response.json();
-                if (requestId === contactCheckId) applyContactCheck(result);
+                if (requestId === contactCheckId) return applyContactCheck(result);
+                return false;
             } catch (error) {
                 // Server validation will still protect the final submit.
+                contactCanVerifyEmail = false;
+                updateEmailVerification();
+                return false;
             }
         };
 
@@ -698,6 +777,7 @@ const initInquiryForm = () => {
                 error.retryAfter = Number(data.retry_after) || 0;
                 error.expiresIn = Number(data.expires_in) || 0;
                 error.locked = data.locked === true;
+                error.field = data.field || '';
                 throw error;
             }
             return data;
@@ -733,11 +813,30 @@ const initInquiryForm = () => {
         };
 
         const sendInquiryOtp = async (isResend = false) => {
+            const name = clientNameInput?.value.trim() || '';
             const email = emailInput?.value.trim() || '';
+            const phone = contactInput?.value.trim() || '';
+            if (!isResend && !validateFullNameText(clientNameInput)) {
+                gentlyRevealField(clientNameInput, true);
+                return;
+            }
             if (!emailPattern.test(email)) {
                 setFieldError(emailInput, 'Please enter a valid email address.');
                 gentlyRevealField(emailInput, true);
                 emailInput?.focus();
+                return;
+            }
+            if (!phonePattern.test(phone)) {
+                setFieldError(contactInput, 'Enter a valid contact number.');
+                gentlyRevealField(contactInput, true);
+                contactInput?.focus();
+                return;
+            }
+            if (!isResend && !contactCanVerifyEmail && !(await checkContactDetails())) {
+                return;
+            }
+            if (!isResend && email.toLowerCase() === verifiedEmail) {
+                updateEmailVerification();
                 return;
             }
 
@@ -751,7 +850,9 @@ const initInquiryForm = () => {
             let successMessage = '';
             try {
                 const result = await otpRequest('send_inquiry_email_otp.php', {
+                    client_name: name,
                     email,
+                    contact_no: phone,
                     inquiry_form_token: inquiryForm.querySelector('input[name="inquiry_form_token"]')?.value || '',
                     resend: isResend ? '1' : '0',
                 });
@@ -767,7 +868,15 @@ const initInquiryForm = () => {
                     expiresIn = error.expiresIn || 180;
                     existingCode = true;
                 } else {
-                    setFieldError(emailInput, error.message || 'Could not send code.');
+                    const errorField = error.field === 'name'
+                        ? clientNameInput
+                        : (error.field === 'phone' ? contactInput : emailInput);
+                    if (error.field === 'both') {
+                        setFieldError(emailInput, error.message || 'Check the contact details.');
+                        setFieldError(contactInput, error.message || 'Check the contact details.');
+                    } else {
+                        setFieldError(errorField, error.message || 'Could not send code.');
+                    }
                     closeOtpModal(true);
                 }
             } finally {
@@ -932,7 +1041,11 @@ const initInquiryForm = () => {
                 return false;
             }
 
-            clearFieldError(inspectionDateInput);
+            if (value !== '') {
+                setFieldValid(inspectionDateInput);
+            } else {
+                resetFieldState(inspectionDateInput);
+            }
             return true;
         };
 
@@ -1102,6 +1215,66 @@ const initInquiryForm = () => {
             return getBarangaySuggestions().includes(barangayInput.value.trim()) && isSystemSelected(barangayInput);
         };
 
+        const validateLiveField = (field, showRequiredError = false) => {
+            if (!field || field.type === 'hidden' || field.disabled) {
+                if (field) resetFieldState(field);
+                return true;
+            }
+
+            const value = field.value.trim();
+            const label = field.dataset.label || 'This field';
+            if (value === '') {
+                if (field.required && showRequiredError) {
+                    setFieldError(field, `${label} is required.`);
+                    return false;
+                }
+                resetFieldState(field);
+                return !field.required;
+            }
+
+            if (field === clientNameInput) return validateFullNameText(field);
+            if (field === contactInput) {
+                if (!phonePattern.test(value)) {
+                    setFieldError(field, 'Contact number must start with 09 and have 11 digits.');
+                    return false;
+                }
+            } else if (field === emailInput) {
+                if (!emailPattern.test(value)) {
+                    setFieldError(field, 'Please enter a valid email address.');
+                    return false;
+                }
+                if (value.toLowerCase() !== verifiedEmail) {
+                    setFieldError(field, 'Verify this email to continue.');
+                    return false;
+                }
+            } else if (field === inspectionDateInput) {
+                return validatePreferredDateRange();
+            } else if (field === otherServiceInput) {
+                return validateMeaningfulTextField(field, 'Other Service Details');
+            } else if (field.name === 'company_name') {
+                return validateCompanyName(field);
+            } else if (field.name === 'site_address') {
+                return validateSiteAddress(field);
+            } else if (field.name === 'description') {
+                return validateProjectDescription(field);
+            } else if (field === regionSelect && !isValidRegion()) {
+                setFieldError(field, 'Please select a valid Luzon region from the list.');
+                return false;
+            } else if (field === areaSelect && !isValidArea()) {
+                setFieldError(field, 'Please select a valid province or area from the list.');
+                return false;
+            } else if (field === citySelect && !isValidCity()) {
+                setFieldError(field, 'Please select a valid city or municipality from the list.');
+                return false;
+            } else if (field === barangayInput && !isValidBarangay()) {
+                setFieldError(field, 'Please select a valid barangay from the list.');
+                return false;
+            }
+
+            setFieldValid(field);
+            return true;
+        };
+
         const syncBarangayState = () => {
             if (!barangayInput) {
                 return;
@@ -1116,6 +1289,7 @@ const initInquiryForm = () => {
 
             if (!isValidCity() || barangays.length === 0 || currentCity !== lastValidCity) {
                 barangayInput.value = '';
+                resetFieldState(barangayInput);
                 closeCombobox(barangayInput);
             }
 
@@ -1130,6 +1304,7 @@ const initInquiryForm = () => {
             }
             input.value = '';
             delete input.dataset.comboboxSelectedValue;
+            resetFieldState(input);
             closeCombobox(input);
         };
 
@@ -1170,6 +1345,7 @@ const initInquiryForm = () => {
                 areaSelect.readOnly = true;
                 areaSelect.value = 'Metro Manila (NCR)';
                 areaSelect.dataset.comboboxSelectedValue = 'Metro Manila (NCR)';
+                setFieldValid(areaSelect);
             }
 
             syncCityOptions();
@@ -1352,7 +1528,7 @@ const initInquiryForm = () => {
                 otherServiceInput.required = shouldShow;
                 if (!shouldShow) {
                     otherServiceInput.value = '';
-                    clearFieldError(otherServiceInput);
+                    resetFieldState(otherServiceInput);
                     clearFormMessageIfReady();
                 }
             }
@@ -1493,11 +1669,13 @@ const restoreInquiryDraft = () => {
                 gentlyRevealField(field);
             });
             field.addEventListener('input', () => {
-                if (field === inspectionDateInput) {
-                    validatePreferredDateRange();
-                } else if (!['client_name', 'other_service_details', 'description'].includes(field.name)) {
-                    clearFieldError(field);
+                field.dataset.touched = '1';
+                if (contactIdentityFields.includes(field)) {
+                    contactCanVerifyEmail = false;
+                    contactNote = '';
+                    updateEmailVerification();
                 }
+                validateLiveField(field, true);
                 clearFormMessageIfReady();
                 saveInquiryDraft();
                 if (contactIdentityFields.includes(field) && field !== clientNameInput && field !== emailInput) {
@@ -1505,13 +1683,14 @@ const restoreInquiryDraft = () => {
                 }
             });
             field.addEventListener('change', () => {
-                if (field === inspectionDateInput) {
-                    validatePreferredDateRange();
-                } else {
-                    clearFieldError(field);
-                }
+                field.dataset.touched = '1';
+                validateLiveField(field, true);
                 clearFormMessageIfReady();
                 saveInquiryDraft();
+            });
+            field.addEventListener('blur', () => {
+                field.dataset.touched = '1';
+                validateLiveField(field, true);
             });
         });
 
@@ -1522,10 +1701,14 @@ const restoreInquiryDraft = () => {
             clearContactMismatchFeedback();
             syncAreaOptions();
             syncOtherServiceField();
-            inquiryForm.querySelectorAll('.is-invalid').forEach((field) => clearFieldError(field));
+            inquiryForm.querySelectorAll('.is-invalid, .is-valid').forEach((field) => {
+                resetFieldState(field);
+                delete field.dataset.touched;
+            });
             message.textContent = '';
             message.classList.remove('is-error');
             verifiedEmail = '';
+            contactCanVerifyEmail = false;
             inquiryForm.dataset.verifiedEmail = '';
             updateEmailVerification();
         };
@@ -1550,6 +1733,7 @@ const restoreInquiryDraft = () => {
 
         restoreInquiryDraft();
         updateEmailVerification();
+        checkContactDetails();
 
         if (window.edgeInquiryStatus === 'contact_mismatch') {
             showContactMismatchFeedback();
@@ -1588,8 +1772,19 @@ const restoreInquiryDraft = () => {
                     firstInvalidField = firstInvalidField || field;
                 }
 
+                if (field.name === 'company_name' && value !== '' && !validateCompanyName(field)) {
+                    firstInvalidField = firstInvalidField || field;
+                }
+
+                if (field.name === 'site_address' && value !== '' && !validateSiteAddress(field)) {
+                    firstInvalidField = firstInvalidField || field;
+                }
+
                 if (field.type === 'email' && value !== '' && !emailPattern.test(value)) {
                     setFieldError(field, 'Please enter a valid email address.');
+                    firstInvalidField = firstInvalidField || field;
+                } else if (field === emailInput && value !== '' && value.toLowerCase() !== verifiedEmail) {
+                    setFieldError(field, 'Verify this email to continue.');
                     firstInvalidField = firstInvalidField || field;
                 }
 
@@ -1602,6 +1797,10 @@ const restoreInquiryDraft = () => {
                 if (field.name === 'description' && value !== '' && !validateProjectDescription(field)) {
                     firstInvalidField = firstInvalidField || field;
                 }
+
+                if (value !== '' && !field.classList.contains('is-invalid')) {
+                    setFieldValid(field);
+                }
             }
 
             if (!phonePattern.test(contactInput.value.trim())) {
@@ -1613,16 +1812,22 @@ const restoreInquiryDraft = () => {
                 if (!isValidRegion()) {
                     setFieldError(regionSelect, 'Please select a valid Luzon region from the list.');
                     firstInvalidField = firstInvalidField || regionSelect;
+                } else {
+                    setFieldValid(regionSelect);
                 }
 
                 if (!isValidArea()) {
                     setFieldError(areaSelect, 'Please select a valid province or independent city area.');
                     firstInvalidField = firstInvalidField || areaSelect;
+                } else {
+                    setFieldValid(areaSelect);
                 }
 
                 if (!isValidCity()) {
                     setFieldError(citySelect, 'Please select a valid city or municipality for this area.');
                     firstInvalidField = firstInvalidField || citySelect;
+                } else {
+                    setFieldValid(citySelect);
                 }
             }
 
@@ -1632,6 +1837,8 @@ const restoreInquiryDraft = () => {
             } else if (barangayInput && !isValidBarangay()) {
                 setFieldError(barangayInput, 'Please select a valid barangay under the selected city.');
                 firstInvalidField = firstInvalidField || barangayInput;
+            } else if (barangayInput) {
+                setFieldValid(barangayInput);
             }
 
             if (firstInvalidField) {

@@ -1438,10 +1438,13 @@ function initWalkInInquiryPanel() {
     const dialog = panel?.querySelector('[role="dialog"]');
     const form = panel?.querySelector('[data-walk-in-inquiry-form]');
     const clientName = panel?.querySelector('[data-walk-in-client-name]');
+    const companyName = panel?.querySelector('[data-walk-in-company]');
     const emailAddress = panel?.querySelector('[data-walk-in-email]');
     const contactNumber = panel?.querySelector('[data-walk-in-contact-number]');
+    const siteAddress = panel?.querySelector('[data-walk-in-site-address]');
     const description = panel?.querySelector('[data-walk-in-description]');
     const serviceSelect = panel?.querySelector('select[name="service_category"]');
+    const budgetSelect = panel?.querySelector('select[name="estimated_budget"]');
     const otherServiceWrap = panel?.querySelector('[data-walk-in-other-service]');
     const otherService = panel?.querySelector('input[name="other_service_details"]');
     const regionSelect = panel?.querySelector('[data-walk-in-region]');
@@ -1454,12 +1457,21 @@ function initWalkInInquiryPanel() {
     const submitActionButton = panel?.querySelector('[data-walk-in-submit-action]');
     const engineerHelp = panel?.querySelector('[data-walk-in-engineer-help]');
     const nameError = panel?.querySelector('[data-walk-in-name-error]');
+    const companyError = panel?.querySelector('[data-walk-in-company-error]');
     const emailError = panel?.querySelector('[data-walk-in-email-error]');
     const sendOtpButton = panel?.querySelector('[data-walk-in-send-otp]');
     const emailStatus = panel?.querySelector('[data-walk-in-email-status]');
     const contactError = panel?.querySelector('[data-walk-in-contact-error]');
     const descriptionError = panel?.querySelector('[data-walk-in-description-error]');
     const otherError = panel?.querySelector('[data-walk-in-other-error]');
+    const serviceError = panel?.querySelector('[data-walk-in-service-error]');
+    const budgetError = panel?.querySelector('[data-walk-in-budget-error]');
+    const regionError = panel?.querySelector('[data-walk-in-region-error]');
+    const areaError = panel?.querySelector('[data-walk-in-area-error]');
+    const cityError = panel?.querySelector('[data-walk-in-city-error]');
+    const barangayError = panel?.querySelector('[data-walk-in-barangay-error]');
+    const siteAddressError = panel?.querySelector('[data-walk-in-site-address-error]');
+    const dateError = panel?.querySelector('[data-walk-in-date-error]');
     const confirmModal = document.querySelector('[data-walk-in-confirm-modal]');
     const confirmTitle = confirmModal?.querySelector('[data-walk-in-confirm-title]');
     const confirmMessage = confirmModal?.querySelector('[data-walk-in-confirm-message]');
@@ -1487,6 +1499,7 @@ function initWalkInInquiryPanel() {
     let emailEdited = false;
     let contactEdited = false;
     let emailIsVerified = false;
+    let contactCanVerifyEmail = false;
     let historyGuardReady = false;
     let ignoreNextPopstate = false;
     let otpExpiresAt = 0;
@@ -1525,13 +1538,29 @@ function initWalkInInquiryPanel() {
 
     function setValidation(field, errorElement, message) {
         if (!field) return false;
+        const hasValue = String(field.value || '').trim() !== '';
+        const isInvalid = message !== '';
         field.setCustomValidity(message);
-        field.classList.toggle('is-invalid-live', message !== '');
+        field.classList.toggle('is-invalid-live', isInvalid);
+        field.classList.toggle('is-valid-live', !isInvalid && hasValue && !field.disabled);
+        if (isInvalid) field.setAttribute('aria-invalid', 'true');
+        else field.removeAttribute('aria-invalid');
         if (errorElement) {
             errorElement.classList.remove('is-info');
             errorElement.textContent = message;
         }
         return message === '';
+    }
+
+    function resetValidation(field, errorElement) {
+        if (!field) return;
+        field.setCustomValidity('');
+        field.classList.remove('is-invalid-live', 'is-valid-live');
+        field.removeAttribute('aria-invalid');
+        if (errorElement) {
+            errorElement.classList.remove('is-info');
+            errorElement.textContent = '';
+        }
     }
 
     function setContactInfo(field, message) {
@@ -1559,7 +1588,8 @@ function initWalkInInquiryPanel() {
         if (!input) return;
         input.value = value;
         input.dataset.selectedValue = value;
-        input.setCustomValidity('');
+        const errorElement = input.closest('.input-group')?.querySelector('.walk-in-field-error');
+        setValidation(input, errorElement, '');
     }
 
     function clearLocation(input, placeholder) {
@@ -1567,6 +1597,8 @@ function initWalkInInquiryPanel() {
         input.value = '';
         delete input.dataset.selectedValue;
         input.placeholder = placeholder;
+        const errorElement = input.closest('.input-group')?.querySelector('.walk-in-field-error');
+        resetValidation(input, errorElement);
         closeCombobox(input);
     }
 
@@ -1611,13 +1643,13 @@ function initWalkInInquiryPanel() {
         box?.classList.add('is-open');
     }
 
-    function bindLocationCombobox(input, getOptions, onChanged) {
+    function bindLocationCombobox(input, getOptions, onChanged, errorElement, label) {
         if (!input) return;
         const toggle = input.closest('[data-walk-in-combobox]')?.querySelector('[data-walk-in-combobox-toggle]');
         input.addEventListener('input', function () {
             if (input.value !== (input.dataset.selectedValue || '')) delete input.dataset.selectedValue;
-            input.setCustomValidity('');
             onChanged();
+            validateLocation(input, getOptions(), errorElement, label);
             renderLocationOptions(input, getOptions());
         });
         input.addEventListener('focus', function () {
@@ -1625,9 +1657,7 @@ function initWalkInInquiryPanel() {
         });
         input.addEventListener('blur', function () {
             window.setTimeout(function () {
-                if (input.value && !isSelectedLocation(input, getOptions())) {
-                    input.setCustomValidity('Select from the list.');
-                }
+                validateLocation(input, getOptions(), errorElement, label);
             }, 120);
         });
         toggle?.addEventListener('click', function () {
@@ -1738,9 +1768,22 @@ function initWalkInInquiryPanel() {
 
     function validateName() {
         const value = String(clientName?.value || '').trim();
-        const allowed = /^[\p{L}\p{M} .'’-]+$/u.test(value);
+        const allowed = /^[\p{L}\p{M} .'\u2019-]+$/u.test(value);
         const letters = value.match(/\p{L}/gu) || [];
-        return setValidation(clientName, nameError, allowed && letters.length >= 2 ? '' : 'Enter a valid full name.');
+        return setValidation(clientName, nameError, value.length <= 150 && allowed && letters.length >= 2 ? '' : 'Enter a valid full name.');
+    }
+
+    function validateCompany() {
+        const value = String(companyName?.value || '').trim();
+        if (value === '') {
+            resetValidation(companyName, companyError);
+            return true;
+        }
+        const allowed = /^[\p{L}\p{M}\p{N} .,'\u2019&()\-]+$/u.test(value);
+        const letters = value.match(/\p{L}/gu) || [];
+        return setValidation(companyName, companyError, value.length >= 2 && value.length <= 150 && allowed && letters.length >= 1
+            ? ''
+            : 'Enter a valid company name or leave it blank.');
     }
 
     function validateContact() {
@@ -1767,18 +1810,44 @@ function initWalkInInquiryPanel() {
     function validateEmail() {
         const value = String(emailAddress?.value || '').trim();
         const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-        return setValidation(emailAddress, emailError, valid ? '' : 'Enter a valid email address.');
+        if (!valid) return setValidation(emailAddress, emailError, 'Enter a valid email address.');
+        if (emailIsVerified) return setValidation(emailAddress, emailError, '');
+        resetValidation(emailAddress, emailError);
+        return true;
     }
 
     function setEmailVerified(verified, statusMessage = '') {
         emailIsVerified = verified;
-        if (!emailStatus) return;
-        emailStatus.textContent = statusMessage || (verified ? 'Email verified' : 'Email not verified');
-        emailStatus.classList.toggle('is-verified', verified);
-        if (sendOtpButton) {
-            sendOtpButton.textContent = verified ? 'Verified' : 'Verify Email';
-            sendOtpButton.disabled = verified;
+        if (emailAddress) {
+            emailAddress.readOnly = verified;
+            emailAddress.classList.toggle('is-email-locked', verified);
+            if (verified) setValidation(emailAddress, emailError, '');
+            else emailAddress.classList.remove('is-valid-live');
         }
+        if (emailStatus) {
+            emailStatus.textContent = statusMessage || (verified ? 'Email verified' : 'Email not verified');
+            emailStatus.classList.toggle('is-verified', verified);
+        }
+        if (sendOtpButton) {
+            sendOtpButton.textContent = verified ? 'Change Email' : 'Verify Email';
+            sendOtpButton.disabled = !verified && !contactCanVerifyEmail;
+        }
+    }
+
+    function unlockVerifiedEmail() {
+        const clearVerificationData = new FormData();
+        clearVerificationData.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        fetch('/codesamplecaps/ADMIN/sidebar/projects/php/clear_walk_in_email_verification.php', {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            body: clearVerificationData,
+        }).catch(function () {
+            // Lilinisin din ito kapag nag-expire ang session.
+        });
+        contactCanVerifyEmail = false;
+        setEmailVerified(false);
+        resetValidation(emailAddress, emailError);
+        emailAddress?.focus({ preventScroll: true });
     }
 
     function closeOtpModal() {
@@ -1855,6 +1924,7 @@ function initWalkInInquiryPanel() {
         data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
         data.append('client_name', clientName.value.trim());
         data.append('email', emailAddress.value.trim());
+        data.append('contact_no', contactNumber.value);
         try {
             const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/send_walk_in_email_otp.php', {
                 method: 'POST',
@@ -1864,17 +1934,23 @@ function initWalkInInquiryPanel() {
             const result = await response.json();
             if (!result.success) {
                 closeOtpModal();
-                setValidation(emailAddress, emailError, result.message || 'Email cannot be sent right now.');
+                const errorMessage = result.message || 'Email cannot be sent right now.';
+                if (result.field === 'name') setValidation(clientName, nameError, errorMessage);
+                else if (result.field === 'phone') setValidation(contactNumber, contactError, errorMessage);
+                else if (result.field === 'both') {
+                    setValidation(emailAddress, emailError, errorMessage);
+                    setValidation(contactNumber, contactError, errorMessage);
+                } else setValidation(emailAddress, emailError, errorMessage);
                 return;
             }
             if (otpEmail) otpEmail.textContent = emailAddress.value.trim();
-            startOtpClock(result.expires_in, 60);
+            startOtpClock(result.expires_in, Number(result.resend_after) || 60);
             showOtpEntry();
         } catch (error) {
             closeOtpModal();
             setValidation(emailAddress, emailError, 'Email cannot be sent right now.');
         } finally {
-            if (!emailIsVerified) sendOtpButton?.removeAttribute('disabled');
+            if (sendOtpButton && !emailIsVerified) sendOtpButton.disabled = !contactCanVerifyEmail;
         }
     }
 
@@ -1889,6 +1965,7 @@ function initWalkInInquiryPanel() {
         data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
         data.append('client_name', clientName.value.trim());
         data.append('email', emailAddress.value.trim());
+        data.append('contact_no', contactNumber.value);
         try {
             const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/send_walk_in_email_otp.php', {
                 method: 'POST',
@@ -1909,7 +1986,7 @@ function initWalkInInquiryPanel() {
                 otpError.classList.add('is-success');
             }
             if (otpCode) otpCode.value = '';
-            startOtpClock(result.expires_in, 60);
+            startOtpClock(result.expires_in, Number(result.resend_after) || 60);
         } catch (error) {
             showOtpEntry();
             if (otpError) {
@@ -1955,15 +2032,16 @@ function initWalkInInquiryPanel() {
         const name = String(clientName?.value || '').trim();
         const email = String(emailAddress?.value || '').trim();
         const phone = String(contactNumber?.value || '');
-        const nameIsValid = /^[\p{L}\p{M} .'â€™-]+$/u.test(name) && (name.match(/\p{L}/gu) || []).length >= 2;
+        const nameIsValid = /^[\p{L}\p{M} .'\u2019-]+$/u.test(name) && (name.match(/\p{L}/gu) || []).length >= 2;
         const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         const phoneIsValid = /^09\d{9}$/.test(phone);
-        if (!emailIsValid && !phoneIsValid) {
-            if (sendOtpButton) sendOtpButton.disabled = true;
+        const requestId = ++contactCheckId;
+        if (!nameIsValid || !emailIsValid || !phoneIsValid) {
+            contactCanVerifyEmail = false;
+            if (sendOtpButton && !emailIsVerified) sendOtpButton.disabled = true;
             return false;
         }
 
-        const requestId = ++contactCheckId;
         const data = new FormData();
         data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
         data.append('client_name', clientName.value.trim());
@@ -1980,9 +2058,10 @@ function initWalkInInquiryPanel() {
             if (requestId !== contactCheckId) return false;
             const message = result.valid ? '' : (result.message || 'Invalid client details.');
             if (nameIsValid) setValidation(clientName, nameError, '');
-            if (emailIsValid) setValidation(emailAddress, emailError, '');
+            if (emailIsValid && !emailIsVerified) resetValidation(emailAddress, emailError);
             if (phoneIsValid) setValidation(contactNumber, contactError, '');
             if (!result.valid) {
+                contactCanVerifyEmail = false;
                 if (result.field === 'name') setValidation(clientName, nameError, message);
                 if (result.field === 'email' || result.field === 'both') setValidation(emailAddress, emailError, message);
                 if (result.field === 'phone' || result.field === 'both') setValidation(contactNumber, contactError, message);
@@ -1990,6 +2069,7 @@ function initWalkInInquiryPanel() {
                 setEmailVerified(false);
                 if (sendOtpButton) sendOtpButton.disabled = true;
             } else if (result.email_verified) {
+                contactCanVerifyEmail = true;
                 if (result.status === 'existing_client') {
                     setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
                     setEmailVerified(true, 'Existing client found.');
@@ -1997,32 +2077,36 @@ function initWalkInInquiryPanel() {
                     setEmailVerified(true, 'Email verified');
                 }
             } else if (result.complete === false) {
+                contactCanVerifyEmail = false;
                 if (result.status === 'existing_client_detected') {
-                    const existingMessage = 'This number is already used. Use the same name and email.';
                     // Red muna habang kulang o hindi tugma ang buong client details.
                     if (result.field === 'phone' || result.field === 'both') {
-                        setValidation(contactNumber, contactError, existingMessage);
+                        setValidation(contactNumber, contactError, 'Number already used.');
                     }
-                    if (result.field === 'email') {
-                        setValidation(emailAddress, emailError, 'This email is already used. Use the same name and number.');
+                    if (result.field === 'email' || result.field === 'both') {
+                        setValidation(emailAddress, emailError, 'Email already used.');
                     }
                 }
                 if (!emailIsVerified) {
                     setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
                 }
-                if (sendOtpButton) sendOtpButton.disabled = emailIsVerified || !result.can_verify_email;
+                if (sendOtpButton) sendOtpButton.disabled = !emailIsVerified && !contactCanVerifyEmail;
             } else if (result.status === 'existing_client') {
+                contactCanVerifyEmail = result.can_verify_email !== false;
                 setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
                 setEmailVerified(false, 'Existing client found. Verify email.');
             } else if (result.status === 'existing_inquiry') {
+                contactCanVerifyEmail = result.can_verify_email !== false;
                 setContactInfo(contactError, 'Existing inquiry found. You may create another inquiry.');
                 if (!emailIsVerified) setEmailVerified(false, 'Existing inquiry found. Verify email.');
             } else if (!emailIsVerified) {
+                contactCanVerifyEmail = result.can_verify_email !== false;
                 setEmailVerified(false);
             }
             return Boolean(result.valid && (result.complete !== false || result.can_verify_email));
         } catch (error) {
             if (requestId !== contactCheckId) return false;
+            contactCanVerifyEmail = false;
             setValidation(emailAddress, emailError, 'Unable to check the client details. Try again.');
             return false;
         }
@@ -2031,7 +2115,41 @@ function initWalkInInquiryPanel() {
     function validateDescription() {
         const value = String(description?.value || '').trim();
         const letters = value.match(/\p{L}/gu) || [];
-        return setValidation(description, descriptionError, value.length >= 3 && letters.length >= 2 ? '' : 'Enter at least 3 characters.');
+        return setValidation(description, descriptionError, value.length >= 10 && value.length <= 2000 && letters.length >= 5
+            ? ''
+            : 'Enter at least 10 characters with real words.');
+    }
+
+    function validateSiteAddress() {
+        const value = String(siteAddress?.value || '').trim();
+        const allowed = /^[\p{L}\p{M}\p{N}\s#.,'\u2019\/()&\-]+$/u.test(value);
+        const letters = value.match(/\p{L}/gu) || [];
+        return setValidation(siteAddress, siteAddressError, value.length >= 5 && value.length <= 500 && letters.length >= 3 && allowed
+            ? ''
+            : 'Enter a clear site address with at least 3 letters.');
+    }
+
+    function validateService() {
+        return setValidation(serviceSelect, serviceError, serviceSelect?.value ? '' : 'Select a service category.');
+    }
+
+    function validateBudget() {
+        if (!budgetSelect?.value) {
+            resetValidation(budgetSelect, budgetError);
+            return true;
+        }
+        return setValidation(budgetSelect, budgetError, '');
+    }
+
+    function validateDate() {
+        syncWalkInDateWindow();
+        const value = String(dateInput?.value || '');
+        const valid = value !== '' && value >= dateInput.min && value <= dateInput.max;
+        return setValidation(dateInput, dateError, valid ? '' : 'Select an allowed inspection date.');
+    }
+
+    function validateLocation(input, options, errorElement, label) {
+        return setValidation(input, errorElement, isSelectedLocation(input, options) ? '' : `Select a valid ${label} from the list.`);
     }
 
     function syncWalkInSaveAction() {
@@ -2084,7 +2202,7 @@ function initWalkInInquiryPanel() {
         if (serviceSelect?.value !== 'Other Service') return true;
         const value = String(otherService?.value || '').trim();
         const letters = value.match(/\p{L}/gu) || [];
-        return setValidation(otherService, otherError, value.length >= 3 && letters.length >= 2 ? '' : 'Enter the other service details.');
+        return setValidation(otherService, otherError, value.length >= 4 && letters.length >= 4 ? '' : 'Enter the other service details.');
     }
 
     function getDraftData() {
@@ -2244,16 +2362,18 @@ function initWalkInInquiryPanel() {
         regionSelect.disabled = !locationData;
         syncAreas(false);
         syncOtherService();
-        [clientName, emailAddress, contactNumber, description, otherService].forEach(function (field) {
-            field?.classList.remove('is-invalid-live');
-            field?.setCustomValidity('');
+        form.querySelectorAll('.is-invalid-live, .is-valid-live').forEach(function (field) {
+            field.classList.remove('is-invalid-live', 'is-valid-live');
+            field.setCustomValidity('');
+            field.removeAttribute('aria-invalid');
         });
-        [nameError, emailError, contactError, descriptionError, otherError].forEach(function (field) {
+        form.querySelectorAll('.walk-in-field-error').forEach(function (field) {
             if (field) field.textContent = '';
         });
         clearSavedDraft();
         emailEdited = false;
         contactEdited = false;
+        contactCanVerifyEmail = false;
         setEmailVerified(false);
         clientName?.focus({ preventScroll: true });
     }
@@ -2355,9 +2475,11 @@ function initWalkInInquiryPanel() {
 
     contactNumber?.addEventListener('input', function () {
         contactEdited = true;
+        contactCanVerifyEmail = false;
+        if (!emailIsVerified && sendOtpButton) sendOtpButton.disabled = true;
         keepContactPrefix();
         keepContactCursorAfterPrefix();
-        setValidation(contactNumber, contactError, '');
+        validateContact();
         window.clearTimeout(contactCheckTimer);
         if (/^09\d{9}$/.test(contactNumber.value)) {
             checkExistingContact();
@@ -2379,12 +2501,19 @@ function initWalkInInquiryPanel() {
     });
     emailAddress?.addEventListener('input', function () {
         emailEdited = true;
-        setValidation(emailAddress, emailError, '');
+        contactCanVerifyEmail = false;
         setEmailVerified(false);
+        validateEmail();
         window.clearTimeout(contactCheckTimer);
         contactCheckTimer = window.setTimeout(checkExistingContact, 450);
     });
-    sendOtpButton?.addEventListener('click', sendEmailOtp);
+    sendOtpButton?.addEventListener('click', function () {
+        if (emailIsVerified) {
+            unlockVerifiedEmail();
+            return;
+        }
+        sendEmailOtp();
+    });
     otpVerifyButton?.addEventListener('click', verifyEmailOtp);
     otpResendButton?.addEventListener('click', resendEmailOtp);
     otpModal?.addEventListener('click', function (event) {
@@ -2422,22 +2551,48 @@ function initWalkInInquiryPanel() {
         checkExistingContact();
     });
     clientName?.addEventListener('input', function () {
+        contactCanVerifyEmail = false;
+        if (!emailIsVerified && sendOtpButton) sendOtpButton.disabled = true;
         validateName();
         window.clearTimeout(contactCheckTimer);
         contactCheckTimer = window.setTimeout(checkExistingContact, 450);
     });
     clientName?.addEventListener('blur', checkExistingContact);
+    companyName?.addEventListener('input', validateCompany);
+    companyName?.addEventListener('blur', validateCompany);
+    siteAddress?.addEventListener('input', validateSiteAddress);
+    siteAddress?.addEventListener('blur', validateSiteAddress);
     description?.addEventListener('input', validateDescription);
+    description?.addEventListener('blur', validateDescription);
     otherService?.addEventListener('input', validateOtherService);
-    serviceSelect?.addEventListener('change', syncOtherService);
+    serviceSelect?.addEventListener('change', function () {
+        syncOtherService();
+        validateService();
+    });
+    budgetSelect?.addEventListener('change', validateBudget);
+    dateInput?.addEventListener('input', validateDate);
+    dateInput?.addEventListener('change', validateDate);
+    dateInput?.addEventListener('blur', validateDate);
     engineerSelect?.addEventListener('change', syncWalkInSaveAction);
-    bindLocationCombobox(regionSelect, getRegionOptions, function () { syncAreas(false); });
-    bindLocationCombobox(areaSelect, getAreaOptions, function () { syncCities(false); });
-    bindLocationCombobox(citySelect, getCityOptions, function () { syncBarangays(false); });
-    bindLocationCombobox(barangaySelect, getBarangayOptions, function () {});
-    regionSelect?.addEventListener('change', function () { syncAreas(false); });
-    areaSelect?.addEventListener('change', function () { syncCities(false); });
-    citySelect?.addEventListener('change', function () { syncBarangays(false); });
+    bindLocationCombobox(regionSelect, getRegionOptions, function () { syncAreas(false); }, regionError, 'region');
+    bindLocationCombobox(areaSelect, getAreaOptions, function () { syncCities(false); }, areaError, 'province or area');
+    bindLocationCombobox(citySelect, getCityOptions, function () { syncBarangays(false); }, cityError, 'city or municipality');
+    bindLocationCombobox(barangaySelect, getBarangayOptions, function () {}, barangayError, 'barangay');
+    regionSelect?.addEventListener('change', function () {
+        syncAreas(false);
+        validateLocation(regionSelect, getRegionOptions(), regionError, 'region');
+    });
+    areaSelect?.addEventListener('change', function () {
+        syncCities(false);
+        validateLocation(areaSelect, getAreaOptions(), areaError, 'province or area');
+    });
+    citySelect?.addEventListener('change', function () {
+        syncBarangays(false);
+        validateLocation(citySelect, getCityOptions(), cityError, 'city or municipality');
+    });
+    barangaySelect?.addEventListener('change', function () {
+        validateLocation(barangaySelect, getBarangayOptions(), barangayError, 'barangay');
+    });
     form.addEventListener('input', saveDraft);
     form.addEventListener('change', saveDraft);
 
@@ -2447,21 +2602,26 @@ function initWalkInInquiryPanel() {
         const nextAction = Number(engineerSelect?.value || 0) > 0 ? 'confirmed' : 'pending';
         if (nextActionInput) nextActionInput.value = nextAction;
         const nameIsValid = validateName();
+        const companyIsValid = validateCompany();
         const emailIsValid = validateEmail();
         const contactIsValid = validateContact();
+        const serviceIsValid = validateService();
+        const budgetIsValid = validateBudget();
+        const siteAddressIsValid = validateSiteAddress();
         const descriptionIsValid = validateDescription();
+        const dateIsValid = validateDate();
         const otherServiceIsValid = validateOtherService();
         const locationsAreValid = [
-            [regionSelect, getRegionOptions()],
-            [areaSelect, getAreaOptions()],
-            [citySelect, getCityOptions()],
-            [barangaySelect, getBarangayOptions()],
-        ].every(function (entry) {
-            const valid = isSelectedLocation(entry[0], entry[1]);
-            entry[0]?.setCustomValidity(valid ? '' : 'Select from the list.');
-            return valid;
-        });
-        const valid = nameIsValid && emailIsValid && contactIsValid && descriptionIsValid && otherServiceIsValid && locationsAreValid;
+            [regionSelect, getRegionOptions(), regionError, 'region'],
+            [areaSelect, getAreaOptions(), areaError, 'province or area'],
+            [citySelect, getCityOptions(), cityError, 'city or municipality'],
+            [barangaySelect, getBarangayOptions(), barangayError, 'barangay'],
+        ].map(function (entry) {
+            return validateLocation(entry[0], entry[1], entry[2], entry[3]);
+        }).every(Boolean);
+        const valid = nameIsValid && companyIsValid && emailIsValid && contactIsValid
+            && serviceIsValid && budgetIsValid && siteAddressIsValid && descriptionIsValid
+            && dateIsValid && otherServiceIsValid && locationsAreValid;
         if (!valid || !form.checkValidity()) {
             form.reportValidity();
             return;
@@ -2508,11 +2668,17 @@ function initWalkInInquiryPanel() {
     syncOtherService();
     syncWalkInSaveAction();
     keepContactPrefix();
+    setEmailVerified(false);
     if (contactNumber?.value && contactNumber.value !== '09') validateContact();
     if (emailAddress?.value) validateEmail();
+    if (companyName?.value) validateCompany();
+    if (serviceSelect?.value) validateService();
+    if (budgetSelect?.value) validateBudget();
+    if (siteAddress?.value) validateSiteAddress();
     if (description?.value) validateDescription();
     if (clientName?.value) validateName();
     syncWalkInDateWindow();
+    if (dateInput?.value) validateDate();
 
     if (panel.classList.contains('is-open')) {
         panel.setAttribute('aria-hidden', 'false');

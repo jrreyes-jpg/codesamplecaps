@@ -549,7 +549,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
                 <label>
                     <span>Company / Organization Name</span>
-                    <input type="text" name="company_name" autocomplete="organization" placeholder="Company name (optional)" aria-describedby="inquiryCompanyHelp">
+                    <input type="text" name="company_name" data-label="Company / Organization Name" minlength="2" maxlength="150" autocomplete="organization" placeholder="Company name (optional)" aria-describedby="inquiryCompanyHelp">
                     <small id="inquiryCompanyHelp" class="field-help">Leave blank if you are an individual client.</small>
                     <small class="field-error"></small>
                 </label>
@@ -663,7 +663,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         <small id="siteAddressHelp" class="field-tooltip js-field-tooltip" role="tooltip">Enter the address where the service is needed. Add a unit/floor or nearby landmark, if applicable. No need to repeat the location selected above.</small>
                     </span>
                 </span>
-                <textarea name="site_address" data-label="Site Address Details" rows="3" required placeholder="House/building no., street, subdivision or sitio"></textarea>
+                <textarea name="site_address" data-label="Site Address Details" rows="3" required minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio"></textarea>
                 <small class="field-error"></small>
             </label>
 
@@ -672,10 +672,10 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     Project Description <b class="required-mark">*</b>
                     <span class="field-info-wrap">
                         <button class="field-info-button js-field-info-button" type="button" aria-label="Project description note">i</button>
-                        <small class="field-tooltip js-field-tooltip">Use at least 3 characters. Example: Renovate, install CCTV, or fix wiring.</small>
+                        <small class="field-tooltip js-field-tooltip">Use at least 10 characters. Example: Renovate, install CCTV, or fix wiring.</small>
                     </span>
                 </span>
-                <textarea name="description" data-label="Project Description" rows="4" required minlength="3" data-help-tooltip-target placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <textarea name="description" data-label="Project Description" rows="4" required minlength="10" maxlength="2000" data-help-tooltip-target placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
                 <small class="field-error"></small>
             </label>
 

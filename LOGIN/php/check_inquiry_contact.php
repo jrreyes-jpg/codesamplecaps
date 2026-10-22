@@ -41,9 +41,10 @@ if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !is_valid_ph_m
 $result = inquiry_contact_validation_result($conn, $name, $email, $phone);
 $messages = [
     'contact_not_allowed' => 'This email or number belongs to a staff account.',
-    'email_mismatch' => 'This email does not match the existing client.',
-    'phone_mismatch' => 'This number does not match the existing client.',
-    'name_mismatch' => 'This name does not match the existing client.',
+    'email_mismatch' => 'Email already used. Use another email.',
+    'phone_mismatch' => 'Number already used. Use another number.',
+    'contact_mismatch' => 'Email and number do not match.',
+    'name_mismatch' => 'Name does not match this contact.',
     'server_error' => 'Unable to check the client details. Try again.',
 ];
 

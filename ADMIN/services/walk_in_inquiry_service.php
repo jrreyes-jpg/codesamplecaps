@@ -189,8 +189,17 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     if (!inquiry_name_is_valid($clientName)) {
         throw new InvalidArgumentException('Enter a valid full name.');
     }
-    if (mb_strlen($companyName, 'UTF-8') > 150) {
-        throw new InvalidArgumentException('Company name must be 150 characters or less.');
+    preg_match_all('/\p{L}/u', $companyName, $companyLetters);
+    if (
+        $companyName !== ''
+        && (
+            mb_strlen($companyName, 'UTF-8') < 2
+            || mb_strlen($companyName, 'UTF-8') > 150
+            || count($companyLetters[0]) < 1
+            || !preg_match("/^[\\p{L}\\p{M}\\p{N} .,'\\x{2019}&()\\-]+$/u", $companyName)
+        )
+    ) {
+        throw new InvalidArgumentException('Enter a valid company name or leave it blank.');
     }
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Enter a valid email address.');
@@ -224,16 +233,26 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     if (!service_barangay_selection_is_allowed($conn, $region, $locationArea, $cityMunicipality, $barangay)) {
         throw new InvalidArgumentException('Select a valid Barangay.');
     }
-    if (mb_strlen($siteAddress, 'UTF-8') < 5) {
-        throw new InvalidArgumentException('Enter the site address details.');
+    preg_match_all('/\p{L}/u', $siteAddress, $siteAddressLetters);
+    if (
+        mb_strlen($siteAddress, 'UTF-8') < 5
+        || mb_strlen($siteAddress, 'UTF-8') > 500
+        || count($siteAddressLetters[0]) < 3
+        || !preg_match("/^[\\p{L}\\p{M}\\p{N}\\s#.,'\\x{2019}\/()&\\-]+$/u", $siteAddress)
+    ) {
+        throw new InvalidArgumentException('Enter a valid site address with at least 3 letters.');
     }
     preg_match_all('/\p{L}/u', $description, $descriptionLetters);
-    if (mb_strlen($description, 'UTF-8') < 3 || count($descriptionLetters[0]) < 2) {
-        throw new InvalidArgumentException('Enter at least 3 characters.');
+    if (
+        mb_strlen($description, 'UTF-8') < 10
+        || mb_strlen($description, 'UTF-8') > 2000
+        || count($descriptionLetters[0]) < 5
+    ) {
+        throw new InvalidArgumentException('Enter a valid project description with at least 10 characters.');
     }
     if ($serviceCategory === 'Other Service') {
         preg_match_all('/\p{L}/u', $otherServiceDetails, $otherLetters);
-        if (mb_strlen($otherServiceDetails, 'UTF-8') < 3 || count($otherLetters[0]) < 2) {
+        if (mb_strlen($otherServiceDetails, 'UTF-8') < 4 || count($otherLetters[0]) < 4) {
             throw new InvalidArgumentException('Enter the other service details.');
         }
         $description .= "\n\nOther service details: " . $otherServiceDetails;

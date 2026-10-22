@@ -94,6 +94,18 @@ if (!inquiry_name_is_valid($clientName)) {
     $errors[] = 'client_name';
 }
 
+if (
+    $companyName !== ''
+    && (
+        mb_strlen($companyName, 'UTF-8') < 2
+        || mb_strlen($companyName, 'UTF-8') > 150
+        || !has_meaningful_letters($companyName, 1)
+        || !preg_match("/^[\\p{L}\\p{M}\\p{N} .,'’&()\\-]+$/u", $companyName)
+    )
+) {
+    $errors[] = 'company_name';
+}
+
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = 'email';
 }
@@ -116,7 +128,12 @@ if (!service_barangay_selection_is_allowed(
     $errors[] = 'barangay';
 }
 
-if ($siteAddress === '') {
+if (
+    mb_strlen($siteAddress, 'UTF-8') < 5
+    || mb_strlen($siteAddress, 'UTF-8') > 500
+    || !has_meaningful_letters($siteAddress, 3)
+    || !preg_match("/^[\\p{L}\\p{M}\\p{N}\\s#.,'’\/()&\\-]+$/u", $siteAddress)
+) {
     $errors[] = 'site_address';
 }
 
@@ -128,7 +145,11 @@ if (!inquiry_budget_is_valid($estimatedBudget)) {
     $errors[] = 'estimated_budget';
 }
 
-if ($description === '' || mb_strlen($description, 'UTF-8') < 3 || !has_meaningful_letters($description, 3)) {
+if (
+    mb_strlen($description, 'UTF-8') < 10
+    || mb_strlen($description, 'UTF-8') > 2000
+    || !has_meaningful_letters($description, 5)
+) {
     $errors[] = 'description';
 }
 

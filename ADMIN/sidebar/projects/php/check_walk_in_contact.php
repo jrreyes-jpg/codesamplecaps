@@ -134,10 +134,10 @@ if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
 $result = inquiry_contact_validation_result($conn, $name, $email, $phone);
 $messages = [
     'contact_not_allowed' => 'This email or number belongs to a staff account.',
-    'email_mismatch' => 'This email does not match the existing client.',
-    'phone_mismatch' => 'This number does not match the existing client.',
-    'name_mismatch' => 'This name does not match the existing client.',
-    'contact_mismatch' => 'Email and number belong to different clients.',
+    'email_mismatch' => 'Email already used. Use another email.',
+    'phone_mismatch' => 'Number already used. Use another number.',
+    'name_mismatch' => 'Name does not match this contact.',
+    'contact_mismatch' => 'Email and number do not match.',
     'server_error' => 'Unable to check the client details. Try again.',
 ];
 

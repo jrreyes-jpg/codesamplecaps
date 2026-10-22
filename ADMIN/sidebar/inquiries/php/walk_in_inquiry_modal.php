@@ -23,7 +23,8 @@
 
                 <div class="input-group">
                     <label for="walk_in_company_name">Company / Organization Name <span class="optional-indicator">(Optional)</span></label>
-                    <input id="walk_in_company_name" name="company_name" type="text" maxlength="150" value="<?php echo htmlspecialchars((string)($walkInOldInput['company_name'] ?? ''), ENT_QUOTES); ?>" placeholder="Leave blank for an individual client">
+                    <input id="walk_in_company_name" name="company_name" type="text" minlength="2" maxlength="150" value="<?php echo htmlspecialchars((string)($walkInOldInput['company_name'] ?? ''), ENT_QUOTES); ?>" placeholder="Leave blank for an individual client" data-walk-in-company>
+                    <small class="walk-in-field-error" data-walk-in-company-error></small>
                     <small class="walk-in-field-help">Blank will be shown as Individual Client.</small>
                 </div>
 
@@ -52,6 +53,7 @@
                             <option value="<?php echo htmlspecialchars($service, ENT_QUOTES); ?>" <?php echo (string)($walkInOldInput['service_category'] ?? '') === $service ? 'selected' : ''; ?>><?php echo htmlspecialchars($service); ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <small class="walk-in-field-error" data-walk-in-service-error></small>
                 </div>
 
                 <div class="input-group">
@@ -62,12 +64,13 @@
                             <option value="<?php echo htmlspecialchars($budgetValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo (string)($walkInOldInput['estimated_budget'] ?? '') === $budgetValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <small class="walk-in-field-error" data-walk-in-budget-error></small>
                     <small class="walk-in-field-help">Guide only. Final cost may change after inspection.</small>
                 </div>
 
                 <div class="input-group input-group-wide" data-walk-in-other-service hidden>
                     <label for="walk_in_other_service">Other Service Details <span class="required-indicator">*</span></label>
-                    <input id="walk_in_other_service" name="other_service_details" type="text" minlength="3" maxlength="250" value="<?php echo htmlspecialchars((string)($walkInOldInput['other_service_details'] ?? ''), ENT_QUOTES); ?>" placeholder="Briefly describe the service" disabled>
+                    <input id="walk_in_other_service" name="other_service_details" type="text" minlength="4" maxlength="250" value="<?php echo htmlspecialchars((string)($walkInOldInput['other_service_details'] ?? ''), ENT_QUOTES); ?>" placeholder="Briefly describe the service" disabled>
                     <small class="walk-in-field-error" data-walk-in-other-error></small>
                 </div>
 
@@ -78,6 +81,7 @@
                         <button type="button" class="walk-in-combobox__toggle" data-walk-in-combobox-toggle aria-label="Show region options"></button>
                         <span class="walk-in-combobox__list" data-walk-in-combobox-list></span>
                     </span>
+                    <small class="walk-in-field-error" data-walk-in-region-error></small>
                 </div>
 
                 <div class="input-group">
@@ -87,6 +91,7 @@
                         <button type="button" class="walk-in-combobox__toggle" data-walk-in-combobox-toggle aria-label="Show province or area options"></button>
                         <span class="walk-in-combobox__list" data-walk-in-combobox-list></span>
                     </span>
+                    <small class="walk-in-field-error" data-walk-in-area-error></small>
                 </div>
 
                 <div class="input-group">
@@ -96,6 +101,7 @@
                         <button type="button" class="walk-in-combobox__toggle" data-walk-in-combobox-toggle aria-label="Show city options"></button>
                         <span class="walk-in-combobox__list" data-walk-in-combobox-list></span>
                     </span>
+                    <small class="walk-in-field-error" data-walk-in-city-error></small>
                 </div>
 
                 <div class="input-group">
@@ -105,22 +111,25 @@
                         <button type="button" class="walk-in-combobox__toggle" data-walk-in-combobox-toggle aria-label="Show barangay options"></button>
                         <span class="walk-in-combobox__list" data-walk-in-combobox-list></span>
                     </span>
+                    <small class="walk-in-field-error" data-walk-in-barangay-error></small>
                 </div>
 
                 <div class="input-group input-group-wide">
                     <label for="walk_in_site_address">Site Address Details <span class="required-indicator">*</span></label>
-                    <textarea id="walk_in_site_address" name="site_address" rows="2" minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio" required><?php echo htmlspecialchars((string)($walkInOldInput['site_address'] ?? '')); ?></textarea>
+                    <textarea id="walk_in_site_address" name="site_address" rows="2" minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio" data-walk-in-site-address required><?php echo htmlspecialchars((string)($walkInOldInput['site_address'] ?? '')); ?></textarea>
+                    <small class="walk-in-field-error" data-walk-in-site-address-error></small>
                 </div>
 
                 <div class="input-group input-group-wide">
                     <label for="walk_in_description">Project Description <span class="required-indicator">*</span></label>
-                    <textarea id="walk_in_description" name="description" rows="3" minlength="3" maxlength="2000" placeholder="Tell us the equipment, issue, or work needed" data-walk-in-description required><?php echo htmlspecialchars((string)($walkInOldInput['description'] ?? '')); ?></textarea>
+                    <textarea id="walk_in_description" name="description" rows="3" minlength="10" maxlength="2000" placeholder="Tell us the equipment, issue, or work needed" data-walk-in-description required><?php echo htmlspecialchars((string)($walkInOldInput['description'] ?? '')); ?></textarea>
                     <small class="walk-in-field-error" data-walk-in-description-error></small>
                 </div>
 
                 <div class="input-group input-group-wide">
                     <label for="walk_in_preferred_date">Preferred Inspection Date <span class="required-indicator">*</span></label>
                     <input id="walk_in_preferred_date" name="preferred_inspection_date" type="date" min="<?php echo htmlspecialchars($walkInScheduleRange['min'], ENT_QUOTES); ?>" max="<?php echo htmlspecialchars($walkInScheduleRange['max'], ENT_QUOTES); ?>" value="<?php echo htmlspecialchars((string)($walkInOldInput['preferred_inspection_date'] ?? ''), ENT_QUOTES); ?>" data-walk-in-date required>
+                    <small class="walk-in-field-error" data-walk-in-date-error></small>
                     <small class="walk-in-field-help">Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward. Up to 30 days.</small>
                 </div>
 

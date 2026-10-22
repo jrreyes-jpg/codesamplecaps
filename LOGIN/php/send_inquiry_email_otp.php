@@ -6,6 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
+require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 function inquiry_otp_json(array $data, int $status = 200): never
@@ -20,7 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $token = trim((string)($_POST['inquiry_form_token'] ?? ''));
+$name = trim((string)($_POST['client_name'] ?? ''));
 $email = strtolower(trim((string)($_POST['email'] ?? '')));
+$phone = normalize_ph_mobile(trim((string)($_POST['contact_no'] ?? '')));
 $isResend = (string)($_POST['resend'] ?? '') === '1';
 
 if ($token === '' || empty($_SESSION['inquiry_form_token']) || !hash_equals((string)$_SESSION['inquiry_form_token'], $token)) {
@@ -29,6 +32,28 @@ if ($token === '' || empty($_SESSION['inquiry_form_token']) || !hash_equals((str
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     inquiry_otp_json(['success' => false, 'message' => 'Enter a valid email address.'], 422);
+}
+if (!inquiry_name_is_valid($name)) {
+    inquiry_otp_json(['success' => false, 'field' => 'name', 'message' => 'Enter a valid full name.'], 422);
+}
+if (!is_valid_ph_mobile($phone)) {
+    inquiry_otp_json(['success' => false, 'field' => 'phone', 'message' => 'Enter a valid contact number.'], 422);
+}
+
+$contactValidation = inquiry_contact_validation_result($conn, $name, $email, $phone);
+if (empty($contactValidation['valid'])) {
+    $contactMessages = [
+        'contact_not_allowed' => 'This contact belongs to a staff account.',
+        'email_mismatch' => 'Email already used. Use another email.',
+        'phone_mismatch' => 'Number already used. Use another number.',
+        'contact_mismatch' => 'Email and number do not match.',
+        'name_mismatch' => 'Name does not match this contact.',
+    ];
+    inquiry_otp_json([
+        'success' => false,
+        'field' => (string)($contactValidation['field'] ?? ''),
+        'message' => $contactMessages[$contactValidation['status'] ?? ''] ?? 'Check the contact details.',
+    ], 422);
 }
 
 if (!inquiry_otp_prepare_rate_limit_table($conn)) {

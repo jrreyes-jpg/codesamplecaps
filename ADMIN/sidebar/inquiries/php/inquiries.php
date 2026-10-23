@@ -2303,7 +2303,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261021-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261023-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',

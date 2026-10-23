@@ -1091,7 +1091,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261023-2',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261023-4',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1324,17 +1324,24 @@ require __DIR__ . '/../layout/header.php';
                                 <?php endif; ?>
                                 <div class="inspection-grid">
                                     <div class="inspection-detail"><span>Scheduled Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-client-details inspection-detail--wide">
-                                        <div class="inspection-client-details__grid">
-                                            <div><span>Contact</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div><span>Email</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                            <div><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inspection['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                        </div>
-                                    </div>
+                                    <div class="inspection-detail inspection-detail--span-2"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Email Address</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inspection['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <?php if (trim((string)$inspection['description']) !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--span-2"><span>Project Description</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
                                     <?php if ($visibleSiteNotes !== ''): ?>
                                         <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($visibleSiteNotes, ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
+                                    <?php if ($currentScheduleReason !== ''): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                    <?php endif; ?>
+                                    <?php if ($inspectionStatus === 'On Hold'): ?>
+                                        <div class="inspection-detail inspection-detail--wide inspection-detail--hold"><span>Hold Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)($inspection['hold_reason'] ?: 'Not set'), ENT_QUOTES, 'UTF-8')); ?></strong><small>Put on hold: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['held_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small></div>
+                                    <?php elseif (!empty($inspection['resumed_at'])): ?>
+                                        <div class="inspection-detail inspection-detail--wide"><span>Last Resumed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['resumed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <?php endif; ?>
                                     <?php if (!$isInspectionStarted && $isScheduleDateReached): ?>
                                         <div class="inspection-details-action inspection-detail--wide">
@@ -1346,22 +1353,7 @@ require __DIR__ . '/../layout/header.php';
                                             </form>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if ($currentScheduleReason !== ''): ?>
-                                        <div class="inspection-detail inspection-detail--wide"><span>Schedule Change Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
-                                    <?php endif; ?>
-                                    <?php if ($inspectionStatus === 'On Hold'): ?>
-                                        <div class="inspection-detail inspection-detail--wide inspection-detail--hold"><span>Hold Reason</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)($inspection['hold_reason'] ?: 'Not set'), ENT_QUOTES, 'UTF-8')); ?></strong><small>Put on hold: <?php echo htmlspecialchars(site_inspection_format_datetime($inspection['held_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small></div>
-                                    <?php elseif (!empty($inspection['resumed_at'])): ?>
-                                        <div class="inspection-detail inspection-detail--wide"><span>Last Resumed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['resumed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <?php endif; ?>
                                 </div>
-
-                                <?php if (trim((string)$inspection['description']) !== ''): ?>
-                                    <div class="inspection-description">
-                                        <span>Project Description</span>
-                                        <p><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></p>
-                                    </div>
-                                <?php endif; ?>
 
                                 <?php if (!empty($inspection['admin_remarks'])): ?>
                                     <div class="inspection-admin-remarks" data-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">

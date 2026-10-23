@@ -844,7 +844,7 @@
     min-height: 30px;
     padding: 6px 11px;
     border-radius: 17px 0 10px 0;
-    background: #2563eb;
+    background: #dc2626;
     color: #ffffff;
     font-size: 0.72rem;
     font-weight: 800;
@@ -854,7 +854,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #bfdbfe;
+    background: #fecaca;
 }
 
 .inquiry-card__head > .inquiry-status {

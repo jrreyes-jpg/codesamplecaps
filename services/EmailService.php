@@ -251,10 +251,10 @@ class EmailService {
             $logoHtml = '';
             if (is_file($logoPath)) {
                 $this->mailer->addEmbeddedImage($logoPath, 'edgeLogo');
-                $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
+                $logoHtml = "<img src='cid:edgeLogo' alt='Edge Automation Technology Services, Co.' style='width:56px;height:56px;border-radius:12px;object-fit:cover;margin-bottom:12px'>";
             }
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Inquiry Received - ' . $this->config->get('APP_NAME');
+            $this->mailer->Subject = 'Inquiry Received - Edge Automation Technology Services, Co.';
             $this->mailer->Body = "
                 <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
                     <div style='background:#0f766e;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
@@ -264,11 +264,11 @@ class EmailService {
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px;color:#0f172a;line-height:1.55'>
                         <p>Hello {$safeName},</p>
                         <p>We received your inquiry. Our Admin will contact you to confirm the inspection schedule.</p>
-                        <p>Thank you,<br>Edge Automation</p>
+                        <p>Thank you,<br>Edge Automation Technology Services, Co.</p>
                     </div>
                 </div>";
             $this->mailer->AltBody = 'Hello ' . ($recipientName !== '' ? $recipientName : 'Client')
-                . ".\n\nWe received your inquiry. Our Admin will contact you to confirm the inspection schedule.\n\nThank you,\nEdge Automation";
+                . ".\n\nWe received your inquiry. Our Admin will contact you to confirm the inspection schedule.\n\nThank you,\nEdge Automation Technology Services, Co.";
             $this->mailer->send();
             return true;
         } catch (Exception $exception) {

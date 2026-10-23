@@ -681,7 +681,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <label class="preferred-inspection-field">
                 <span class="field-label-with-info">
-                    Preferred Inspection Date <b class="required-mark">*</b>
+                    Tentative Inspection Date <b class="required-mark">*</b>
                     <span class="field-info-wrap">
                         <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
                         <small class="field-tooltip js-date-tooltip">This is only your preferred date. We will contact you to confirm the final date.</small>
@@ -692,7 +692,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         type="date"
                         class="js-inspection-date"
                         name="preferred_inspection_date"
-                        data-label="Preferred Inspection Date"
+                        data-label="Tentative Inspection Date"
                         required
                         min="<?php echo htmlspecialchars($preferredInspectionDateRange['min'], ENT_QUOTES, 'UTF-8'); ?>"
                         max="<?php echo htmlspecialchars($preferredInspectionDateRange['max'], ENT_QUOTES, 'UTF-8'); ?>"

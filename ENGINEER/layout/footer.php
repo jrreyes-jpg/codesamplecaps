@@ -5,7 +5,7 @@ $sharedJsFiles = [
     '/codesamplecaps/assets/js/app-window-guard.js',
     '/codesamplecaps/SHARED/header/core/operations-header.js',
     '/codesamplecaps/ENGINEER/common/js/engineer-common.js',
-    '/codesamplecaps/ENGINEER/common/js/engineer-notifications.js',
+    '/codesamplecaps/ENGINEER/common/js/engineer-notifications.js?v=20261023-2',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/auth/js/session-timeout.js',
     '/codesamplecaps/SHARED/auth/js/logout-confirm.js',

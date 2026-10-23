@@ -1,9 +1,4 @@
 /* Login-only styles. Yung common auth layout nasa auth-shared.css na. */
-.login-help-text {
-    color: #4b5563;
-    font-weight: 600;
-}
-
 .error-box {
     background-color: #eef8f0;
     color: #087f23;

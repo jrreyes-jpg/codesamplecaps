@@ -2038,6 +2038,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const requestedModal = requestedInspectionId > 0 ? document.getElementById('inspectionModal' + requestedInspectionId) : null;
     if (requestedModal) {
         openInspectionModal(requestedModal);
+        const requestedCard = requestedModal.closest('[data-inspection-card-id]');
+        const requestedButton = requestedCard?.querySelector('[data-engineer-notification-id]');
+        const notificationId = Number.parseInt(requestedButton?.dataset.engineerNotificationId || '0', 10);
+        if (notificationId > 0 && typeof window.edgeEngineerMarkNotificationRead === 'function') {
+            window.edgeEngineerMarkNotificationRead(notificationId, requestedInspectionId)
+                .then(function (data) {
+                    if (!data?.success) return;
+                    requestedButton?.removeAttribute('data-engineer-notification-id');
+                    requestedCard?.querySelector('[data-inspection-new-badge]')?.remove();
+                    requestedCard?.classList.remove('is-unviewed');
+                    requestedCard?.classList.add('is-viewed');
+                })
+                .catch(function () {
+                    // Mananatiling New kapag hindi naisave ang read state.
+                });
+        }
         const url = new URL(window.location.href);
         url.searchParams.delete('inspection_id');
         window.history.replaceState({}, document.title, url);

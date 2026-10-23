@@ -25,6 +25,7 @@ function engineer_notification_assignment_items(mysqli $conn, int $userId, int $
            AND s.archived_at IS NULL
          WHERE un.user_id = ?
            AND un.type = 'site_inspection_assignment'
+           AND un.read_at IS NULL
          ORDER BY un.id DESC
          LIMIT ?"
     );
@@ -70,7 +71,9 @@ function engineer_notification_state(mysqli $conn, int $userId, bool $trackNewAs
         $sessionKey = 'engineer_notification_last_id';
         $isFirstPoll = !array_key_exists($sessionKey, $_SESSION);
         $previousId = (int)($_SESSION[$sessionKey] ?? 0);
-        if (!$isFirstPoll && $latestId > $previousId) {
+        if ($isFirstPoll) {
+            $newItems = $assignmentItems;
+        } elseif ($latestId > $previousId) {
             $newItems = array_values(array_filter(
                 $assignmentItems,
                 static fn(array $item): bool => (int)($item['notification_id'] ?? 0) > $previousId
@@ -106,7 +109,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $notificationId = (int)($payload['notification_id'] ?? 0);
-    if ($notificationId <= 0 || !user_notifications_mark_read($conn, $notificationId, $userId)) {
+    $inspectionId = (int)($payload['inspection_id'] ?? 0);
+    $markedRead = false;
+    if ($inspectionId > 0 && user_notifications_table_exists($conn)) {
+        $markInspectionStmt = $conn->prepare(
+            "UPDATE user_notifications
+             SET read_at = COALESCE(read_at, NOW())
+             WHERE user_id = ?
+               AND reference_id = ?
+               AND type IN ('site_inspection_assignment', 'site_inspection_schedule_updated')"
+        );
+        if ($markInspectionStmt) {
+            $markInspectionStmt->bind_param('ii', $userId, $inspectionId);
+            $markedRead = $markInspectionStmt->execute();
+            $markInspectionStmt->close();
+        }
+    } elseif ($notificationId > 0) {
+        $markedRead = user_notifications_mark_read($conn, $notificationId, $userId);
+    }
+
+    if (!$markedRead) {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => 'Unable to update notification.']);
         exit();

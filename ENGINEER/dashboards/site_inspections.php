@@ -954,6 +954,26 @@ if ($assetRequirementsReady) {
 }
 
 $inspections = [];
+$unreadInspectionNotificationIds = [];
+if ($userId > 0 && user_notifications_table_exists($conn)) {
+    $unreadInspectionStmt = $conn->prepare(
+        "SELECT reference_id, MAX(id) AS notification_id
+         FROM user_notifications
+         WHERE user_id = ?
+           AND read_at IS NULL
+           AND type IN ('site_inspection_assignment', 'site_inspection_schedule_updated')
+         GROUP BY reference_id"
+    );
+    if ($unreadInspectionStmt) {
+        $unreadInspectionStmt->bind_param('i', $userId);
+        $unreadInspectionStmt->execute();
+        foreach ($unreadInspectionStmt->get_result()->fetch_all(MYSQLI_ASSOC) as $unreadInspectionNotification) {
+            $unreadInspectionNotificationIds[(int)$unreadInspectionNotification['reference_id']]
+                = (int)$unreadInspectionNotification['notification_id'];
+        }
+        $unreadInspectionStmt->close();
+    }
+}
 $inspectionHoldSelect = site_inspection_hold_columns_ready($conn)
     ? 'si.hold_reason, si.held_at, si.resumed_at,'
     : 'NULL AS hold_reason, NULL AS held_at, NULL AS resumed_at,';
@@ -1071,7 +1091,7 @@ if (!empty($inspections)
 $csrfToken = engineer_inspection_csrf_token();
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261021-10',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261023-2',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1100,6 +1120,7 @@ require __DIR__ . '/../layout/header.php';
                 <?php foreach ($inspections as $inspection): ?>
                     <?php
                     $inspectionId = (int)$inspection['id'];
+                    $unreadInspectionNotificationId = (int)($unreadInspectionNotificationIds[$inspectionId] ?? 0);
                     $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
                     $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
@@ -1179,21 +1200,66 @@ require __DIR__ . '/../layout/header.php';
                             'notes' => '',
                         ]];
                     }
+
+                    $cardService = trim((string)($inspection['service_category'] ?? ''));
+                    if ($cardService === 'Other Service') {
+                        $otherServiceDetails = '';
+                        if (preg_match('/Other service details:\s*(.+)/is', (string)($inspection['description'] ?? ''), $matches)) {
+                            $otherServiceDetails = preg_replace('/\s+/u', ' ', trim((string)$matches[1])) ?? '';
+                        }
+                        $cardService = $otherServiceDetails !== ''
+                            ? mb_strimwidth($otherServiceDetails, 0, 48, '...')
+                            : 'Other Service';
+                    }
+                    if ($cardService === '') {
+                        $cardService = 'Service request';
+                    }
+
+                    $cardLocation = implode(', ', array_filter([
+                        trim((string)($inspection['barangay'] ?? '')),
+                        trim((string)($inspection['city_municipality'] ?? '')),
+                    ], static fn(string $part): bool => $part !== ''));
+                    if ($cardLocation === '') {
+                        $cardLocation = trim((string)($inspection['province'] ?? '')) ?: 'Not set';
+                    }
                     ?>
-                    <article class="inspection-card" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), $currentScheduleReason, $visibleSiteNotes])), ENT_QUOTES, 'UTF-8'); ?>">
+                    <article class="inspection-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes])), ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inspection-card__head">
-                            <div>
+                            <div class="inspection-card__identity">
+                                <?php if ($unreadInspectionNotificationId > 0): ?>
+                                    <span class="inspection-card__new-indicator" data-inspection-new-badge>
+                                        <span aria-hidden="true"></span>New
+                                    </span>
+                                <?php endif; ?>
+                                <span class="inspection-card__eyebrow">Client - Site Inspection</span>
                                 <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
-                                <p class="inspection-meta"><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <span class="inspection-status" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
-                            <div class="inspection-card__schedule">
-                                <?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>
-                            </div>
-                            <button type="button" class="btn-primary inspection-view-button" data-inspection-modal-open="inspectionModal<?php echo $inspectionId; ?>">
-                                View Details
-                            </button>
+                            <span class="inspection-status" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
+
+                        <div class="inspection-card__summary">
+                            <div class="inspection-card__info">
+                                <span>Service</span>
+                                <strong><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </div>
+                            <div class="inspection-card__info">
+                                <span>Location</span>
+                                <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </div>
+                            <div class="inspection-card__info">
+                                <span>Inspection Schedule</span>
+                                <strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-primary inspection-view-button"
+                            data-inspection-modal-open="inspectionModal<?php echo $inspectionId; ?>"
+                            <?php echo $unreadInspectionNotificationId > 0 ? 'data-engineer-notification-id="' . $unreadInspectionNotificationId . '"' : ''; ?>
+                        >
+                            View Details
+                        </button>
 
                         <div class="inspection-modal" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>" hidden>
                             <div class="inspection-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
@@ -1201,7 +1267,7 @@ require __DIR__ . '/../layout/header.php';
                                     <div>
                                         <span class="inspection-modal__eyebrow">Site Inspection</span>
                                         <h2 id="inspectionModalTitle<?php echo $inspectionId; ?>"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
-                                        <p><?php echo htmlspecialchars((string)$inspection['service_category'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <p><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></p>
                                     </div>
                                     <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
                                 </div>
@@ -1641,7 +1707,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261021-12',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261023-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

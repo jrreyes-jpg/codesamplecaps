@@ -595,7 +595,6 @@ $email_input_value = !$is_device_locked && $flash_email !== ''
 
                     <div class="links">
                         <a href="/codesamplecaps/LOGIN/php/forgot.php">Forgot Password?</a>
-                        <a href="/codesamplecaps/LOGIN/php/index.php?open=inquiry" class="login-help-text" data-client-account-help>No Client account yet? Start an inquiry.</a>
                     </div>
                 </form>
             </div>

@@ -2599,7 +2599,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inquiry['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <div class="inquiry-detail inquiry-detail--wide"><span>Complete Address</span><strong><?php echo htmlspecialchars($fullAddress, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php if (!empty($inquiry['preferred_inspection_date'])): ?>
-                                            <div class="inquiry-detail"><span>Client Preferred Inspection Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                            <div class="inquiry-detail"><span>Client Tentative Inspection Date</span><strong><?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
                                         <div class="inquiry-detail"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inquiry['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     </div>

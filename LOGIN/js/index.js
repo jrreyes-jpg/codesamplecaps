@@ -614,7 +614,7 @@ const initInquiryForm = () => {
             emailInput.readOnly = isVerified;
             emailInput.classList.toggle('is-email-locked', isVerified);
             verifyEmailButton.textContent = isVerified ? 'Change Email' : 'Verify Email';
-            verifyEmailButton.disabled = !isVerified && !contactCanVerifyEmail;
+            verifyEmailButton.disabled = !isVerified && !emailPattern.test(currentEmail);
             if (isVerified) {
                 setFieldValid(emailInput);
             } else if (emailInput.classList.contains('is-valid')) {
@@ -896,6 +896,23 @@ const initInquiryForm = () => {
                 unlockVerifiedEmail();
                 return;
             }
+
+            const fullName = (clientNameInput?.value || '').trim();
+            const contactNumber = (contactInput?.value || '').trim();
+            const hasValidName = fullName !== '' && validateFullNameText(clientNameInput);
+            const hasValidContact = phonePattern.test(contactNumber);
+
+            if (!hasValidName) {
+                setFieldError(clientNameInput, 'Please enter your Full Name first.');
+            }
+            if (!hasValidContact) {
+                setFieldError(contactInput, 'Please enter a valid Contact Number first.');
+            }
+            if (!hasValidName || !hasValidContact) {
+                (hasValidName ? contactInput : clientNameInput)?.focus({ preventScroll: true });
+                return;
+            }
+
             sendInquiryOtp(false);
         });
         otpModal?.querySelectorAll('.js-inquiry-otp-close').forEach((button) => {

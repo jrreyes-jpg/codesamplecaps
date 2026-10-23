@@ -1816,6 +1816,12 @@ function initWalkInInquiryPanel() {
         return true;
     }
 
+    function syncVerifyEmailButton() {
+        if (!sendOtpButton) return;
+        const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailAddress?.value || '').trim());
+        sendOtpButton.disabled = !emailIsVerified && !hasValidEmail;
+    }
+
     function setEmailVerified(verified, statusMessage = '') {
         emailIsVerified = verified;
         if (emailAddress) {
@@ -1830,7 +1836,7 @@ function initWalkInInquiryPanel() {
         }
         if (sendOtpButton) {
             sendOtpButton.textContent = verified ? 'Change Email' : 'Verify Email';
-            sendOtpButton.disabled = !verified && !contactCanVerifyEmail;
+            syncVerifyEmailButton();
         }
     }
 
@@ -1950,7 +1956,7 @@ function initWalkInInquiryPanel() {
             closeOtpModal();
             setValidation(emailAddress, emailError, 'Email cannot be sent right now.');
         } finally {
-            if (sendOtpButton && !emailIsVerified) sendOtpButton.disabled = !contactCanVerifyEmail;
+            syncVerifyEmailButton();
         }
     }
 
@@ -2038,7 +2044,7 @@ function initWalkInInquiryPanel() {
         const requestId = ++contactCheckId;
         if (!nameIsValid || !emailIsValid || !phoneIsValid) {
             contactCanVerifyEmail = false;
-            if (sendOtpButton && !emailIsVerified) sendOtpButton.disabled = true;
+            syncVerifyEmailButton();
             return false;
         }
 
@@ -2067,7 +2073,7 @@ function initWalkInInquiryPanel() {
                 if (result.field === 'phone' || result.field === 'both') setValidation(contactNumber, contactError, message);
                 if (!result.field) setValidation(emailAddress, emailError, message);
                 setEmailVerified(false);
-                if (sendOtpButton) sendOtpButton.disabled = true;
+                syncVerifyEmailButton();
             } else if (result.email_verified) {
                 contactCanVerifyEmail = true;
                 if (result.status === 'existing_client') {
@@ -2090,7 +2096,7 @@ function initWalkInInquiryPanel() {
                 if (!emailIsVerified) {
                     setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
                 }
-                if (sendOtpButton) sendOtpButton.disabled = !emailIsVerified && !contactCanVerifyEmail;
+                syncVerifyEmailButton();
             } else if (result.status === 'existing_client') {
                 contactCanVerifyEmail = result.can_verify_email !== false;
                 setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
@@ -2476,7 +2482,7 @@ function initWalkInInquiryPanel() {
     contactNumber?.addEventListener('input', function () {
         contactEdited = true;
         contactCanVerifyEmail = false;
-        if (!emailIsVerified && sendOtpButton) sendOtpButton.disabled = true;
+        syncVerifyEmailButton();
         keepContactPrefix();
         keepContactCursorAfterPrefix();
         validateContact();
@@ -2512,6 +2518,15 @@ function initWalkInInquiryPanel() {
             unlockVerifiedEmail();
             return;
         }
+
+        const hasValidName = validateName();
+        const hasValidContact = validateContact();
+        if (!hasValidName || !hasValidContact) {
+            window.alert('Please complete your Full Name and Contact Number first before verifying your email.');
+            (hasValidName ? contactNumber : clientName)?.focus({ preventScroll: true });
+            return;
+        }
+
         sendEmailOtp();
     });
     otpVerifyButton?.addEventListener('click', verifyEmailOtp);
@@ -2552,7 +2567,7 @@ function initWalkInInquiryPanel() {
     });
     clientName?.addEventListener('input', function () {
         contactCanVerifyEmail = false;
-        if (!emailIsVerified && sendOtpButton) sendOtpButton.disabled = true;
+        syncVerifyEmailButton();
         validateName();
         window.clearTimeout(contactCheckTimer);
         contactCheckTimer = window.setTimeout(checkExistingContact, 450);

@@ -1541,12 +1541,13 @@ function initWalkInInquiryPanel() {
         const hasValue = String(field.value || '').trim() !== '';
         const isInvalid = message !== '';
         field.setCustomValidity(message);
+        field.classList.remove('is-unverified-live');
         field.classList.toggle('is-invalid-live', isInvalid);
         field.classList.toggle('is-valid-live', !isInvalid && hasValue && !field.disabled);
         if (isInvalid) field.setAttribute('aria-invalid', 'true');
         else field.removeAttribute('aria-invalid');
         if (errorElement) {
-            errorElement.classList.remove('is-info');
+            errorElement.classList.remove('is-info', 'is-warning');
             errorElement.textContent = message;
         }
         return message === '';
@@ -1555,12 +1556,26 @@ function initWalkInInquiryPanel() {
     function resetValidation(field, errorElement) {
         if (!field) return;
         field.setCustomValidity('');
-        field.classList.remove('is-invalid-live', 'is-valid-live');
+        field.classList.remove('is-invalid-live', 'is-valid-live', 'is-unverified-live');
         field.removeAttribute('aria-invalid');
         if (errorElement) {
-            errorElement.classList.remove('is-info');
+            errorElement.classList.remove('is-info', 'is-warning');
             errorElement.textContent = '';
         }
+    }
+
+    function setEmailWarning(message) {
+        if (!emailAddress) return false;
+        emailAddress.setCustomValidity('');
+        emailAddress.classList.remove('is-invalid-live', 'is-valid-live');
+        emailAddress.classList.add('is-unverified-live');
+        emailAddress.setAttribute('aria-invalid', 'false');
+        if (emailError) {
+            emailError.classList.remove('is-info');
+            emailError.classList.add('is-warning');
+            emailError.textContent = message;
+        }
+        return true;
     }
 
     function setContactInfo(field, message) {
@@ -1797,6 +1812,16 @@ function initWalkInInquiryPanel() {
         return setValidation(contactNumber, contactError, /^09\d{9}$/.test(value) ? '' : 'Use 09 and enter 11 digits.');
     }
 
+    function validateAutofilledIdentity(field) {
+        if (field === clientName && String(field.value || '').trim() !== '') {
+            validateName();
+        }
+        if (field === contactNumber && String(field.value || '') !== '09') {
+            keepContactPrefix();
+            validateContact();
+        }
+    }
+
     function keepContactPrefix() {
         if (!contactNumber) return;
         let digits = contactNumber.value.replace(/\D/g, '');
@@ -1818,8 +1843,7 @@ function initWalkInInquiryPanel() {
         const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
         if (!valid) return setValidation(emailAddress, emailError, 'Enter a valid email address.');
         if (emailIsVerified) return setValidation(emailAddress, emailError, '');
-        resetValidation(emailAddress, emailError);
-        return true;
+        return setEmailWarning('Verify this email to continue.');
     }
 
     function syncVerifyEmailButton() {
@@ -2070,7 +2094,7 @@ function initWalkInInquiryPanel() {
             if (requestId !== contactCheckId) return false;
             const message = result.valid ? '' : (result.message || 'Invalid client details.');
             if (nameIsValid) setValidation(clientName, nameError, '');
-            if (emailIsValid && !emailIsVerified) resetValidation(emailAddress, emailError);
+            if (emailIsValid && !emailIsVerified) setEmailWarning('Verify this email to continue.');
             if (phoneIsValid) setValidation(contactNumber, contactError, '');
             if (!result.valid) {
                 contactCanVerifyEmail = false;
@@ -2400,6 +2424,12 @@ function initWalkInInquiryPanel() {
         } catch (error) {
         }
         loadLocations();
+        [150, 700].forEach(function (delay) {
+            window.setTimeout(function () {
+                validateAutofilledIdentity(clientName);
+                validateAutofilledIdentity(contactNumber);
+            }, delay);
+        });
         if (emailAddress?.value || /^09\d{9}$/.test(contactNumber?.value || '')) {
             checkExistingContact();
         }
@@ -2515,9 +2545,9 @@ function initWalkInInquiryPanel() {
         emailEdited = true;
         contactCanVerifyEmail = false;
         setEmailVerified(false);
-        validateEmail();
+        resetValidation(emailAddress, emailError);
+        syncVerifyEmailButton();
         window.clearTimeout(contactCheckTimer);
-        contactCheckTimer = window.setTimeout(checkExistingContact, 450);
     });
     sendOtpButton?.addEventListener('click', function () {
         if (emailIsVerified) {
@@ -2565,6 +2595,13 @@ function initWalkInInquiryPanel() {
     emailAddress?.addEventListener('blur', function () {
         if (emailEdited) validateEmail();
         checkExistingContact();
+    });
+    form.addEventListener('animationstart', function (event) {
+        if (event.animationName !== 'walk-in-autofill-detected') return;
+        if (event.target !== clientName && event.target !== contactNumber) return;
+        validateAutofilledIdentity(event.target);
+        window.clearTimeout(contactCheckTimer);
+        contactCheckTimer = window.setTimeout(checkExistingContact, 450);
     });
     contactNumber?.addEventListener('blur', function () {
         if (contactEdited) validateContact();

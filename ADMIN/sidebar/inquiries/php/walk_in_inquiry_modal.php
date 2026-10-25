@@ -17,7 +17,10 @@
             <div class="walk-in-inquiry-grid">
                 <div class="input-group">
                     <label for="walk_in_client_name">Contact Person's Full Name <span class="required-indicator">*</span></label>
-                    <input id="walk_in_client_name" name="client_name" type="text" maxlength="150" value="<?php echo htmlspecialchars((string)($walkInOldInput['client_name'] ?? ''), ENT_QUOTES); ?>" placeholder="e.g., Juan Dela Cruz" data-walk-in-client-name required>
+                    <span class="walk-in-validation-control">
+                        <input id="walk_in_client_name" name="client_name" type="text" maxlength="150" value="<?php echo htmlspecialchars((string)($walkInOldInput['client_name'] ?? ''), ENT_QUOTES); ?>" placeholder="e.g., Juan Dela Cruz" data-walk-in-client-name data-persistent-valid-check required>
+                        <span class="walk-in-validation-check" aria-hidden="true"></span>
+                    </span>
                     <small class="walk-in-field-error" data-walk-in-name-error></small>
                 </div>
 
@@ -40,7 +43,10 @@
 
                 <div class="input-group">
                     <label for="walk_in_contact_no">Contact Number <span class="required-indicator">*</span></label>
-                    <input id="walk_in_contact_no" name="contact_no" type="tel" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" placeholder="09xxxxxxxxx" value="<?php echo htmlspecialchars((string)($walkInOldInput['contact_no'] ?? '09'), ENT_QUOTES); ?>" data-walk-in-contact-number required>
+                    <span class="walk-in-validation-control">
+                        <input id="walk_in_contact_no" name="contact_no" type="tel" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" placeholder="09xxxxxxxxx" value="<?php echo htmlspecialchars((string)($walkInOldInput['contact_no'] ?? '09'), ENT_QUOTES); ?>" data-walk-in-contact-number data-persistent-valid-check required>
+                        <span class="walk-in-validation-check" aria-hidden="true"></span>
+                    </span>
                     <small class="walk-in-field-error" data-walk-in-contact-error></small>
                     <small class="walk-in-field-help">Enter 11 digits starting with 09.</small>
                 </div>

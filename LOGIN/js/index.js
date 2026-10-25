@@ -89,8 +89,8 @@ const showInquirySuccessModal = () => {
     modal.innerHTML = [
         '<div class="inquiry-success-modal__card">',
         '<div class="inquiry-success-modal__icon" aria-hidden="true">✓</div>',
-        '<h2 id="inquirySuccessTitle">Inquiry Sent</h2>',
-        '<p><strong>What happens next?</strong><br>Admin will review your request and contact you by call or email.</p>',
+        '<h2 id="inquirySuccessTitle">Inquiry Received</h2>',
+        '<p><strong>What happens next?</strong><br>Edge Automation Technology Services, Co. will confirm the Engineer\'s availability. If needed, we will call you to agree on another date. Your confirmed site inspection schedule will be sent by email.</p>',
         '<button type="button" class="btn btn-primary" data-inquiry-success-close>Back to Home</button>',
         '</div>',
     ].join('');
@@ -1730,6 +1730,23 @@ const restoreInquiryDraft = () => {
             });
         });
 
+        const validateAutofilledIdentity = (field) => {
+            if (field === clientNameInput && field.value.trim() !== '') {
+                validateFullNameText(field);
+            }
+            if (field === contactInput && field.value.trim() !== '09') {
+                normalizeContactNumber(field);
+                validateLiveField(field, true);
+            }
+        };
+
+        inquiryForm.addEventListener('animationstart', (event) => {
+            if (event.animationName !== 'inquiry-autofill-detected') return;
+            if (event.target !== clientNameInput && event.target !== contactInput) return;
+            validateAutofilledIdentity(event.target);
+            queueContactCheck();
+        });
+
         const clearInquiryForm = () => {
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
@@ -1770,6 +1787,12 @@ const restoreInquiryDraft = () => {
         restoreInquiryDraft();
         updateEmailVerification();
         checkContactDetails();
+        [150, 700].forEach((delay) => {
+            window.setTimeout(() => {
+                validateAutofilledIdentity(clientNameInput);
+                validateAutofilledIdentity(contactInput);
+            }, delay);
+        });
 
         if (window.edgeInquiryStatus === 'contact_mismatch') {
             showContactMismatchFeedback();

@@ -83,8 +83,12 @@ function inquiry_center_format_money(float $amount): string
 
 function inquiry_center_status_label(string $status): string
 {
-    // Lumang records lang ang old status. Pending Review ang ipakita sa bagong flow.
-    return in_array($status, ['Verified Lead', 'Not Qualified'], true) ? 'Pending Review' : $status;
+    // Hinihintay muna ang final na Engineer at schedule.
+    if (in_array($status, ['Pending Review', 'Verified Lead', 'Not Qualified'], true)) {
+        return 'Pending Confirmation';
+    }
+
+    return $status;
 }
 
 function inquiry_center_filter_url(array $params = []): string
@@ -2302,14 +2306,14 @@ $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-2',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261023-2',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-1',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

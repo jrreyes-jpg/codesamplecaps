@@ -734,13 +734,51 @@ h4 {
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
 }
 
-.inquiry-form input.is-valid:not([type="date"]):not([type="hidden"]):not([data-combobox-input]),
+.inquiry-form input.is-valid:not([type="date"]):not([type="hidden"]):not([data-combobox-input]):not([data-persistent-valid-check]),
 .inquiry-form textarea.is-valid {
     padding-right: 42px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     background-size: 18px 18px;
+}
+
+.inquiry-validation-control {
+    position: relative;
+    display: block;
+}
+
+.inquiry-validation-control > input {
+    width: 100%;
+    padding-right: 42px;
+}
+
+.inquiry-validation-check {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 18px;
+}
+
+.inquiry-validation-control > input.is-valid + .inquiry-validation-check {
+    opacity: 1;
+}
+
+@keyframes inquiry-autofill-detected {
+    from { opacity: 0.99; }
+    to { opacity: 1; }
+}
+
+.inquiry-form input:-webkit-autofill {
+    animation: inquiry-autofill-detected 0.01s both;
 }
 
 .inquiry-form small,
@@ -763,6 +801,15 @@ h4 {
 
 .field-error.is-warning {
     color: #b45309 !important;
+}
+
+.inquiry-grid--contact-details .field-error {
+    display: none;
+    min-height: 0;
+}
+
+.inquiry-grid--contact-details .field-error.is-visible {
+    display: block;
 }
 
 .inquiry-contact-feedback {

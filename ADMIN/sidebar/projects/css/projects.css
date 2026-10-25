@@ -3174,7 +3174,13 @@ body.walk-in-save-lock {
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
-.walk-in-inquiry-form input.is-valid-live:not([type="date"]):not([type="hidden"]):not([data-walk-in-region]):not([data-walk-in-area]):not([data-walk-in-city]):not([data-walk-in-barangay]),
+.walk-in-inquiry-form input.is-unverified-live {
+    border-color: #f59e0b;
+    background-color: #fffbeb;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+}
+
+.walk-in-inquiry-form input.is-valid-live:not([type="date"]):not([type="hidden"]):not([data-walk-in-region]):not([data-walk-in-area]):not([data-walk-in-city]):not([data-walk-in-barangay]):not([data-persistent-valid-check]),
 .walk-in-inquiry-form textarea.is-valid-live {
     padding-right: 42px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
@@ -3183,12 +3189,42 @@ body.walk-in-save-lock {
     background-size: 18px 18px;
 }
 
-.walk-in-inquiry-form input[data-walk-in-contact-number].is-valid-live {
+.walk-in-validation-control {
+    position: relative;
+    display: block;
+}
+
+.walk-in-validation-control > input {
+    width: 100%;
     padding-right: 42px;
+}
+
+.walk-in-validation-check {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: center;
     background-size: 18px 18px;
+}
+
+.walk-in-validation-control > input.is-valid-live + .walk-in-validation-check {
+    opacity: 1;
+}
+
+@keyframes walk-in-autofill-detected {
+    from { opacity: 0.99; }
+    to { opacity: 1; }
+}
+
+.walk-in-inquiry-form input:-webkit-autofill {
+    animation: walk-in-autofill-detected 0.01s both;
 }
 
 .walk-in-inquiry-form input.is-email-locked {
@@ -3210,6 +3246,10 @@ body.walk-in-save-lock {
 
 .walk-in-field-error.is-info {
     color: #15803d;
+}
+
+.walk-in-field-error.is-warning {
+    color: #b45309;
 }
 
 .walk-in-field-help {

@@ -3497,6 +3497,7 @@ body.inquiry-modal-open {
 .inquiry-schedule-form input.is-invalid,
 .inquiry-schedule-form select.is-invalid,
 .inquiry-schedule-form textarea.is-invalid,
+.inquiry-schedule-form input.is-conflict,
 .inquiry-archive-form select.is-invalid,
 .inquiry-archive-form textarea.is-invalid {
     border-color: #dc2626;

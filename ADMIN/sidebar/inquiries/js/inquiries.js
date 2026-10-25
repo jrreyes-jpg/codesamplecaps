@@ -920,6 +920,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const reasonInput = form.querySelector('textarea[name="reschedule_reason"]');
         const reasonFeedback = form.querySelector('[data-admin-reschedule-reason-feedback]');
         const scheduleFeedback = form.querySelector('[data-admin-schedule-feedback]');
+        const scheduleConflictFeedback = form.querySelector('[data-admin-schedule-conflict-feedback]');
         const rescheduleGuidance = form.querySelector('[data-admin-reschedule-guidance]');
         const hasExistingSchedule = form.dataset.hasExistingSchedule === '1';
         const initialSubmitDisabled = Boolean(submitButton?.disabled);
@@ -968,6 +969,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hourCycle: 'h23',
         });
         let engineerBusyOnDate = false;
+        let engineerAvailabilityPending = false;
         let availabilityRequestId = 0;
 
         const getManilaNow = function () {
@@ -1019,8 +1021,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (engineerId <= 0 || selectedDate === '') {
                 engineerBusyOnDate = false;
+                engineerAvailabilityPending = false;
+                syncRescheduleControls(false);
                 return;
             }
+
+            engineerBusyOnDate = false;
+            engineerAvailabilityPending = true;
+            syncRescheduleControls(false);
 
             const url = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/engineer_schedule_availability.php', window.location.origin);
             url.searchParams.set('engineer_id', String(engineerId));
@@ -1033,14 +1041,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     return response.json();
                 })
                 .then(function (data) {
-                    if (requestId !== availabilityRequestId || !data.success) return;
+                    if (requestId !== availabilityRequestId) return;
+                    engineerAvailabilityPending = false;
+                    if (!data.success) {
+                        syncRescheduleControls(false);
+                        return;
+                    }
                     engineerBusyOnDate = data.engineer_busy === true;
                     syncRescheduleControls(false);
                 })
                 .catch(function () {
                     if (requestId !== availabilityRequestId) return;
                     // Server validation ang huling safety kapag may temporary connection problem.
+                    engineerAvailabilityPending = false;
                     engineerBusyOnDate = false;
+                    syncRescheduleControls(false);
                 });
         };
 
@@ -1048,8 +1063,28 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!engineerInput?.value) return 'Select an Engineer.';
             if (!dateInput.value) return 'Choose an inspection date.';
             if (!dateInput.checkValidity()) return 'Choose a valid inspection date.';
+            if (engineerAvailabilityPending) return 'Checking Engineer availability.';
             if (engineerBusyOnDate) return 'This Engineer already has an inspection on this date.';
             return '';
+        };
+
+        const scheduleConflictMessage = function () {
+            const engineerName = engineerInput?.selectedOptions?.[0]?.textContent?.trim() || 'This Engineer';
+            const parts = dateInput.value.split('-').map(Number);
+            let dateLabel = dateInput.value;
+            if (parts.length === 3 && parts.every(Number.isFinite)) {
+                dateLabel = new Intl.DateTimeFormat('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    timeZone: 'UTC',
+                }).format(new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])));
+            }
+            return engineerName + ' already has an inspection on ' + dateLabel + '. Choose another Engineer or date.';
+        };
+
+        const syncScheduleConflictUi = function (hasConflict) {
+            dateInput.classList.toggle('is-conflict', hasConflict);
         };
 
         const setFeedback = function (element, message) {
@@ -1087,7 +1122,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!hasExistingSchedule) {
                 const scheduleMessage = scheduleValidationMessage();
                 submitButton.disabled = initialSubmitDisabled || scheduleMessage !== '';
+                const conflictMessage = engineerBusyOnDate ? scheduleConflictMessage() : '';
+                syncScheduleConflictUi(conflictMessage !== '');
+                setFeedback(scheduleConflictFeedback, conflictMessage);
                 const showScheduleMessage = scheduleMessage !== ''
+                    && conflictMessage === ''
                     && forceFeedback
                     && form.dataset.submitAttempted === '1';
                 setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');
@@ -1097,8 +1136,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const changed = hasAssignmentChanges();
             const scheduleMessage = changed ? scheduleValidationMessage() : '';
             const hasValidScheduleChange = changed && scheduleMessage === '';
+            const conflictMessage = changed && engineerBusyOnDate ? scheduleConflictMessage() : '';
+            syncScheduleConflictUi(conflictMessage !== '');
+            setFeedback(scheduleConflictFeedback, conflictMessage);
             // Huwag magpakita ng red error pag kabukas lang ng reschedule popup.
             const showScheduleMessage = changed && scheduleMessage !== ''
+                && conflictMessage === ''
                 && forceFeedback
                 && form.dataset.submitAttempted === '1';
             setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');

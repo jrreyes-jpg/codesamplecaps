@@ -2312,12 +2312,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-6',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-8',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261025-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261025-4',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2846,6 +2846,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo htmlspecialchars($initialInspectionDate, ENT_QUOTES, 'UTF-8'); ?>" min="<?php echo site_inspection_earliest_schedule_date(); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required aria-describedby="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>">
                                                         <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
                                                     </span>
+                                                    <small class="inquiry-schedule-field-feedback" data-admin-schedule-conflict-feedback hidden aria-live="polite"></small>
                                                     <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
                                                         Today before 5:00 PM. Tomorrow from 5:00 PM. Up to 30 days.
                                                     </small>

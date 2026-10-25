@@ -863,6 +863,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterForm = document.querySelector('.inquiry-filter-bar');
     filterForm?.addEventListener('submit', showPageLoading);
 
+    const sortForm = document.querySelector('.inquiry-sort-form');
+    sortForm?.querySelector('select[name="sort"]')?.addEventListener('change', function () {
+        showPageLoading();
+        sortForm.requestSubmit();
+    });
+
     document.addEventListener('click', function (event) {
         const modal = event.target.closest('.inquiry-modal');
         if (modal && (event.target === modal || event.target.closest('[data-inquiry-modal-close]'))) {
@@ -1526,14 +1532,20 @@ document.addEventListener('DOMContentLoaded', function () {
             return card.dataset.inquiryCardId || '';
         }));
 
-        nextCards.slice().reverse().forEach(function (nextCard) {
+        const oldestFirst = (inquiryRefreshUrl.searchParams.get('sort') || 'oldest') === 'oldest';
+        const cardsToMerge = oldestFirst ? nextCards : nextCards.slice().reverse();
+        cardsToMerge.forEach(function (nextCard) {
             const inquiryId = nextCard.dataset.inquiryCardId || '';
             if (!currentList || inquiryId === '' || currentIds.has(inquiryId)) {
                 return;
             }
 
             const importedCard = document.importNode(nextCard, true);
-            currentList.prepend(importedCard);
+            if (oldestFirst) {
+                currentList.append(importedCard);
+            } else {
+                currentList.prepend(importedCard);
+            }
             currentIds.add(inquiryId);
             result.insertedIds.push(inquiryId);
             bindInquiryArchiveForms(importedCard);

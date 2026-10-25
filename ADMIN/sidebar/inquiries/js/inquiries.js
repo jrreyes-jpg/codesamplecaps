@@ -2223,11 +2223,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const unitOptionsByType = {
             material: ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
             labor: ['person', 'hour', 'day', 'lot'],
-            equipment: ['unit', 'hour', 'day', 'set', 'lot'],
-            service: ['service', 'job', 'lot'],
-            other: ['unit', 'lot'],
+            misc_safety_temp: ['unit', 'pcs', 'set', 'lot', 'day'],
+            transport: ['trip', 'day', 'lot'],
+            management_overhead_commission: ['lot'],
         };
-        const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person'];
+        const wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'unit', 'trip'];
+        const normalizeQuotationItemType = function (type) {
+            const value = String(type || '').trim().toLowerCase();
+            const legacyTypes = {
+                equipment: 'misc_safety_temp',
+                service: 'misc_safety_temp',
+                other: 'misc_safety_temp',
+            };
+
+            return legacyTypes[value] || value;
+        };
         const serializeQuotationForm = function () {
             return form ? new URLSearchParams(new FormData(form)).toString() : '';
         };
@@ -2731,7 +2741,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const preserveManualUnit = !resetForMaterialChange && isManualMaterial && currentUnit !== '';
                 setUnitOptions(row, unitOptionsByType.material, preserveManualUnit ? currentUnit : '', false, !preserveManualUnit);
             } else {
-                setUnitOptions(row, unitOptionsByType[typeSelect?.value] || unitOptionsByType.other, currentUnit, false);
+                setUnitOptions(row, unitOptionsByType[typeSelect?.value] || ['unit', 'lot'], currentUnit, false);
             }
 
             updateMaterialStockStatus(row);
@@ -2775,7 +2785,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const unitSelect = row?.querySelector('select[name="unit[]"]');
                 const unitCostInput = row?.querySelector('input[name="unit_cost[]"]');
                 const notesInput = row?.querySelector('input[name="item_notes[]"]');
-                const savedType = String(savedRow?.type || 'material').toLowerCase();
+                const savedType = normalizeQuotationItemType(savedRow?.type || 'material');
                 const savedMaterialId = String(savedRow?.material_id || '');
                 const savedUnit = String(savedRow?.unit || '').toLowerCase();
 
@@ -2786,7 +2796,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     materialSelect.value = savedMaterialId;
                 }
                 if (savedType !== 'material') {
-                    setUnitOptions(row, unitOptionsByType[savedType] || unitOptionsByType.other, savedUnit, false);
+                    setUnitOptions(row, unitOptionsByType[savedType] || ['unit', 'lot'], savedUnit, false);
                 } else if (savedMaterialId === 'manual') {
                     setUnitOptions(row, unitOptionsByType.material, savedUnit, false, savedUnit === '');
                 }

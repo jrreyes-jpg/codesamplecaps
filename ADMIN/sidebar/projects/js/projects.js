@@ -1768,6 +1768,9 @@ function initWalkInInquiryPanel() {
 
     function validateName() {
         const value = String(clientName?.value || '').trim();
+        if (value === '') {
+            return setValidation(clientName, nameError, 'Full Name is required.');
+        }
         const allowed = /^[\p{L}\p{M} .'\u2019-]+$/u.test(value);
         const letters = value.match(/\p{L}/gu) || [];
         return setValidation(clientName, nameError, value.length <= 150 && allowed && letters.length >= 2 ? '' : 'Enter a valid full name.');
@@ -1788,6 +1791,9 @@ function initWalkInInquiryPanel() {
 
     function validateContact() {
         const value = String(contactNumber?.value || '');
+        if (value === '' || value === '09') {
+            return setValidation(contactNumber, contactError, 'Contact Number is required.');
+        }
         return setValidation(contactNumber, contactError, /^09\d{9}$/.test(value) ? '' : 'Use 09 and enter 11 digits.');
     }
 
@@ -2522,7 +2528,6 @@ function initWalkInInquiryPanel() {
         const hasValidName = validateName();
         const hasValidContact = validateContact();
         if (!hasValidName || !hasValidContact) {
-            window.alert('Please complete your Full Name and Contact Number first before verifying your email.');
             (hasValidName ? contactNumber : clientName)?.focus({ preventScroll: true });
             return;
         }

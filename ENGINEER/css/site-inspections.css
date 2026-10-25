@@ -97,7 +97,7 @@
     min-height: 30px;
     padding: 6px 11px;
     border-radius: 17px 0 10px 0;
-    background: #dc2626;
+    background: #2563eb;
     color: #ffffff;
     font-size: 0.72rem;
     font-weight: 800;
@@ -107,7 +107,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #fecaca;
+    background: #bfdbfe;
 }
 
 .inspection-card__eyebrow {
@@ -885,22 +885,56 @@ body.inspection-modal-open {
     color: #0f172a;
 }
 
-.inspection-costing-total {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 12px 14px;
+.inspection-costing-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     border: 1px solid rgba(22, 101, 52, 0.22);
     border-radius: 12px;
     background: #f0fdf4;
+    overflow: hidden;
+}
+
+.inspection-costing-summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 9px 12px;
+    border-right: 1px solid rgba(22, 101, 52, 0.14);
+    border-bottom: 1px solid rgba(22, 101, 52, 0.14);
+}
+
+.inspection-costing-summary > div:nth-child(even) {
+    border-right: 0;
+}
+
+.inspection-costing-summary > div:nth-last-child(2) {
+    grid-column: 1 / -1;
+    border-right: 0;
+}
+
+.inspection-costing-summary span {
     color: #166534;
+    font-size: 0.78rem;
     font-weight: 800;
 }
 
-.inspection-costing-total strong {
+.inspection-costing-summary strong {
     color: #14532d;
-    font-size: 1.08rem;
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.inspection-costing-summary > .inspection-costing-summary__total {
+    grid-column: 1 / -1;
+    border: 0;
+    background: #dcfce7;
+}
+
+.inspection-costing-summary__total span,
+.inspection-costing-summary__total strong {
+    font-size: 1rem;
 }
 
 .costing-rows {
@@ -1475,6 +1509,15 @@ body.inspection-modal-open {
 }
 
 @media (max-width: 560px) {
+    .inspection-costing-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .inspection-costing-summary > div,
+    .inspection-costing-summary > div:nth-child(even) {
+        border-right: 0;
+    }
+
     .inspection-panel {
         padding: 12px;
         border-radius: 16px;

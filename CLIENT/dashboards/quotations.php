@@ -176,7 +176,9 @@ require_once __DIR__ . '/../layout/header.php';
                             <tbody>
                             <?php foreach ($items as $item): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars(ucfirst((string)$item['item_type'])); ?></td>
+                                    <td><?php echo htmlspecialchars($selectedQuotationSource === 'inquiry'
+                                        ? inquiry_quote_item_type_label((string)$item['item_type'])
+                                        : ucfirst((string)$item['item_type'])); ?></td>
                                     <td><?php echo htmlspecialchars((string)$item['item_name']); ?></td>
                                     <td><?php echo htmlspecialchars((string)$item['unit']); ?></td>
                                     <td><?php echo htmlspecialchars((string)$item['quantity']); ?></td>

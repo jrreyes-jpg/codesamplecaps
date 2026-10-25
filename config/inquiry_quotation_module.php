@@ -8,6 +8,36 @@ require_once __DIR__ . '/user_notifications.php';
 require_once __DIR__ . '/../services/EmailService.php';
 require_once __DIR__ . '/../services/AuthService.php';
 
+function inquiry_quote_item_type_options(): array
+{
+    return [
+        'material' => 'Materials',
+        'labor' => 'Labor Cost',
+        'misc_safety_temp' => 'Miscellaneous / Safety / Temporary Facilities',
+        'transport' => 'Transport',
+        'management_overhead_commission' => 'Management / Overhead / Commission',
+    ];
+}
+
+function inquiry_quote_normalize_item_type(?string $itemType): string
+{
+    $normalized = strtolower(trim((string)$itemType));
+    $legacyTypes = [
+        'equipment' => 'misc_safety_temp',
+        'service' => 'misc_safety_temp',
+        'other' => 'misc_safety_temp',
+    ];
+    $normalized = $legacyTypes[$normalized] ?? $normalized;
+
+    return array_key_exists($normalized, inquiry_quote_item_type_options()) ? $normalized : '';
+}
+
+function inquiry_quote_item_type_label(?string $itemType): string
+{
+    $normalized = inquiry_quote_normalize_item_type($itemType);
+    return inquiry_quote_item_type_options()[$normalized] ?? 'Cost Item';
+}
+
 function inquiry_quote_table_exists(mysqli $conn, string $tableName): bool
 {
     $stmt = $conn->prepare(

@@ -88,11 +88,11 @@ $csrfToken = auth_csrf_token('admin_create_inquiry_quotation');
 $unitOptionsByType = [
     'material' => ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
     'labor' => ['person', 'hour', 'day', 'lot'],
-    'equipment' => ['unit', 'hour', 'day', 'set', 'lot'],
-    'service' => ['service', 'job', 'lot'],
-    'other' => ['unit', 'lot'],
+    'misc_safety_temp' => ['unit', 'pcs', 'set', 'lot', 'day'],
+    'transport' => ['trip', 'day', 'lot'],
+    'management_overhead_commission' => ['lot'],
 ];
-$wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person'];
+$wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'unit', 'trip'];
 $materialOptions = material_stock_fetch_active_materials($conn);
 $materialUnitsById = [];
 $materialNamesById = [];
@@ -103,7 +103,7 @@ foreach ($materialOptions as $materialOption) {
 
 function inquiry_quote_render_unit_options(array $unitOptionsByType, array $materialUnitsById, string $itemType, int $materialId, string $currentUnit): void
 {
-    $unitChoices = $unitOptionsByType[$itemType] ?? $unitOptionsByType['other'];
+    $unitChoices = $unitOptionsByType[$itemType] ?? ['unit', 'lot'];
     $isLinkedMaterial = $itemType === 'material' && $materialId > 0 && isset($materialUnitsById[$materialId]);
     if ($isLinkedMaterial) {
         $unitChoices = [$materialUnitsById[$materialId]];
@@ -163,14 +163,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (count($postedNames) === 0 || count($postedNames) > 50) {
         $error = 'Add from 1 to 50 quotation items only.';
     } else {
-        $allowedTypes = ['material', 'labor', 'equipment', 'service', 'other'];
+        $allowedTypes = array_keys(inquiry_quote_item_type_options());
         $quotationItems = [];
         $subtotal = 0.0;
 
         $seenMaterialIds = [];
         foreach ($postedNames as $index => $postedName) {
             $itemName = trim((string)$postedName);
-            $itemType = strtolower(trim((string)($postedTypes[$index] ?? 'other')));
+            $itemType = inquiry_quote_normalize_item_type((string)($postedTypes[$index] ?? ''));
             $quantityRaw = trim((string)($postedQuantities[$index] ?? ''));
             $quantity = is_numeric($quantityRaw) ? (float)$quantityRaw : 0.0;
             $unit = trim((string)($postedUnits[$index] ?? 'unit'));
@@ -372,12 +372,12 @@ $adminPageTitle = ($isEditMode
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261023-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261023-2',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -440,14 +440,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-items" data-quotation-items>
                     <?php foreach ($postedNames as $index => $postedName): ?>
                         <?php
-                        $rowType = (string)($postedTypes[$index] ?? 'material');
+                        $rowType = inquiry_quote_normalize_item_type((string)($postedTypes[$index] ?? '')) ?: 'material';
                         $rowMaterialId = (int)($postedMaterialIds[$index] ?? 0);
                         $rowUnit = (string)($postedUnits[$index] ?? '');
                         $rowUnitLocked = $rowType === 'material' && $rowMaterialId > 0;
                         $rowNameLocked = $rowUnitLocked;
                         ?>
                         <div class="quotation-create-item<?php echo $rowType === 'material' ? ' is-material-item' : ''; ?>" data-quotation-item>
-                            <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required><?php foreach (['material' => 'Material', 'labor' => 'Labor', 'equipment' => 'Equipment (Billable / Rental)', 'service' => 'Service', 'other' => 'Other'] as $typeValue => $typeLabel): ?><option value="<?php echo $typeValue; ?>" <?php echo $rowType === $typeValue ? 'selected' : ''; ?>><?php echo $typeLabel; ?></option><?php endforeach; ?></select></label>
+                            <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required><?php foreach (inquiry_quote_item_type_options() as $typeValue => $typeLabel): ?><option value="<?php echo htmlspecialchars($typeValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowType === $typeValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($typeLabel, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
                             <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo $rowType !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><select name="material_id[]" required>
                                     <option value="" disabled<?php echo $rowMaterialId <= 0 && (string)($postedMaterialIds[$index] ?? '') !== 'manual' ? ' selected' : ''; ?>>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowMaterialId === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual" <?php echo (string)($postedMaterialIds[$index] ?? '') === 'manual' ? ' selected' : ''; ?>>Manual / non-stock material</option>
                                 </select><span class="quotation-create-item__material-feedback" data-quotation-material-feedback aria-live="polite" hidden></span><span class="quotation-create-item__material-error" data-quotation-material-error aria-live="polite"></span></label>
@@ -469,11 +469,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <template data-quotation-item-template>
                     <div class="quotation-create-item is-material-item" data-quotation-item>
                         <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required>
-                                <option value="material">Material</option>
-                                <option value="labor">Labor</option>
-                                <option value="equipment">Equipment (Billable / Rental)</option>
-                                <option value="service">Service</option>
-                                <option value="other">Other</option>
+                                <?php foreach (inquiry_quote_item_type_options() as $typeValue => $typeLabel): ?>
+                                    <option value="<?php echo htmlspecialchars($typeValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($typeLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                <?php endforeach; ?>
                             </select></label>
                         <label class="quotation-create-item__material-reference" data-quotation-material-reference><span>Material Reference</span><select name="material_id[]" required>
                                 <option value="" selected disabled>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual">Manual / non-stock material</option>

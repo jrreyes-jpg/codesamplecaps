@@ -180,7 +180,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                 <tbody>
                     <?php foreach ($items as $item): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars(ucfirst((string)$item['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$item['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
                             <td>
                                 <strong><?php echo htmlspecialchars((string)$item['item_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <?php if (!empty($item['notes'])): ?>

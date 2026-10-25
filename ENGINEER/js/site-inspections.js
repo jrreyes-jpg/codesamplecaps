@@ -9,16 +9,42 @@ document.addEventListener('DOMContentLoaded', function () {
         currency: 'PHP',
     });
 
+    const normalizeCostType = function (type) {
+        const value = String(type || '').trim().toLowerCase();
+        const legacyTypes = {
+            equipment: 'misc_safety_temp',
+            service: 'misc_safety_temp',
+            other: 'misc_safety_temp',
+        };
+        return legacyTypes[value] || value;
+    };
+
     const syncTotal = function (form) {
         let total = 0;
+        const categoryTotals = {
+            material: 0,
+            labor: 0,
+            misc_safety_temp: 0,
+            transport: 0,
+            management_overhead_commission: 0,
+        };
         form.querySelectorAll('.costing-row').forEach(function (row) {
             const quantityField = row.querySelector('input[name="quantity[]"]');
             const unitField = row.querySelector('select[name="unit[]"]');
             const costField = row.querySelector('input[name="unit_cost[]"]');
             if (isValidQuantityText(quantityField?.value.trim() || '', unitField?.value || '')
                 && isValidCostText(costField?.value.trim() || '')) {
-                total += Number(quantityField.value) * Number(costField.value);
+                const lineTotal = Number(quantityField.value) * Number(costField.value);
+                const itemType = normalizeCostType(row.querySelector('select[name="item_type[]"]')?.value);
+                total += lineTotal;
+                if (Object.prototype.hasOwnProperty.call(categoryTotals, itemType)) {
+                    categoryTotals[itemType] += lineTotal;
+                }
             }
+        });
+
+        form.querySelectorAll('[data-costing-category-total]').forEach(function (output) {
+            output.textContent = money.format(categoryTotals[output.dataset.costingCategoryTotal] || 0);
         });
 
         const totalBox = form.querySelector('[data-costing-total]');
@@ -138,9 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const fillRow = function (row, data) {
-        row.querySelector('select[name="item_type[]"]').value = data.item_type === 'service'
-            ? 'other'
-            : (data.item_type || 'material');
+        row.querySelector('select[name="item_type[]"]').value = normalizeCostType(data.item_type) || 'material';
         const materialPicker = row.querySelector('select[name="material_id[]"]');
         if (materialPicker) {
             materialPicker.value = data.material_id || '';
@@ -332,10 +356,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const fieldDetails = {
             material: ['Material Name', 'Enter material name'],
             labor: ['Labor Description', 'Enter labor description'],
-            equipment: ['Equipment Name', 'Enter equipment name'],
-            other: ['Item Description', 'Enter item description'],
+            misc_safety_temp: ['Miscellaneous / Facility Item', 'Enter safety, facility, or miscellaneous item'],
+            transport: ['Transport Description', 'Enter transport details'],
+            management_overhead_commission: ['Management / Overhead Item', 'Enter management, overhead, or commission detail'],
         };
-        const [label, placeholder] = fieldDetails[type] || fieldDetails.other;
+        const [label, placeholder] = fieldDetails[type] || ['Item Description', 'Enter item description'];
         if (itemNameLabel) {
             itemNameLabel.childNodes[0].nodeValue = `${label} `;
         }

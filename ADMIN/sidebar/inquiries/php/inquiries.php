@@ -295,7 +295,7 @@ function inquiry_center_validate_quotation_before_send(mysqli $conn, int $draftI
         $unitCost = (float)($item['unit_cost'] ?? 0);
         $lineTotal = (float)($item['line_total'] ?? 0);
 
-        if (!in_array($itemType, ['material', 'labor', 'equipment', 'service', 'other'], true)
+        if (inquiry_quote_normalize_item_type($itemType) === ''
             || $name === '' || $unit === '' || !is_finite($quantity) || !is_finite($unitCost) || !is_finite($lineTotal)
             || $quantity <= 0 || $unitCost <= 0 || $lineTotal <= 0
             || abs($lineTotal - round($quantity * $unitCost, 2)) > 0.01) {
@@ -583,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                         'risk_notes' => (string)($inspection['risk_notes'] ?? ''),
                         'client_requests' => (string)($inspection['client_requests'] ?? ''),
                         'materials' => array_map(static fn(array $item): array => [
-                            'type' => ucfirst((string)($item['item_type'] ?? 'Material')),
+                            'type' => inquiry_quote_item_type_label((string)($item['item_type'] ?? '')),
                             'name' => (string)($item['item_name'] ?? ''),
                             'quantity' => rtrim(rtrim(number_format((float)($item['quantity'] ?? 0), 2), '0'), '.'),
                             'unit' => (string)($item['unit'] ?? ''),
@@ -2302,14 +2302,14 @@ $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261023-1',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261021-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261023-2',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-1',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -2707,7 +2707,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                     <?php foreach ($latestCostItems as $costItem): ?>
                                                         <div class="inquiry-costing-table__row submitted-inspection-costing__row">
-                                                            <span><?php echo htmlspecialchars(ucfirst((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.'), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>

@@ -14,3 +14,9 @@
 - Check changed PHP files with the XAMPP PHP lint command.
 - Check the changed code before finishing.
 - Reply with short and simple Taglish.
+- Before editing, say the exact small change that will be made.
+- Keep desktop modals compact when the content is short.
+- Keep mobile modals easy to scroll and fit inside the screen.
+- Put status beside or below its related details.
+- Do not repeat the same status or notification in many cards.
+- Reuse working backend actions. Do not create duplicate logic.

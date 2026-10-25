@@ -2312,7 +2312,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-8',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-12',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -2502,6 +2502,27 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $nextActionLabel = 'View Details';
                         $nextActionTab = $latestInspection ? 'inspection' : 'client';
                         $nextActionClass = '';
+                        $latestInspectionStatus = $latestInspection
+                            ? (string)($latestInspection['status'] ?? 'Assigned')
+                            : 'Not Scheduled';
+                        $currentScheduleHash = $latestInspection
+                            ? inquiry_center_schedule_notification_hash(
+                                (int)($latestInspection['engineer_id'] ?? 0),
+                                (string)($latestInspection['scheduled_at'] ?? ''),
+                                (string)($latestInspection['site_notes'] ?? '')
+                            )
+                            : '';
+                        $storedScheduleHash = (string)($latestInspection['schedule_notification_hash'] ?? '');
+                        $isScheduleConfirmed = $latestInspection
+                            && !empty($latestInspection['client_schedule_notified_at'])
+                            && !empty($latestInspection['engineer_schedule_notified_at'])
+                            && !empty($latestInspection['schedule_notified_at'])
+                            && $storedScheduleHash !== ''
+                            && hash_equals($storedScheduleHash, $currentScheduleHash);
+                        $canRetryScheduleNotifications = $latestInspection
+                            && !$isScheduleConfirmed
+                            && empty($inquiry['archived_at'])
+                            && in_array($latestInspectionStatus, ['Assigned', 'Acknowledged'], true);
                     ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
                         <div class="inquiry-card__head">
@@ -2563,6 +2584,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </span>
+                                            <?php if ($latestInspection): ?>
+                                                <span class="inquiry-notification-status <?php echo $isScheduleConfirmed ? 'is-sent' : 'is-failed'; ?>">
+                                                    <?php echo $isScheduleConfirmed ? 'Client &amp; Engineer Notified' : 'Email Failed'; ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     <?php if (!empty($inquiry['archived_at'])): ?>
@@ -2642,9 +2668,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                 <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
                                     <?php
-                                    $latestInspectionStatus = $latestInspection
-                                        ? (string)($latestInspection['status'] ?? 'Assigned')
-                                        : 'Not Scheduled';
                                     $canRescheduleInspection = $latestInspection
                                         && empty($inquiry['archived_at'])
                                         && !inquiry_center_inspection_schedule_is_locked($latestInspection);
@@ -2680,6 +2703,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <div class="inquiry-detail inquiry-detail--wide"><span>Schedule Change Reason</span><strong class="inquiry-detail__multiline"><?php echo nl2br(htmlspecialchars($currentScheduleReason, ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if (!$isScheduleConfirmed): ?>
+                                            <div class="inquiry-notification-retry" role="status">
+                                                <span>Schedule saved, but an email failed.</span>
+                                                <?php if ($canRetryScheduleNotifications): ?>
+                                                    <form method="POST" class="inquiry-notification-retry-form">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <input type="hidden" name="action" value="retry_inspection_notifications">
+                                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                        <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                        <input type="hidden" name="notification_hash" value="<?php echo htmlspecialchars($currentScheduleHash, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <button type="submit" class="btn-secondary">Retry Email</button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (!empty($latestInspection['submitted_at'])): ?>
                                             <?php
                                             $inspectionReviewStatus = (string)($latestInspection['admin_review_status'] ?? 'Pending');
@@ -2782,20 +2820,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <?php $inspectionScheduleLocked = inquiry_center_inspection_schedule_is_locked($latestInspection); ?>
                                         <?php $scheduleReadOnly = $inspectionScheduleLocked; ?>
                                         <?php
-                                            $currentScheduleHash = $latestInspection
-                                                ? inquiry_center_schedule_notification_hash(
-                                                    (int)($latestInspection['engineer_id'] ?? 0),
-                                                    (string)($latestInspection['scheduled_at'] ?? ''),
-                                                    (string)($latestInspection['site_notes'] ?? '')
-                                                )
-                                                : '';
-                                            $storedScheduleHash = (string)($latestInspection['schedule_notification_hash'] ?? '');
-                                            $isScheduleConfirmed = $latestInspection
-                                                && !empty($latestInspection['client_schedule_notified_at'])
-                                                && !empty($latestInspection['engineer_schedule_notified_at'])
-                                                && !empty($latestInspection['schedule_notified_at'])
-                                                && $storedScheduleHash !== ''
-                                                && hash_equals($storedScheduleHash, $currentScheduleHash);
                                             $scheduleSubmitLabel = $latestInspection
                                                 ? 'Update Schedule'
                                                 : 'Confirm Schedule & Notify';

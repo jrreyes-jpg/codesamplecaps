@@ -263,12 +263,12 @@ class EmailService {
                     </div>
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px;color:#0f172a;line-height:1.55'>
                         <p>Hello {$safeName},</p>
-                        <p>We received your inquiry. Our Admin will contact you to confirm the inspection schedule.</p>
+                        <p>We received your inquiry. Edge Automation Technology Services, Co. is checking Engineer availability. We will contact you to confirm the inspection schedule.</p>
                         <p>Thank you,<br>Edge Automation Technology Services, Co.</p>
                     </div>
                 </div>";
             $this->mailer->AltBody = 'Hello ' . ($recipientName !== '' ? $recipientName : 'Client')
-                . ".\n\nWe received your inquiry. Our Admin will contact you to confirm the inspection schedule.\n\nThank you,\nEdge Automation Technology Services, Co.";
+                . ".\n\nWe received your inquiry. Edge Automation Technology Services, Co. is checking Engineer availability. We will contact you to confirm the inspection schedule.\n\nThank you,\nEdge Automation Technology Services, Co.";
             $this->mailer->send();
             return true;
         } catch (Exception $exception) {

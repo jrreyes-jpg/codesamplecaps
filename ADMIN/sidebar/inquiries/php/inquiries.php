@@ -2424,7 +2424,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <div class="inquiry-list">
                 <?php foreach ($inquiryRows as $inquiry): ?>
                     <?php $currentStatus = (string)($inquiry['status'] ?? 'Pending Review'); ?>
-                    <?php $isWalkInPending = (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' && $currentStatus === 'Pending Review'; ?>
                     <?php $isViewed = !empty($inquiry['viewed_at']); ?>
                     <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
@@ -2500,8 +2499,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $showInspection = $latestInspection || $canScheduleInspection;
                         $showQuotation = false;
                         // Simple lang para kay Admin: details at inspection lang ang tingnan.
-                        $nextActionLabel = $isWalkInPending ? 'Set Inspection Schedule' : 'View Details';
-                        $nextActionTab = ($latestInspection || $isWalkInPending) ? 'inspection' : 'client';
+                        $nextActionLabel = 'View Details';
+                        $nextActionTab = $latestInspection ? 'inspection' : 'client';
                         $nextActionClass = '';
                     ?>
                     <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">

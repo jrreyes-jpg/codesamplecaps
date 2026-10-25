@@ -441,6 +441,16 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
             } catch (Throwable $notificationException) {
                 error_log('Walk-in inspection notification failed: ' . $notificationException->getMessage());
             }
+        } elseif (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            try {
+                $clientMailer = new EmailService();
+                $notificationResult['client_sent'] = $clientMailer->sendInquiryReceivedConfirmation(
+                    $email,
+                    $clientName
+                );
+            } catch (Throwable $notificationException) {
+                error_log('Walk-in inquiry receipt email failed: ' . $notificationException->getMessage());
+            }
         }
 
         return $inquiryId;

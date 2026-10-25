@@ -65,8 +65,11 @@ try {
             : 'Inspection saved, but one or more emails were not sent.';
         $_SESSION['inquiry_center_flash_type'] = $clientSent && $engineerSent ? 'success' : 'warning';
     } else {
-        $_SESSION['inquiry_center_flash'] = 'Walk-in inquiry saved as pending.';
-        $_SESSION['inquiry_center_flash_type'] = 'success';
+        $clientSent = !empty($notificationResult['client_sent']);
+        $_SESSION['inquiry_center_flash'] = $clientSent
+            ? 'Walk-in inquiry saved. Client receipt sent.'
+            : 'Walk-in inquiry saved, but the client email was not sent.';
+        $_SESSION['inquiry_center_flash_type'] = $clientSent ? 'success' : 'warning';
     }
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
         'status' => $savedStatus,

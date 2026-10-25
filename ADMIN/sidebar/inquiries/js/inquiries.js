@@ -1085,7 +1085,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             syncDateAvailability();
             if (!hasExistingSchedule) {
-                submitButton.disabled = initialSubmitDisabled;
+                const scheduleMessage = scheduleValidationMessage();
+                submitButton.disabled = initialSubmitDisabled || scheduleMessage !== '';
+                const showScheduleMessage = scheduleMessage !== ''
+                    && forceFeedback
+                    && form.dataset.submitAttempted === '1';
+                setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');
                 return;
             }
 
@@ -1307,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     title: isReschedule ? 'Update inspection?' : 'Confirm inspection?',
                     cancel: 'Back',
-                    confirm: isReschedule ? 'Update Schedule' : 'Confirm',
+                    confirm: isReschedule ? 'Update Schedule' : 'Confirm & Notify',
                 }
             );
         });

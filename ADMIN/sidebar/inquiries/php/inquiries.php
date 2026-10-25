@@ -2312,12 +2312,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-5',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-6',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261025-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261025-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2798,7 +2798,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 && hash_equals($storedScheduleHash, $currentScheduleHash);
                                             $scheduleSubmitLabel = $latestInspection
                                                 ? 'Update Schedule'
-                                                : 'Set Inspection Schedule';
+                                                : 'Confirm Schedule & Notify';
                                             $showScheduleEditor = $latestInspection
                                                 && !$scheduleReadOnly
                                                 && empty($inquiry['archived_at']);
@@ -2822,12 +2822,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <?php if (!$showScheduleEditor): ?>
                                                 <strong>Inspection Schedule</strong>
                                             <?php endif; ?>
-                                            <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
-                                                Date rule: Today before 5:00 PM. Tomorrow from 5:00 PM. Up to 30 days.
-                                            </small>
+                                            <div class="inquiry-schedule-context">
+                                                <?php if (!empty($inquiry['preferred_inspection_date'])): ?>
+                                                    <span><b>Client Tentative Date:</b> <?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                <?php endif; ?>
+                                                <span>Set only after the Client and Engineer agree.</span>
+                                            </div>
                                             <div class="inquiry-schedule-grid">
                                                 <label>
-                                                    <span>Engineer</span>
+                                                    <span>Confirmed Engineer</span>
                                                     <select name="engineer_id" required>
                                                         <option value="" disabled <?php echo !$latestInspection ? 'selected' : ''; ?>>Select engineer</option>
                                                         <?php foreach ($engineers as $engineer): ?>
@@ -2838,11 +2841,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </select>
                                                 </label>
                                                 <label class="admin-date-field">
-                                                    <span>Inspection Date</span>
+                                                    <span>Confirmed Inspection Date</span>
                                                     <span class="admin-date-input-wrap">
                                                         <input type="date" class="js-admin-inspection-date" name="inspection_date" value="<?php echo htmlspecialchars($initialInspectionDate, ENT_QUOTES, 'UTF-8'); ?>" min="<?php echo site_inspection_earliest_schedule_date(); ?>" max="<?php echo site_inspection_latest_schedule_date(); ?>" required aria-describedby="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>">
                                                         <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
                                                     </span>
+                                                    <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
+                                                        Today before 5:00 PM. Tomorrow from 5:00 PM. Up to 30 days.
+                                                    </small>
                                                 </label>
                                             </div>
                                             <small class="inquiry-schedule-field-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>

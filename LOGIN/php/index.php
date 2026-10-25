@@ -11,6 +11,7 @@ service_location_dataset_maybe_refresh();
 $serviceHierarchy = service_area_hierarchy();
 $serviceBarangays = service_barangays_hierarchy($conn);
 $preferredInspectionDateRange = inquiry_preferred_date_range();
+$inquiryFormStyleVersion = (string)(filemtime(__DIR__ . '/../css/index.css') ?: 1);
 $inquiryFormScriptVersion = (string)(filemtime(__DIR__ . '/../js/index.js') ?: 1);
 $verifiedInquiryEmail = strtolower(trim((string)($_SESSION['public_inquiry_email_verified']['email'] ?? '')));
 
@@ -26,7 +27,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <meta name="description" content="Edge Automation Technology Services, Co. - Professional engineering automation and technology solutions">
     <title>Edge Automation Technology Services, Co.</title>
     <link rel="stylesheet" href="../css/loader.css">
-    <link rel="stylesheet" href="../css/index.css">
+    <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
     <link rel="stylesheet" href="../css/public-confirmation.css">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 

@@ -406,12 +406,12 @@ const initInquiryForm = () => {
     const phonePattern = /^09\d{9}$/;
     const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     const clearFieldError = (field) => {
-        field.classList.remove('is-invalid');
+        field.classList.remove('is-invalid', 'is-unverified');
         field.removeAttribute('aria-invalid');
         const error = field.closest('label')?.querySelector('.field-error');
         if (error) {
             error.textContent = '';
-            error.classList.remove('is-visible');
+            error.classList.remove('is-visible', 'is-warning');
         }
     };
 
@@ -427,13 +427,26 @@ const initInquiryForm = () => {
     };
 
     const setFieldError = (field, text) => {
-        field.classList.remove('is-valid');
+        field.classList.remove('is-valid', 'is-unverified');
         field.classList.add('is-invalid');
         field.setAttribute('aria-invalid', 'true');
         const error = field.closest('label')?.querySelector('.field-error');
         if (error) {
             error.textContent = text;
+            error.classList.remove('is-warning');
             error.classList.add('is-visible');
+        }
+    };
+
+    const setFieldWarning = (field, text) => {
+        clearFieldError(field);
+        field.classList.remove('is-valid');
+        field.classList.add('is-unverified');
+        field.setAttribute('aria-invalid', 'false');
+        const error = field.closest('label')?.querySelector('.field-error');
+        if (error) {
+            error.textContent = text;
+            error.classList.add('is-visible', 'is-warning');
         }
     };
 
@@ -1261,7 +1274,7 @@ const initInquiryForm = () => {
                     return false;
                 }
                 if (value.toLowerCase() !== verifiedEmail) {
-                    setFieldError(field, 'Verify this email to continue.');
+                    setFieldWarning(field, 'Verify this email to continue.');
                     return false;
                 }
             } else if (field === inspectionDateInput) {
@@ -1662,8 +1675,10 @@ const restoreInquiryDraft = () => {
                 inquiryForm.dataset.verifiedEmail = '';
                 updateEmailVerification();
             }
-            queueContactCheck();
+            resetFieldState(event.currentTarget);
         });
+
+        emailInput?.addEventListener('blur', queueContactCheck);
 
         otherServiceInput?.addEventListener('input', () => {
             validateMeaningfulTextField(otherServiceInput, 'Other Service Details');
@@ -1692,7 +1707,11 @@ const restoreInquiryDraft = () => {
                     contactNote = '';
                     updateEmailVerification();
                 }
-                validateLiveField(field, true);
+                if (field === emailInput) {
+                    resetFieldState(field);
+                } else {
+                    validateLiveField(field, true);
+                }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
                 if (contactIdentityFields.includes(field) && field !== clientNameInput && field !== emailInput) {
@@ -1718,7 +1737,7 @@ const restoreInquiryDraft = () => {
             clearContactMismatchFeedback();
             syncAreaOptions();
             syncOtherServiceField();
-            inquiryForm.querySelectorAll('.is-invalid, .is-valid').forEach((field) => {
+            inquiryForm.querySelectorAll('.is-invalid, .is-valid, .is-unverified').forEach((field) => {
                 resetFieldState(field);
                 delete field.dataset.touched;
             });
@@ -1801,7 +1820,7 @@ const restoreInquiryDraft = () => {
                     setFieldError(field, 'Please enter a valid email address.');
                     firstInvalidField = firstInvalidField || field;
                 } else if (field === emailInput && value !== '' && value.toLowerCase() !== verifiedEmail) {
-                    setFieldError(field, 'Verify this email to continue.');
+                    setFieldWarning(field, 'Verify this email to continue.');
                     firstInvalidField = firstInvalidField || field;
                 }
 
@@ -1815,7 +1834,9 @@ const restoreInquiryDraft = () => {
                     firstInvalidField = firstInvalidField || field;
                 }
 
-                if (value !== '' && !field.classList.contains('is-invalid')) {
+                if (value !== ''
+                    && !field.classList.contains('is-invalid')
+                    && !field.classList.contains('is-unverified')) {
                     setFieldValid(field);
                 }
             }
@@ -1869,7 +1890,7 @@ const restoreInquiryDraft = () => {
 
             if ((emailInput?.value || '').trim().toLowerCase() !== verifiedEmail) {
                 event.preventDefault();
-                setFieldError(emailInput, 'Verify your email before submitting.');
+                setFieldWarning(emailInput, 'Verify your email before submitting.');
                 message.textContent = 'Please verify your email first.';
                 message.classList.add('is-error');
                 gentlyRevealField(emailInput, true);

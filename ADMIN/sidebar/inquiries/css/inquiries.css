@@ -3556,6 +3556,40 @@ body.inquiry-modal-open {
     line-height: 1.4;
 }
 
+.inquiry-schedule-date-notice {
+    display: block;
+    color: #b45309;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.inquiry-schedule-date-notice[hidden] {
+    display: none;
+}
+
+.inquiry-schedule-submit-feedback {
+    display: block;
+    margin-top: 6px;
+    text-align: right;
+}
+
+.inquiry-schedule-submit-feedback[hidden] {
+    display: none;
+}
+
+.inquiry-schedule-submit-feedback[data-state="neutral"] {
+    color: #64748b;
+}
+
+.inquiry-schedule-submit-feedback[data-state="ready"] {
+    color: #15803d;
+}
+
+.inquiry-schedule-submit-feedback[data-state="error"] {
+    color: #b91c1c;
+}
+
 .inquiry-schedule-guidance {
     color: #475569;
     font-size: 0.8rem;

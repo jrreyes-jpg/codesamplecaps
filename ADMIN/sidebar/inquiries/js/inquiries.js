@@ -921,9 +921,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const reasonFeedback = form.querySelector('[data-admin-reschedule-reason-feedback]');
         const scheduleFeedback = form.querySelector('[data-admin-schedule-feedback]');
         const scheduleConflictFeedback = form.querySelector('[data-admin-schedule-conflict-feedback]');
+        const dateCutoffFeedback = form.querySelector('[data-admin-date-cutoff-feedback]');
         const rescheduleGuidance = form.querySelector('[data-admin-reschedule-guidance]');
         const hasExistingSchedule = form.dataset.hasExistingSchedule === '1';
-        const initialSubmitDisabled = Boolean(submitButton?.disabled);
         const defaultSubmitLabel = submitButton?.textContent || 'Confirm Schedule & Notify Client and Engineer';
 
         const hasAssignmentChanges = function () {
@@ -971,6 +971,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let engineerBusyOnDate = false;
         let engineerAvailabilityPending = false;
         let availabilityRequestId = 0;
+        let dateCutoffMessage = '';
 
         const getManilaNow = function () {
             const parts = manilaDateFormatter.formatToParts(new Date()).reduce(function (values, part) {
@@ -1000,8 +1001,9 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const syncDateAvailability = function () {
+            const manilaNow = getManilaNow();
             const earliestDate = getEarliestScheduleDate();
-            const latestDate = addDaysToDate(getManilaNow().date, 30);
+            const latestDate = addDaysToDate(manilaNow.date, 30);
             const originalDate = form.dataset.originalDate || '';
             const keepExistingDate = originalDate !== ''
                 && dateInput.value === originalDate
@@ -1010,7 +1012,18 @@ document.addEventListener('DOMContentLoaded', function () {
             dateInput.max = keepExistingDate ? '' : latestDate;
 
             if (!keepExistingDate && dateInput.value && (dateInput.value < earliestDate || dateInput.value > latestDate)) {
+                const removedDate = dateInput.value;
                 dateInput.value = '';
+                dateCutoffMessage = removedDate === manilaNow.date && manilaNow.hour >= 17
+                    ? 'Today is no longer available. Choose tomorrow onward.'
+                    : 'The tentative date is no longer available. Choose an allowed date.';
+            } else if (dateInput.value) {
+                dateCutoffMessage = '';
+            }
+
+            if (dateCutoffFeedback) {
+                dateCutoffFeedback.textContent = dateCutoffMessage;
+                dateCutoffFeedback.hidden = dateCutoffMessage === '';
             }
         };
 
@@ -1093,6 +1106,12 @@ document.addEventListener('DOMContentLoaded', function () {
             element.hidden = message === '';
         };
 
+        const setScheduleFeedback = function (message, state) {
+            if (!scheduleFeedback) return;
+            scheduleFeedback.dataset.state = state;
+            setFeedback(scheduleFeedback, message);
+        };
+
         const setRescheduleGuidance = function (message, state) {
             if (!rescheduleGuidance || rescheduleGuidance.textContent === message) return;
             rescheduleGuidance.textContent = message;
@@ -1121,15 +1140,31 @@ document.addEventListener('DOMContentLoaded', function () {
             syncDateAvailability();
             if (!hasExistingSchedule) {
                 const scheduleMessage = scheduleValidationMessage();
-                submitButton.disabled = initialSubmitDisabled || scheduleMessage !== '';
+                submitButton.disabled = scheduleMessage !== '';
                 const conflictMessage = engineerBusyOnDate ? scheduleConflictMessage() : '';
                 syncScheduleConflictUi(conflictMessage !== '');
                 setFeedback(scheduleConflictFeedback, conflictMessage);
-                const showScheduleMessage = scheduleMessage !== ''
-                    && conflictMessage === ''
-                    && forceFeedback
-                    && form.dataset.submitAttempted === '1';
-                setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');
+                const engineerWasTouched = engineerInput?.dataset.touched === '1';
+                const dateWasTouched = dateInput.dataset.touched === '1';
+                engineerInput?.classList.toggle('is-invalid', engineerWasTouched && !engineerInput.value);
+                dateInput.classList.toggle(
+                    'is-invalid',
+                    !engineerBusyOnDate && dateWasTouched && (!dateInput.value || !dateInput.checkValidity())
+                );
+
+                if (scheduleMessage === '') {
+                    setScheduleFeedback('Ready to confirm and notify.', 'ready');
+                } else if (engineerBusyOnDate) {
+                    setScheduleFeedback('Choose another Engineer or date.', 'error');
+                } else if (!engineerInput?.value) {
+                    setScheduleFeedback('Select an Engineer.', 'neutral');
+                } else if (engineerAvailabilityPending) {
+                    setScheduleFeedback('Checking Engineer availability.', 'neutral');
+                } else if (!dateInput.value) {
+                    setScheduleFeedback('Choose an inspection date.', 'neutral');
+                } else {
+                    setScheduleFeedback('Choose a valid inspection date.', 'error');
+                }
                 return;
             }
 
@@ -1144,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 && conflictMessage === ''
                 && forceFeedback
                 && form.dataset.submitAttempted === '1';
-            setFeedback(scheduleFeedback, showScheduleMessage ? scheduleMessage : '');
+            setScheduleFeedback(showScheduleMessage ? scheduleMessage : '', 'error');
 
             if (reasonWrap && reasonInput) {
                 reasonWrap.hidden = !hasValidScheduleChange;
@@ -1203,6 +1238,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         dateInput.addEventListener('change', function () {
             hideDatePickerState();
+            dateCutoffMessage = '';
             syncDateAvailability();
         });
         dateInput.addEventListener('blur', function () {

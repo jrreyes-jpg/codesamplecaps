@@ -2312,12 +2312,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261025-12',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261026-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261025-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261026-3',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2871,12 +2871,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <button class="admin-date-picker-button js-admin-date-picker-button" type="button" aria-label="Open inspection calendar">&#128197;</button>
                                                     </span>
                                                     <small class="inquiry-schedule-field-feedback" data-admin-schedule-conflict-feedback hidden aria-live="polite"></small>
+                                                    <small class="inquiry-schedule-date-notice" data-admin-date-cutoff-feedback hidden aria-live="polite"></small>
                                                     <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
                                                         Today before 5:00 PM. Tomorrow from 5:00 PM. Up to 30 days.
                                                     </small>
                                                 </label>
                                             </div>
-                                            <small class="inquiry-schedule-field-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>
                                             <textarea name="site_notes" hidden><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             <?php if ($latestInspection): ?>
                                                 <small class="inquiry-schedule-guidance" data-admin-reschedule-guidance aria-live="polite" hidden></small>
@@ -2885,8 +2885,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php if ($showScheduleEditor): ?>
                                                     <button type="button" class="btn-secondary" data-reschedule-inspection-close>Cancel</button>
                                                 <?php endif; ?>
-                                                <button type="submit" class="btn-primary" data-schedule-submit <?php echo empty($engineers) || $latestInspection ? 'disabled' : ''; ?>><?php echo $scheduleSubmitLabel; ?></button>
+                                                <button type="submit" class="btn-primary" data-schedule-submit disabled><?php echo $scheduleSubmitLabel; ?></button>
                                             </div>
+                                            <small class="inquiry-schedule-field-feedback inquiry-schedule-submit-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>
                                         </form>
                                         <?php if ($showScheduleEditor): ?>
                                                 </div>

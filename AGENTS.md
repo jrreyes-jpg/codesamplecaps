@@ -20,3 +20,7 @@
 - Put status beside or below its related details.
 - Do not repeat the same status or notification in many cards.
 - Reuse working backend actions. Do not create duplicate logic.
+- Add color coding when it helps the user understand a status or action.
+- Keep status colors consistent: green for success or completed, blue for active or in progress, yellow or orange for pending or warning, red for error or destructive action, and gray for neutral or inactive.
+- Use simple colored text for a small secondary status. Avoid a large colored badge when it is not needed.
+- Do not use color alone. Add clear text or an icon for success, warning, and error status.

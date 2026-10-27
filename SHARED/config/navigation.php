@@ -14,8 +14,8 @@ function shared_navigation_items_for_role(string $role): array
         ],
         'engineer' => [
             ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/ENGINEER/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/ENGINEER/dashboards/dashboard.php', '/ENGINEER/dashboards/engineer_dashboard.php']],
-            ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ENGINEER/dashboards/projects.php', 'icon' => 'projects', 'active' => ['/ENGINEER/dashboards/projects.php']],
             ['module' => 'site_inspections', 'label' => 'Site Inspections', 'mini' => 'Site', 'href' => '/codesamplecaps/ENGINEER/dashboards/site_inspections.php', 'icon' => 'site', 'active' => ['/ENGINEER/dashboards/site_inspections.php']],
+            ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/ENGINEER/dashboards/projects.php', 'icon' => 'projects', 'active' => ['/ENGINEER/dashboards/projects.php']],
         ],
         'super_admin' => [
             ['module' => 'users', 'label' => 'User Management', 'mini' => 'Users', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/user_management.php', 'icon' => 'user', 'active' => ['/SUPERADMIN/sidebar/user_management.php', '/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=users', '/SUPERADMIN/dashboards/super_admin_dashboard.php?tab=create']],

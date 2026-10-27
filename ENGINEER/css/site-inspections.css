@@ -1484,7 +1484,7 @@ body.inspection-modal-open {
     background: #cbd5e1;
     color: #475569;
     box-shadow: none;
-    cursor: not-allowed;
+    cursor: pointer;
 }
 
 .btn-primary.is-locked:hover,
@@ -1524,11 +1524,26 @@ body.inspection-modal-open {
 }
 
 .inspection-costing-form .inspection-actions {
+    align-items: flex-end;
     justify-content: flex-end;
     gap: 12px;
     margin-top: 16px;
     padding-top: 14px;
     border-top: 1px solid rgba(22, 101, 52, 0.18);
+}
+
+.inspection-submit-guidance {
+    flex: 1 1 320px;
+    margin: 0;
+    color: #b45309;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.inspection-submit-guidance.is-ready {
+    color: #15803d;
 }
 
 .inspection-section-action {

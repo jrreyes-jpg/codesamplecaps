@@ -1744,10 +1744,13 @@ require __DIR__ . '/../layout/header.php';
 
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
+                                    <?php if ($workflowAction === 'complete' || $canSubmitToAdmin): ?>
+                                        <p class="inspection-submit-guidance" data-submit-guidance role="status" aria-live="polite"></p>
+                                    <?php endif; ?>
                                     <div class="inspection-actions__group inspection-actions__group--save">
                                         <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft formnovalidate disabled>Save Draft</button>
                                         <?php if ($workflowAction === 'complete' || $canSubmitToAdmin): ?>
-                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary is-locked" data-submit-costing data-confirm-submit-costing aria-disabled="true" disabled><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
+                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary is-locked" data-submit-costing data-confirm-submit-costing aria-disabled="true"><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -1838,7 +1841,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-4',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-5',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

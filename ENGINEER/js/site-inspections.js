@@ -162,10 +162,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const submitButton = form.querySelector('[data-submit-costing]');
         if (submitButton) {
             const canSubmit = isCostingReadyForSubmit(form);
-            submitButton.disabled = !canSubmit;
+            submitButton.disabled = false;
             submitButton.classList.toggle('is-locked', !canSubmit);
             submitButton.setAttribute('aria-disabled', canSubmit ? 'false' : 'true');
-            submitButton.title = canSubmit ? '' : 'Complete the required findings and cost item.';
+            submitButton.title = canSubmit ? '' : 'Click to see the missing or invalid fields.';
+
+            const guidance = form.querySelector('[data-submit-guidance]');
+            if (guidance) {
+                const missingItems = getCostingMissingItems(form);
+                guidance.classList.toggle('is-ready', canSubmit);
+                guidance.textContent = canSubmit
+                    ? 'Ready to submit to Admin.'
+                    : `Cannot submit yet. Check: ${missingItems.join(', ')}.`;
+            }
         }
 
         if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
@@ -853,6 +862,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const directAmounts = Array.from(form.querySelectorAll('[data-direct-cost]'));
         if (!directAmounts.every(function (field) { return isValidDirectCostText(field.value.trim()); })) return false;
 
+        const seenAssets = new Set();
+        const assetRowsAreValid = Array.from(form.querySelectorAll('[data-asset-requirement-row]')).every(function (row) {
+            if (!assetRequirementHasMeaningfulData(row)) return true;
+            const assetId = row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value || '';
+            const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]')?.value.trim() || '';
+            if (assetId === '' || seenAssets.has(assetId) || !/^[1-9]\d*$/.test(quantity)) return false;
+            seenAssets.add(assetId);
+            return true;
+        });
+        if (!assetRowsAreValid) return false;
+
         const materialTotal = rows.reduce(function (sum, row) {
             return sum + Number(row.querySelector('input[name="quantity[]"]')?.value || 0)
                 * Number(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
@@ -861,6 +881,57 @@ document.addEventListener('DOMContentLoaded', function () {
             return sum + Number(field.value || 0);
         }, 0);
         return materialTotal + directTotal > 0;
+    };
+
+    const getCostingMissingItems = function (form) {
+        const missing = [];
+        const findings = form.querySelector('textarea[name="engineer_findings"]');
+        if (!findings || !hasMeaningfulFindings(findings.value)) {
+            missing.push('Engineer Findings');
+        }
+
+        const rows = Array.from(form.querySelectorAll('.costing-row')).filter(rowHasMeaningfulData);
+        const hasInvalidMaterial = rows.some(function (row) {
+            const name = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
+            const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
+            const unit = row.querySelector('select[name="unit[]"]')?.value || '';
+            const unitCost = row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
+            return name === '' || unit === '' || !isValidQuantityText(quantity, unit) || !isValidCostText(unitCost);
+        });
+        if (hasInvalidMaterial) {
+            missing.push('Material details');
+        }
+
+        const directAmounts = Array.from(form.querySelectorAll('[data-direct-cost]'));
+        if (directAmounts.some(function (field) { return !isValidDirectCostText(field.value.trim()); })) {
+            missing.push('Other cost amount');
+        }
+
+        const seenAssets = new Set();
+        const hasInvalidAsset = Array.from(form.querySelectorAll('[data-asset-requirement-row]')).some(function (row) {
+            if (!assetRequirementHasMeaningfulData(row)) return false;
+            const assetId = row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value || '';
+            const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]')?.value.trim() || '';
+            if (assetId === '' || seenAssets.has(assetId) || !/^[1-9]\d*$/.test(quantity)) return true;
+            seenAssets.add(assetId);
+            return false;
+        });
+        if (hasInvalidAsset) {
+            missing.push('Asset requirement');
+        }
+
+        const materialTotal = rows.reduce(function (sum, row) {
+            return sum + Number(row.querySelector('input[name="quantity[]"]')?.value || 0)
+                * Number(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
+        }, 0);
+        const directTotal = directAmounts.reduce(function (sum, field) {
+            return sum + (isValidDirectCostText(field.value.trim()) ? Number(field.value || 0) : 0);
+        }, 0);
+        if (materialTotal + directTotal <= 0) {
+            missing.push('Total cost above PHP 0');
+        }
+
+        return missing.length > 0 ? missing : ['required fields'];
     };
 
     const bindRow = function (form, row) {

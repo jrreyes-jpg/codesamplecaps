@@ -2336,7 +2336,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -2756,8 +2756,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             $inspectionDisplayStatus = $latestInspectionStatus === 'Completed' && $inspectionReviewStatus === 'Returned'
                                                 ? 'Returned for Revision'
                                                 : $latestInspectionStatus;
-                                            $initialQuotationTotalForReview = (float)($originalQuotation['grand_total'] ?? 0);
-                                            $inspectionCostDifference = round($latestCostTotal - $initialQuotationTotalForReview, 2);
+                                            $clientEstimatedBudget = (string)($inquiry['estimated_budget'] ?? '');
+                                            $clientBudgetPosition = inquiry_budget_cost_position($clientEstimatedBudget, $latestCostTotal);
+                                            $clientBudgetCheckLabel = match ($clientBudgetPosition) {
+                                                'within' => 'Within client budget range',
+                                                'below' => 'Below client budget range',
+                                                'above' => 'Above client budget range',
+                                                default => 'Cannot compare',
+                                            };
+                                            $clientBudgetCheckClass = $clientBudgetPosition === 'above'
+                                                ? 'is-above'
+                                                : (in_array($clientBudgetPosition, ['within', 'below'], true) ? 'is-within' : 'is-neutral');
                                             ?>
                                             <section class="submitted-inspection-report">
                                                 <div class="submitted-inspection-report__head">
@@ -2802,10 +2811,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <?php endif; ?>
                                                 </div>
 
-                                                <div class="inspection-cost-comparison" aria-label="Quotation and inspection cost comparison">
-                                                    <div><span>Initial Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($initialQuotationTotalForReview), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                <div class="inspection-cost-comparison" aria-label="Client budget and engineer costing comparison">
+                                                    <div><span>Client Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($clientEstimatedBudget), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                     <div><span>Engineer Costing Total</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div class="inspection-cost-comparison__difference"><span>Difference</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($inspectionCostDifference), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inspection-cost-comparison__check <?php echo htmlspecialchars($clientBudgetCheckClass, ENT_QUOTES, 'UTF-8'); ?>"><span>Budget Check</span><strong><?php echo htmlspecialchars($clientBudgetCheckLabel, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                 </div>
 
                                                 <div class="inquiry-costing-table submitted-inspection-costing">

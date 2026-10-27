@@ -23,6 +23,18 @@ function inquiry_budget_label(?string $value): string
     return inquiry_budget_options()[$value] ?? 'Not provided';
 }
 
+// I-check kung pasok ang costing sa budget range ng client.
+function inquiry_budget_cost_position(?string $value, float $cost): ?string
+{
+    return match (trim((string)$value)) {
+        'below_50000' => $cost < 50000 ? 'within' : 'above',
+        '50000_100000' => $cost < 50000 ? 'below' : ($cost <= 100000 ? 'within' : 'above'),
+        '100001_250000' => $cost < 100001 ? 'below' : ($cost <= 250000 ? 'within' : 'above'),
+        'above_250000' => $cost > 250000 ? 'within' : 'below',
+        default => null,
+    };
+}
+
 function inquiry_budget_column_exists(mysqli $conn): bool
 {
     $stmt = $conn->prepare(

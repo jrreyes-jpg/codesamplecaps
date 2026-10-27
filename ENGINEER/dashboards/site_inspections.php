@@ -777,6 +777,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Engineer Findings must be 10 to 1,000 characters.';
             } elseif ($grandTotal <= 0) {
                 $error = 'Total costing must be greater than 0 before submitting.';
+            } elseif (!site_inspection_costing_versions_ready($conn)) {
+                $error = 'Costing version setup is not ready. Apply the required database migration.';
             }
         }
 
@@ -896,6 +898,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $resetReview->bind_param('ii', $inspectionId, $userId);
                     $resetReview->execute();
 
+                    $submittedVersionNo = site_inspection_create_costing_version($conn, $inspectionId, $userId);
+
                     audit_log_event(
                         $conn,
                         $userId,
@@ -912,13 +916,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [
                             'status' => 'Submitted',
                             'admin_review_status' => 'Pending',
+                            'costing_version' => $submittedVersionNo,
                         ]
                     );
                 }
 
                 $conn->commit();
                 $message = $costingAction === 'submit_to_admin'
-                    ? 'Costing submitted to Admin.'
+                    ? 'Costing V' . $submittedVersionNo . ' submitted to Admin.'
                     : 'Inspection draft saved.';
                 if ($costingAction === 'submit_to_admin') {
                     try {
@@ -1088,6 +1093,20 @@ if ($costResult) {
     }
 }
 
+$costingVersionsByInspection = [];
+if (site_inspection_costing_versions_ready($conn)) {
+    $versionResult = $conn->query(
+        'SELECT inspection_id, version_no, total_cost, review_status, admin_remarks, submitted_at, reviewed_at
+         FROM site_inspection_costing_versions
+         ORDER BY inspection_id ASC, version_no DESC'
+    );
+    if ($versionResult) {
+        while ($versionRow = $versionResult->fetch_assoc()) {
+            $costingVersionsByInspection[(int)$versionRow['inspection_id']][] = $versionRow;
+        }
+    }
+}
+
 $initialQuotationsByInquiry = [];
 $initialQuotationItemsByInquiry = [];
 if (!empty($inspections)
@@ -1141,7 +1160,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-3',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-4',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1185,6 +1204,10 @@ require __DIR__ . '/../layout/header.php';
                     $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
                     $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
+                    $costingVersions = $costingVersionsByInspection[$inspectionId] ?? [];
+                    $currentCostingVersion = (int)($costingVersions[0]['version_no'] ?? 0);
+                    $showCostingVersionLabel = count($costingVersions) > 1
+                        || (string)($costingVersions[0]['review_status'] ?? '') === 'Returned';
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
                     $costTotalsByType = array_fill_keys(array_keys(inquiry_quote_item_type_options()), 0.0);
@@ -1497,8 +1520,22 @@ require __DIR__ . '/../layout/header.php';
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
-                                <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Costing'; ?></strong>
+                                <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Costing'; ?><?php echo $showCostingVersionLabel && $currentCostingVersion > 0 ? ' V' . $currentCostingVersion : ''; ?></strong>
                             </div>
+                            <?php if (count($costingVersions) > 1): ?>
+                                <div class="costing-version-history" aria-label="Costing version history">
+                                    <strong>Version History</strong>
+                                    <div class="costing-version-history__list">
+                                        <?php foreach ($costingVersions as $costingVersion): ?>
+                                            <?php $versionStatusClass = strtolower((string)$costingVersion['review_status']); ?>
+                                            <div class="costing-version-history__item is-<?php echo htmlspecialchars($versionStatusClass, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <span>V<?php echo (int)$costingVersion['version_no']; ?></span>
+                                                <small><?php echo htmlspecialchars((string)$costingVersion['review_status'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars(site_inspection_format_datetime($costingVersion['submitted_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
@@ -1801,7 +1838,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-3',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-4',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

@@ -298,6 +298,123 @@ if (!function_exists('site_inspection_admin_review_statuses')) {
     }
 }
 
+if (!function_exists('site_inspection_costing_versions_ready')) {
+    function site_inspection_costing_versions_ready(mysqli $conn): bool
+    {
+        foreach (['site_inspection_costing_versions', 'site_inspection_costing_version_items'] as $tableName) {
+            $stmt = $conn->prepare(
+                'SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('s', $tableName);
+            $stmt->execute();
+            $exists = (bool)$stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$exists) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('site_inspection_create_costing_version')) {
+    function site_inspection_create_costing_version(
+        mysqli $conn,
+        int $inspectionId,
+        int $engineerId
+    ): int {
+        if (!site_inspection_costing_versions_ready($conn)) {
+            throw new RuntimeException('Costing version setup is not ready. Apply the required database migration.');
+        }
+
+        $versionStmt = $conn->prepare(
+            'SELECT COALESCE(MAX(version_no), 0) + 1 AS next_version
+             FROM site_inspection_costing_versions
+             WHERE inspection_id = ?'
+        );
+        if (!$versionStmt) {
+            throw new RuntimeException('Unable to prepare the costing version.');
+        }
+        $versionStmt->bind_param('i', $inspectionId);
+        $versionStmt->execute();
+        $versionNo = (int)(($versionStmt->get_result()->fetch_assoc()['next_version'] ?? 1));
+        $versionStmt->close();
+
+        $snapshotStmt = $conn->prepare(
+            "INSERT INTO site_inspection_costing_versions
+             (inspection_id, version_no, engineer_findings, risk_notes, client_requests,
+              total_cost, review_status, submitted_by, submitted_at)
+             SELECT si.id, ?, si.engineer_findings, si.risk_notes, si.client_requests,
+                    COALESCE(SUM(ci.line_total), 0), 'Pending', ?, NOW()
+             FROM site_inspections si
+             LEFT JOIN site_inspection_cost_items ci ON ci.inspection_id = si.id
+             WHERE si.id = ? AND si.engineer_id = ?
+             GROUP BY si.id, si.engineer_findings, si.risk_notes, si.client_requests"
+        );
+        if (!$snapshotStmt) {
+            throw new RuntimeException('Unable to save the costing version.');
+        }
+        $snapshotStmt->bind_param('iiii', $versionNo, $engineerId, $inspectionId, $engineerId);
+        $snapshotStmt->execute();
+        if ($snapshotStmt->affected_rows !== 1) {
+            throw new RuntimeException('Unable to save the costing version.');
+        }
+        $costingVersionId = (int)$conn->insert_id;
+        $snapshotStmt->close();
+
+        $itemsStmt = $conn->prepare(
+            'INSERT INTO site_inspection_costing_version_items
+             (costing_version_id, item_type, inventory_id, material_id, item_name,
+              quantity, unit, unit_cost, line_total, notes)
+             SELECT ?, item_type, inventory_id, material_id, item_name,
+                    quantity, unit, unit_cost, line_total, notes
+             FROM site_inspection_cost_items
+             WHERE inspection_id = ?
+             ORDER BY id ASC'
+        );
+        if (!$itemsStmt) {
+            throw new RuntimeException('Unable to save the costing version items.');
+        }
+        $itemsStmt->bind_param('ii', $costingVersionId, $inspectionId);
+        $itemsStmt->execute();
+        $itemsStmt->close();
+
+        return $versionNo;
+    }
+}
+
+if (!function_exists('site_inspection_review_latest_costing_version')) {
+    function site_inspection_review_latest_costing_version(
+        mysqli $conn,
+        int $inspectionId,
+        string $reviewStatus,
+        string $remarks,
+        int $adminId
+    ): void {
+        if (!site_inspection_costing_versions_ready($conn)) {
+            return;
+        }
+
+        $stmt = $conn->prepare(
+            'UPDATE site_inspection_costing_versions
+             SET review_status = ?, admin_remarks = ?, reviewed_by = ?, reviewed_at = NOW()
+             WHERE inspection_id = ? AND review_status = \'Pending\'
+             ORDER BY version_no DESC LIMIT 1'
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Unable to update the costing version review.');
+        }
+        $stmt->bind_param('ssii', $reviewStatus, $remarks, $adminId, $inspectionId);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
 if (!function_exists('site_inspection_can_admin_review')) {
     function site_inspection_can_admin_review(
         string $inspectionStatus,

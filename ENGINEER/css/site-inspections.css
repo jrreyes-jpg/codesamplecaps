@@ -8,6 +8,60 @@
     gap: 16px;
 }
 
+.costing-version-history {
+    margin: 10px 0 14px;
+    padding: 12px;
+    border: 1px solid #d9e2ec;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.costing-version-history__list {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.costing-version-history__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-left: 4px solid #94a3b8;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.costing-version-history__item.is-pending {
+    border-left-color: #2563eb;
+}
+
+.costing-version-history__item.is-returned {
+    border-left-color: #f59e0b;
+}
+
+.costing-version-history__item.is-approved {
+    border-left-color: #16a34a;
+}
+
+.costing-version-history__item small {
+    color: #64748b;
+    text-align: right;
+}
+
+@media (max-width: 640px) {
+    .costing-version-history__item {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .costing-version-history__item small {
+        text-align: left;
+    }
+}
+
 .inspection-panel,
 .inspection-card {
     background: rgba(255, 255, 255, 0.96);

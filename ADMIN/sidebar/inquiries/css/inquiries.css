@@ -9,6 +9,71 @@
     gap: 14px;
 }
 
+.inspection-version-history {
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid #d9e2ec;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.inspection-version-history__list {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.inspection-version-history__item {
+    display: grid;
+    grid-template-columns: auto minmax(140px, auto);
+    align-items: center;
+    gap: 4px 12px;
+    padding: 9px 10px;
+    border-left: 4px solid #94a3b8;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.inspection-version-history__item > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inspection-version-history__item.is-pending {
+    border-left-color: #2563eb;
+}
+
+.inspection-version-history__item.is-returned {
+    border-left-color: #f59e0b;
+}
+
+.inspection-version-history__item.is-approved {
+    border-left-color: #16a34a;
+}
+
+.inspection-version-history__item small {
+    color: #64748b;
+    text-align: right;
+}
+
+.inspection-version-history__item p {
+    grid-column: 1 / -1;
+    margin: 3px 0 0;
+    color: #92400e;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+    .inspection-version-history__item {
+        grid-template-columns: 1fr;
+    }
+
+    .inspection-version-history__item small {
+        text-align: left;
+    }
+}
+
 /* Direct quotation page para quotation muna bago inspection. */
 .quotation-create-shell {
     max-width: 1440px;

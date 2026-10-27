@@ -1322,6 +1322,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Inspection review was not saved. Please refresh the page.');
                 }
 
+                site_inspection_review_latest_costing_version(
+                    $conn,
+                    $inspectionId,
+                    $targetReviewStatus,
+                    $remarksToStore,
+                    $adminId
+                );
+
                 audit_log_event(
                     $conn,
                     $adminId,
@@ -2154,6 +2162,20 @@ if ($costingResult) {
     }
 }
 
+$costingVersionsByInspection = [];
+if (site_inspection_costing_versions_ready($conn)) {
+    $costingVersionResult = $conn->query(
+        'SELECT inspection_id, version_no, total_cost, review_status, admin_remarks, submitted_at, reviewed_at
+         FROM site_inspection_costing_versions
+         ORDER BY inspection_id ASC, version_no DESC'
+    );
+    if ($costingVersionResult) {
+        while ($costingVersion = $costingVersionResult->fetch_assoc()) {
+            $costingVersionsByInspection[(int)$costingVersion['inspection_id']][] = $costingVersion;
+        }
+    }
+}
+
 $costingReviewByInquiry = [];
 $costingReviewResult = $conn->query(
     "SELECT
@@ -2314,12 +2336,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261027-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261027-3',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2430,6 +2452,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
+                    <?php $costingVersions = $costingReview ? ($costingVersionsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
+                    <?php $currentCostingVersion = (int)($costingVersions[0]['version_no'] ?? 0); ?>
+                    <?php $showCostingVersionLabel = count($costingVersions) > 1
+                        || (string)($costingVersions[0]['review_status'] ?? '') === 'Returned'; ?>
                     <?php
                         $outOfStockInspectionItems = [];
                         foreach ($latestCostItems as $latestCostItem) {
@@ -2736,7 +2762,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <section class="submitted-inspection-report">
                                                 <div class="submitted-inspection-report__head">
                                                     <div>
-                                                    <span>Submitted Inspection Costing</span>
+                                                    <span>Submitted Inspection Costing<?php echo $showCostingVersionLabel && $currentCostingVersion > 0 ? ' V' . $currentCostingVersion : ''; ?></span>
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
@@ -2744,6 +2770,27 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <?php endif; ?>
                                                     </div>
                                                 </div>
+
+                                                <?php if (count($costingVersions) > 1): ?>
+                                                    <div class="inspection-version-history" aria-label="Costing version history">
+                                                        <strong>Version History</strong>
+                                                        <div class="inspection-version-history__list">
+                                                            <?php foreach ($costingVersions as $costingVersion): ?>
+                                                                <?php $versionStatusClass = strtolower((string)$costingVersion['review_status']); ?>
+                                                                <div class="inspection-version-history__item is-<?php echo htmlspecialchars($versionStatusClass, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    <div>
+                                                                        <strong>V<?php echo (int)$costingVersion['version_no']; ?></strong>
+                                                                        <span><?php echo htmlspecialchars((string)$costingVersion['review_status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                    </div>
+                                                                    <small><?php echo htmlspecialchars(inquiry_center_format_datetime($costingVersion['submitted_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
+                                                                    <?php if (trim((string)($costingVersion['admin_remarks'] ?? '')) !== ''): ?>
+                                                                        <p><?php echo nl2br(htmlspecialchars((string)$costingVersion['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    </div>
+                                                <?php endif; ?>
 
                                                 <div class="inquiry-details-grid submitted-inspection-report__details">
                                                     <div class="inquiry-detail inquiry-detail--wide"><span>Engineer Findings</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['engineer_findings'] ?: 'No findings provided.'), ENT_QUOTES, 'UTF-8')); ?></strong></div>

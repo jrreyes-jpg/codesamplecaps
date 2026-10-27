@@ -35,10 +35,21 @@ document.addEventListener('DOMContentLoaded', function () {
             if (isValidQuantityText(quantityField?.value.trim() || '', unitField?.value || '')
                 && isValidCostText(costField?.value.trim() || '')) {
                 const lineTotal = Number(quantityField.value) * Number(costField.value);
-                const itemType = normalizeCostType(row.querySelector('select[name="item_type[]"]')?.value);
+                const itemType = normalizeCostType(row.querySelector('[name="item_type[]"]')?.value);
                 total += lineTotal;
                 if (Object.prototype.hasOwnProperty.call(categoryTotals, itemType)) {
                     categoryTotals[itemType] += lineTotal;
+                }
+            }
+        });
+        form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
+            const amountText = field.value.trim();
+            if (isValidDirectCostText(amountText) && Number(amountText) > 0) {
+                const itemType = field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '';
+                const amount = Number(amountText);
+                total += amount;
+                if (Object.prototype.hasOwnProperty.call(categoryTotals, itemType)) {
+                    categoryTotals[itemType] = amount;
                 }
             }
         });
@@ -61,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveFormDraft = function (form) {
         const rows = Array.from(form.querySelectorAll('.costing-row')).map(function (row) {
             return {
-                item_type: row.querySelector('select[name="item_type[]"]')?.value || 'material',
+                item_type: row.querySelector('[name="item_type[]"]')?.value || 'material',
                 inventory_id: row.querySelector('input[name="inventory_id[]"]')?.value || '',
                 material_id: row.querySelector('select[name="material_id[]"]')?.value || '',
                 item_name: row.querySelector('input[name="item_name[]"]')?.value || '',
@@ -84,6 +95,9 @@ document.addEventListener('DOMContentLoaded', function () {
             risk_notes: form.querySelector('textarea[name="risk_notes"]')?.value || '',
             client_requests: form.querySelector('textarea[name="client_requests"]')?.value || '',
             rows,
+            direct_costs: Object.fromEntries(Array.from(form.querySelectorAll('[data-direct-cost]')).map(function (field) {
+                return [field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '', field.value];
+            })),
             asset_requirements: assetRequirements,
         };
 
@@ -112,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clientRequests: normalizeText(form.querySelector('textarea[name="client_requests"]')?.value),
             rows: Array.from(form.querySelectorAll('.costing-row')).map(function (row) {
                 return {
-                    type: normalizeText(row.querySelector('select[name="item_type[]"]')?.value).toLowerCase(),
+                    type: normalizeText(row.querySelector('[name="item_type[]"]')?.value).toLowerCase(),
                     materialId: normalizeText(row.querySelector('select[name="material_id[]"]')?.value) || '',
                     itemName: normalizeText(row.querySelector('input[name="item_name[]"]')?.value),
                     quantity: normalizeNumber(row.querySelector('input[name="quantity[]"]')?.value),
@@ -121,6 +135,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     notes: normalizeText(row.querySelector('input[name="notes[]"]')?.value),
                 };
             }),
+            directCosts: Object.fromEntries(Array.from(form.querySelectorAll('[data-direct-cost]')).map(function (field) {
+                return [field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '', normalizeNumber(field.value)];
+            })),
             assetRequirements: Array.from(form.querySelectorAll('[data-asset-requirement-row]')).map(function (row) {
                 return {
                     assetId: normalizeText(row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value),
@@ -164,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const fillRow = function (row, data) {
-        row.querySelector('select[name="item_type[]"]').value = normalizeCostType(data.item_type) || 'material';
+        row.querySelector('[name="item_type[]"]').value = 'material';
         const materialPicker = row.querySelector('select[name="material_id[]"]');
         if (materialPicker) {
             materialPicker.value = data.material_id || '';
@@ -211,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const updateMaterialAvailability = function (row) {
-        const type = row.querySelector('select[name="item_type[]"]')?.value || '';
+        const type = row.querySelector('[name="item_type[]"]')?.value || '';
         const picker = row.querySelector('[data-material-picker]');
         const quantityField = row.querySelector('input[name="quantity[]"]');
         const feedback = row.querySelector('[data-material-stock-feedback]');
@@ -343,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const setLinkedMaterialState = function (row) {
-        const type = row.querySelector('select[name="item_type[]"]')?.value || '';
+        const type = row.querySelector('[name="item_type[]"]')?.value || '';
         const materialField = row.querySelector('[data-material-field]');
         const picker = row.querySelector('[data-material-picker]');
         const itemNameField = row.querySelector('[data-item-name-field]');
@@ -459,10 +476,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
         rowsBox.innerHTML = '';
         payload.rows.forEach(function (rowData) {
+            if (normalizeCostType(rowData.item_type) !== 'material') return;
             const row = firstRow.cloneNode(true);
             fillRow(row, rowData);
             rowsBox.appendChild(row);
             bindRow(form, row);
+        });
+        if (!rowsBox.querySelector('.costing-row')) {
+            const row = firstRow.cloneNode(true);
+            fillRow(row, {});
+            rowsBox.appendChild(row);
+            bindRow(form, row);
+        }
+
+        const restoredDirectCosts = { ...(payload.direct_costs || {}) };
+        (payload.rows || []).forEach(function (rowData) {
+            const type = normalizeCostType(rowData.item_type);
+            if (type !== 'material' && restoredDirectCosts[type] === undefined) {
+                restoredDirectCosts[type] = String(Number(rowData.quantity || 0) * Number(rowData.unit_cost || 0) || '');
+            }
+        });
+        form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
+            const type = field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '';
+            if (Object.prototype.hasOwnProperty.call(restoredDirectCosts, type)) {
+                field.value = restoredDirectCosts[type] || '';
+            }
         });
 
         const assetRowsBox = form.querySelector('[data-asset-requirement-rows]');
@@ -553,6 +591,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) > 0;
     };
 
+    const isValidDirectCostText = function (value) {
+        return value === '' || (/^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) >= 0);
+    };
+
     const hasMeaningfulFindings = function (value) {
         const text = String(value || '').trim();
         return text.length >= 10 && text.length <= 1000 && /[a-z]/i.test(text);
@@ -622,7 +664,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateCostEntryNumbers = function (form) {
         form.querySelectorAll('.costing-row').forEach(function (row, index) {
             const number = row.querySelector('[data-costing-row-number]');
-            if (number) number.textContent = `Cost Entry ${index + 1}`;
+            if (number) number.textContent = `Material ${index + 1}`;
         });
     };
 
@@ -647,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const row = firstRow.cloneNode(true);
         row.querySelectorAll('input').forEach(function (field) {
-            field.value = field.name === 'quantity[]' ? '1' : '';
+            field.value = field.name === 'quantity[]' ? '1' : (field.name === 'item_type[]' ? 'material' : '');
             clearFieldError(field);
         });
         row.querySelectorAll('select').forEach(function (field) {
@@ -655,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clearFieldError(field);
         });
 
-        const typeField = row.querySelector('select[name="item_type[]"]');
+        const typeField = row.querySelector('[name="item_type[]"]');
         if (typeField) {
             typeField.value = type;
         }
@@ -671,7 +713,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const validateCosting = function (form, requireFinal) {
-        let hasAnyRow = false;
         let total = 0;
         let firstInvalid = null;
         let errorMessage = '';
@@ -689,7 +730,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form.querySelectorAll('.costing-row').forEach(function (row) {
-            const type = row.querySelector('select[name="item_type[]"]');
             const name = row.querySelector('input[name="item_name[]"]');
             const quantity = row.querySelector('input[name="quantity[]"]');
             const unit = row.querySelector('select[name="unit[]"]');
@@ -705,7 +745,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            hasAnyRow = true;
             if (isValidQuantityText(quantityText, unitValue) && isValidCostText(unitCostText)) {
                 total += quantityValue * Number(unitCostText);
             }
@@ -730,6 +769,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 firstInvalid = firstInvalid || unit;
             }
 
+        });
+
+        form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
+            const amountText = field.value.trim();
+            if (!isValidDirectCostText(amountText)) {
+                setFieldError(field, 'Enter 0 or a valid amount with up to 2 decimal places.');
+                firstInvalid = firstInvalid || field;
+                return;
+            }
+            total += Number(amountText || 0);
         });
 
         const seenAssets = new Set();
@@ -758,11 +807,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 firstInvalid = firstInvalid || quantity;
             }
         });
-
-        if (requireFinal && !hasAnyRow) {
-            firstInvalid = firstInvalid || form.querySelector('input[name="item_name[]"]');
-            setFieldError(firstInvalid, 'Add at least one cost item.');
-        }
 
         if (requireFinal && findings && !hasMeaningfulFindings(findings.value)) {
             setFieldError(findings, 'Enter 10 to 1,000 characters.');
@@ -794,9 +838,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!findings || !hasMeaningfulFindings(findings.value)) return false;
 
         const rows = Array.from(form.querySelectorAll('.costing-row')).filter(rowHasMeaningfulData);
-        if (rows.length < 1) return false;
-
-        return rows.every(function (row) {
+        const materialRowsAreValid = rows.every(function (row) {
             const name = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
             const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
             const unit = row.querySelector('select[name="unit[]"]')?.value || '';
@@ -806,10 +848,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 && isValidQuantityText(quantity, unit)
                 && isValidCostText(unitCost);
         });
+        if (!materialRowsAreValid) return false;
+
+        const directAmounts = Array.from(form.querySelectorAll('[data-direct-cost]'));
+        if (!directAmounts.every(function (field) { return isValidDirectCostText(field.value.trim()); })) return false;
+
+        const materialTotal = rows.reduce(function (sum, row) {
+            return sum + Number(row.querySelector('input[name="quantity[]"]')?.value || 0)
+                * Number(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
+        }, 0);
+        const directTotal = directAmounts.reduce(function (sum, field) {
+            return sum + Number(field.value || 0);
+        }, 0);
+        return materialTotal + directTotal > 0;
     };
 
     const bindRow = function (form, row) {
-        const typeField = row.querySelector('select[name="item_type[]"]');
+        const typeField = row.querySelector('[name="item_type[]"]');
         let previousType = typeField?.value || 'material';
         setLinkedMaterialState(row);
         updateMaterialAvailability(row);
@@ -938,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const rows = form.querySelectorAll('.costing-row');
                 if (rows.length <= 1) {
                     row.querySelectorAll('input').forEach(function (field) {
-                        field.value = field.name === 'quantity[]' ? '1' : '';
+                        field.value = field.name === 'quantity[]' ? '1' : (field.name === 'item_type[]' ? 'material' : '');
                     });
                     row.querySelectorAll('select').forEach(function (field) {
                         field.selectedIndex = 0;
@@ -990,6 +1045,28 @@ document.addEventListener('DOMContentLoaded', function () {
         form.dataset.savedSnapshot = formSnapshot(form);
         restoreFormDraft(form);
         updateCostEntryNumbers(form);
+
+        form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
+            field.addEventListener('input', function () {
+                clearFieldError(field);
+                clearCostingErrorWhenResolved(form);
+                syncTotal(form);
+                saveFormDraft(form);
+                updateSaveDraftState(form);
+            });
+            field.addEventListener('blur', function () {
+                normalizeDecimalField(field);
+                const amount = field.value.trim();
+                if (isValidDirectCostText(amount)) {
+                    clearFieldError(field);
+                } else {
+                    setFieldError(field, 'Enter 0 or a valid amount with up to 2 decimal places.');
+                }
+                syncTotal(form);
+                saveFormDraft(form);
+                updateSaveDraftState(form);
+            });
+        });
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
             addCostingRow(form);

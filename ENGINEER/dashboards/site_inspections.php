@@ -583,6 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $units = $_POST['unit'] ?? [];
         $unitCosts = $_POST['unit_cost'] ?? [];
         $notes = $_POST['notes'] ?? [];
+        $directCosts = is_array($_POST['direct_cost'] ?? null) ? $_POST['direct_cost'] : [];
         $assetRequirementIds = $_POST['asset_requirement_asset_id'] ?? [];
         $assetRequirementQuantities = $_POST['asset_requirement_quantity'] ?? [];
         $assetRequirementNotes = $_POST['asset_requirement_notes'] ?? [];
@@ -619,10 +620,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Please select a valid cost type.';
                 break;
             }
-
             if ($itemType !== 'material') {
-                $materialId = 0;
-                $inventoryId = 0;
+                $error = 'Detailed costing rows are only for materials.';
+                break;
             }
 
             // Huwag bilangin ang default na blank row bilang draft item.
@@ -686,6 +686,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'line_total' => $lineTotal,
                 'notes' => $itemNotes,
             ];
+        }
+
+        $directCostTypes = inquiry_quote_item_type_options();
+        unset($directCostTypes['material']);
+        if ($error === '') {
+            foreach ($directCostTypes as $directType => $directLabel) {
+                $rawAmount = trim((string)($directCosts[$directType] ?? ''));
+                if (preg_match('/^\.\d+$/', $rawAmount)) {
+                    $rawAmount = '0' . $rawAmount;
+                }
+
+                // Ang blank o zero ay valid dahil puwedeng walang gastos sa category.
+                if ($rawAmount === '' || (preg_match('/^(?:0|0\.0{1,2})$/', $rawAmount) === 1)) {
+                    continue;
+                }
+                if (!engineer_inspection_valid_unit_cost($rawAmount)) {
+                    $error = $directLabel . ' must be 0 or a valid amount with up to 2 decimal places.';
+                    break;
+                }
+
+                $directAmount = (float)$rawAmount;
+                $grandTotal += $directAmount;
+                $rows[] = [
+                    'item_type' => $directType,
+                    'inventory_id' => null,
+                    'material_id' => null,
+                    'item_name' => $directLabel,
+                    'quantity' => 1.0,
+                    'unit' => 'lot',
+                    'unit_cost' => $directAmount,
+                    'line_total' => $directAmount,
+                    'notes' => '',
+                ];
+            }
         }
 
         foreach ($assetRequirementIds as $index => $rawAssetId) {
@@ -1107,7 +1141,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-3',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1160,6 +1194,12 @@ require __DIR__ . '/../layout/header.php';
                             $costTotalsByType[$savedCostType] += (float)($savedCostItem['line_total'] ?? 0);
                         }
                     }
+                    $materialCostItems = array_values(array_filter(
+                        $costItems,
+                        static fn(array $costItem): bool => inquiry_quote_normalize_item_type((string)($costItem['item_type'] ?? '')) === 'material'
+                    ));
+                    $directCostTypes = inquiry_quote_item_type_options();
+                    unset($directCostTypes['material']);
                     $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
                     $currentScheduleReason = site_inspection_current_admin_reschedule_reason(
                         $conn,
@@ -1222,8 +1262,8 @@ require __DIR__ . '/../layout/header.php';
                         'Completed', 'Submitted' => 2,
                         default => 0,
                     };
-                    if (empty($costItems)) {
-                        $costItems = [[
+                    if (empty($materialCostItems)) {
+                        $materialCostItems = [[
                             'item_type' => 'material',
                             'inventory_id' => '',
                             'material_id' => '',
@@ -1491,21 +1531,13 @@ require __DIR__ . '/../layout/header.php';
                             </details>
 
                             <details class="inspection-disclosure" open>
-                                <summary>Cost Items <span>Materials, labor, and estimated costs</span></summary>
+                                <summary>Cost Items <span>Detailed materials and direct category amounts</span></summary>
                             <div class="costing-rows" data-costing-rows>
-                                <?php foreach ($costItems as $itemIndex => $item): ?>
-                                    <?php $costItemType = inquiry_quote_normalize_item_type((string)($item['item_type'] ?? '')) ?: 'material'; ?>
+                                <?php foreach ($materialCostItems as $itemIndex => $item): ?>
                                     <div class="costing-row">
-                                        <strong class="costing-row__number" data-costing-row-number>Cost Entry <?php echo $itemIndex + 1; ?></strong>
-                                        <label>
-                                            <span>Type <b aria-hidden="true">*</b></span>
-                                            <select name="item_type[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <?php foreach (inquiry_quote_item_type_options() as $typeValue => $typeLabel): ?>
-                                                    <option value="<?php echo htmlspecialchars($typeValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $costItemType === $typeValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($typeLabel, ENT_QUOTES, 'UTF-8'); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </label>
-                                        <label data-material-field<?php echo $costItemType !== 'material' ? ' hidden' : ''; ?>>
+                                        <strong class="costing-row__number" data-costing-row-number>Material <?php echo $itemIndex + 1; ?></strong>
+                                        <input type="hidden" name="item_type[]" value="material">
+                                        <label data-material-field>
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
                                             <select name="material_id[]" data-material-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
@@ -1524,9 +1556,9 @@ require __DIR__ . '/../layout/header.php';
                                             </select>
                                             <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                         </label>
-                                        <label data-item-name-field<?php echo $costItemType === 'material' && (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
-                                            <span data-item-name-label>Item Description <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="item_name[]" placeholder="Enter item description" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                        <label data-item-name-field<?php echo (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
+                                            <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
+                                            <input type="text" name="item_name[]" placeholder="Enter material name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
@@ -1558,9 +1590,36 @@ require __DIR__ . '/../layout/header.php';
                             </div>
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-section-action">
-                                    <button type="button" class="btn-secondary" data-add-costing-row>Add Cost Entry</button>
+                                    <button type="button" class="btn-secondary" data-add-costing-row>Add Material</button>
                                 </div>
                             <?php endif; ?>
+
+                            <div class="inspection-direct-costs" data-direct-costs>
+                                <strong class="inspection-direct-costs__title">
+                                    Other Cost Categories
+                                    <small>Enter 0 if there is no cost.</small>
+                                </strong>
+                                <?php foreach ($directCostTypes as $directType => $directLabel): ?>
+                                    <label class="inspection-direct-cost">
+                                        <span><?php echo htmlspecialchars($directLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span class="inspection-direct-cost__input">
+                                            <b aria-hidden="true">PHP</b>
+                                            <input
+                                                type="text"
+                                                name="direct_cost[<?php echo htmlspecialchars($directType, ENT_QUOTES, 'UTF-8'); ?>]"
+                                                inputmode="decimal"
+                                                autocomplete="off"
+                                                maxlength="15"
+                                                placeholder="0.00"
+                                                value="<?php echo (float)($costTotalsByType[$directType] ?? 0) > 0 ? htmlspecialchars(number_format((float)$costTotalsByType[$directType], 2, '.', ''), ENT_QUOTES, 'UTF-8') : ''; ?>"
+                                                data-direct-cost
+                                                data-costing-decimal
+                                                <?php echo !$canEditCosting ? 'disabled' : ''; ?>
+                                            >
+                                        </span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
                             </details>
 
                             <div class="inspection-costing-summary" aria-label="Estimated costing summary">
@@ -1742,7 +1801,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-3',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

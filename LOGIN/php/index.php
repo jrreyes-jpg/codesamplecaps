@@ -397,28 +397,6 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         <button class="contact-action contact-action-primary" id="consultBtnSecondary" type="button">Request Consultation</button>
                     </div>
                 </div>
-
-                <div class="contact-card contact-card-details">
-                    <h3>Contact Information</h3>
-                    <dl class="contact-list">
-                        <div>
-                            <dt>Company</dt>
-                            <dd>Edge Automation Technology Services, Co.</dd>
-                        </div>
-                        <div>
-                            <dt>Location</dt>
-                            <dd>Blk 4 Lot 16 Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna</dd>
-                        </div>
-                        <div>
-                            <dt>Phone</dt>
-                            <dd><a href="tel:+639178789571">0917 878 9571</a></dd>
-                        </div>
-                        <div>
-                            <dt>Email</dt>
-                            <dd><a href="mailto:ejimenez.edge@gmail.com">ejimenez.edge@gmail.com</a></dd>
-                        </div>
-                    </dl>
-                </div>
             </div>
         </div>
     </section>
@@ -427,15 +405,24 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <div class="mobile-contact-bar" aria-label="Quick contact actions">
         <a href="tel:+639178789571">Call</a>
         <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer">Viber</a>
-        <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer">Facebook</a>
+        <a href="https://www.facebook.com/profile.php?id=61594273893976" target="_blank" rel="noopener noreferrer">Facebook</a>
         <button id="consultBtnMobile" type="button">More</button>
     </div>
     <!-- Footer -->
     <footer class="footer">
         <div class="container footer-inner">
-            <div class="footer-brand">
-                <strong>Edge Automation Technology Services, Co.</strong>
-                <p>Project asset inventory, quotation, reporting, and field operations support for industrial engineering work.</p>
+            <div class="footer-column footer-contact">
+                <h3>Contact Information</h3>
+                <div class="footer-contact-details">
+                    <p>Edge Automation Technology Services, Co.</p>
+                    <a href="tel:+639178789571">&#128222; 0917 878 9571</a>
+                    <a href="mailto:ejimenez.edge@gmail.com">&#9993;&#65039; ejimenez.edge@gmail.com</a>
+                </div>
+            </div>
+            <div class="footer-column footer-location">
+                <h3>Location</h3>
+                <p>Blk2 Lot 29 Valencia St. Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna</p>
+                <a class="footer-map-link" href="https://maps.app.goo.gl/3jnhxU4iTdkooiJJA" target="_blank" rel="noopener noreferrer">View on Google Maps &#8599;</a>
             </div>
             <div class="footer-column">
                 <h3>Navigation</h3>
@@ -449,17 +436,9 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 </nav>
             </div>
             <div class="footer-column">
-                <h3>Contact</h3>
-                <div class="footer-links">
-                    <a href="tel:+639178789571">0917 878 9571</a>
-                    <a href="mailto:ejimenez.edge@gmail.com">ejimenez.edge@gmail.com</a>
-                    <span>Blk 4 Lot 16 Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna</span>
-                </div>
-            </div>
-            <div class="footer-column">
-                <h3>Social</h3>
-                <div class="footer-social" aria-label="Social media links">
-                    <a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                <h3>Socials</h3>
+                <div class="footer-social" aria-label="Contact and social links">
+                    <a href="https://www.facebook.com/profile.php?id=61594273893976" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
                         <img src="../../IMAGES/fb.png" alt="" loading="lazy" decoding="async">
                     </a>
                     <a href="https://invite.viber.com/?number=639178789571" target="_blank" rel="noopener noreferrer" aria-label="Viber">
@@ -470,7 +449,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     </a>
                 </div>
             </div>
-            <p class="footer-copy">&copy; 2026 Group 11. All rights reserved.</p>
+            <p class="footer-copy">&copy; 2026 Edge Automation Technology Services, Co. | Capstone Project by Group 11</p>
         </div>
     </footer>
 
@@ -495,7 +474,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 <span>Call 0917 878 9571</span>
             </a>
 
-<a href="https://www.facebook.com/edgeautomationtsc" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="../../IMAGES/fb.png" alt="Facebook Messenger" loading="lazy" decoding="async">
+<a href="https://www.facebook.com/profile.php?id=61594273893976" target="_blank" rel="noopener noreferrer" class="consult-option" aria-label="Facebook">                <img src="../../IMAGES/fb.png" alt="Facebook Messenger" loading="lazy" decoding="async">
                 <strong>Facebook</strong>
                 <span>Message the page</span>
             </a>

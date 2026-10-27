@@ -385,7 +385,6 @@ h4 {
 
 .hero-kicker,
 .service-tag,
-.contact-list dt,
 .footer-column h3 {
     font-size: var(--text-xs);
     font-weight: 900;
@@ -1704,10 +1703,13 @@ body.has-inquiry-otp-open {
 
 /* Contact */
 
+.contact {
+    padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+}
+
 .contact-content {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
-    gap: clamp(18px, 2vw, 28px);
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
 }
 
@@ -1728,37 +1730,6 @@ body.has-inquiry-otp-open {
 
 .contact-card a {
     overflow-wrap: anywhere;
-}
-
-.contact-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.1rem 1.4rem;
-    margin: 1.2rem 0 0;
-}
-
-.contact-list div {
-    display: grid;
-    gap: 0.25rem;
-    min-width: 0;
-}
-
-.contact-list dt {
-    color: var(--green-800);
-}
-
-.contact-list dd {
-    margin: 0;
-    color: var(--ink-500);
-    font-size: var(--text-sm);
-    line-height: 1.55;
-}
-
-.contact-list a {
-    color: var(--green-800);
-    font-weight: 800;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
 }
 
 .contact-card-main {
@@ -1836,28 +1807,15 @@ body.has-inquiry-otp-open {
 
 .footer-inner {
     display: grid;
-    grid-template-columns: minmax(260px, 1.35fr) minmax(130px, 0.55fr) minmax(220px, 0.85fr) minmax(130px, 0.45fr);
+    grid-template-columns: minmax(250px, 1.15fr) minmax(280px, 1.25fr) minmax(190px, 0.75fr) minmax(130px, 0.5fr);
     align-items: flex-start;
-    gap: clamp(1.25rem, 3vw, 3rem);
-}
-
-.footer-brand {
-    max-width: 560px;
-}
-
-.footer-brand strong {
-    display: block;
-    color: #ffffff;
-    font-size: var(--text-base);
+    column-gap: clamp(1.25rem, 3vw, 3rem);
+    row-gap: 1.5rem;
 }
 
 .footer p {
     color: rgba(255, 255, 255, 0.86);
     font-size: var(--text-sm);
-}
-
-.footer-brand p {
-    margin-top: 0.45rem;
 }
 
 .footer-column {
@@ -1869,9 +1827,42 @@ body.has-inquiry-otp-open {
     color: #ffffff;
 }
 
+.footer-contact-details {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.footer-contact-details p,
+.footer-location p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.footer-contact-details a {
+    color: #ffffff;
+    font-weight: 700;
+    text-underline-offset: 3px;
+    overflow-wrap: anywhere;
+}
+
+.footer-map-link {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 0.4rem;
+    color: #ffffff;
+    font-size: var(--text-sm);
+    font-weight: 800;
+    text-underline-offset: 3px;
+}
+
 .footer-links {
     display: grid;
-    gap: 0.48rem;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    column-gap: 1.25rem;
+    row-gap: 0.48rem;
 }
 
 .footer-links a,
@@ -2401,7 +2392,6 @@ body.has-inquiry-otp-open {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .footer-brand,
     .footer-copy {
         grid-column: 1 / -1;
     }
@@ -2915,10 +2905,6 @@ body.has-inquiry-otp-open {
         grid-template-columns: 1fr;
     }
 
-    .contact-list {
-        grid-template-columns: 1fr;
-    }
-
     .mobile-contact-bar {
         position: fixed;
         right: 10px;
@@ -2969,8 +2955,11 @@ body.has-inquiry-otp-open {
         gap: 1.25rem;
     }
 
+    .footer-links {
+        grid-template-columns: 1fr;
+    }
+
     .footer-column,
-    .footer-brand,
     .footer-copy {
         text-align: left;
     }

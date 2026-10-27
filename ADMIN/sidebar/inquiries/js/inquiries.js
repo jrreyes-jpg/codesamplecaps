@@ -24,6 +24,20 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingDiscardKeepAction = null;
     let pendingQuotationDraftDiscard = null;
     let pendingQuotationItemRemoval = null;
+    let inquiryModalIsScrolling = false;
+    let inquiryModalScrollTimer = null;
+
+    document.addEventListener('scroll', function (event) {
+        if (!(event.target instanceof Element) || !event.target.matches('.inquiry-modal-panels')) {
+            return;
+        }
+
+        inquiryModalIsScrolling = true;
+        window.clearTimeout(inquiryModalScrollTimer);
+        inquiryModalScrollTimer = window.setTimeout(function () {
+            inquiryModalIsScrolling = false;
+        }, 300);
+    }, { capture: true, passive: true });
 
     if ('scrollRestoration' in window.history) {
         window.history.scrollRestoration = 'manual';
@@ -134,6 +148,11 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="inquiry-confirm__actions">',
         '<button type="button" class="btn-secondary" data-inquiry-confirm-no>No</button>',
         '<button type="button" class="btn-primary" data-inquiry-confirm-yes>Yes</button>',
+        '</div>',
+        '<div class="inquiry-confirm__loading" data-inquiry-confirm-loading hidden>',
+        '<img src="/codesamplecaps/IMAGES/edge.jpg" alt="" aria-hidden="true">',
+        '<strong>Creating quotation...</strong>',
+        '<span>Please wait.</span>',
         '</div>',
         '</div>',
     ].join('');
@@ -459,11 +478,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const showConfirm = function (form, message, details, labels = {}) {
         pendingConfirmForm = form;
         form.dataset.confirmationMode = labels.mode || 'submit';
+        confirmBox.classList.remove('is-loading');
+        delete confirmBox.dataset.submitting;
         const titleBox = confirmBox.querySelector('#inquiryConfirmTitle');
         const messageBox = confirmBox.querySelector('[data-inquiry-confirm-message]');
         const detailsBox = confirmBox.querySelector('[data-inquiry-confirm-details]');
         const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
         const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
+        const loadingBox = confirmBox.querySelector('[data-inquiry-confirm-loading]');
+        if (cancelButton) cancelButton.disabled = false;
+        if (confirmButton) confirmButton.disabled = false;
+        if (loadingBox) loadingBox.hidden = true;
         if (titleBox) {
             titleBox.textContent = labels.title || 'Are you sure?';
         }
@@ -517,7 +542,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const lockConfirmForQuotationDraft = function () {
         const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
         const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
+        const loadingBox = confirmBox.querySelector('[data-inquiry-confirm-loading]');
         confirmBox.dataset.submitting = '1';
+        confirmBox.classList.add('is-loading');
+        if (loadingBox) loadingBox.hidden = false;
         if (cancelButton) {
             cancelButton.disabled = true;
         }
@@ -1900,7 +1928,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 100);
 
     const pollInspectionScheduleResponse = function () {
-        if (inspectionResponsePollInProgress || document.hidden) return;
+        if (inspectionResponsePollInProgress || document.hidden || inquiryModalIsScrolling) return;
         const modal = document.querySelector('.inquiry-modal:not([hidden])[data-inquiry-id]');
         const inspectionPanel = modal?.querySelector('[data-inquiry-panel="inspection"].is-active:not([hidden])');
         const inquiryId = Number.parseInt(modal?.dataset.inquiryId || '0', 10);
@@ -1920,6 +1948,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(function (data) {
+                if (inquiryModalIsScrolling) return;
                 if (!data.success || !data.inspection) return;
                 const isInitialLoad = modal.dataset.inspectionResponsePollReady !== '1';
                 const isFinal = data.inspection.final === true;
@@ -1964,7 +1993,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const pollQuotationStatuses = function () {
-        if (quotationPollInProgress || document.hidden || quotationStatusModals.length === 0) {
+        if (quotationPollInProgress || document.hidden || inquiryModalIsScrolling || quotationStatusModals.length === 0) {
             return;
         }
 
@@ -1990,6 +2019,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(function (data) {
+                if (inquiryModalIsScrolling) return;
                 if (!data.success || !Array.isArray(data.quotations)) {
                     return;
                 }
@@ -2322,7 +2352,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.submitted-inspection-create-quotation-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
-            if (form.dataset.confirmed === '1') {
+            if (form.dataset.confirmed === '1' || form.dataset.quotationDraftConfirmed === '1') {
                 return;
             }
 

@@ -270,7 +270,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const summary = document.createElement('div');
         summary.className = 'inspection-monitor-modal__grid';
         appendMonitorDetail(summary, 'Assigned Engineer', inspection.engineer);
-        appendMonitorDetail(summary, 'Current Phase', inspection.status);
         appendMonitorDetail(summary, 'Official Schedule', inspection.scheduled_at);
         if (inspection.started_at && inspection.started_at !== 'Not set') {
             appendMonitorDetail(summary, 'Actual Started', inspection.started_at);
@@ -325,8 +324,15 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionMonitorContent.appendChild(timeline);
 
         if (inspection.report) {
+            const reportToggle = document.createElement('button');
+            reportToggle.type = 'button';
+            reportToggle.className = 'btn-secondary inspection-monitor-modal__report-toggle';
+            reportToggle.textContent = 'View Report';
+
             const report = document.createElement('section');
             report.className = 'inspection-monitor-modal__report';
+            report.id = 'inspectionMonitorReport';
+            report.hidden = true;
             const reportTitle = document.createElement('strong');
             reportTitle.textContent = 'Submitted Report';
             report.appendChild(reportTitle);
@@ -348,7 +354,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 empty.textContent = 'No submitted material recommendations.';
                 report.appendChild(empty);
             }
-            inspectionMonitorContent.appendChild(report);
+            reportToggle.addEventListener('click', function () {
+                report.hidden = !report.hidden;
+                reportToggle.textContent = report.hidden ? 'View Report' : 'Hide Report';
+                reportToggle.setAttribute('aria-expanded', String(!report.hidden));
+            });
+            reportToggle.setAttribute('aria-expanded', 'false');
+            reportToggle.setAttribute('aria-controls', report.id);
+            inspectionMonitorContent.append(reportToggle, report);
         }
     };
 

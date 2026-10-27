@@ -2890,7 +2890,7 @@ body.inquiry-modal-open {
 
 .inspection-monitor-modal__grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
 }
 
@@ -2943,6 +2943,31 @@ body.inquiry-modal-open {
     border-radius: 9px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
+}
+
+.inspection-monitor-modal__timeline .is-current {
+    --inspection-phase-glow: rgba(71, 85, 105, 0.12);
+    animation: inspection-monitor-current-phase 1.8s ease-in-out infinite;
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Ongoing"] {
+    --inspection-phase-glow: rgba(37, 99, 235, 0.14);
+}
+
+.inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] {
+    --inspection-phase-glow: rgba(22, 163, 74, 0.14);
+}
+
+@keyframes inspection-monitor-current-phase {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.08);
+        transform: translateY(0);
+    }
+
+    50% {
+        box-shadow: 0 0 0 4px var(--inspection-phase-glow);
+        transform: translateY(-2px);
+    }
 }
 
 .inspection-monitor-modal__timeline strong {
@@ -3011,6 +3036,22 @@ body.inquiry-modal-open {
     margin-top: 10px;
 }
 
+.inspection-monitor-modal__report-toggle {
+    display: block;
+    width: fit-content;
+    margin: 14px 0 0 auto;
+}
+
+.inspection-monitor-modal__report[hidden] {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .inspection-monitor-modal__timeline .is-current {
+        animation: none;
+    }
+}
+
 .inspection-monitor-modal__materials div {
     padding: 9px;
     border-radius: 8px;
@@ -3032,6 +3073,10 @@ body.inquiry-modal-open {
     .inspection-monitor-modal__grid,
     .inspection-monitor-modal__timeline > div {
         grid-template-columns: 1fr;
+    }
+
+    .inspection-monitor-modal__report-toggle {
+        width: 100%;
     }
 
     .inspection-monitor-modal__actions > :is(button, span) {

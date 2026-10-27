@@ -1166,18 +1166,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Invalid quotation revision request.';
         } else {
             try {
-                inquiry_quote_reopen_for_revision($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
+                $newDraftId = inquiry_quote_reopen_for_revision($conn, $draftId, (int)($_SESSION['user_id'] ?? 0));
                 audit_log_event(
                     $conn,
                     (int)($_SESSION['user_id'] ?? 0),
                     'reopen_inquiry_quotation_revision',
                     'quotation',
-                    $draftId,
+                    $newDraftId,
                     ['status' => 'revision_requested'],
-                    ['status' => 'draft']
+                    ['status' => 'draft', 'source_draft_id' => $draftId]
                 );
-                $_SESSION['inquiry_center_flash'] = 'Quotation reopened for revision.';
-                header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $draftId);
+                $_SESSION['inquiry_center_flash'] = 'New quotation version created for the Client revision.';
+                header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $newDraftId);
                 exit();
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
@@ -1216,7 +1216,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]
                 );
 
-                inquiry_center_redirect_to_open_modal($inquiryId, 'For Inspection', 'Quotation draft generated from engineer costing.');
+                try {
+                    site_inspection_review_latest_costing_version(
+                        $conn,
+                        $inspectionId,
+                        'Approved',
+                        'Used as the source of the Admin quotation draft.',
+                        (int)($_SESSION['user_id'] ?? 0)
+                    );
+                } catch (Throwable $versionError) {
+                    error_log('Unable to update Engineer Costing review history: ' . $versionError->getMessage());
+                }
+
+                $_SESSION['inquiry_center_flash'] = 'Quotation draft created from Engineer Costing.';
+                header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $draftId);
+                exit();
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
             }
@@ -1233,8 +1247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($inquiryId <= 0 || $inspectionId <= 0 || $targetReviewStatus === '') {
             $error = 'Invalid inspection review request.';
         } elseif ($targetReviewStatus === 'Returned'
-            && (mb_strlen(preg_replace('/\s+/u', '', $adminRemarks) ?? '', 'UTF-8') < 5
-                || preg_match('/\p{L}/u', $adminRemarks) !== 1)) {
+            && preg_match_all('/\p{L}/u', $adminRemarks, $returnReasonLetters) < 5) {
             $error = 'Enter a clear return reason with at least 5 letters.';
         } elseif (mb_strlen($adminRemarks, 'UTF-8') > 2000) {
             $error = 'Admin remarks must not exceed 2,000 characters.';
@@ -2336,12 +2349,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261027-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261027-5',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2537,8 +2550,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $canScheduleInspection = in_array($currentStatus, ['Pending Review', 'For Inspection', 'Verified Lead', 'Not Qualified'], true);
                         $quotationPrerequisiteMessage = inquiry_center_quotation_prerequisite_message($quotationDraft);
                         $showInspection = $latestInspection || $canScheduleInspection;
-                        $showQuotation = false;
-                        // Simple lang para kay Admin: details at inspection lang ang tingnan.
+                        $showQuotation = (bool)$quotationDraft;
                         $nextActionLabel = 'View Details';
                         $nextActionTab = $latestInspection ? 'inspection' : 'client';
                         $nextActionClass = '';
@@ -2666,6 +2678,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <button type="button" class="inquiry-modal-tab inquiry-workflow__step" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-selected="false" aria-current="false">
                                             <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
                                             <span class="inquiry-workflow__label">Inspection</span>
+                                        </button>
+                                    <?php endif; ?>
+                                    <?php if ($showQuotation): ?>
+                                        <button type="button" class="inquiry-modal-tab inquiry-workflow__step" data-inquiry-tab="quotation" data-inquiry-stage="quotation" aria-selected="false" aria-current="false">
+                                            <span class="inquiry-workflow__marker" aria-hidden="true"><span>3</span><b>&#10003;</b></span>
+                                            <span class="inquiry-workflow__label">Quotation</span>
                                         </button>
                                     <?php endif; ?>
                                 </div>
@@ -2817,17 +2835,28 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <div class="inspection-cost-comparison__check <?php echo htmlspecialchars($clientBudgetCheckClass, ENT_QUOTES, 'UTF-8'); ?>"><span>Budget Check</span><strong><?php echo htmlspecialchars($clientBudgetCheckLabel, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                 </div>
 
+                                                <?php
+                                                $materialCostItems = array_values(array_filter(
+                                                    $latestCostItems,
+                                                    static fn(array $item): bool => (string)($item['item_type'] ?? '') === 'material'
+                                                ));
+                                                $fixedCostItems = array_values(array_filter(
+                                                    $latestCostItems,
+                                                    static fn(array $item): bool => (string)($item['item_type'] ?? '') !== 'material'
+                                                ));
+                                                ?>
+                                                <?php if ($materialCostItems): ?>
                                                 <div class="inquiry-costing-table submitted-inspection-costing">
                                                     <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--head">
                                                         <span>Type</span>
-                                                        <span>Item / Labor</span>
+                                                        <span>Material</span>
                                                         <span>Qty</span>
                                                         <span>Unit</span>
                                                         <span>Unit Cost</span>
                                                         <span>Notes</span>
                                                         <span>Line Total</span>
                                                     </div>
-                                                    <?php foreach ($latestCostItems as $costItem): ?>
+                                                    <?php foreach ($materialCostItems as $costItem): ?>
                                                         <div class="inquiry-costing-table__row submitted-inspection-costing__row">
                                                             <span><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -2839,6 +2868,24 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
+                                                <?php endif; ?>
+
+                                                <?php if ($fixedCostItems): ?>
+                                                <div class="submitted-fixed-costs" aria-label="Other cost categories">
+                                                    <div class="submitted-fixed-costs__row submitted-fixed-costs__row--head">
+                                                        <span>Other Cost Category</span>
+                                                        <span>Notes</span>
+                                                        <span>Amount</span>
+                                                    </div>
+                                                    <?php foreach ($fixedCostItems as $costItem): ?>
+                                                        <div class="submitted-fixed-costs__row">
+                                                            <strong><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                            <span><?php echo htmlspecialchars((string)($costItem['notes'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <strong><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                                <?php endif; ?>
                                                 <div class="submitted-inspection-report__total">
                                                     <span>Engineer Grand Total</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -2851,27 +2898,54 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                 <?php elseif ($inspectionReviewStatus === 'Approved'): ?>
                                                     <div class="submitted-inspection-review-state is-approved">
-                                                        <strong>Inspection Report Approved</strong>
+                                                        <strong><?php echo $quotationDraft ? 'Used for Admin Quotation Draft' : 'Inspection Report Approved'; ?></strong>
                                                         <span><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
                                                     </div>
                                                 <?php endif; ?>
 
-                                                <?php if (empty($inquiry['archived_at']) && $latestInspectionStatus === 'Submitted' && $inspectionReviewStatus === 'Pending'): ?>
-                                                    <form method="POST" class="submitted-inspection-review-form">
-                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                        <input type="hidden" name="action" value="review_inspection_report">
-                                                        <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                        <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
-                                                        <input type="hidden" name="review_decision" value="" data-review-decision>
-                                                        <label>
-                                                            <span>Admin Remarks / Reason for Return</span>
-                                                            <textarea name="admin_remarks" rows="3" maxlength="2000" placeholder="Required only when returning the report to the Engineer"></textarea>
-                                                        </label>
-                                                        <div class="inquiry-review-actions">
-                                                            <button type="submit" name="review_decision" value="return" class="btn-secondary">Return to Engineer</button>
-                                                            <button type="submit" name="review_decision" value="approve" class="btn-primary">Approve Costing</button>
+                                                <?php if (empty($inquiry['archived_at']) && $latestInspectionStatus === 'Submitted' && $inspectionReviewStatus === 'Pending' && !$quotationDraft): ?>
+                                                    <div class="submitted-inspection-action-row">
+                                                        <button type="button" class="inspection-return-button" data-return-costing-open>Return to Engineer</button>
+                                                        <form method="POST" class="submitted-inspection-create-quotation-form">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <input type="hidden" name="action" value="create_quotation_draft">
+                                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                            <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                            <input type="hidden" name="profit_margin_percent" value="15">
+                                                            <button type="submit" class="btn-primary">Create Quotation</button>
+                                                        </form>
+                                                    </div>
+
+                                                    <div class="inspection-return-modal" data-return-costing-modal hidden>
+                                                        <div class="inspection-return-modal__panel" role="dialog" aria-modal="true" aria-labelledby="returnCostingTitle<?php echo (int)$inquiry['id']; ?>">
+                                                            <div class="inspection-return-modal__head">
+                                                                <div>
+                                                                    <h3 id="returnCostingTitle<?php echo (int)$inquiry['id']; ?>">Return Costing to Engineer</h3>
+                                                                    <p>Tell the Engineer what must be corrected.</p>
+                                                                </div>
+                                                                <button type="button" class="inquiry-modal__close" data-return-costing-close aria-label="Close return form">&times;</button>
+                                                            </div>
+                                                            <form method="POST" class="submitted-inspection-return-form" novalidate>
+                                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <input type="hidden" name="action" value="review_inspection_report">
+                                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                                <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                                <input type="hidden" name="review_decision" value="return">
+                                                                <label>
+                                                                    <span>Reason for Return <b aria-hidden="true">*</b></span>
+                                                                    <span class="inspection-return-modal__textarea-wrap">
+                                                                        <textarea name="admin_remarks" rows="4" maxlength="2000" placeholder="Example: Please correct the labor cost and material quantity." aria-describedby="returnCostingHelp<?php echo (int)$inquiry['id']; ?>"></textarea>
+                                                                        <span class="inspection-return-modal__valid-icon" aria-hidden="true">&#10003;</span>
+                                                                    </span>
+                                                                    <small id="returnCostingHelp<?php echo (int)$inquiry['id']; ?>" data-return-costing-feedback>Enter a clear reason with at least 5 letters.</small>
+                                                                </label>
+                                                                <div class="inspection-return-modal__actions">
+                                                                    <button type="button" class="btn-secondary" data-return-costing-close>Cancel</button>
+                                                                    <button type="submit" class="inspection-return-submit" disabled>Return to Engineer</button>
+                                                                </div>
+                                                            </form>
                                                         </div>
-                                                    </form>
+                                                    </div>
                                                 <?php endif; ?>
                                             </section>
                                         <?php endif; ?>
@@ -2958,10 +3032,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endif; ?>
                                 </section>
 
-                                <?php
-                                    // Engineer ang may hawak ng quotation at costing workspace.
-                                    $showAdminQuotationWorkspace = false;
-                                ?>
+                                <?php $showAdminQuotationWorkspace = $showQuotation; ?>
                                 <?php if ($showAdminQuotationWorkspace): ?>
                                 <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
                                     <div class="inquiry-quotation-layout">
@@ -2985,9 +3056,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 && (int)($postInspectionDecision['final_quotation_draft_id'] ?? 0) === (int)$quotationDraft['id']
                                                 && $quotationStatus === 'accepted'
                                                 && !empty($quotationDraft['client_decision_at']);
-                                            $quotationStageLabel = $isFinalClientAccepted
-                                                ? 'Final Quotation'
-                                                : ($isInitialQuotationDraft ? 'Initial Quotation' : 'Revised Quotation');
+                                            $quotationVersion = (int)($quotationDraft['revision_no'] ?? 0) + 1;
+                                            $quotationStageLabel = $quotationStatus === 'draft' && $isInitialQuotationDraft
+                                                ? 'Admin Quotation Draft'
+                                                : ($isFinalClientAccepted
+                                                    ? 'Final Quotation V' . $quotationVersion
+                                                    : 'Quotation V' . $quotationVersion);
                                             $quotationDisplayStatus = match ($quotationStatus) {
                                                 'draft' => 'Draft',
                                                 'sent' => 'Awaiting Client Approval',
@@ -3017,7 +3091,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <div class="inquiry-quote-draft__action">
                                                 <?php if (empty($inquiry['archived_at']) && inquiry_quote_normalize_status((string)$quotationDraft['status']) === 'draft'): ?>
                                                     <a class="inquiry-quote-edit-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo (int)$quotationDraft['id']; ?>">
-                                                        Edit Details
+                                                        Edit Quotation
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php
@@ -3166,7 +3240,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <span>Profit Margin (%)</span>
                                                 <input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="15" required>
                                             </label>
-                                            <button type="submit" class="btn-primary">Generate Quotation Draft</button>
+                                            <button type="submit" class="btn-primary">Create Quotation Draft</button>
                                         </form>
                                     <?php elseif ($currentStatus === 'Verified Lead' && empty($inquiry['archived_at'])): ?>
                                         <a class="btn-primary inquiry-modal__primary-action inquiry-quotation-primary-action" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?inquiry_id=<?php echo (int)$inquiry['id']; ?>">Create Initial Quotation</a>

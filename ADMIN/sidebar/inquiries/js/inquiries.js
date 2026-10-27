@@ -2320,6 +2320,103 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    document.querySelectorAll('.submitted-inspection-create-quotation-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmed === '1') {
+                return;
+            }
+
+            event.preventDefault();
+            showConfirm(
+                form,
+                'This will copy the read-only Engineer Costing into an editable Admin quotation draft.',
+                null,
+                {
+                    title: 'Create quotation draft?',
+                    cancel: 'Cancel',
+                    confirm: 'Create Quotation',
+                    mode: 'quotation-draft-create',
+                }
+            );
+        });
+    });
+
+    document.querySelectorAll('[data-return-costing-modal]').forEach(function (modal) {
+        const inquiryModal = modal.closest('.inquiry-modal');
+        const openButton = inquiryModal?.querySelector('[data-return-costing-open]');
+        const closeButtons = modal.querySelectorAll('[data-return-costing-close]');
+        const form = modal.querySelector('.submitted-inspection-return-form');
+        const remarks = form?.querySelector('textarea[name="admin_remarks"]');
+        const feedback = form?.querySelector('[data-return-costing-feedback]');
+        const submitButton = form?.querySelector('.inspection-return-submit');
+
+        const letterCount = function (value) {
+            try {
+                return (value.match(/\p{L}/gu) || []).length;
+            } catch (error) {
+                return (value.match(/[A-Za-z]/g) || []).length;
+            }
+        };
+
+        const validateRemarks = function (showError) {
+            const valid = letterCount(remarks?.value || '') >= 5;
+            remarks?.classList.toggle('is-valid', valid);
+            remarks?.classList.toggle('is-invalid', !valid && showError);
+            feedback?.classList.toggle('is-invalid', !valid && showError);
+            if (feedback) {
+                feedback.textContent = valid
+                    ? 'Reason is ready.'
+                    : 'Enter a clear reason with at least 5 letters.';
+            }
+            if (submitButton) submitButton.disabled = !valid;
+            return valid;
+        };
+
+        const closeModal = function () {
+            modal.hidden = true;
+            form?.reset();
+            remarks?.classList.remove('is-valid', 'is-invalid');
+            feedback?.classList.remove('is-invalid');
+            validateRemarks(false);
+            openButton?.focus();
+        };
+
+        openButton?.addEventListener('click', function () {
+            modal.hidden = false;
+            validateRemarks(false);
+            window.setTimeout(function () {
+                remarks?.focus();
+            }, 0);
+        });
+
+        closeButtons.forEach(function (button) {
+            button.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) closeModal();
+        });
+
+        remarks?.addEventListener('input', function () {
+            validateRemarks(remarks.value.trim() !== '');
+        });
+
+        remarks?.addEventListener('blur', function () {
+            validateRemarks(true);
+        });
+
+        form?.addEventListener('submit', function (event) {
+            if (!validateRemarks(true)) {
+                event.preventDefault();
+                remarks?.focus();
+            }
+        });
+    });
+
     const quotationCreate = document.querySelector('[data-quotation-create]');
     if (quotationCreate) {
         const form = quotationCreate.querySelector('[data-quotation-create-form]');

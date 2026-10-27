@@ -675,6 +675,39 @@ function inquiry_quote_mark_revision_as_final(mysqli $conn, int $draftId): void
 
 function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int $inspectionId, int $adminId, float $marginPercent = 15.0): int
 {
+    $inspectionStmt = $conn->prepare(
+        "SELECT status, admin_review_status
+         FROM site_inspections
+         WHERE id = ? AND inquiry_id = ?
+         LIMIT 1"
+    );
+    if (!$inspectionStmt) {
+        throw new RuntimeException('Unable to check the submitted Engineer Costing.');
+    }
+    $inspectionStmt->bind_param('ii', $inspectionId, $inquiryId);
+    $inspectionStmt->execute();
+    $inspection = $inspectionStmt->get_result()->fetch_assoc();
+    if (!$inspection || (string)($inspection['status'] ?? '') !== 'Submitted') {
+        throw new RuntimeException('Only submitted Engineer Costing can be used for a quotation.');
+    }
+    if ((string)($inspection['admin_review_status'] ?? 'Pending') === 'Returned') {
+        throw new RuntimeException('Returned Engineer Costing must be submitted again first.');
+    }
+
+    $existingStmt = $conn->prepare(
+        'SELECT id FROM inquiry_quotation_drafts
+         WHERE inquiry_id = ? AND inspection_id = ?
+         ORDER BY id DESC LIMIT 1'
+    );
+    if (!$existingStmt) {
+        throw new RuntimeException('Unable to check the quotation draft.');
+    }
+    $existingStmt->bind_param('ii', $inquiryId, $inspectionId);
+    $existingStmt->execute();
+    if ($existingStmt->get_result()->fetch_assoc()) {
+        throw new RuntimeException('A quotation draft already exists for this Engineer Costing.');
+    }
+
     $itemStmt = $conn->prepare(
         'SELECT item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes
          FROM site_inspection_cost_items
@@ -742,6 +775,18 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
             $insertItem->bind_param('isisdsdds', $draftId, $itemType, $materialId, $itemName, $quantity, $unit, $unitCost, $lineTotal, $notes);
             $insertItem->execute();
         }
+
+        $reviewStmt = $conn->prepare(
+            "UPDATE site_inspections
+             SET admin_review_status = 'Approved', admin_reviewed_by = ?, admin_reviewed_at = NOW()
+             WHERE id = ? AND inquiry_id = ? AND status = 'Submitted'
+               AND admin_review_status IN ('Pending', 'Approved')"
+        );
+        if (!$reviewStmt) {
+            throw new RuntimeException('Unable to mark the Engineer Costing as used.');
+        }
+        $reviewStmt->bind_param('iii', $adminId, $inspectionId, $inquiryId);
+        $reviewStmt->execute();
 
         $conn->commit();
         return $draftId;
@@ -1092,34 +1137,94 @@ function inquiry_quote_send_final_confirmation(mysqli $conn, int $draftId): void
     }
 }
 
-function inquiry_quote_reopen_for_revision(mysqli $conn, int $draftId, int $adminId): void
+function inquiry_quote_reopen_for_revision(mysqli $conn, int $draftId, int $adminId): int
 {
-    $quotation = inquiry_quote_fetch_full($conn, $draftId);
-    if (!$quotation) {
-        throw new RuntimeException('Quotation draft not found.');
-    }
+    $conn->begin_transaction();
+    try {
+        $sourceStmt = $conn->prepare(
+            'SELECT id, parent_draft_id, revision_no, inquiry_id, inspection_id, status,
+                    subtotal, profit_margin_percent, profit_amount, grand_total
+             FROM inquiry_quotation_drafts
+             WHERE id = ? FOR UPDATE'
+        );
+        if (!$sourceStmt) {
+            throw new RuntimeException('Unable to prepare quotation revision.');
+        }
+        $sourceStmt->bind_param('i', $draftId);
+        $sourceStmt->execute();
+        $source = $sourceStmt->get_result()->fetch_assoc();
+        if (!$source || inquiry_quote_normalize_status((string)$source['status']) !== 'revision_requested') {
+            throw new RuntimeException('Only revision-requested quotations can create a new version.');
+        }
 
-    $fromStatus = inquiry_quote_normalize_status($quotation['status'] ?? '');
-    if ($fromStatus !== 'revision_requested') {
-        throw new RuntimeException('Only revision-requested quotations can be reopened.');
-    }
+        $rootDraftId = !empty($source['parent_draft_id'])
+            ? (int)$source['parent_draft_id']
+            : (int)$source['id'];
+        $versionStmt = $conn->prepare(
+            'SELECT COALESCE(MAX(revision_no), 0) AS latest_revision
+             FROM inquiry_quotation_drafts
+             WHERE id = ? OR parent_draft_id = ?'
+        );
+        if (!$versionStmt) {
+            throw new RuntimeException('Unable to check the latest quotation version.');
+        }
+        $versionStmt->bind_param('ii', $rootDraftId, $rootDraftId);
+        $versionStmt->execute();
+        $revisionNo = (int)($versionStmt->get_result()->fetch_assoc()['latest_revision'] ?? 0) + 1;
+        $quotationNo = inquiry_quote_generate_number() . '-V' . ($revisionNo + 1);
+        $status = 'Draft';
+        $inquiryId = (int)$source['inquiry_id'];
+        $inspectionId = !empty($source['inspection_id']) ? (int)$source['inspection_id'] : null;
+        $subtotal = (float)$source['subtotal'];
+        $marginPercent = (float)$source['profit_margin_percent'];
+        $profitAmount = (float)$source['profit_amount'];
+        $grandTotal = (float)$source['grand_total'];
 
-    $stmt = $conn->prepare(
-        "UPDATE inquiry_quotation_drafts
-         SET status = 'draft'
-         WHERE id = ? AND status = 'revision_requested'"
-    );
-    if (!$stmt) {
-        throw new RuntimeException('Unable to prepare quotation revision.');
-    }
+        $insertDraft = $conn->prepare(
+            'INSERT INTO inquiry_quotation_drafts
+             (parent_draft_id, revision_no, inquiry_id, inspection_id, quotation_no,
+              subtotal, profit_margin_percent, profit_amount, grand_total, status, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if (!$insertDraft) {
+            throw new RuntimeException('Unable to create the new quotation version.');
+        }
+        $insertDraft->bind_param(
+            'iiiisddddsi',
+            $rootDraftId,
+            $revisionNo,
+            $inquiryId,
+            $inspectionId,
+            $quotationNo,
+            $subtotal,
+            $marginPercent,
+            $profitAmount,
+            $grandTotal,
+            $status,
+            $adminId
+        );
+        $insertDraft->execute();
+        $newDraftId = (int)$conn->insert_id;
 
-    $stmt->bind_param('i', $draftId);
-    $stmt->execute();
-    if ($stmt->affected_rows <= 0) {
-        throw new RuntimeException('Only revision-requested quotations can be reopened.');
-    }
+        $copyItems = $conn->prepare(
+            'INSERT INTO inquiry_quotation_items
+             (draft_id, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes)
+             SELECT ?, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes
+             FROM inquiry_quotation_items WHERE draft_id = ? ORDER BY id ASC'
+        );
+        if (!$copyItems) {
+            throw new RuntimeException('Unable to copy the quotation items.');
+        }
+        $copyItems->bind_param('ii', $newDraftId, $draftId);
+        $copyItems->execute();
 
-    inquiry_quote_add_history($conn, $draftId, $fromStatus, 'draft', 'Admin reopened quotation for revision.', $adminId, 'admin');
+        inquiry_quote_add_history($conn, $newDraftId, null, 'draft', 'Created after the Client requested a revision.', $adminId, 'admin');
+        $conn->commit();
+        return $newDraftId;
+    } catch (Throwable $throwable) {
+        $conn->rollback();
+        throw $throwable;
+    }
 }
 
 function inquiry_quote_generate_project_code(mysqli $conn): string

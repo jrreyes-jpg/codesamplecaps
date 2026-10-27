@@ -39,8 +39,9 @@ if ($isEditMode) {
 
 $isInitialQuotationDraft = !$isEditMode
     || (empty($quotationDraft['parent_draft_id']) && (int)($quotationDraft['revision_no'] ?? 0) === 0);
-$quotationDraftLabel = $isInitialQuotationDraft ? 'Initial quotation draft' : 'Revised quotation draft';
-$quotationDisplayLabel = $isInitialQuotationDraft ? 'Initial Quotation Draft' : 'Revised Quotation Draft';
+$quotationVersion = $isInitialQuotationDraft ? 0 : ((int)($quotationDraft['revision_no'] ?? 0) + 1);
+$quotationDraftLabel = $isInitialQuotationDraft ? 'Admin quotation draft' : 'Quotation V' . $quotationVersion . ' draft';
+$quotationDisplayLabel = $isInitialQuotationDraft ? 'Admin Quotation Draft' : 'Quotation V' . $quotationVersion . ' Draft';
 
 if ($inquiryId <= 0) {
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
@@ -367,8 +368,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $adminPageTitle = ($isEditMode
-    ? ($isInitialQuotationDraft ? 'Edit Initial Quotation' : 'Edit Revised Quotation')
-    : 'Create Initial Quotation') . ' - Edge Automation';
+    ? ($isInitialQuotationDraft ? 'Edit Admin Quotation Draft' : 'Edit Quotation V' . $quotationVersion)
+    : 'Create Admin Quotation Draft') . ' - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -402,7 +403,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php if ($isEditMode): ?>
                         <span class="reports-kicker"><?php echo $quotationDisplayLabel; ?></span>
                     <?php endif; ?>
-                    <h1><?php echo $isEditMode ? ($isInitialQuotationDraft ? 'Edit Initial Quotation' : 'Edit Revised Quotation') : 'Create Initial Quotation'; ?></h1>
+                    <h1><?php echo $isEditMode ? ($isInitialQuotationDraft ? 'Edit Admin Quotation Draft' : 'Edit Quotation V' . $quotationVersion) : 'Create Admin Quotation Draft'; ?></h1>
                     <?php if ($isEditMode): ?>
                         <p>Update the draft scope costs before approval and sending.</p>
                     <?php endif; ?>

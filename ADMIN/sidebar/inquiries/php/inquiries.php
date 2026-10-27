@@ -567,7 +567,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
             $inspection = $stmt->get_result()->fetch_assoc() ?: null;
             if ($inspection) {
                 $inspectionStatus = (string)($inspection['status'] ?? 'Assigned');
-                $monitorPhase = $inspectionStatus === 'On Hold' ? 'Ongoing' : $inspectionStatus;
+                $monitorPhase = match ($inspectionStatus) {
+                    'Submitted' => 'Submitted',
+                    'Ongoing', 'On Hold', 'Completed' => 'Ongoing',
+                    default => 'Assigned',
+                };
                 $report = null;
                 if (!empty($inspection['submitted_at'])) {
                     $costStmt = $conn->prepare(
@@ -610,9 +614,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                         'held_at' => site_inspection_format_datetime($inspection['held_at'] ?? null),
                         'timeline' => [
                             ['label' => 'Assigned', 'at' => site_inspection_format_datetime($inspection['created_at'] ?? null)],
-                            ['label' => 'Acknowledged', 'at' => site_inspection_format_datetime($inspection['acknowledged_at'] ?? null)],
                             ['label' => 'Ongoing', 'at' => site_inspection_format_datetime($inspection['started_at'] ?? null)],
-                            ['label' => 'Completed', 'at' => site_inspection_format_datetime($inspection['completed_at'] ?? null)],
                             ['label' => 'Submitted', 'at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null)],
                         ],
                         'report' => $report,
@@ -2312,12 +2314,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261025-4',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261026-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261027-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261026-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261027-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261025-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2456,14 +2458,26 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $quotationListStatus = $quotationDraft ? inquiry_quote_normalize_status((string)$quotationDraft['status']) : ''; ?>
                     <?php $isConvertedToProject = !empty($quotationDraft['project_id']); ?>
                     <?php
+                        $latestInspectionStatus = $latestInspection
+                            ? (string)($latestInspection['status'] ?? 'Assigned')
+                            : 'Not Scheduled';
                         $displayStatus = $isConvertedToProject
                             ? 'Converted to Project'
                             : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus);
                         if (in_array($displayStatus, ['Verified Lead', 'Not Qualified'], true)) {
                             $displayStatus = 'Pending Review';
                         }
+                        if (!$isConvertedToProject && $displayStatus === 'For Inspection') {
+                            if (in_array($latestInspectionStatus, ['Ongoing', 'On Hold', 'Completed'], true)) {
+                                $displayStatus = 'Inspection Ongoing';
+                            } elseif ($latestInspectionStatus === 'Submitted') {
+                                $displayStatus = 'Inspection Submitted';
+                            }
+                        }
                     ?>
-                    <?php $displayStatusLabel = inquiry_center_status_label($displayStatus); ?>
+                    <?php $displayStatusLabel = in_array($displayStatus, ['Inspection Ongoing', 'Inspection Submitted'], true)
+                        ? $displayStatus
+                        : inquiry_center_status_label($displayStatus); ?>
                     <?php
                         $addressParts = array_filter([
                             trim((string)($inquiry['site_address'] ?? '')),
@@ -2502,9 +2516,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $nextActionLabel = 'View Details';
                         $nextActionTab = $latestInspection ? 'inspection' : 'client';
                         $nextActionClass = '';
-                        $latestInspectionStatus = $latestInspection
-                            ? (string)($latestInspection['status'] ?? 'Assigned')
-                            : 'Not Scheduled';
                         $currentScheduleHash = $latestInspection
                             ? inquiry_center_schedule_notification_hash(
                                 (int)($latestInspection['engineer_id'] ?? 0),
@@ -2548,7 +2559,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                             <div class="inquiry-card__info">
-                                <?php if ($displayStatus === 'For Inspection' && !empty($latestInspection['scheduled_at'])): ?>
+                                <?php if (in_array($displayStatus, ['For Inspection', 'Inspection Ongoing', 'Inspection Submitted'], true) && !empty($latestInspection['scheduled_at'])): ?>
                                     <span>Inspection Schedule</span>
                                     <strong><?php echo htmlspecialchars(site_inspection_format_date($latestInspection['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <?php else: ?>

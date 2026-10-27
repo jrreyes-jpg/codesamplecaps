@@ -1092,9 +1092,22 @@ if (!empty($inspections)
 }
 
 $csrfToken = engineer_inspection_csrf_token();
+$inspectionFilterLabels = ['all' => 'All', 'new' => 'New', 'ongoing' => 'Ongoing', 'submitted' => 'Submitted'];
+$inspectionFilterCounts = array_fill_keys(array_keys($inspectionFilterLabels), 0);
+foreach ($inspections as $filterInspection) {
+    $inspectionFilterCounts['all']++;
+    if ((int)($unreadInspectionNotificationIds[(int)$filterInspection['id']] ?? 0) > 0) {
+        $inspectionFilterCounts['new']++;
+    }
+    if (($filterInspection['status'] ?? '') === 'Ongoing') {
+        $inspectionFilterCounts['ongoing']++;
+    } elseif (($filterInspection['status'] ?? '') === 'Submitted') {
+        $inspectionFilterCounts['submitted']++;
+    }
+}
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261025-6',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1106,6 +1119,17 @@ require __DIR__ . '/../layout/header.php';
     ?>
 
     <div class="inspection-shell">
+        <div class="inspection-toolbar">
+            <h1 id="inspectionPageTitle">Site Inspections</h1>
+            <div class="inspection-filters" role="group" aria-label="Filter inspections">
+                <?php foreach ($inspectionFilterLabels as $filterKey => $filterLabel): ?>
+                    <button type="button" class="inspection-filter" data-inspection-filter="<?php echo $filterKey; ?>" aria-pressed="<?php echo $filterKey === 'all' ? 'true' : 'false'; ?>" aria-controls="engineerInspectionList">
+                        <?php echo $filterLabel; ?>
+                        <span data-inspection-filter-count><?php echo $inspectionFilterCounts[$filterKey]; ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
         <?php if (in_array($message, ['Inspection draft saved.', 'Inspection costing submitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
             <div class="shared-toast shared-toast--success" data-shared-toast role="status">
                 <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -1116,7 +1140,7 @@ require __DIR__ . '/../layout/header.php';
             <div class="inspection-flash success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
         <?php if ($error): ?><div class="inspection-flash error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-        <section class="inspection-panel">
+        <section class="inspection-panel" id="engineerInspectionList" aria-labelledby="inspectionPageTitle">
             <?php if (empty($inspections)): ?>
                 <p class="inspection-meta" data-inspection-empty>No site inspections yet.</p>
             <?php else: ?>
@@ -1641,6 +1665,7 @@ require __DIR__ . '/../layout/header.php';
                     </article>
                 <?php endforeach; ?>
             <?php endif; ?>
+            <p class="inspection-meta" data-inspection-filter-empty role="status" hidden>No inspections match this filter.</p>
         </section>
 
         <div class="inspection-confirm-modal" data-complete-inspection-modal hidden>
@@ -1717,7 +1742,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261023-3',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

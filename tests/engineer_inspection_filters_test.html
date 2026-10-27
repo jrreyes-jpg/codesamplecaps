@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Engineer inspection filters test</title>
+    <link rel="stylesheet" href="../ENGINEER/css/site-inspections.css">
+    <script src="engineer_inspection_filters_test.js"></script>
+    <script src="../ENGINEER/js/site-inspections.js" defer></script>
+</head>
+<body>
+    <main class="inspection-shell">
+        <div class="inspection-toolbar">
+            <h1>Site Inspections</h1>
+            <div class="inspection-filters" role="group" aria-label="Filter inspections">
+                <button type="button" class="inspection-filter" data-inspection-filter="all" aria-pressed="true">All <span data-inspection-filter-count>0</span></button>
+                <button type="button" class="inspection-filter" data-inspection-filter="new" aria-pressed="false">New <span data-inspection-filter-count>0</span></button>
+                <button type="button" class="inspection-filter" data-inspection-filter="ongoing" aria-pressed="false">Ongoing <span data-inspection-filter-count>0</span></button>
+                <button type="button" class="inspection-filter" data-inspection-filter="submitted" aria-pressed="false">Submitted <span data-inspection-filter-count>0</span></button>
+            </div>
+        </div>
+        <section class="inspection-panel">
+            <p class="inspection-meta" data-inspection-filter-empty role="status" hidden>No inspections match this filter.</p>
+        </section>
+    </main>
+    <output id="testResult">RUNNING</output>
+</body>
+</html>

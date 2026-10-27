@@ -953,8 +953,18 @@
 }
 
 .inquiry-status[data-status="Ongoing"] {
-    background: #fff7ed !important;
-    color: #9a3412 !important;
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.inquiry-status[data-status="Inspection Ongoing"] {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.inquiry-status[data-status="Inspection Submitted"] {
+    background: #dcfce7 !important;
+    color: #166534 !important;
 }
 
 .inquiry-status[data-status="On Hold"] {
@@ -2922,7 +2932,7 @@ body.inquiry-modal-open {
 
 .inspection-monitor-modal__timeline > div {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin-top: 10px;
 }
@@ -2951,30 +2961,21 @@ body.inquiry-modal-open {
 }
 
 .inspection-monitor-modal__timeline .is-current[data-phase="Ongoing"] {
-    border-color: #fed7aa;
-    background: #fff7ed;
+    border-color: #bfdbfe;
+    background: #eff6ff;
 }
 
 .inspection-monitor-modal__timeline .is-current[data-phase="Ongoing"] strong {
-    color: #9a3412;
+    color: #1d4ed8;
 }
 
-.inspection-monitor-modal__timeline .is-current[data-phase="Completed"] {
+.inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] {
     border-color: #bbf7d0;
     background: #f0fdf4;
 }
 
-.inspection-monitor-modal__timeline .is-current[data-phase="Completed"] strong {
-    color: #166534;
-}
-
-.inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] {
-    border-color: #ddd6fe;
-    background: #f5f3ff;
-}
-
 .inspection-monitor-modal__timeline .is-current[data-phase="Submitted"] strong {
-    color: #1d4ed8;
+    color: #166534;
 }
 
 .inspection-monitor-modal__timeline > div > div[data-phase="Assigned"] {
@@ -2986,33 +2987,22 @@ body.inquiry-modal-open {
     color: #475569;
 }
 
-.inspection-monitor-modal__timeline > div > div[data-phase="Acknowledged"],
 .inspection-monitor-modal__timeline > div > div[data-phase="Submitted"] {
-    border-color: #bfdbfe;
-    background: #eff6ff;
-}
-
-.inspection-monitor-modal__timeline > div > div[data-phase="Acknowledged"] strong,
-.inspection-monitor-modal__timeline > div > div[data-phase="Submitted"] strong {
-    color: #1d4ed8;
-}
-
-.inspection-monitor-modal__timeline > div > div[data-phase="Ongoing"] {
-    border-color: #fed7aa;
-    background: #fff7ed;
-}
-
-.inspection-monitor-modal__timeline > div > div[data-phase="Ongoing"] strong {
-    color: #9a3412;
-}
-
-.inspection-monitor-modal__timeline > div > div[data-phase="Completed"] {
     border-color: #bbf7d0;
     background: #f0fdf4;
 }
 
-.inspection-monitor-modal__timeline > div > div[data-phase="Completed"] strong {
+.inspection-monitor-modal__timeline > div > div[data-phase="Submitted"] strong {
     color: #166534;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Ongoing"] {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.inspection-monitor-modal__timeline > div > div[data-phase="Ongoing"] strong {
+    color: #1d4ed8;
 }
 
 .inspection-monitor-modal__materials {

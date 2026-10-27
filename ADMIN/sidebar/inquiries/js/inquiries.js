@@ -277,6 +277,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         inspectionMonitorContent.appendChild(summary);
 
+        const inquiryModal = inspectionMonitorTrigger?.closest('.inquiry-modal');
+        const inquiryCard = inquiryModal?.closest('.inquiry-card');
+        const visibleStatus = inspection.status === 'Submitted' ? 'Inspection Submitted'
+            : (inspection.status === 'Ongoing' ? 'Inspection Ongoing' : 'For Inspection');
+        [
+            inquiryModal?.querySelector('[data-modal-status-chip]'),
+            inquiryCard?.querySelector('.inquiry-card__head .inquiry-status'),
+        ].forEach(function (statusChip) {
+            if (!statusChip) return;
+            statusChip.dataset.status = visibleStatus;
+            statusChip.textContent = visibleStatus;
+        });
+
         if (inspection.hold_reason) {
             const hold = document.createElement('section');
             hold.className = 'inspection-monitor-modal__hold';

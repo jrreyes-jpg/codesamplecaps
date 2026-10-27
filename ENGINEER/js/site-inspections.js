@@ -1806,6 +1806,86 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const inspectionPanel = document.querySelector('.inspection-panel');
+    const inspectionFilterButtons = Array.from(document.querySelectorAll('[data-inspection-filter]'));
+    const inspectionFilterEmpty = inspectionPanel?.querySelector('[data-inspection-filter-empty]');
+    const inspectionFilterMessages = {
+        all: 'No site inspections yet.',
+        new: 'No new site inspections.',
+        ongoing: 'No ongoing site inspections.',
+        submitted: 'No submitted site inspections.',
+    };
+    let activeInspectionFilter = 'all';
+
+    const inspectionMatchesFilter = function (card, filter) {
+        const status = card.querySelector('.inspection-card__head .inspection-status')?.dataset.status || '';
+        if (filter === 'new') return card.classList.contains('is-unviewed');
+        if (filter === 'ongoing') return status === 'Ongoing';
+        if (filter === 'submitted') return ['Submitted', 'Costing Submitted', 'Submitted to Admin', 'Submitted for Admin Review'].includes(status);
+        return true;
+    };
+
+    const applyInspectionFilter = function () {
+        if (!inspectionPanel || inspectionFilterButtons.length === 0) return;
+
+        const cards = Array.from(inspectionPanel.querySelectorAll(':scope > [data-inspection-card-id]'));
+        let visibleCount = 0;
+        cards.forEach(function (card) {
+            // Huwag isara ang details habang nagbabago ang New o status.
+            const detailsAreOpen = Boolean(card.querySelector('.inspection-modal:not([hidden])'));
+            const shouldHide = !inspectionMatchesFilter(card, activeInspectionFilter) && !detailsAreOpen;
+            if (card.hidden !== shouldHide) card.hidden = shouldHide;
+            if (!shouldHide) visibleCount++;
+        });
+
+        inspectionFilterButtons.forEach(function (button) {
+            const filter = button.dataset.inspectionFilter;
+            button.setAttribute('aria-pressed', filter === activeInspectionFilter ? 'true' : 'false');
+            const count = button.querySelector('[data-inspection-filter-count]');
+            const nextCount = String(cards.filter(function (card) { return inspectionMatchesFilter(card, filter); }).length);
+            if (count && count.textContent !== nextCount) count.textContent = nextCount;
+        });
+
+        const initialEmptyMessage = inspectionPanel.querySelector('[data-inspection-empty]');
+        if (initialEmptyMessage) initialEmptyMessage.hidden = cards.length > 0;
+        if (inspectionFilterEmpty) {
+            inspectionFilterEmpty.hidden = visibleCount > 0 || Boolean(initialEmptyMessage && cards.length === 0);
+            const message = cards.length === 0 ? inspectionFilterMessages.all : inspectionFilterMessages[activeInspectionFilter];
+            if (inspectionFilterEmpty.textContent !== message) inspectionFilterEmpty.textContent = message;
+        }
+    };
+
+    inspectionFilterButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            activeInspectionFilter = button.dataset.inspectionFilter || 'all';
+            applyInspectionFilter();
+        });
+    });
+
+    if (inspectionPanel && inspectionFilterButtons.length > 0) {
+        let filterRefreshQueued = false;
+        const inspectionFilterObserver = new MutationObserver(function (records) {
+            const changed = records.some(function (record) {
+                if (record.type === 'childList') return record.target === inspectionPanel;
+                return (record.attributeName === 'class' && record.target.matches('[data-inspection-card-id]'))
+                    || (record.attributeName === 'data-status' && record.target.matches('.inspection-status'))
+                    || (record.attributeName === 'hidden' && record.target.matches('.inspection-modal'));
+            });
+            if (!changed || filterRefreshQueued) return;
+            filterRefreshQueued = true;
+            window.queueMicrotask(function () {
+                filterRefreshQueued = false;
+                applyInspectionFilter();
+            });
+        });
+        inspectionFilterObserver.observe(inspectionPanel, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'data-status', 'hidden'],
+        });
+        applyInspectionFilter();
+    }
+
     const inspectionRefreshUrl = new URL(window.location.href);
     inspectionRefreshUrl.searchParams.delete('inspection_id');
     let inspectionRefreshInProgress = false;

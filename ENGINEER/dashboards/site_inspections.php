@@ -1160,7 +1160,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-4',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261027-7',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1548,8 +1548,14 @@ require __DIR__ . '/../layout/header.php';
                             <div class="inspection-costing-notes">
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
-                                    <textarea name="engineer_findings" rows="3" maxlength="1000" aria-describedby="engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Actual problem found, site condition, or recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                    <small id="engineerFindingsCount<?php echo $inspectionId; ?>" class="inspection-findings-count" data-findings-count>0 / 1000</small>
+                                    <div class="inspection-findings-control">
+                                        <textarea name="engineer_findings" rows="3" maxlength="1000" aria-describedby="engineerFindingsReminder<?php echo $inspectionId; ?> engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Actual problem found, site condition, or recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                        <span class="inspection-findings-check" data-findings-check aria-hidden="true" hidden>&#10003;</span>
+                                    </div>
+                                    <div class="inspection-findings-feedback">
+                                        <small id="engineerFindingsReminder<?php echo $inspectionId; ?>" class="inspection-findings-reminder" data-findings-reminder>Enter at least 10 characters.</small>
+                                        <small id="engineerFindingsCount<?php echo $inspectionId; ?>" class="inspection-findings-count" data-findings-count>0 / 1000</small>
+                                    </div>
                                 </label>
                             </div>
 
@@ -1841,7 +1847,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-5',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-8',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

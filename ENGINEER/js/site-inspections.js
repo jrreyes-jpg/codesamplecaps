@@ -606,7 +606,61 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const hasMeaningfulFindings = function (value) {
         const text = String(value || '').trim();
-        return text.length >= 10 && text.length <= 1000 && /[a-z]/i.test(text);
+        return text.length >= 10 && text.length <= 1000 && /\p{L}/u.test(text);
+    };
+
+    const findingsErrorMessage = function (value) {
+        const text = String(value || '').trim();
+        if (text === '') return 'Enter at least 10 characters.';
+        if (!/\p{L}/u.test(text)) return 'Use letters to explain the findings.';
+        if (text.length < 10) return 'Enter at least 10 characters.';
+        return 'Maximum 1,000 characters.';
+    };
+
+    const clearFindingsSuccess = function (field) {
+        if (!field) return;
+        field.classList.remove('is-valid');
+        const check = field.closest('label')?.querySelector('[data-findings-check]');
+        if (check) check.hidden = true;
+    };
+
+    const showFindingsSuccess = function (field) {
+        if (!field) return;
+        field.classList.remove('is-invalid');
+        field.classList.add('is-valid');
+        const check = field.closest('label')?.querySelector('[data-findings-check]');
+        if (check) check.hidden = false;
+        const reminder = field.closest('label')?.querySelector('[data-findings-reminder]');
+        if (reminder) {
+            reminder.textContent = 'Valid findings.';
+            reminder.classList.remove('is-error');
+            reminder.classList.add('is-valid');
+        }
+    };
+
+    const showFindingsError = function (field) {
+        if (!field) return;
+        clearFindingsSuccess(field);
+        field.classList.add('is-invalid');
+        const reminder = field.closest('label')?.querySelector('[data-findings-reminder]');
+        if (reminder) {
+            reminder.textContent = findingsErrorMessage(field.value);
+            reminder.classList.remove('is-valid');
+            reminder.classList.add('is-error');
+        }
+    };
+
+    const validateFindingsField = function (field, showError) {
+        clearFindingsSuccess(field);
+        clearFieldError(field);
+
+        if (hasMeaningfulFindings(field?.value || '')) {
+            showFindingsSuccess(field);
+            return true;
+        }
+
+        if (showError) showFindingsError(field);
+        return false;
     };
 
     const updateFindingsCount = function (form) {
@@ -657,8 +711,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const cleanUnitCostInput = function (field) {
-        if (!field) return;
+        if (!field) return false;
 
+        const originalValue = field.value;
         const cleanValue = field.value.replace(/[^\d.]/g, '');
         const parts = cleanValue.split('.');
         const whole = parts.shift() || '';
@@ -668,6 +723,7 @@ document.addEventListener('DOMContentLoaded', function () {
             : `${whole}${parts.length > 0 ? `.${decimal}` : ''}`;
 
         if (field.value !== value) field.value = value;
+        return originalValue !== value;
     };
 
     const updateCostEntryNumbers = function (form) {
@@ -817,9 +873,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        if (requireFinal && findings && !hasMeaningfulFindings(findings.value)) {
-            setFieldError(findings, 'Enter 10 to 1,000 characters.');
-            firstInvalid = firstInvalid || findings;
+        if (findings) {
+            clearFindingsSuccess(findings);
+            if (hasMeaningfulFindings(findings.value)) {
+                showFindingsSuccess(findings);
+            } else if (requireFinal) {
+                showFindingsError(findings);
+                firstInvalid = firstInvalid || findings;
+            }
         }
 
         if (requireFinal && total <= 0) {
@@ -970,9 +1031,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     const unit = row.querySelector('select[name="unit[]"]')?.value || '';
                     cleanQuantityInput(field, unit);
                 } else if (field.name === 'unit_cost[]') {
-                    cleanUnitCostInput(field);
+                    const removedInvalidText = cleanUnitCostInput(field);
+                    const value = field.value.trim();
+                    clearFieldError(field);
+                    if (removedInvalidText) {
+                        setFieldError(field, 'Numbers only. Use up to 2 decimal places.');
+                    } else if (isValidCostText(value)) {
+                        clearFieldError(field);
+                    } else {
+                        setFieldError(field, costErrorMessage(value));
+                    }
                 }
-                clearFieldError(field);
+                if (field.name !== 'unit_cost[]') clearFieldError(field);
                 clearCostingErrorWhenResolved(form);
                 syncTotal(form);
                 updateMaterialAvailability(row);
@@ -1119,7 +1189,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
             field.addEventListener('input', function () {
+                const removedInvalidText = cleanUnitCostInput(field);
+                const amount = field.value.trim();
                 clearFieldError(field);
+                if (removedInvalidText) {
+                    setFieldError(field, 'Numbers only. Use up to 2 decimal places.');
+                } else if (isValidDirectCostText(amount)) {
+                    clearFieldError(field);
+                } else {
+                    setFieldError(field, 'Enter 0 or a valid amount with up to 2 decimal places.');
+                }
                 clearCostingErrorWhenResolved(form);
                 syncTotal(form);
                 saveFormDraft(form);
@@ -1158,14 +1237,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
         form.querySelectorAll('textarea').forEach(function (field) {
             field.addEventListener('input', function () {
-                if (field.name === 'engineer_findings') updateFindingsCount(form);
-                clearFieldError(field);
+                if (field.name === 'engineer_findings') {
+                    updateFindingsCount(form);
+                    validateFindingsField(field, true);
+                } else {
+                    clearFieldError(field);
+                }
                 clearCostingErrorWhenResolved(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
         });
         updateFindingsCount(form);
+
+        const findings = form.querySelector('textarea[name="engineer_findings"]');
+        findings?.addEventListener('blur', function () {
+            validateFindingsField(findings, true);
+            clearCostingErrorWhenResolved(form);
+            updateSaveDraftState(form);
+        });
+        if (findings) validateFindingsField(findings, true);
 
         form.addEventListener('submit', function (event) {
             if (form.dataset.isSaving === 'true') {

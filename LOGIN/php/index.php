@@ -538,6 +538,15 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 </label>
 
                 <label>
+                    <span>Contact Number <b class="required-mark">*</b></span>
+                    <span class="inquiry-validation-control">
+                        <input type="tel" class="js-inquiry-contact" name="contact_no" data-label="Contact Number" data-persistent-valid-check required value="09" maxlength="11" inputmode="numeric" autocomplete="tel">
+                        <span class="inquiry-validation-check" aria-hidden="true"></span>
+                    </span>
+                    <small class="field-error"></small>
+                </label>
+
+                <label>
                     <span>Email Address <b class="required-mark">*</b></span>
                     <input type="email" name="email" data-label="Email Address" required autocomplete="email">
                     <small class="field-error"></small>
@@ -545,15 +554,6 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         <button type="button" class="inquiry-email-verify-button js-inquiry-email-verify">Verify Email</button>
                         <small class="inquiry-email-verify-status js-inquiry-email-status" aria-live="polite">Email not verified</small>
                     </span>
-                </label>
-
-                <label>
-                    <span>Contact Number <b class="required-mark">*</b></span>
-                    <span class="inquiry-validation-control">
-                        <input type="tel" class="js-inquiry-contact" name="contact_no" data-label="Contact Number" data-persistent-valid-check required value="09" maxlength="11" inputmode="numeric" autocomplete="tel">
-                        <span class="inquiry-validation-check" aria-hidden="true"></span>
-                    </span>
-                    <small class="field-error"></small>
                 </label>
             </div>
             <p class="inquiry-contact-feedback" data-inquiry-contact-feedback aria-live="polite"></p>

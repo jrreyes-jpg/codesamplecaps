@@ -32,16 +32,6 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="walk_in_email">Email Address <span class="required-indicator">*</span></label>
-                    <input id="walk_in_email" name="email" type="email" maxlength="190" autocomplete="email" value="<?php echo htmlspecialchars((string)($walkInOldInput['email'] ?? ''), ENT_QUOTES); ?>" placeholder="name@example.com" data-walk-in-email required>
-                    <small class="walk-in-field-error" data-walk-in-email-error></small>
-                    <span class="walk-in-email-tools">
-                        <button type="button" class="walk-in-verify-email-button" data-walk-in-send-otp>Verify Email</button>
-                        <small class="walk-in-email-status" data-walk-in-email-status>Email not verified</small>
-                    </span>
-                </div>
-
-                <div class="input-group">
                     <label for="walk_in_contact_no">Contact Number <span class="required-indicator">*</span></label>
                     <span class="walk-in-validation-control">
                         <input id="walk_in_contact_no" name="contact_no" type="tel" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" placeholder="09xxxxxxxxx" value="<?php echo htmlspecialchars((string)($walkInOldInput['contact_no'] ?? '09'), ENT_QUOTES); ?>" data-walk-in-contact-number data-persistent-valid-check required>
@@ -49,6 +39,16 @@
                     </span>
                     <small class="walk-in-field-error" data-walk-in-contact-error></small>
                     <small class="walk-in-field-help">Enter 11 digits starting with 09.</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="walk_in_email">Email Address <span class="required-indicator">*</span></label>
+                    <input id="walk_in_email" name="email" type="email" maxlength="190" autocomplete="email" value="<?php echo htmlspecialchars((string)($walkInOldInput['email'] ?? ''), ENT_QUOTES); ?>" placeholder="name@example.com" data-walk-in-email required>
+                    <small class="walk-in-field-error" data-walk-in-email-error></small>
+                    <span class="walk-in-email-tools">
+                        <button type="button" class="walk-in-verify-email-button" data-walk-in-send-otp>Verify Email</button>
+                        <small class="walk-in-email-status" data-walk-in-email-status>Email not verified</small>
+                    </span>
                 </div>
 
                 <div class="input-group">

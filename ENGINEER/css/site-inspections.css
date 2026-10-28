@@ -517,6 +517,15 @@
 
 .inspection-tab-panel {
     min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.inspection-tab-panel[data-inspection-tab-panel="details"] .inspection-grid {
+    min-height: 100%;
+    grid-auto-rows: minmax(72px, 1fr);
 }
 
 .inspection-status-action {
@@ -603,9 +612,10 @@
 .inspection-modal__panel {
     width: min(1080px, calc(100vw - 48px));
     height: min(84vh, 760px);
-    overflow-x: hidden;
-    overflow-y: auto;
+    max-height: min(84vh, 760px);
+    overflow: hidden;
     display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
     align-content: start;
     gap: 14px;
     padding: 22px;
@@ -1887,6 +1897,19 @@ body.inspection-modal-open {
 
     .inspection-confirm-modal {
         padding: 12px;
+    }
+
+    .inspection-modal {
+        align-items: end;
+        padding: 12px;
+    }
+
+    .inspection-modal__panel {
+        width: 100%;
+        height: calc(100dvh - 24px);
+        max-height: calc(100dvh - 24px);
+        padding: 16px;
+        border-radius: 16px;
     }
 
     .inspection-confirm-modal__panel,

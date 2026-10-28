@@ -1559,7 +1559,7 @@
 .inquiry-reschedule-modal {
     position: fixed;
     inset: 0;
-    z-index: 30;
+    z-index: 6500;
     display: grid;
     place-items: center;
     padding: 20px;
@@ -1567,7 +1567,7 @@
 }
 
 .inquiry-reschedule-modal__panel {
-    width: min(620px, 100%);
+    width: min(760px, 100%);
     max-height: min(680px, calc(100vh - 40px));
     overflow: auto;
     border-radius: 18px;
@@ -1603,6 +1603,41 @@
 .inquiry-reschedule-modal .inquiry-schedule-form {
     margin: 14px 18px 18px;
     border-color: #dbe5f1;
+}
+
+.inquiry-reschedule-modal .admin-date-input-wrap {
+    min-width: 0;
+}
+
+.inquiry-reschedule-modal .admin-date-input-wrap input {
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .inquiry-reschedule-modal {
+        align-items: end;
+        padding: 12px;
+    }
+
+    .inquiry-reschedule-modal__panel {
+        width: 100%;
+        max-height: calc(100dvh - 24px);
+        border-radius: 16px;
+    }
+
+    .inquiry-reschedule-modal__head {
+        padding: 16px 14px 0;
+    }
+
+    .inquiry-reschedule-modal .inquiry-schedule-form {
+        margin: 12px 14px 14px;
+        padding: 12px;
+    }
+
+    .inquiry-reschedule-modal .inquiry-review-actions,
+    .inquiry-reschedule-modal .inquiry-review-actions button {
+        width: 100%;
+    }
 }
 
 .inquiry-schedule-retry-form {

@@ -603,8 +603,10 @@ const initInquiryForm = () => {
         let verifiedEmail = (inquiryForm.dataset.verifiedEmail || '').toLowerCase();
         let isOtpBusy = false;
         let otpClock = 0;
+        let otpLockClock = 0;
         let otpExpiresAt = 0;
         let otpResendAt = 0;
+        let otpLockedUntil = 0;
         let contactCheckTimer = 0;
         let contactCheckId = 0;
         let contactCanVerifyEmail = false;
@@ -626,8 +628,10 @@ const initInquiryForm = () => {
             emailVerifyStatus.classList.toggle('is-verified', isVerified);
             emailInput.readOnly = isVerified;
             emailInput.classList.toggle('is-email-locked', isVerified);
-            verifyEmailButton.textContent = isVerified ? 'Change Email' : 'Verify Email';
-            verifyEmailButton.disabled = !isVerified && !emailPattern.test(currentEmail);
+            if (Date.now() >= otpLockedUntil) {
+                verifyEmailButton.textContent = isVerified ? 'Change Email' : 'Verify Email';
+                verifyEmailButton.disabled = !isVerified && !emailPattern.test(currentEmail);
+            }
             if (isVerified) {
                 setFieldValid(emailInput);
             } else if (emailInput.classList.contains('is-valid')) {
@@ -798,6 +802,8 @@ const initInquiryForm = () => {
 
         const startOtpClock = (expiresIn, resendIn) => {
             window.clearInterval(otpClock);
+            otpLockedUntil = 0;
+            if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code';
             otpExpiresAt = Date.now() + Math.max(0, Number(expiresIn) || 0) * 1000;
             otpResendAt = Date.now() + Math.max(0, Number(resendIn) || 0) * 1000;
 
@@ -823,6 +829,48 @@ const initInquiryForm = () => {
                 render();
                 if (expired && Date.now() >= otpResendAt) window.clearInterval(otpClock);
             }, 1000);
+        };
+
+        const startOtpLockClock = (retryAfter = 900) => {
+            window.clearInterval(otpClock);
+            window.clearInterval(otpLockClock);
+            otpLockedUntil = Date.now() + Math.max(1, Number(retryAfter) || 900) * 1000;
+            if (otpCodeInput) {
+                otpCodeInput.value = '';
+                otpCodeInput.disabled = true;
+                otpCodeInput.classList.remove('is-invalid');
+            }
+            if (otpVerifyButton) otpVerifyButton.disabled = true;
+            if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code (Locked)';
+            if (otpResendButton) {
+                otpResendButton.disabled = true;
+                otpResendButton.textContent = 'Resend Code (Locked)';
+            }
+
+            const renderLock = () => {
+                const seconds = Math.max(0, Math.ceil((otpLockedUntil - Date.now()) / 1000));
+                const time = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+                if (otpTimer) {
+                    otpTimer.textContent = seconds > 0 ? `Try again in ${time}` : 'You may request a new code.';
+                    otpTimer.classList.toggle('is-expired', seconds === 0);
+                }
+                if (seconds > 0) {
+                    setFieldError(emailInput, `Email verification locked. Try again in ${time}.`);
+                    verifyEmailButton.textContent = `Locked (${time})`;
+                    verifyEmailButton.disabled = true;
+                    return;
+                }
+                window.clearInterval(otpLockClock);
+                clearFieldError(emailInput);
+                updateEmailVerification();
+                if (otpResendButton) {
+                    otpResendButton.disabled = false;
+                    otpResendButton.textContent = 'Resend Code';
+                }
+            };
+
+            renderLock();
+            otpLockClock = window.setInterval(renderLock, 1000);
         };
 
         const sendInquiryOtp = async (isResend = false) => {
@@ -852,6 +900,11 @@ const initInquiryForm = () => {
                 updateEmailVerification();
                 return;
             }
+            if (Date.now() < otpLockedUntil) {
+                openOtpModal(false);
+                startOtpLockClock(Math.ceil((otpLockedUntil - Date.now()) / 1000));
+                return;
+            }
 
             verifyEmailButton.disabled = true;
             verifyEmailButton.textContent = 'Sending...';
@@ -861,6 +914,7 @@ const initInquiryForm = () => {
             let expiresIn = 0;
             let existingCode = false;
             let successMessage = '';
+            let lockRetryAfter = 0;
             try {
                 const result = await otpRequest('send_inquiry_email_otp.php', {
                     client_name: name,
@@ -874,7 +928,7 @@ const initInquiryForm = () => {
                 successMessage = result.message || 'If the email is valid, a verification code was sent.';
             } catch (error) {
                 if (error.locked) {
-                    setFieldError(emailInput, error.message || 'Email verification is locked. Try again later.');
+                    lockRetryAfter = error.retryAfter || 900;
                     closeOtpModal(true);
                 } else if (error.retryAfter > 0) {
                     resendAfter = error.retryAfter;
@@ -894,6 +948,7 @@ const initInquiryForm = () => {
                 }
             } finally {
                 setOtpBusy(false);
+                if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
                 if (resendAfter > 0) {
                     startOtpClock(expiresIn, resendAfter);
                     otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : successMessage;
@@ -959,6 +1014,7 @@ const initInquiryForm = () => {
 
             otpCodeInput?.classList.remove('is-invalid');
             setOtpBusy(true, 'Verifying code...');
+            let lockRetryAfter = 0;
             try {
                 await otpRequest('verify_inquiry_email_otp.php', {
                     otp,
@@ -974,10 +1030,15 @@ const initInquiryForm = () => {
             } catch (error) {
                 otpMessage.textContent = error.message || 'Could not verify code.';
                 otpMessage.classList.add('is-error');
-                otpCodeInput?.classList.add('is-invalid');
-                otpCodeInput?.focus({ preventScroll: true });
+                if (error.locked) {
+                    lockRetryAfter = error.retryAfter || 900;
+                } else {
+                    otpCodeInput?.classList.add('is-invalid');
+                    otpCodeInput?.focus({ preventScroll: true });
+                }
             } finally {
                 setOtpBusy(false);
+                if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
             }
         };
         otpVerifyButton?.addEventListener('click', verifyInquiryOtp);

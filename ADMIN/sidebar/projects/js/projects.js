@@ -1505,6 +1505,8 @@ function initWalkInInquiryPanel() {
     let otpExpiresAt = 0;
     let otpResendAt = 0;
     let otpClock = null;
+    let otpLockClock = null;
+    let otpLockedUntil = 0;
 
     if (!panel || !form) return;
 
@@ -1849,7 +1851,7 @@ function initWalkInInquiryPanel() {
     function syncVerifyEmailButton() {
         if (!sendOtpButton) return;
         const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailAddress?.value || '').trim());
-        sendOtpButton.disabled = !emailIsVerified && !hasValidEmail;
+        sendOtpButton.disabled = Date.now() < otpLockedUntil || (!emailIsVerified && !hasValidEmail);
     }
 
     function setEmailVerified(verified, statusMessage = '') {
@@ -1924,11 +1926,55 @@ function initWalkInInquiryPanel() {
     }
 
     function startOtpClock(expiresIn = 180, resendIn = 60) {
+        otpLockedUntil = 0;
+        if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code';
         otpExpiresAt = Date.now() + (Number(expiresIn) || 180) * 1000;
         otpResendAt = Date.now() + resendIn * 1000;
         window.clearInterval(otpClock);
         updateOtpClock();
         otpClock = window.setInterval(updateOtpClock, 1000);
+    }
+
+    function startOtpLockClock(retryAfter = 900) {
+        window.clearInterval(otpClock);
+        window.clearInterval(otpLockClock);
+        otpLockedUntil = Date.now() + Math.max(1, Number(retryAfter) || 900) * 1000;
+        if (otpCode) {
+            otpCode.value = '';
+            otpCode.disabled = true;
+            otpCode.classList.remove('is-invalid');
+        }
+        if (otpVerifyButton) otpVerifyButton.disabled = true;
+        if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code (Locked)';
+        if (otpResendButton) {
+            otpResendButton.disabled = true;
+            otpResendButton.textContent = 'Resend Code (Locked)';
+        }
+
+        function renderLock() {
+            const seconds = Math.max(0, Math.ceil((otpLockedUntil - Date.now()) / 1000));
+            const time = formatOtpTime(seconds);
+            if (otpTimer) otpTimer.textContent = seconds > 0 ? `Try again in ${time}` : 'You may request a new code.';
+            if (seconds > 0) {
+                setValidation(emailAddress, emailError, `Email verification locked. Try again in ${time}.`);
+                if (sendOtpButton) {
+                    sendOtpButton.textContent = `Locked (${time})`;
+                    sendOtpButton.disabled = true;
+                }
+                return;
+            }
+            window.clearInterval(otpLockClock);
+            validateEmail();
+            if (sendOtpButton) sendOtpButton.textContent = 'Verify Email';
+            syncVerifyEmailButton();
+            if (otpResendButton) {
+                otpResendButton.disabled = false;
+                otpResendButton.textContent = 'Resend Code';
+            }
+        }
+
+        renderLock();
+        otpLockClock = window.setInterval(renderLock, 1000);
     }
 
     function openOtpModal(isSending = false) {
@@ -1945,6 +1991,10 @@ function initWalkInInquiryPanel() {
     function showOtpEntry() {
         otpModal?.classList.remove('is-sending');
         otpModal?.setAttribute('aria-busy', 'false');
+        if (Date.now() >= otpLockedUntil) {
+            if (otpCode) otpCode.disabled = false;
+            if (otpVerifyButton) otpVerifyButton.disabled = false;
+        }
         window.requestAnimationFrame(function () {
             otpCode?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             otpCode?.focus({ preventScroll: true });
@@ -1953,6 +2003,11 @@ function initWalkInInquiryPanel() {
 
     async function sendEmailOtp() {
         if (!validateEmail()) return;
+        if (Date.now() < otpLockedUntil) {
+            openOtpModal(false);
+            startOtpLockClock(Math.ceil((otpLockedUntil - Date.now()) / 1000));
+            return;
+        }
         sendOtpButton?.setAttribute('disabled', 'disabled');
         openOtpModal(true);
         if (!(await checkExistingContact()) || emailIsVerified) {
@@ -1973,6 +2028,10 @@ function initWalkInInquiryPanel() {
             const result = await response.json();
             if (!result.success) {
                 closeOtpModal();
+                if (result.locked) {
+                    startOtpLockClock(Number(result.retry_after) || 900);
+                    return;
+                }
                 const errorMessage = result.message || 'Email cannot be sent right now.';
                 if (result.field === 'name') setValidation(clientName, nameError, errorMessage);
                 else if (result.field === 'phone') setValidation(contactNumber, contactError, errorMessage);
@@ -2050,6 +2109,7 @@ function initWalkInInquiryPanel() {
         data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
         data.append('email', emailAddress.value.trim());
         data.append('otp', code);
+        let lockRetryAfter = 0;
         try {
             const response = await fetch('/codesamplecaps/ADMIN/sidebar/projects/php/verify_walk_in_email_otp.php', {
                 method: 'POST',
@@ -2059,8 +2119,12 @@ function initWalkInInquiryPanel() {
             const result = await response.json();
             if (!result.success) {
                 if (otpError) otpError.textContent = result.message || 'Incorrect code.';
-                otpCode?.classList.add('is-invalid');
-                otpCode?.focus({ preventScroll: true });
+                if (result.locked) {
+                    lockRetryAfter = Number(result.retry_after) || 900;
+                } else {
+                    otpCode?.classList.add('is-invalid');
+                    otpCode?.focus({ preventScroll: true });
+                }
                 return;
             }
             setEmailVerified(true);
@@ -2071,6 +2135,7 @@ function initWalkInInquiryPanel() {
             otpCode?.focus({ preventScroll: true });
         } finally {
             otpVerifyButton?.removeAttribute('disabled');
+            if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
         }
     }
 

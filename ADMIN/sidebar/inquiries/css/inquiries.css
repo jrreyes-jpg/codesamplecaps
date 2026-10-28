@@ -1573,6 +1573,7 @@
     border-radius: 18px;
     background: #ffffff;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.34);
+    font-family: inherit;
 }
 
 .inquiry-reschedule-modal__head {
@@ -1605,12 +1606,61 @@
     border-color: #dbe5f1;
 }
 
+.inquiry-reschedule-modal .inquiry-schedule-grid label {
+    min-width: 0;
+}
+
+.inquiry-reschedule-modal .inquiry-schedule-grid label > span:first-child {
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.inquiry-reschedule-modal .inquiry-schedule-form select,
+.inquiry-reschedule-modal .inquiry-schedule-form input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 0 14px;
+    background: #ffffff;
+    color: #0f172a;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    outline: none;
+}
+
+.inquiry-reschedule-modal .inquiry-schedule-form select:focus,
+.inquiry-reschedule-modal .inquiry-schedule-form input[type="date"]:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+
 .inquiry-reschedule-modal .admin-date-input-wrap {
     min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 52px;
 }
 
 .inquiry-reschedule-modal .admin-date-input-wrap input {
     min-width: 0;
+}
+
+.inquiry-reschedule-modal .admin-date-picker-button {
+    min-height: 48px;
+}
+
+.inquiry-reschedule-modal .inquiry-review-actions {
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.inquiry-reschedule-modal .inquiry-review-actions button {
+    min-height: 46px;
+    border-radius: 12px;
+    padding: 10px 18px;
 }
 
 @media (max-width: 700px) {
@@ -1677,15 +1727,36 @@
 }
 
 .inquiry-schedule-window-note {
-    display: block;
-    width: fit-content;
-    padding: 7px 10px;
-    border-radius: 9px;
-    background: #f1f5f9;
+    display: flex;
+    width: 100%;
+    align-items: flex-start;
+    gap: 7px;
+    margin-top: 7px;
+    padding: 8px 10px;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
     color: #475569;
     font-size: 0.78rem;
-    font-weight: 700;
-    line-height: 1.4;
+    font-weight: 600;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.inquiry-schedule-window-note::before {
+    content: "i";
+    display: inline-flex;
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
 }
 
 .inquiry-schedule-form > .inquiry-review-actions {

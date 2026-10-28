@@ -90,7 +90,7 @@ const showInquirySuccessModal = () => {
         '<div class="inquiry-success-modal__card">',
         '<div class="inquiry-success-modal__icon" aria-hidden="true">✓</div>',
         '<h2 id="inquirySuccessTitle">Inquiry Received</h2>',
-        '<p><strong>What happens next?</strong><br>Edge Automation Technology Services, Co. will confirm the Engineer\'s availability. If needed, we will call you to agree on another date. Your confirmed site inspection schedule will be sent by email.</p>',
+        '<p><strong>What happens next?</strong><br>Edge Automation Technology Services, Co. will check the Engineer\'s availability. If another date is needed, we will contact you. Your confirmed site inspection schedule will be sent by email.</p>',
         '<button type="button" class="btn btn-primary" data-inquiry-success-close>Back to Home</button>',
         '</div>',
     ].join('');
@@ -2013,7 +2013,7 @@ const restoreInquiryDraft = () => {
                 event.preventDefault();
                 window.EdgePublicConfirmation.open({
                     title: 'Submit inquiry?',
-                    message: 'Your inquiry will be sent to Admin for review.',
+                    message: 'Edge Automation will receive your inquiry and contact you to confirm the inspection schedule.',
                     cancelLabel: 'Go Back',
                     confirmLabel: 'Submit Inquiry',
                     onConfirm: function (controls) {

@@ -1883,6 +1883,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.inquiry-modal').forEach(moveInspectionMonitorToTools);
 
+    // Ilagay sa buong page ang reschedule popup para hindi ito makulong sa inquiry modal.
+    const rescheduleModalHomes = new WeakMap();
+
+    const showRescheduleModal = function (rescheduleModal) {
+        if (!rescheduleModal) return;
+
+        if (!rescheduleModalHomes.has(rescheduleModal)) {
+            const placeholder = document.createComment('reschedule-modal-home');
+            rescheduleModal.parentNode?.insertBefore(placeholder, rescheduleModal);
+            rescheduleModalHomes.set(rescheduleModal, placeholder);
+        }
+
+        document.body.appendChild(rescheduleModal);
+        rescheduleModal.hidden = false;
+    };
+
+    const hideRescheduleModal = function (rescheduleModal) {
+        if (!rescheduleModal) return;
+
+        rescheduleModal.hidden = true;
+        const placeholder = rescheduleModalHomes.get(rescheduleModal);
+        if (placeholder?.parentNode) {
+            placeholder.parentNode.insertBefore(rescheduleModal, placeholder.nextSibling);
+            placeholder.remove();
+        }
+        rescheduleModalHomes.delete(rescheduleModal);
+    };
+
     document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-reschedule-inspection-open]');
         if (!button) return;
@@ -1893,26 +1921,25 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!scheduleForm || scheduleForm.hidden) return;
 
         if (scheduleEditor) {
-            scheduleEditor.hidden = false;
+            showRescheduleModal(scheduleEditor);
             sessionStorage.setItem('edgeOpenRescheduleModal', modal.id);
         }
-        scheduleForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
         window.setTimeout(function () {
             scheduleForm.querySelector('input[name="inspection_date"]')?.focus({ preventScroll: true });
-        }, 350);
+        }, 100);
     });
 
     document.addEventListener('click', function (event) {
         const closeButton = event.target.closest('[data-reschedule-inspection-close]');
         const rescheduleModal = event.target.closest('[data-inspection-schedule-editor]');
         if (closeButton && rescheduleModal) {
-            rescheduleModal.hidden = true;
+            hideRescheduleModal(rescheduleModal);
             sessionStorage.removeItem('edgeOpenRescheduleModal');
             return;
         }
 
         if (rescheduleModal && event.target === rescheduleModal) {
-            rescheduleModal.hidden = true;
+            hideRescheduleModal(rescheduleModal);
             sessionStorage.removeItem('edgeOpenRescheduleModal');
         }
     });
@@ -1923,7 +1950,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const inquiryModal = modalId ? document.getElementById(modalId) : null;
         const rescheduleModal = inquiryModal?.querySelector('[data-inspection-schedule-editor]');
         if (inquiryModal && rescheduleModal && !inquiryModal.hidden) {
-            rescheduleModal.hidden = false;
+            showRescheduleModal(rescheduleModal);
         }
     }, 100);
 

@@ -422,7 +422,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <div class="footer-column footer-location">
                 <h3>Location</h3>
                 <p>Blk2 Lot 29 Valencia St. Camella Dos Rios, Brgy. Pittland, Cabuyao, Laguna</p>
-                <a class="footer-map-link" href="https://maps.app.goo.gl/3jnhxU4iTdkooiJJA" target="_blank" rel="noopener noreferrer">View on Google Maps &#8599;</a>
+                <a class="footer-map-link" href="https://maps.app.goo.gl/kcixNkEf1fwisP6u8" target="_blank" rel="noopener noreferrer">View on Google Maps &#8599;</a>
             </div>
             <div class="footer-column">
                 <h3>Navigation</h3>
@@ -686,7 +686,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     >
                     <button class="date-picker-button js-date-picker-button" type="button" aria-label="Open preferred inspection calendar">&#128197;</button>
                 </span>
-                <small id="preferredInspectionDateHelp" class="field-help">Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward. Up to 30 days.</small>
+                <small id="preferredInspectionDateHelp" class="field-help">Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward. Select a date within 30 days.</small>
                 <small class="field-error"></small>
             </label>
 

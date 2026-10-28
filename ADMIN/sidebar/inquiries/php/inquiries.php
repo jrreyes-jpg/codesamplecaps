@@ -2986,8 +2986,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php if (!empty($inquiry['preferred_inspection_date'])): ?>
                                                     <span><b>Client Tentative Date:</b> <?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                 <?php endif; ?>
-                                                <span>Set only after the Client and Engineer agree.</span>
+                                                <?php if (!$latestInspection): ?>
+                                                    <span>Set only after the Client and Engineer agree.</span>
+                                                <?php endif; ?>
                                             </div>
+                                            <?php if ($latestInspection): ?>
+                                                <small class="inquiry-schedule-guidance" data-admin-reschedule-guidance aria-live="polite" hidden></small>
+                                            <?php endif; ?>
                                             <div class="inquiry-schedule-grid">
                                                 <label>
                                                     <span>Confirmed Engineer</span>
@@ -3009,14 +3014,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <small class="inquiry-schedule-field-feedback" data-admin-schedule-conflict-feedback hidden aria-live="polite"></small>
                                                     <small class="inquiry-schedule-date-notice" data-admin-date-cutoff-feedback hidden aria-live="polite"></small>
                                                     <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
-                                                        Today before 5:00 PM. Tomorrow from 5:00 PM. Up to 30 days.
+                                                        Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward. Select a date within 30 days.
                                                     </small>
                                                 </label>
                                             </div>
                                             <textarea name="site_notes" hidden><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                            <?php if ($latestInspection): ?>
-                                                <small class="inquiry-schedule-guidance" data-admin-reschedule-guidance aria-live="polite" hidden></small>
-                                            <?php endif; ?>
                                             <div class="inquiry-review-actions">
                                                 <?php if ($showScheduleEditor): ?>
                                                     <button type="button" class="btn-secondary" data-reschedule-inspection-close>Cancel</button>

@@ -848,6 +848,12 @@ h4 {
     opacity: 0.62;
 }
 
+.inquiry-form input[name="email"]:disabled {
+    cursor: not-allowed;
+    color: #64748b;
+    background: #f1f5f9;
+}
+
 .inquiry-form input.is-email-locked {
     border-color: #86efac;
     background: #f0fdf4;

@@ -840,6 +840,10 @@ const initInquiryForm = () => {
                 otpCodeInput.disabled = true;
                 otpCodeInput.classList.remove('is-invalid');
             }
+            if (emailInput) {
+                emailInput.disabled = true;
+                emailInput.setAttribute('aria-disabled', 'true');
+            }
             if (otpVerifyButton) otpVerifyButton.disabled = true;
             if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code (Locked)';
             if (otpResendButton) {
@@ -861,6 +865,10 @@ const initInquiryForm = () => {
                     return;
                 }
                 window.clearInterval(otpLockClock);
+                if (emailInput) {
+                    emailInput.disabled = false;
+                    emailInput.removeAttribute('aria-disabled');
+                }
                 clearFieldError(emailInput);
                 updateEmailVerification();
                 if (otpResendButton) {

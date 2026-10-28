@@ -898,6 +898,10 @@ const initInquiryForm = () => {
                     startOtpClock(expiresIn, resendAfter);
                     otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : successMessage;
                     otpMessage.classList.remove('is-error');
+                    window.requestAnimationFrame(() => {
+                        otpCodeInput?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        otpCodeInput?.focus({ preventScroll: true });
+                    });
                 }
                 if ((emailInput?.value || '').trim().toLowerCase() !== verifiedEmail) updateEmailVerification();
             }
@@ -919,7 +923,7 @@ const initInquiryForm = () => {
                 setFieldError(clientNameInput, 'Please enter your Full Name first.');
             }
             if (!hasValidContact) {
-                setFieldError(contactInput, 'Please enter a valid Contact Number first.');
+                setFieldError(contactInput, 'Enter an 11-digit contact number starting with 09.');
             }
             if (!hasValidName || !hasValidContact) {
                 (hasValidName ? contactInput : clientNameInput)?.focus({ preventScroll: true });

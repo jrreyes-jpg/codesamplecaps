@@ -1945,7 +1945,10 @@ function initWalkInInquiryPanel() {
     function showOtpEntry() {
         otpModal?.classList.remove('is-sending');
         otpModal?.setAttribute('aria-busy', 'false');
-        otpCode?.focus({ preventScroll: true });
+        window.requestAnimationFrame(function () {
+            otpCode?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            otpCode?.focus({ preventScroll: true });
+        });
     }
 
     async function sendEmailOtp() {

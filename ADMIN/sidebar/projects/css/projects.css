@@ -3413,6 +3413,13 @@ body.walk-in-save-lock {
     outline: 3px solid rgba(22, 163, 74, 0.14);
 }
 
+.walk-in-otp-card .walk-in-otp-code.is-invalid,
+.walk-in-otp-card .walk-in-otp-code.is-invalid:focus {
+    border-color: #dc2626;
+    background: #fff7f7;
+    outline: 3px solid rgba(220, 38, 38, 0.12);
+}
+
 .walk-in-otp-timer {
     margin: 10px 0 0;
     color: #475569;

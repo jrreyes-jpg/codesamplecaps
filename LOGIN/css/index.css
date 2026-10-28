@@ -953,6 +953,12 @@ h4 {
     text-align: center;
 }
 
+.inquiry-otp-modal__input.is-invalid {
+    border-color: #dc2626;
+    background: #fff7f7;
+    outline: 3px solid rgba(220, 38, 38, 0.12);
+}
+
 .inquiry-otp-modal__message {
     min-height: 20px;
     margin: 9px 0 0;

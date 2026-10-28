@@ -2039,9 +2039,12 @@ function initWalkInInquiryPanel() {
         const code = String(otpCode?.value || '').replace(/\D/g, '').slice(0, 6);
         if (otpCode) otpCode.value = code;
         if (!/^\d{6}$/.test(code)) {
-            if (otpError) otpError.textContent = 'Enter the 6-digit code.';
+            if (otpError) otpError.textContent = 'Enter the complete 6-digit code.';
+            otpCode?.classList.add('is-invalid');
+            otpCode?.focus({ preventScroll: true });
             return;
         }
+        otpCode?.classList.remove('is-invalid');
         otpVerifyButton?.setAttribute('disabled', 'disabled');
         const data = new FormData();
         data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
@@ -2056,12 +2059,16 @@ function initWalkInInquiryPanel() {
             const result = await response.json();
             if (!result.success) {
                 if (otpError) otpError.textContent = result.message || 'Incorrect code.';
+                otpCode?.classList.add('is-invalid');
+                otpCode?.focus({ preventScroll: true });
                 return;
             }
             setEmailVerified(true);
             closeOtpModal();
         } catch (error) {
             if (otpError) otpError.textContent = 'Unable to verify the code. Try again.';
+            otpCode?.classList.add('is-invalid');
+            otpCode?.focus({ preventScroll: true });
         } finally {
             otpVerifyButton?.removeAttribute('disabled');
         }
@@ -2576,12 +2583,18 @@ function initWalkInInquiryPanel() {
     });
     otpCode?.addEventListener('input', function () {
         otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 6);
+        otpCode.classList.remove('is-invalid');
         if (otpError) {
             otpError.textContent = '';
             otpError.classList.remove('is-success');
         }
     });
     otpModal?.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && event.target === otpCode) {
+            event.preventDefault();
+            verifyEmailOtp();
+            return;
+        }
         if (event.key !== 'Tab') return;
         const focusable = Array.from(otpModal.querySelectorAll('button:not(:disabled), input:not(:disabled)'));
         if (focusable.length === 0) return;

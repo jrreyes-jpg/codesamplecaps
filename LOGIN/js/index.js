@@ -940,17 +940,24 @@ const initInquiryForm = () => {
         });
         otpCodeInput?.addEventListener('input', () => {
             otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
+            otpCodeInput.classList.remove('is-invalid');
+            if (otpMessage?.classList.contains('is-error')) {
+                otpMessage.textContent = '';
+                otpMessage.classList.remove('is-error');
+            }
         });
         otpResendButton?.addEventListener('click', () => sendInquiryOtp(true));
-        otpVerifyButton?.addEventListener('click', async () => {
+        const verifyInquiryOtp = async () => {
             const otp = otpCodeInput?.value.trim() || '';
             if (!/^\d{6}$/.test(otp)) {
-                otpMessage.textContent = 'Enter the 6-digit code.';
+                otpMessage.textContent = 'Enter the complete 6-digit code.';
                 otpMessage.classList.add('is-error');
-                otpCodeInput?.focus();
+                otpCodeInput?.classList.add('is-invalid');
+                otpCodeInput?.focus({ preventScroll: true });
                 return;
             }
 
+            otpCodeInput?.classList.remove('is-invalid');
             setOtpBusy(true, 'Verifying code...');
             try {
                 await otpRequest('verify_inquiry_email_otp.php', {
@@ -967,9 +974,17 @@ const initInquiryForm = () => {
             } catch (error) {
                 otpMessage.textContent = error.message || 'Could not verify code.';
                 otpMessage.classList.add('is-error');
+                otpCodeInput?.classList.add('is-invalid');
+                otpCodeInput?.focus({ preventScroll: true });
             } finally {
                 setOtpBusy(false);
             }
+        };
+        otpVerifyButton?.addEventListener('click', verifyInquiryOtp);
+        otpCodeInput?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            verifyInquiryOtp();
         });
 
         updateEmailVerification();

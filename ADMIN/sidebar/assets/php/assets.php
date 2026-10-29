@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/audit_log.php';
 require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
+require_once __DIR__ . '/../../../../config/asset_master_service.php';
 require_once __DIR__ . '/../../../../config/asset_stock.php';
 
 use chillerlan\QRCode\QRCode;
@@ -661,36 +662,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'create_asset') {
-        $assetName = trim($_POST['asset_name'] ?? '');
+        $assetName = asset_master_normalize_text((string)($_POST['asset_name'] ?? ''));
         $assetCategory = trim((string)($_POST['asset_category'] ?? ''));
         $assetType = trim($_POST['asset_type'] ?? '');
         $criticality = trim((string)($_POST['criticality'] ?? 'medium'));
-        $quantity = max(0, (int)($_POST['quantity'] ?? 0));
+        $quantityRaw = trim((string)($_POST['quantity'] ?? ''));
+        $quantity = preg_match('/^\d+$/', $quantityRaw) ? (int)$quantityRaw : 0;
         $minStockRaw = trim((string)($_POST['min_stock'] ?? ''));
-        $minStock = $minStockRaw === '' ? null : max(0, (int)$minStockRaw);
+        $minStock = $minStockRaw === '' ? null : (preg_match('/^\d+$/', $minStockRaw) ? (int)$minStockRaw : null);
         $maxStockRaw = trim((string)($_POST['max_stock'] ?? ''));
-        $maxStock = $maxStockRaw === '' ? null : max(0, (int)$maxStockRaw);
+        $maxStock = $maxStockRaw === '' ? null : (preg_match('/^\d+$/', $maxStockRaw) ? (int)$maxStockRaw : null);
+        $validCategory = isset($assetCategoryDefaults[$assetCategory]) && !empty($assetCategoryDefaults[$assetCategory]['is_active']);
+        $validCriticality = isset($criticalityChoices[$criticality]);
 
-        if (!isset($assetCategoryDefaults[$assetCategory]) || empty($assetCategoryDefaults[$assetCategory]['is_active'])) {
-            $assetCategory = 'tool';
-        }
-
-        if (!isset($criticalityChoices[$criticality])) {
-            $criticality = 'medium';
-        }
-
-        if ($minStock === null && isset($assetCategoryDefaults[$assetCategory]['min_stock'])) {
+        if ($minStockRaw === '' && $validCategory && isset($assetCategoryDefaults[$assetCategory]['min_stock'])) {
             $minStock = (int)$assetCategoryDefaults[$assetCategory]['min_stock'];
         }
 
-        if ($maxStock === null) {
+        if ($maxStockRaw === '' && $validCategory) {
             $maxStock = suggest_asset_max_stock($assetCategory, $quantity, $minStock, $assetCategoryDefaults);
         }
 
         if ($assetName === '') {
             $_SESSION['assets_error'] = 'Asset name is required.';
+        } elseif (!preg_match('/\p{L}/u', $assetName)) {
+            $_SESSION['assets_error'] = 'Enter a valid asset name.';
+        } elseif (asset_master_text_length($assetName) > 255) {
+            $_SESSION['assets_error'] = 'Asset name is too long.';
+        } elseif (asset_master_active_name_exists($conn, $assetName)) {
+            $_SESSION['assets_error'] = 'An active asset with this name already exists.';
+        } elseif (!$validCategory) {
+            $_SESSION['assets_error'] = 'Select a valid asset category.';
+        } elseif (!$validCriticality) {
+            $_SESSION['assets_error'] = 'Select a valid criticality.';
+        } elseif (!preg_match('/^\d+$/', $quantityRaw)) {
+            $_SESSION['assets_error'] = 'Quantity must be a whole number.';
         } elseif ($quantity <= 0) {
             $_SESSION['assets_error'] = 'Quantity must be at least 1 when creating an asset.';
+        } elseif ($minStockRaw !== '' && !preg_match('/^\d+$/', $minStockRaw)) {
+            $_SESSION['assets_error'] = 'Min stock must be a whole number of 0 or more.';
+        } elseif ($maxStockRaw !== '' && (!preg_match('/^\d+$/', $maxStockRaw) || $maxStock < 1)) {
+            $_SESSION['assets_error'] = 'Max stock must be a whole number of 1 or more.';
         } elseif ($maxStock !== null && $minStock !== null && $maxStock < $minStock) {
             $_SESSION['assets_error'] = 'Max stock must be greater than or equal to min stock.';
         } elseif ($maxStock !== null && $maxStock < $quantity) {
@@ -1488,7 +1500,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <p>Asset ID: <strong><?php echo htmlspecialchars((string)$createdAssetId); ?></strong></p>
                         <p>Generated labels: <strong><?php echo count($createdAssetPreviewRows); ?></strong></p>
                         <?php if ($qrLibraryReady): ?>
-                            <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $createdAssetId; ?>" target="_blank" class="btn-secondary" rel="noreferrer noopener">Print This Asset Labels</a>
+                            <a href="/codesamplecaps/ADMIN/sidebar/assets/php/print_qr_codes.php?asset_id=<?php echo $createdAssetId; ?>" target="_blank" class="btn-secondary" rel="noreferrer noopener">Print This Asset Labels</a>
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
@@ -1520,13 +1532,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <div class="asset-create-modal__backdrop" data-add-asset-close></div>
         <section class="form-section asset-create-modal__panel" role="dialog" aria-modal="true" aria-labelledby="addAssetModalTitle">
             <div class="asset-create-modal__header"><h2 id="addAssetModalTitle" class="dashboard-section-title">Add Asset</h2><button type="button" class="asset-create-modal__close" aria-label="Close Add Asset" data-add-asset-close>&times;</button></div>
-            <form method="POST" class="asset-form">
+            <form method="POST" class="asset-form" id="addAssetForm" novalidate>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <input type="hidden" name="action" value="create_asset">
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group" data-asset-field="asset_name">
                         <label for="asset_name">Asset Name *</label>
-                        <input type="text" id="asset_name" name="asset_name" required>
+                        <input type="text" id="asset_name" name="asset_name" maxlength="255" required aria-describedby="assetNameError">
+                        <p class="asset-field-error" id="assetNameError" aria-live="polite"></p>
                     </div>
                     <div class="form-group">
                         <label for="asset_category">Asset Category</label>
@@ -1555,11 +1568,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-asset-field="min_stock">
                         <label for="min_stock">Min Stock</label>
-                        <input type="number" id="min_stock" name="min_stock" min="0" step="1" value="<?php echo (int)($assetCategoryDefaults['tool']['min_stock'] ?? 0); ?>" placeholder="Auto-filled by category">
+                        <input type="number" id="min_stock" name="min_stock" min="0" step="1" value="<?php echo (int)($assetCategoryDefaults['tool']['min_stock'] ?? 0); ?>" placeholder="Auto-filled by category" aria-describedby="minStockError">
+                        <p class="asset-field-error" id="minStockError" aria-live="polite"></p>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-asset-field="max_stock">
                         <div class="field-label-row">
                             <label for="max_stock">Max Stock</label>
                             <button type="button" class="field-tip" aria-label="Max stock help">
@@ -1567,11 +1581,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <span class="field-tip__bubble">Auto-guided ceiling based on category and starting stock. Increase it if this asset usually needs extra on-hand buffer.</span>
                             </button>
                         </div>
-                        <input type="number" id="max_stock" name="max_stock" min="1" step="1" value="<?php echo (int)suggest_asset_max_stock('tool', 1, (int)($assetCategoryDefaults['tool']['min_stock'] ?? 0), $assetCategoryDefaults); ?>" placeholder="Smart auto-fill based on category">
+                        <input type="number" id="max_stock" name="max_stock" min="1" step="1" value="<?php echo (int)suggest_asset_max_stock('tool', 1, (int)($assetCategoryDefaults['tool']['min_stock'] ?? 0), $assetCategoryDefaults); ?>" placeholder="Smart auto-fill based on category" aria-describedby="maxStockError">
+                        <p class="asset-field-error" id="maxStockError" aria-live="polite"></p>
                     </div>
                 </div>
                 <input type="hidden" id="quantity" name="quantity" value="1">
-                <button type="submit" class="btn-primary">Create Asset + Inventory + QR</button>
+                <button type="submit" class="btn-primary" data-add-asset-submit>Create Asset + Inventory + QR</button>
             </form>
         </section>
         </div>
@@ -1601,7 +1616,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
                 <div class="asset-section-actions">
                     <?php if ($qrLibraryReady && !$isTrashView): ?>
-                        <a href="/codesamplecaps/ADMIN/print_qr_codes.php" target="_blank" class="btn-secondary">Print QR Codes</a>
+                        <a href="/codesamplecaps/ADMIN/sidebar/assets/php/print_qr_codes.php" target="_blank" rel="noreferrer noopener" class="btn-secondary">Print QR Codes</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1758,7 +1773,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <div class="asset-card-primary-actions" aria-label="Stock and history actions">
                                                     <?php if (!empty($asset['qr_code_value']) && $qrLibraryReady): ?>
                                                         <button type="button" class="btn-secondary" data-asset-qr-preview="<?php echo (int)$asset['id']; ?>">View Units / QR</button>
-                                                        <a href="/codesamplecaps/ADMIN/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print QR</a>
+                                                        <a href="/codesamplecaps/ADMIN/sidebar/assets/php/print_qr_codes.php?asset_id=<?php echo $asset['id']; ?>" target="_blank" rel="noreferrer noopener" class="asset-link-btn">Print QR</a>
                                                     <?php endif; ?>
                                                     <button
                                                         type="button"

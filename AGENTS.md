@@ -20,6 +20,12 @@
 - Put status beside or below its related details.
 - Do not repeat the same status or notification in many cards.
 - Reuse working backend actions. Do not create duplicate logic.
+- Reuse existing database tables, columns, relations, and services before creating new ones.
+- Keep one clear source of truth. Do not save the same data in different tables without a real need.
+- Do not delete or merge a table only because it is empty. First check all PHP and SQL references, foreign keys, and workflow use.
+- Before deleting or merging database tables, create a database backup and a reversible SQL migration with a rollback plan.
+- Delete or merge a database table only when it is confirmed unused or duplicated and the change will not break old records or working features.
+- Put new schema changes in a versioned file inside `DB/migrations`. Do not add new runtime `CREATE TABLE` or `ALTER TABLE` code inside page files.
 - Add color coding when it helps the user understand a status or action.
 - Keep status colors consistent: green for success or completed, blue for active or in progress, yellow or orange for pending or warning, red for error or destructive action, and gray for neutral or inactive.
 - Use simple colored text for a small secondary status. Avoid a large colored badge when it is not needed.

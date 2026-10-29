@@ -228,6 +228,46 @@ body.asset-modal-open { overflow: hidden; }
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
+.asset-field-error {
+    display: none;
+    margin: 6px 2px 0;
+    color: #c62828;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.asset-field-error:not(:empty) {
+    display: block;
+}
+
+.assets-content .form-group input.is-invalid {
+    border-color: #dc2626;
+    background: #fff7f7;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.assets-content .btn-primary.is-loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+}
+
+.assets-content .btn-primary.is-loading::before {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-top-color: #fff;
+    border-radius: 50%;
+    content: '';
+    animation: asset-button-spin 0.7s linear infinite;
+}
+
+@keyframes asset-button-spin {
+    to { transform: rotate(360deg); }
+}
+
 .assets-content .btn-primary {
     display: inline-flex;
     align-items: center;

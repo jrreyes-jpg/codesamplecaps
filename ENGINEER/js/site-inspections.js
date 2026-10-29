@@ -650,6 +650,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const showFindingsNeutral = function (field) {
+        if (!field) return;
+        clearFindingsSuccess(field);
+        field.classList.remove('is-invalid');
+        const reminder = field.closest('label')?.querySelector('[data-findings-reminder]');
+        if (reminder) {
+            reminder.textContent = 'Required. Enter at least 10 characters.';
+            reminder.classList.remove('is-error', 'is-valid');
+        }
+    };
+
     const validateFindingsField = function (field, showError) {
         clearFindingsSuccess(field);
         clearFieldError(field);
@@ -1239,7 +1250,13 @@ document.addEventListener('DOMContentLoaded', function () {
             field.addEventListener('input', function () {
                 if (field.name === 'engineer_findings') {
                     updateFindingsCount(form);
-                    validateFindingsField(field, true);
+                    if (hasMeaningfulFindings(field.value)) {
+                        validateFindingsField(field, false);
+                    } else if (field.dataset.touched === 'true' || form.dataset.validationAttempted === 'true') {
+                        validateFindingsField(field, true);
+                    } else {
+                        showFindingsNeutral(field);
+                    }
                 } else {
                     clearFieldError(field);
                 }
@@ -1252,11 +1269,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const findings = form.querySelector('textarea[name="engineer_findings"]');
         findings?.addEventListener('blur', function () {
+            findings.dataset.touched = 'true';
             validateFindingsField(findings, true);
             clearCostingErrorWhenResolved(form);
             updateSaveDraftState(form);
         });
-        if (findings) validateFindingsField(findings, true);
+        if (findings) {
+            if (hasMeaningfulFindings(findings.value)) {
+                validateFindingsField(findings, false);
+            } else {
+                showFindingsNeutral(findings);
+            }
+        }
 
         form.addEventListener('submit', function (event) {
             if (form.dataset.isSaving === 'true') {

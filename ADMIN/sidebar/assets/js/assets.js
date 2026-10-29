@@ -178,6 +178,96 @@
         modal.querySelector('.asset-create-modal__panel')?.addEventListener('click', function (event) { event.stopPropagation(); });
     };
 
+    var setupAddAssetForm = function () {
+        var form = document.getElementById('addAssetForm');
+        if (!form) return;
+
+        var nameField = form.querySelector('#asset_name');
+        var minStockField = form.querySelector('#min_stock');
+        var maxStockField = form.querySelector('#max_stock');
+        var quantityField = form.querySelector('#quantity');
+        var submitButton = form.querySelector('[data-add-asset-submit]');
+        var submitting = false;
+
+        var showError = function (field, message) {
+            var group = field?.closest('[data-asset-field]');
+            var error = group?.querySelector('.asset-field-error');
+            field?.classList.toggle('is-invalid', message !== '');
+            field?.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            if (error) error.textContent = message;
+            return message === '';
+        };
+
+        var validateName = function () {
+            var value = String(nameField?.value || '').trim().replace(/\s+/g, ' ');
+            if (nameField) nameField.value = value;
+            if (value === '') return showError(nameField, 'Asset name is required.');
+            if (value.length > 255) return showError(nameField, 'Asset name is too long.');
+
+            var hasLetter = false;
+            try {
+                hasLetter = new RegExp('\\p{L}', 'u').test(value);
+            } catch (error) {
+                hasLetter = /[A-Za-z]/.test(value);
+            }
+            return showError(nameField, hasLetter ? '' : 'Enter a valid asset name.');
+        };
+
+        var validateStocks = function () {
+            var minValue = String(minStockField?.value || '').trim();
+            var maxValue = String(maxStockField?.value || '').trim();
+            var quantity = Number(quantityField?.value || 1);
+            var minValid = minValue === '' || /^\d+$/.test(minValue);
+            var maxValid = /^\d+$/.test(maxValue) && Number(maxValue) >= 1;
+
+            showError(minStockField, minValid ? '' : 'Enter a whole number of 0 or more.');
+            if (!maxValid) {
+                return showError(maxStockField, 'Enter a whole number of 1 or more.');
+            }
+            if (minValue !== '' && Number(maxValue) < Number(minValue)) {
+                return showError(maxStockField, 'Max stock must not be lower than min stock.');
+            }
+            if (Number(maxValue) < quantity) {
+                return showError(maxStockField, 'Max stock must cover the starting quantity.');
+            }
+            return minValid && showError(maxStockField, '');
+        };
+
+        nameField?.addEventListener('blur', validateName);
+        minStockField?.addEventListener('blur', validateStocks);
+        maxStockField?.addEventListener('blur', validateStocks);
+        [nameField, minStockField, maxStockField].forEach(function (field) {
+            field?.addEventListener('input', function () {
+                if (field.classList.contains('is-invalid')) {
+                    field === nameField ? validateName() : validateStocks();
+                }
+            });
+        });
+
+        form.addEventListener('submit', function (event) {
+            if (submitting) {
+                event.preventDefault();
+                return;
+            }
+
+            var nameValid = validateName();
+            var stocksValid = validateStocks();
+            if (!nameValid || !stocksValid) {
+                event.preventDefault();
+                form.querySelector('.is-invalid')?.focus();
+                return;
+            }
+
+            submitting = true;
+            form.setAttribute('aria-busy', 'true');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.classList.add('is-loading');
+                submitButton.textContent = 'Creating Asset & QR...';
+            }
+        });
+    };
+
     var setupAssetStockModal = function () {
         var modal = document.querySelector('[data-asset-stock-modal]');
         var form = modal?.querySelector('[data-asset-stock-form]');
@@ -377,6 +467,7 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         setupStockDefaults();
+        setupAddAssetForm();
         setupAddAssetModal();
         setupAssetStockModal();
         setupAssetFilters();

@@ -1925,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', function () {
             sessionStorage.setItem('edgeOpenRescheduleModal', modal.id);
         }
         window.setTimeout(function () {
-            scheduleForm.querySelector('input[name="inspection_date"]')?.focus({ preventScroll: true });
+            scheduleEditor?.querySelector('[data-reschedule-inspection-close]')?.focus({ preventScroll: true });
         }, 100);
     });
 

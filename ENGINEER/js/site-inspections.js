@@ -1572,7 +1572,7 @@ document.addEventListener('DOMContentLoaded', function () {
             step.classList.toggle('is-done', currentIndex > index);
             step.classList.toggle('is-current', currentIndex === index);
             const label = step.querySelector('span')?.textContent.trim() || '';
-            const timestampKey = label === 'Costing Submitted' ? 'Submitted' : label;
+            const timestampKey = label === 'Submitted to Admin' ? 'Submitted' : label;
             const timestamp = payload.timestamps?.[timestampKey] || '';
             if (timestamp) {
                 let timeNode = step.querySelector('small');
@@ -1581,6 +1581,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     step.appendChild(timeNode);
                 }
                 timeNode.textContent = timestamp;
+            }
+
+            if (status === 'Submitted' && label === 'Submitted to Admin') {
+                let noteNode = step.querySelector('.inspection-workflow__status-note');
+                if (!noteNode) {
+                    noteNode = document.createElement('small');
+                    noteNode.className = 'inspection-workflow__status-note';
+                    step.appendChild(noteNode);
+                }
+                noteNode.textContent = 'Waiting for Admin review';
             }
         });
 
@@ -1665,10 +1675,35 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     };
 
+    const setInspectionSubmittingState = function (form, isSubmitting) {
+        const modal = form.closest('.inspection-modal');
+        const loading = document.querySelector('[data-inspection-submit-loading]');
+        const controls = modal?.querySelectorAll('button, input, select, textarea') || [];
+
+        controls.forEach(function (control) {
+            if (isSubmitting) {
+                control.dataset.submitWasDisabled = control.disabled ? 'true' : 'false';
+                control.disabled = true;
+            } else {
+                if (control.dataset.submitWasDisabled === 'false') {
+                    control.disabled = false;
+                }
+                delete control.dataset.submitWasDisabled;
+            }
+        });
+
+        modal?.setAttribute('aria-busy', isSubmitting ? 'true' : 'false');
+        document.body.classList.toggle('inspection-is-submitting', isSubmitting);
+        if (loading) {
+            loading.hidden = !isSubmitting;
+        }
+    };
+
     const submitCostingToAdmin = function (form, button) {
         const originalLabel = button?.textContent.trim() || 'Submit to Admin';
         const data = new FormData(form);
         data.set('costing_action', 'submit_to_admin');
+        setInspectionSubmittingState(form, true);
         form.dataset.isSaving = 'true';
         if (button) {
             button.disabled = true;
@@ -1713,6 +1748,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         return false;
                     });
+            })
+            .finally(function () {
+                setInspectionSubmittingState(form, false);
             });
     };
 

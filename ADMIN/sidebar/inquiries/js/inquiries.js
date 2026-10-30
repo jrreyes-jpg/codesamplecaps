@@ -1979,6 +1979,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!data.success || !data.inspection) return;
                 const isInitialLoad = modal.dataset.inspectionResponsePollReady !== '1';
                 const isFinal = data.inspection.final === true;
+                const previousSubmittedAt = String(modal.dataset.inspectionSubmittedAt || '');
+                const submittedAt = String(data.inspection.submitted_at || '');
+                modal.dataset.inspectionStatus = String(data.inspection.phase || 'Assigned');
+                modal.dataset.inspectionSubmittedAt = submittedAt;
+
+                if (submittedAt !== '' && submittedAt !== previousSubmittedAt) {
+                    try {
+                        sessionStorage.setItem('edgePendingEngineerReportToast', JSON.stringify({
+                            inquiryId: inquiryId,
+                            submittedAt: submittedAt,
+                        }));
+                    } catch (error) {
+                        // Tuloy pa rin ang live refresh kahit blocked ang storage.
+                    }
+
+                    const reloadUrl = new URL(window.location.href);
+                    reloadUrl.searchParams.set('open', modal.id);
+                    reloadUrl.searchParams.set('tab', 'inspection');
+                    window.location.replace(reloadUrl.toString());
+                    return;
+                }
                 const previousResponses = {};
                 ['client', 'engineer'].forEach(function (party) {
                     previousResponses[party] = modal.querySelector('[data-schedule-response-party="' + party + '"]')?.dataset.scheduleResponse || '';
@@ -3468,6 +3489,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 lastCard.scrollIntoView({ behavior: 'instant', block: 'center' });
             }
         }
+    }
+
+    try {
+        const pendingReportToast = JSON.parse(sessionStorage.getItem('edgePendingEngineerReportToast') || 'null');
+        if (pendingReportToast) {
+            sessionStorage.removeItem('edgePendingEngineerReportToast');
+            const reportModal = document.getElementById('inquiryModal' + String(pendingReportToast.inquiryId || ''));
+            if (reportModal && String(reportModal.dataset.inspectionSubmittedAt || '') === String(pendingReportToast.submittedAt || '')) {
+                showLiveInquiryToast(
+                    'Engineer report and costing received.',
+                    pendingReportToast.inquiryId,
+                    'inspection',
+                    'success'
+                );
+            }
+        }
+    } catch (error) {
+        sessionStorage.removeItem('edgePendingEngineerReportToast');
     }
 
     window.addEventListener('popstate', function (event) {

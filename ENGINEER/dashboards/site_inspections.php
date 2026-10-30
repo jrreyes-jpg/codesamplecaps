@@ -1160,7 +1160,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261028-2',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261030-2',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1278,7 +1278,11 @@ require __DIR__ . '/../layout/header.php';
                     $engineerProgressSteps = [
                         ['label' => 'Assigned', 'time' => $statusTimes['Assigned']],
                         ['label' => 'Ongoing', 'time' => $statusTimes['Ongoing']],
-                        ['label' => 'Costing Submitted', 'time' => $statusTimes['Submitted']],
+                        [
+                            'label' => 'Submitted to Admin',
+                            'time' => $statusTimes['Submitted'],
+                            'note' => $isSubmittedToAdmin ? 'Waiting for Admin review' : '',
+                        ],
                     ];
                     $engineerProgressIndex = match ($inspectionStatus) {
                         'Ongoing', 'On Hold' => 1,
@@ -1380,6 +1384,9 @@ require __DIR__ . '/../layout/header.php';
                                             <span><?php echo htmlspecialchars($progressStep['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <?php if (!empty($progressStep['time'])): ?>
                                                 <small><?php echo htmlspecialchars(site_inspection_format_datetime($progressStep['time']), ENT_QUOTES, 'UTF-8'); ?></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($progressStep['note'])): ?>
+                                                <small class="inspection-workflow__status-note"><?php echo htmlspecialchars($progressStep['note'], ENT_QUOTES, 'UTF-8'); ?></small>
                                             <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
@@ -1537,11 +1544,9 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
                             <?php endif; ?>
                             <p class="costing-error" data-costing-error hidden></p>
-                            <?php if ($isSubmittedToAdmin): ?>
-                                <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this report.</div>
-                            <?php elseif ($isLegacyCompletedPending): ?>
+                            <?php if ($isLegacyCompletedPending): ?>
                                 <div class="inspection-submit-note inspection-submit-note--waiting">This costing is not yet sent. Review it, then submit it to Admin.</div>
-                            <?php elseif (!$canEditCosting): ?>
+                            <?php elseif (!$canEditCosting && !$isSubmittedToAdmin): ?>
                                 <div class="inspection-submit-note inspection-submit-note--waiting">Start the inspection before adding findings and estimated costs.</div>
                             <?php endif; ?>
 
@@ -1842,12 +1847,20 @@ require __DIR__ . '/../layout/header.php';
                 </div>
             </div>
         </div>
+
+        <div class="inspection-submit-loading" data-inspection-submit-loading hidden role="status" aria-live="polite" aria-label="Submitting inspection report">
+            <div class="inspection-submit-loading__panel">
+                <img src="/codesamplecaps/IMAGES/edge.jpg" alt="" aria-hidden="true">
+                <strong>Submitting report...</strong>
+                <span>Please wait. Do not close this page.</span>
+            </div>
+        </div>
     </div>
 </main>
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261027-8',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261030-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

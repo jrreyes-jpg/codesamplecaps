@@ -734,7 +734,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_in
 
     if ($inquiryId > 0) {
         $stmt = $conn->prepare(
-            'SELECT scheduled_at, status, started_at, client_schedule_response, client_schedule_response_note,
+            'SELECT id, scheduled_at, status, started_at, submitted_at, admin_review_status,
+                    client_schedule_response, client_schedule_response_note,
                     client_schedule_responded_at, engineer_schedule_response,
                     engineer_schedule_response_note, engineer_schedule_responded_at
              FROM site_inspections
@@ -750,9 +751,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'poll_in
                 $clientResponse = (string)($inspectionResponse['client_schedule_response'] ?? 'pending');
                 $engineerResponse = (string)($inspectionResponse['engineer_schedule_response'] ?? 'pending');
                 $response = [
+                    'inspection_id' => (int)($inspectionResponse['id'] ?? 0),
                     'scheduled' => true,
                     'final' => $clientResponse === 'confirmed' && $engineerResponse === 'confirmed',
                     'phase' => (string)($inspectionResponse['status'] ?? 'Assigned'),
+                    'submitted_at' => (string)($inspectionResponse['submitted_at'] ?? ''),
+                    'admin_review_status' => (string)($inspectionResponse['admin_review_status'] ?? 'Pending'),
                     'locked' => inquiry_center_inspection_schedule_is_locked($inspectionResponse),
                     'client' => [
                         'response' => $clientResponse,
@@ -2354,7 +2358,7 @@ $adminCssFiles = [
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261027-7',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261030-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2622,7 +2626,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </button>
                         <?php endif; ?>
 
-                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>" hidden>
+                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-inspection-status="<?php echo htmlspecialchars((string)($latestInspection['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-submitted-at="<?php echo htmlspecialchars((string)($latestInspection['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>" hidden>
                             <div class="inquiry-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <div class="inquiry-modal__head">
                                     <div>

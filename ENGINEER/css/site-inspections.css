@@ -416,10 +416,16 @@
 }
 
 .inspection-workflow__step[data-phase="Submitted"].is-current,
-.inspection-workflow__step[data-phase="Costing Submitted"].is-current {
+.inspection-workflow__step[data-phase="Costing Submitted"].is-current,
+.inspection-workflow__step[data-phase="Submitted to Admin"].is-current {
     border-color: #bfdbfe;
     background: #eff6ff;
     color: #1d4ed8;
+}
+
+.inspection-workflow__step .inspection-workflow__status-note {
+    margin-top: 4px;
+    font-weight: 800;
 }
 
 .inspection-report-hint {
@@ -1709,6 +1715,67 @@ body.inspection-modal-open {
 
 @keyframes inspection-button-spin {
     to { transform: rotate(360deg); }
+}
+
+body.inspection-is-submitting {
+    overflow: hidden;
+}
+
+.inspection-submit-loading {
+    position: fixed;
+    z-index: 10050;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(3px);
+}
+
+.inspection-submit-loading[hidden] {
+    display: none;
+}
+
+.inspection-submit-loading__panel {
+    display: grid;
+    justify-items: center;
+    width: min(100%, 320px);
+    padding: 28px 24px;
+    border-radius: 18px;
+    background: #ffffff;
+    color: #0f172a;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.inspection-submit-loading__panel img {
+    width: 68px;
+    height: 68px;
+    margin-bottom: 14px;
+    border-radius: 50%;
+    object-fit: contain;
+    animation: inspection-logo-spin 1s linear infinite;
+}
+
+.inspection-submit-loading__panel strong {
+    font-size: 1.1rem;
+}
+
+.inspection-submit-loading__panel span {
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+}
+
+@keyframes inspection-logo-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .inspection-submit-loading__panel img {
+        animation-duration: 2.4s;
+    }
 }
 
 @media (max-width: 1200px) {

@@ -2428,6 +2428,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const feedback = form?.querySelector('[data-return-costing-feedback]');
         const submitButton = form?.querySelector('.inspection-return-submit');
 
+        // Ilagay sa body para hindi makulong sa main Inquiry modal.
+        document.body.appendChild(modal);
+
         const letterCount = function (value) {
             try {
                 return (value.match(/\p{L}/gu) || []).length;

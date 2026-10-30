@@ -3050,7 +3050,7 @@ body.inquiry-modal-open {
 .inspection-return-modal {
     position: fixed;
     inset: 0;
-    z-index: 1400;
+    z-index: 7100;
     display: grid;
     place-items: center;
     padding: 20px;

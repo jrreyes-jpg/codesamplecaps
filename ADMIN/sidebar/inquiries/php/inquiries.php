@@ -2353,12 +2353,12 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261030-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261030-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261030-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261030-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];
 include __DIR__ . '/../../../layout/header.php';

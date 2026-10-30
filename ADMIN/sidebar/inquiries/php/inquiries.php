@@ -2353,7 +2353,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261028-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261030-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -2834,9 +2834,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </div>
 
                                                 <div class="inspection-cost-comparison" aria-label="Client budget and engineer costing comparison">
-                                                    <div><span>Client Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($clientEstimatedBudget), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div><span>Engineer Costing Total</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                                    <div class="inspection-cost-comparison__check <?php echo htmlspecialchars($clientBudgetCheckClass, ENT_QUOTES, 'UTF-8'); ?>"><span>Budget Check</span><strong><?php echo htmlspecialchars($clientBudgetCheckLabel, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div><span>Client Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($clientEstimatedBudget), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div><span>Engineer Estimated Cost</span><strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                                    <div class="inspection-cost-comparison__check <?php echo htmlspecialchars($clientBudgetCheckClass, ENT_QUOTES, 'UTF-8'); ?>"><span>Budget Status</span><strong><?php echo htmlspecialchars($clientBudgetCheckLabel, ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                                 </div>
 
                                                 <?php
@@ -2848,26 +2848,33 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     $latestCostItems,
                                                     static fn(array $item): bool => (string)($item['item_type'] ?? '') !== 'material'
                                                 ));
+                                                $showMaterialNotes = false;
+                                                foreach ($materialCostItems as $materialCostItem) {
+                                                    if (trim((string)($materialCostItem['notes'] ?? '')) !== '') {
+                                                        $showMaterialNotes = true;
+                                                        break;
+                                                    }
+                                                }
                                                 ?>
                                                 <?php if ($materialCostItems): ?>
                                                 <div class="inquiry-costing-table submitted-inspection-costing">
-                                                    <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--head">
+                                                    <div class="inquiry-costing-table__row submitted-inspection-costing__row<?php echo $showMaterialNotes ? '' : ' submitted-inspection-costing__row--no-notes'; ?> submitted-inspection-costing__row--head">
                                                         <span>Type</span>
                                                         <span>Material</span>
                                                         <span>Qty</span>
                                                         <span>Unit</span>
                                                         <span>Unit Cost</span>
-                                                        <span>Notes</span>
+                                                        <?php if ($showMaterialNotes): ?><span>Notes</span><?php endif; ?>
                                                         <span>Line Total</span>
                                                     </div>
                                                     <?php foreach ($materialCostItems as $costItem): ?>
-                                                        <div class="inquiry-costing-table__row submitted-inspection-costing__row">
+                                                        <div class="inquiry-costing-table__row submitted-inspection-costing__row<?php echo $showMaterialNotes ? '' : ' submitted-inspection-costing__row--no-notes'; ?>">
                                                             <span><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.'), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            <span><?php echo htmlspecialchars((string)($costItem['notes'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <?php if ($showMaterialNotes): ?><span><?php echo htmlspecialchars((string)($costItem['notes'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
                                                             <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                         </div>
                                                     <?php endforeach; ?>
@@ -2877,21 +2884,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php if ($fixedCostItems): ?>
                                                 <div class="submitted-fixed-costs" aria-label="Other cost categories">
                                                     <div class="submitted-fixed-costs__row submitted-fixed-costs__row--head">
-                                                        <span>Other Cost Category</span>
-                                                        <span>Notes</span>
+                                                        <span>Cost Category</span>
                                                         <span>Amount</span>
                                                     </div>
                                                     <?php foreach ($fixedCostItems as $costItem): ?>
                                                         <div class="submitted-fixed-costs__row">
                                                             <strong><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                            <span><?php echo htmlspecialchars((string)($costItem['notes'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <strong><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
                                                 <?php endif; ?>
                                                 <div class="submitted-inspection-report__total">
-                                                    <span>Engineer Grand Total</span>
+                                                    <span>Total Estimated Cost</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
 

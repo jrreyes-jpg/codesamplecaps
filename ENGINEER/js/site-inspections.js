@@ -721,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const isWholeCountUnit = function (unit) {
-        return ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'trip'].includes(unit);
+        return ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube'].includes(unit);
     };
 
     const isValidQuantityText = function (value, unit) {

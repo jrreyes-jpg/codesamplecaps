@@ -59,7 +59,7 @@ function engineer_format_money(float $amount): string
 
 function engineer_inspection_is_whole_count_unit(string $unit): bool
 {
-    return in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'trip'], true);
+    return in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube'], true);
 }
 
 function engineer_inspection_valid_quantity(string $value, string $unit): bool
@@ -634,7 +634,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            if (!in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter', 'hour', 'day', 'trip'], true)) {
+            if (!in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter'], true)) {
                 $error = 'Please select a valid quantity unit.';
                 break;
             }
@@ -1610,7 +1610,7 @@ require __DIR__ . '/../layout/header.php';
                                         <label>
                                             <span>Unit <b aria-hidden="true">*</b></span>
                                             <select name="unit[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <?php foreach (['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter', 'hour', 'day', 'trip'] as $unitOption): ?>
+                                                <?php foreach (['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter'] as $unitOption): ?>
                                                     <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? 'unit') === $unitOption ? 'selected' : ''; ?>>
                                                         <?php echo htmlspecialchars(ucfirst($unitOption), ENT_QUOTES, 'UTF-8'); ?>
                                                     </option>

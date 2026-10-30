@@ -573,7 +573,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($currentStatus === 'Submitted') {
         $error = 'This inspection was already submitted to Admin.';
     } elseif (!in_array($currentStatus, ['Ongoing', 'Completed'], true)) {
-        $error = 'Start the inspection before saving findings or costing.';
+        $error = 'Start the inspection before saving findings or estimated costs.';
     } else {
         $itemTypes = $_POST['item_type'] ?? [];
         $inventoryIds = $_POST['inventory_id'] ?? [];
@@ -1520,7 +1520,7 @@ require __DIR__ . '/../layout/header.php';
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
-                                <strong><?php echo $canEditCosting ? 'Inspection Findings &amp; Costing' : 'Submitted Inspection Costing'; ?><?php echo $showCostingVersionLabel && $currentCostingVersion > 0 ? ' V' . $currentCostingVersion : ''; ?></strong>
+                                <strong><?php echo $canEditCosting ? 'Inspection Report &amp; Cost Estimate' : 'Submitted Inspection Report &amp; Cost Estimate'; ?><?php echo $showCostingVersionLabel && $currentCostingVersion > 0 ? ' V' . $currentCostingVersion : ''; ?></strong>
                             </div>
                             <?php if (count($costingVersions) > 1): ?>
                                 <div class="costing-version-history" aria-label="Costing version history">
@@ -1538,11 +1538,11 @@ require __DIR__ . '/../layout/header.php';
                             <?php endif; ?>
                             <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isSubmittedToAdmin): ?>
-                                <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this costing.</div>
+                                <div class="inspection-submit-note">Submitted to Admin. Wait for Admin review before changing this report.</div>
                             <?php elseif ($isLegacyCompletedPending): ?>
                                 <div class="inspection-submit-note inspection-submit-note--waiting">This costing is not yet sent. Review it, then submit it to Admin.</div>
                             <?php elseif (!$canEditCosting): ?>
-                                <div class="inspection-submit-note inspection-submit-note--waiting">Start the inspection before adding findings and costing.</div>
+                                <div class="inspection-submit-note inspection-submit-note--waiting">Start the inspection before adding findings and estimated costs.</div>
                             <?php endif; ?>
 
                             <div class="inspection-costing-notes">
@@ -1574,7 +1574,7 @@ require __DIR__ . '/../layout/header.php';
                             </details>
 
                             <details class="inspection-disclosure" open>
-                                <summary>Cost Items <span>Detailed materials and direct category amounts</span></summary>
+                                <summary>Cost Estimate <span>Materials and other estimated costs</span></summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($materialCostItems as $itemIndex => $item): ?>
                                     <div class="costing-row">
@@ -1584,7 +1584,7 @@ require __DIR__ . '/../layout/header.php';
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
                                             <select name="material_id[]" data-material-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <option value="">Manual / non-stock item</option>
+                                                <option value="">Manual / Not in Inventory</option>
                                                 <?php foreach ($materialOptions as $material): ?>
                                                     <option
                                                         value="<?php echo (int)$material['id']; ?>"
@@ -1673,7 +1673,7 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 <?php endforeach; ?>
                                 <div class="inspection-costing-summary__total">
-                                    <span>Estimated Costing Total</span>
+                                    <span>Estimated Cost Total</span>
                                     <strong data-costing-total><?php echo engineer_format_money($totalCost); ?></strong>
                                 </div>
                             </div>
@@ -1762,7 +1762,7 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
                             <?php endif; ?>
                                 </form><?php if (!$canEditCosting && $inspectionStatus === 'On Hold'): ?>
-                                    <p class="inspection-submit-note inspection-submit-note--waiting">Inspection is on hold. Resume to edit this costing.</p>
+                                    <p class="inspection-submit-note inspection-submit-note--waiting">Inspection is on hold. Resume to edit this report.</p>
                                 <?php endif; ?>
                                 </section>
                             </div>
@@ -1775,11 +1775,11 @@ require __DIR__ . '/../layout/header.php';
 
         <div class="inspection-confirm-modal" data-complete-inspection-modal hidden>
             <div class="inspection-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="completeInspectionTitle">
-                <h2 id="completeInspectionTitle">Submit costing to Admin?</h2>
-                <p>This will send the findings and costing to Admin. Admin can approve or return it.</p>
+                <h2 id="completeInspectionTitle">Submit report to Admin?</h2>
+                <p>This will send the findings and estimated costs to Admin for review.</p>
                 <div class="inspection-confirm-modal__actions">
                     <button type="button" class="btn-secondary" data-complete-inspection-cancel>Cancel</button>
-                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Submit Costing</button>
+                    <button type="button" class="btn-primary" data-complete-inspection-confirm>Submit Report</button>
                 </div>
             </div>
         </div>

@@ -456,6 +456,8 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelector('input[name="notes[]"]').value = '';
         row.querySelectorAll('.costing-field-error').forEach((error) => error.remove());
         row.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+        row.querySelectorAll('.is-valid').forEach((field) => field.classList.remove('is-valid'));
+        row.querySelectorAll('[data-validation-touched]').forEach((field) => delete field.dataset.validationTouched);
         setLinkedMaterialState(row);
         updateMaterialAvailability(row);
     };
@@ -527,6 +529,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         field.classList.toggle('is-invalid', isInvalid);
+        if (isInvalid) {
+            field.classList.remove('is-valid');
+        }
     };
 
     const setFieldError = function (field, message) {
@@ -555,6 +560,30 @@ document.addEventListener('DOMContentLoaded', function () {
         field.classList.remove('is-invalid');
         const holder = field.closest('label') || field.parentElement;
         holder?.querySelector('.costing-field-error')?.remove();
+    };
+
+    // Green check lang para sa manual material na may pangalan.
+    const updateManualMaterialNameState = function (row, showError) {
+        const picker = row.querySelector('[data-material-picker]');
+        const nameField = row.querySelector('input[name="item_name[]"]');
+        const isManual = picker && picker.value === '' && nameField && !nameField.disabled && !nameField.readOnly;
+
+        if (!isManual) {
+            nameField?.classList.remove('is-valid');
+            clearFieldError(nameField);
+            return;
+        }
+
+        if (nameField.value.trim() !== '') {
+            clearFieldError(nameField);
+            nameField.classList.add('is-valid');
+            return;
+        }
+
+        nameField.classList.remove('is-valid');
+        if (showError) {
+            setFieldError(nameField, 'Material name is required.');
+        }
     };
 
     const showCostingError = function (form, message) {
@@ -826,8 +855,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (nameValue === '') {
-                setFieldError(name, 'Item / Labor name is required.');
+                if (name) name.dataset.validationTouched = 'true';
+                setFieldError(name, 'Material name is required.');
                 firstInvalid = firstInvalid || name;
+            } else {
+                updateManualMaterialNameState(row, false);
             }
 
             if (!isValidQuantityText(quantityText, unitValue)) {
@@ -1011,6 +1043,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let previousType = typeField?.value || 'material';
         setLinkedMaterialState(row);
         updateMaterialAvailability(row);
+        updateManualMaterialNameState(row, false);
 
         typeField?.addEventListener('change', function () {
             const nextType = typeField.value;
@@ -1099,6 +1132,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (unitField) unitField.selectedIndex = 0;
             }
             setLinkedMaterialState(row);
+            if (nameField) {
+                delete nameField.dataset.validationTouched;
+                nameField.classList.remove('is-valid');
+            }
+            updateManualMaterialNameState(row, false);
             updateMaterialAvailability(row);
             saveFormDraft(form);
             updateSaveDraftState(form);
@@ -1120,7 +1158,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         row.querySelectorAll('input, select').forEach(function (field) {
             field.addEventListener('input', function () {
-                clearFieldError(field);
+                if (field.name === 'item_name[]') {
+                    updateManualMaterialNameState(row, field.dataset.validationTouched === 'true');
+                } else {
+                    clearFieldError(field);
+                }
                 clearCostingErrorWhenResolved(form);
                 updateMaterialAvailability(row);
                 saveFormDraft(form);
@@ -1132,12 +1174,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     const option = row.querySelector('[data-material-picker]')?.selectedOptions[0];
                     field.value = option?.getAttribute('data-unit') || field.value;
                 }
-                clearFieldError(field);
+                if (field.name === 'item_name[]') {
+                    updateManualMaterialNameState(row, field.dataset.validationTouched === 'true');
+                } else {
+                    clearFieldError(field);
+                }
                 clearCostingErrorWhenResolved(form);
                 updateMaterialAvailability(row);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
             });
+        });
+
+        row.querySelector('input[name="item_name[]"]')?.addEventListener('blur', function (event) {
+            event.target.dataset.validationTouched = 'true';
+            updateManualMaterialNameState(row, true);
         });
 
         row.querySelector('[data-remove-costing-row]')?.addEventListener('click', function () {
@@ -1309,8 +1360,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.preventDefault();
                 openInspectionActionConfirm({
                     trigger: event.submitter,
-                    title: 'Submit to Admin?',
-                    message: 'This will submit the inspection findings and costing to Admin for review.',
+                    title: 'Submit report to Admin?',
+                    message: 'This will submit the inspection report and estimated costs to Admin for review.',
                     confirm: 'Submit to Admin',
                     onConfirm: function () {
                         form.dataset.submitConfirmed = 'true';
@@ -1720,7 +1771,7 @@ document.addEventListener('DOMContentLoaded', function () {
             completionModal.dataset.isCompleting = '';
             completionCancelButton.disabled = false;
             completionConfirmButton.disabled = false;
-            completionConfirmButton.textContent = 'Submit Costing';
+            completionConfirmButton.textContent = 'Submit Report';
         });
     });
 
@@ -1944,7 +1995,7 @@ document.addEventListener('DOMContentLoaded', function () {
             openInspectionActionConfirm({
                 trigger: button,
                 title: 'Start Inspection?',
-                message: 'This will save the start time and unlock the inspection findings and costing form.',
+                message: 'This will save the start time and unlock the inspection report and cost estimate form.',
                 confirm: 'Start Inspection',
                 onConfirm: function () {
                     return requestWorkflowTransition(form, button);

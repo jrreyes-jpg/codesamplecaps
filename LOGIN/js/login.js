@@ -159,6 +159,16 @@ const initStaleLoginWindowGuard = () => {
     const password = form?.querySelector('input[name="password"]');
     const submitButton = form?.querySelector('button[type="submit"]');
     const defaultSubmitText = submitButton?.textContent || 'Login';
+    const loginError = form?.querySelector('.error-box');
+    const savedEmailKey = 'edge_login_email';
+
+    const removeSavedEmail = () => {
+        try {
+            sessionStorage.removeItem(savedEmailKey);
+        } catch (error) {
+            // Okay lang kapag blocked ang browser storage.
+        }
+    };
 
     const isLogoutPage = window.lockoutConfig?.isLogoutPage;
     const isTimeoutPage = window.lockoutConfig?.isTimeoutPage;
@@ -176,6 +186,7 @@ const initStaleLoginWindowGuard = () => {
     };
 
     if (isLogoutPage || isTimeoutPage) {
+        removeSavedEmail();
         try {
             localStorage.removeItem('edge_auth_state');
         } catch (error) {
@@ -213,6 +224,34 @@ const initStaleLoginWindowGuard = () => {
     form.removeAttribute('target');
     form.target = '_self';
 
+    const saveEmail = () => {
+        try {
+            const value = email?.value.trim() || '';
+            if (value !== '') {
+                sessionStorage.setItem(savedEmailKey, value);
+            } else {
+                sessionStorage.removeItem(savedEmailKey);
+            }
+        } catch (error) {
+            // Okay lang kapag blocked ang browser storage.
+        }
+    };
+
+    const restoreEmail = () => {
+        if (!email || email.value.trim() !== '') {
+            return;
+        }
+
+        try {
+            email.value = sessionStorage.getItem(savedEmailKey) || '';
+        } catch (error) {
+            // Okay lang kapag blocked ang browser storage.
+        }
+    };
+
+    email?.addEventListener('input', saveEmail);
+    form.addEventListener('submit', saveEmail);
+
     const resetSubmitState = () => {
         if (submitButton && submitButton.textContent === (submitButton.dataset.loadingText || 'Logging in...')) {
             submitButton.disabled = false;
@@ -220,7 +259,31 @@ const initStaleLoginWindowGuard = () => {
         }
     };
 
+    // Sa refresh, password lang ang burahin. Iwan ang email para madali sa user.
+    const clearPasswordField = () => {
+        if (password && !password.disabled) {
+            password.value = '';
+            password.type = 'password';
+        }
+
+        const showButton = form?.querySelector('.togglePassword');
+        if (showButton) {
+            showButton.textContent = 'Show';
+            showButton.setAttribute('aria-pressed', 'false');
+        }
+    };
+
+    const clearRefreshState = () => {
+        clearPasswordField();
+        resetSubmitState();
+
+        if (loginError && !loginError.classList.contains('error-locked')) {
+            loginError.remove();
+        }
+    };
+
     const clearStaleCredentials = () => {
+        removeSavedEmail();
         if (email) {
             email.value = '';
         }
@@ -238,6 +301,15 @@ const initStaleLoginWindowGuard = () => {
 
         resetSubmitState();
     };
+
+    const navigationEntry = window.performance?.getEntriesByType?.('navigation')?.[0];
+    if (navigationEntry?.type === 'reload') {
+        restoreEmail();
+        clearRefreshState();
+        window.requestAnimationFrame(clearPasswordField);
+    } else {
+        saveEmail();
+    }
 
     if (sessionEndReason === 'inactive') {
         clearStaleCredentials();
@@ -316,8 +388,11 @@ const initStaleLoginWindowGuard = () => {
             redirectAuthenticatedLoginPage();
         }
     });
-    window.addEventListener('pageshow', () => {
+    window.addEventListener('pageshow', (event) => {
         resetSubmitState();
+        if (event.persisted) {
+            clearPasswordField();
+        }
         redirectAuthenticatedLoginPage();
     });
 };

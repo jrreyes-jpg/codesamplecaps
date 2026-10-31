@@ -1297,7 +1297,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-2',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1752,8 +1752,8 @@ require __DIR__ . '/../layout/header.php';
 
                                 <label class="inspection-evidence__drive">
                                     <span>Google Drive Link <small>(Optional)</small></span>
-                                    <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://drive.google.com/..." <?php echo !$canEditCosting ? 'disabled' : ''; ?> data-inspection-drive-url>
-                                    <small>For videos or many photos. Set access to Anyone with the link - Viewer.</small>
+                                    <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://drive.google.com/file/d/... or /drive/folders/..." aria-describedby="inspectionDriveHelp<?php echo $inspectionId; ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?> data-inspection-drive-url>
+                                    <small id="inspectionDriveHelp<?php echo $inspectionId; ?>" data-inspection-drive-feedback>Paste a shared file or folder link. Set access to Anyone with the link - Viewer.</small>
                                 </label>
 
                                 <?php if (!$canEditCosting && $inspectionDriveLink !== ''): ?>
@@ -2057,7 +2057,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-3',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

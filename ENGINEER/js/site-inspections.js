@@ -824,6 +824,40 @@ document.addEventListener('DOMContentLoaded', function () {
         return row;
     };
 
+    const isValidGoogleDriveUrl = function (value) {
+        if (value.trim() === '') return true;
+        try {
+            const url = new URL(value);
+            if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'drive.google.com') return false;
+            const path = url.pathname;
+            const sharedFile = /^\/file\/d\/[A-Za-z0-9_-]+(?:\/|$)/.test(path);
+            const sharedFolder = /^\/drive\/(?:u\/\d+\/)?folders\/[A-Za-z0-9_-]+(?:\/|$)/.test(path);
+            const sharedId = ['/open', '/uc'].includes(path) && /^[A-Za-z0-9_-]+$/.test(url.searchParams.get('id') || '');
+            return sharedFile || sharedFolder || sharedId;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const updateDriveUrlState = function (field, showError) {
+        if (!field) return true;
+        const feedback = field.closest('[data-inspection-evidence]')?.querySelector('[data-inspection-drive-feedback]');
+        const value = field.value.trim();
+        const valid = isValidGoogleDriveUrl(value);
+        field.classList.toggle('is-valid', value !== '' && valid);
+        field.classList.toggle('is-invalid', value !== '' && !valid && showError);
+        if (feedback) {
+            feedback.classList.toggle('is-valid', value !== '' && valid);
+            feedback.classList.toggle('is-invalid', value !== '' && !valid && showError);
+            feedback.textContent = value === ''
+                ? 'Paste a shared file or folder link. Set access to Anyone with the link - Viewer.'
+                : (valid
+                    ? 'Valid Google Drive sharing link. Make sure access is Viewer.'
+                    : 'Use a shared Google Drive file or folder link.');
+        }
+        return valid;
+    };
+
     const validateCosting = function (form, requireFinal) {
         let total = 0;
         let firstInvalid = null;
@@ -840,6 +874,11 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('.is-invalid-total').forEach(function (field) {
             field.classList.remove('is-invalid-total');
         });
+
+        const driveUrl = form.querySelector('[data-inspection-drive-url]');
+        if (!updateDriveUrlState(driveUrl, true)) {
+            firstInvalid = driveUrl;
+        }
 
         form.querySelectorAll('.costing-row').forEach(function (row) {
             const name = row.querySelector('input[name="item_name[]"]');
@@ -1309,18 +1348,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         driveUrl?.addEventListener('input', function () {
-            clearFieldError(driveUrl);
+            updateDriveUrlState(driveUrl, driveUrl.value.trim() !== '');
             saveFormDraft(form);
             updateSaveDraftState(form);
         });
         driveUrl?.addEventListener('blur', function () {
-            const value = driveUrl.value.trim();
-            if (value !== '' && !/^https:\/\/drive\.google\.com\//i.test(value)) {
-                setFieldError(driveUrl, 'Use a valid Google Drive link.');
-            } else {
-                clearFieldError(driveUrl);
-            }
+            updateDriveUrlState(driveUrl, true);
         });
+        updateDriveUrlState(driveUrl, false);
     };
 
     const bindCostingForm = function (form) {

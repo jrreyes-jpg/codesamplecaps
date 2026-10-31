@@ -34,6 +34,16 @@ function inspection_evidence_drive_url(string $value): ?string
         return null;
     }
 
+    $path = (string)($parts['path'] ?? '');
+    parse_str((string)($parts['query'] ?? ''), $query);
+    $hasSharedFile = preg_match('#^/file/d/[A-Za-z0-9_-]+(?:/|$)#', $path) === 1;
+    $hasSharedFolder = preg_match('#^/drive/(?:u/\d+/)?folders/[A-Za-z0-9_-]+(?:/|$)#', $path) === 1;
+    $hasSharedId = in_array($path, ['/open', '/uc'], true)
+        && preg_match('/^[A-Za-z0-9_-]+$/', (string)($query['id'] ?? '')) === 1;
+    if (!$hasSharedFile && !$hasSharedFolder && !$hasSharedId) {
+        return null;
+    }
+
     return $value;
 }
 

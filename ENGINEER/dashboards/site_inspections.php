@@ -810,7 +810,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($itemNames as $index => $rawName) {
             $itemName = trim((string)$rawName);
             $rawQuantityText = trim((string)($quantities[$index] ?? ''));
-            $rawUnitCostText = trim((string)($unitCosts[$index] ?? ''));
+            $rawUnitCostText = str_replace(',', '', trim((string)($unitCosts[$index] ?? '')));
             if (preg_match('/^\.\d+$/', $rawQuantityText)) {
                 $rawQuantityText = '0' . $rawQuantityText;
             }
@@ -913,7 +913,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($directCostTypes['material']);
         if ($error === '') {
             foreach ($directCostTypes as $directType => $directLabel) {
-                $rawAmount = trim((string)($directCosts[$directType] ?? ''));
+                $rawAmount = str_replace(',', '', trim((string)($directCosts[$directType] ?? '')));
                 if (preg_match('/^\.\d+$/', $rawAmount)) {
                     $rawAmount = '0' . $rawAmount;
                 }
@@ -2038,7 +2038,7 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label>
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="15" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Notes (Optional)</span>
@@ -2071,7 +2071,7 @@ require __DIR__ . '/../layout/header.php';
                                                 name="direct_cost[<?php echo htmlspecialchars($directType, ENT_QUOTES, 'UTF-8'); ?>]"
                                                 inputmode="decimal"
                                                 autocomplete="off"
-                                                maxlength="15"
+                                                maxlength="20"
                                                 placeholder="0.00"
                                                 value="<?php echo (float)($costTotalsByType[$directType] ?? 0) > 0 ? htmlspecialchars(number_format((float)$costTotalsByType[$directType], 2, '.', ''), ENT_QUOTES, 'UTF-8') : ''; ?>"
                                                 data-direct-cost
@@ -2274,7 +2274,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-10',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-11',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

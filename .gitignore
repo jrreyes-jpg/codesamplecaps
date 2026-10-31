@@ -9,6 +9,8 @@ storage/logs/
 storage/cache/
 storage/profile_photos/*
 !storage/profile_photos/.htaccess
+storage/inspection_evidence/*
+!storage/inspection_evidence/.htaccess
 uploads/profile_photos/
 DB/backups/
 *.log

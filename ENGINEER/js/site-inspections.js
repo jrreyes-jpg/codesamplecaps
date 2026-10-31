@@ -9,6 +9,24 @@ document.addEventListener('DOMContentLoaded', function () {
         currency: 'PHP',
     });
 
+    const moneyRawText = function (value) {
+        return String(value || '').replace(/,/g, '').trim();
+    };
+
+    const moneyNumber = function (value) {
+        return Number(moneyRawText(value) || 0);
+    };
+
+    const formatMoneyField = function (field) {
+        if (!field) return;
+        const raw = moneyRawText(field.value);
+        if (raw === '' || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(raw)) return;
+        field.value = new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(Number(raw));
+    };
+
     const normalizeCostType = function (type) {
         const value = String(type || '').trim().toLowerCase();
         const legacyTypes = {
@@ -34,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const costField = row.querySelector('input[name="unit_cost[]"]');
             if (isValidQuantityText(quantityField?.value.trim() || '', unitField?.value || '')
                 && isValidCostText(costField?.value.trim() || '')) {
-                const lineTotal = Number(quantityField.value) * Number(costField.value);
+                const lineTotal = Number(quantityField.value) * moneyNumber(costField.value);
                 const itemType = normalizeCostType(row.querySelector('[name="item_type[]"]')?.value);
                 total += lineTotal;
                 if (Object.prototype.hasOwnProperty.call(categoryTotals, itemType)) {
@@ -44,9 +62,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
             const amountText = field.value.trim();
-            if (isValidDirectCostText(amountText) && Number(amountText) > 0) {
+            if (isValidDirectCostText(amountText) && moneyNumber(amountText) > 0) {
                 const itemType = field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '';
-                const amount = Number(amountText);
+                const amount = moneyNumber(amountText);
                 total += amount;
                 if (Object.prototype.hasOwnProperty.call(categoryTotals, itemType)) {
                     categoryTotals[itemType] = amount;
@@ -78,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 item_name: row.querySelector('input[name="item_name[]"]')?.value || '',
                 quantity: row.querySelector('input[name="quantity[]"]')?.value || '',
                 unit: row.querySelector('select[name="unit[]"]')?.value || 'unit',
-                unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
+                unit_cost: moneyRawText(row.querySelector('input[name="unit_cost[]"]')?.value || ''),
                 notes: row.querySelector('input[name="notes[]"]')?.value || '',
             };
         });
@@ -97,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
             inspection_drive_url: form.querySelector('input[name="inspection_drive_url"]')?.value || '',
             rows,
             direct_costs: Object.fromEntries(Array.from(form.querySelectorAll('[data-direct-cost]')).map(function (field) {
-                return [field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '', field.value];
+                return [field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '', moneyRawText(field.value)];
             })),
             asset_requirements: assetRequirements,
         };
@@ -110,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const normalizeNumber = function (value) {
-        const text = normalizeText(value);
+        const text = moneyRawText(normalizeText(value));
         if (text === '') {
             return '';
         }
@@ -511,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function () {
         (payload.rows || []).forEach(function (rowData) {
             const type = normalizeCostType(rowData.item_type);
             if (type !== 'material' && restoredDirectCosts[type] === undefined) {
-                restoredDirectCosts[type] = String(Number(rowData.quantity || 0) * Number(rowData.unit_cost || 0) || '');
+                restoredDirectCosts[type] = String(Number(rowData.quantity || 0) * moneyNumber(rowData.unit_cost || 0) || '');
             }
         });
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
@@ -683,11 +701,13 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const isValidCostText = function (value) {
-        return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) > 0;
+        const raw = moneyRawText(value);
+        return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(raw) && Number(raw) > 0;
     };
 
     const isValidDirectCostText = function (value) {
-        return value === '' || (/^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(value) && Number(value) >= 0);
+        const raw = moneyRawText(value);
+        return raw === '' || (/^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(raw) && Number(raw) >= 0);
     };
 
     const hasMeaningfulFindings = function (value) {
@@ -767,8 +787,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const costErrorMessage = function (value) {
-        const number = Number(value);
-        if (/^(?:0|[1-9]\d*)\.\d{3,}$/.test(value)) {
+        const raw = moneyRawText(value);
+        const number = Number(raw);
+        if (/^(?:0|[1-9]\d*)\.\d{3,}$/.test(raw)) {
             return 'Maximum 2 decimal places.';
         }
         if (value !== '' && Number.isFinite(number) && number <= 0) {
@@ -939,7 +960,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const quantityText = quantity?.value.trim() || '';
             const quantityValue = Number(quantityText || 0);
             const unitValue = unit?.value.trim() || '';
-            const unitCostText = unitCost?.value.trim() || '';
+            const unitCostText = moneyRawText(unitCost?.value || '');
             const rowHasValue = rowHasMeaningfulData(row);
 
             if (!rowHasValue) {
@@ -947,7 +968,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (isValidQuantityText(quantityText, unitValue) && isValidCostText(unitCostText)) {
-                total += quantityValue * Number(unitCostText);
+                total += quantityValue * moneyNumber(unitCostText);
             }
 
             if (nameValue === '') {
@@ -979,13 +1000,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
-            const amountText = field.value.trim();
+            const amountText = moneyRawText(field.value);
             if (!isValidDirectCostText(amountText)) {
                 setFieldError(field, 'Enter 0 or a valid amount with up to 2 decimal places.');
                 firstInvalid = firstInvalid || field;
                 return;
             }
-            total += Number(amountText || 0);
+            total += moneyNumber(amountText);
         });
 
         const seenAssets = new Set();
@@ -1078,10 +1099,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const materialTotal = rows.reduce(function (sum, row) {
             return sum + Number(row.querySelector('input[name="quantity[]"]')?.value || 0)
-                * Number(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
+                * moneyNumber(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
         }, 0);
         const directTotal = directAmounts.reduce(function (sum, field) {
-            return sum + Number(field.value || 0);
+            return sum + moneyNumber(field.value);
         }, 0);
         return materialTotal + directTotal > 0;
     };
@@ -1125,10 +1146,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const materialTotal = rows.reduce(function (sum, row) {
             return sum + Number(row.querySelector('input[name="quantity[]"]')?.value || 0)
-                * Number(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
+                * moneyNumber(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
         }, 0);
         const directTotal = directAmounts.reduce(function (sum, field) {
-            return sum + (isValidDirectCostText(field.value.trim()) ? Number(field.value || 0) : 0);
+            return sum + (isValidDirectCostText(field.value.trim()) ? moneyNumber(field.value) : 0);
         }, 0);
         if (materialTotal + directTotal <= 0) {
             missing.push('Total cost above PHP 0');
@@ -1291,6 +1312,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelectorAll('[data-costing-decimal]').forEach(function (field) {
+            if (field.name === 'unit_cost[]') {
+                field.addEventListener('focus', function () {
+                    field.value = moneyRawText(field.value);
+                });
+            }
             field.addEventListener('input', function () {
                 if (field.name === 'quantity[]') {
                     const unit = row.querySelector('select[name="unit[]"]')?.value || '';
@@ -1330,6 +1356,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             ? costErrorMessage(value)
                             : quantityErrorMessage(value, unit));
                     }
+                }
+                if (field.name === 'unit_cost[]' && valid) {
+                    formatMoneyField(field);
                 }
                 syncTotal(form);
                 updateMaterialAvailability(row);
@@ -1718,6 +1747,9 @@ document.addEventListener('DOMContentLoaded', function () {
         updateCostEntryNumbers(form);
 
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
+            field.addEventListener('focus', function () {
+                field.value = moneyRawText(field.value);
+            });
             field.addEventListener('input', function () {
                 const removedInvalidText = cleanUnitCostInput(field);
                 const amount = field.value.trim();
@@ -1739,6 +1771,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const amount = field.value.trim();
                 if (isValidDirectCostText(amount)) {
                     clearFieldError(field);
+                    formatMoneyField(field);
                 } else {
                     setFieldError(field, 'Enter 0 or a valid amount with up to 2 decimal places.');
                 }
@@ -1747,6 +1780,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateSaveDraftState(form);
             });
         });
+
+        form.querySelectorAll('input[name="unit_cost[]"], [data-direct-cost]').forEach(formatMoneyField);
 
         form.querySelector('[data-add-costing-row]')?.addEventListener('click', function () {
             addCostingRow(form);

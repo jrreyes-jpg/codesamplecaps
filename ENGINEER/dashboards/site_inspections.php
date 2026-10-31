@@ -19,6 +19,7 @@ require_once __DIR__ . '/../../config/audit_log.php';
 require_once __DIR__ . '/../../config/user_notifications.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
+require_once __DIR__ . '/../../config/inspection_evidence.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 require_once __DIR__ . '/../includes/engineer_helpers.php';
 
@@ -593,6 +594,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : strlen($engineerFindings);
         $riskNotes = trim((string)($_POST['risk_notes'] ?? ''));
         $clientRequests = trim((string)($_POST['client_requests'] ?? ''));
+        $driveLinkInput = trim((string)($_POST['inspection_drive_url'] ?? ''));
+        $driveLink = inspection_evidence_drive_url($driveLinkInput);
+        $photoUploads = isset($_FILES['inspection_photos']) && is_array($_FILES['inspection_photos'])
+            ? array_values(array_filter(
+                inspection_evidence_uploaded_files($_FILES['inspection_photos']),
+                static fn(array $file): bool => (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE
+            ))
+            : [];
+        $preparedPhotos = [];
+        $currentDriveLink = '';
+        $savedPhotoCount = 0;
+        $hasEvidenceChange = false;
         $rows = [];
         $grandTotal = 0.0;
         $assetRequirements = [];
@@ -772,6 +785,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Asset Requirements setup is not ready yet. Please apply the required database migration.';
         }
 
+        if ($error === '' && !inspection_evidence_table_exists($conn)) {
+            $error = 'Inspection Evidence setup is not ready yet. Please apply the required database migration.';
+        }
+
+        if ($error === '' && $driveLinkInput !== '' && $driveLink === null) {
+            $error = 'Enter a valid https://drive.google.com file or folder link.';
+        }
+
+        if ($error === '') {
+            $evidenceStmt = $conn->prepare(
+                "SELECT evidence_type, external_url
+                 FROM site_inspection_evidence
+                 WHERE inspection_id = ?"
+            );
+            if (!$evidenceStmt) {
+                $error = 'Unable to check saved inspection evidence.';
+            } else {
+                $evidenceStmt->bind_param('i', $inspectionId);
+                $evidenceStmt->execute();
+                foreach ($evidenceStmt->get_result()->fetch_all(MYSQLI_ASSOC) as $savedEvidence) {
+                    if (($savedEvidence['evidence_type'] ?? '') === 'photo') {
+                        $savedPhotoCount++;
+                    } elseif (($savedEvidence['evidence_type'] ?? '') === 'google_drive') {
+                        $currentDriveLink = trim((string)($savedEvidence['external_url'] ?? ''));
+                    }
+                }
+                $evidenceStmt->close();
+            }
+        }
+
+        if ($error === '' && $savedPhotoCount + count($photoUploads) > 3) {
+            $error = 'You can save up to 3 inspection photos only.';
+        }
+
+        if ($error === '') {
+            foreach ($photoUploads as $photoUpload) {
+                $validatedPhoto = inspection_evidence_validate_photo($photoUpload);
+                if (($validatedPhoto['error'] ?? '') !== '') {
+                    $error = (string)$validatedPhoto['error'];
+                    break;
+                }
+                $preparedPhotos[] = $validatedPhoto;
+            }
+        }
+
+        if ($error === '') {
+            $hasEvidenceChange = !empty($preparedPhotos) || $currentDriveLink !== ($driveLink ?? '');
+        }
+
         if ($error === '' && $costingAction === 'submit_to_admin') {
             if (!engineer_inspection_has_meaningful_findings($engineerFindings)) {
                 $error = 'Engineer Findings must be 10 to 1,000 characters.';
@@ -783,11 +845,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '' && $costingAction === 'save_draft'
+            && !$hasEvidenceChange
             && engineer_inspection_draft_is_unchanged($conn, $inspectionId, $rows, $assetRequirements, $engineerFindings, $riskNotes, $clientRequests)) {
             $message = 'No draft changes to save.';
         }
 
         if ($error === '' && $message === '') {
+            $newEvidenceFiles = [];
             $conn->begin_transaction();
 
             try {
@@ -876,6 +940,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notesStmt->bind_param('sssii', $engineerFindings, $riskNotes, $clientRequests, $inspectionId, $userId);
                 $notesStmt->execute();
 
+                $deleteDriveStmt = $conn->prepare(
+                    "DELETE FROM site_inspection_evidence
+                     WHERE inspection_id = ? AND evidence_type = 'google_drive'"
+                );
+                if (!$deleteDriveStmt) {
+                    throw new RuntimeException('Failed to prepare Google Drive evidence save.');
+                }
+                $deleteDriveStmt->bind_param('i', $inspectionId);
+                $deleteDriveStmt->execute();
+
+                if ($driveLink !== null) {
+                    $insertDriveStmt = $conn->prepare(
+                        "INSERT INTO site_inspection_evidence
+                         (inspection_id, evidence_type, external_url, uploaded_by)
+                         VALUES (?, 'google_drive', ?, ?)"
+                    );
+                    if (!$insertDriveStmt) {
+                        throw new RuntimeException('Failed to prepare Google Drive evidence insert.');
+                    }
+                    $insertDriveStmt->bind_param('isi', $inspectionId, $driveLink, $userId);
+                    $insertDriveStmt->execute();
+                }
+
+                if (!empty($preparedPhotos)) {
+                    $insertPhotoStmt = $conn->prepare(
+                        "INSERT INTO site_inspection_evidence
+                         (inspection_id, evidence_type, file_path, original_name, mime_type, file_size, uploaded_by)
+                         VALUES (?, 'photo', ?, ?, ?, ?, ?)"
+                    );
+                    if (!$insertPhotoStmt) {
+                        throw new RuntimeException('Failed to prepare inspection photo insert.');
+                    }
+
+                    foreach ($preparedPhotos as $preparedPhoto) {
+                        $storedPhoto = inspection_evidence_store_photo($preparedPhoto, $inspectionId);
+                        if (($storedPhoto['error'] ?? '') !== '') {
+                            throw new RuntimeException((string)$storedPhoto['error']);
+                        }
+                        $newEvidenceFiles[] = (string)$storedPhoto['absolute_path'];
+                        $fileName = (string)$storedPhoto['file_name'];
+                        $originalName = (string)$preparedPhoto['original_name'];
+                        $mimeType = (string)$preparedPhoto['mime_type'];
+                        $fileSize = (int)$preparedPhoto['file_size'];
+                        $insertPhotoStmt->bind_param(
+                            'isssii',
+                            $inspectionId,
+                            $fileName,
+                            $originalName,
+                            $mimeType,
+                            $fileSize,
+                            $userId
+                        );
+                        $insertPhotoStmt->execute();
+                    }
+                }
+
                 if ($costingAction === 'submit_to_admin') {
                     if ($currentStatus === 'Ongoing'
                         && !site_inspection_transition($conn, $inspectionId, $userId, 'Ongoing', 'Completed')) {
@@ -934,6 +1054,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } catch (Throwable $exception) {
                 $conn->rollback();
+                foreach ($newEvidenceFiles as $newEvidenceFile) {
+                    if (is_file($newEvidenceFile)) {
+                        @unlink($newEvidenceFile);
+                    }
+                }
                 $error = 'Failed to save costing.';
             }
         }
@@ -1093,6 +1218,18 @@ if ($costResult) {
     }
 }
 
+$evidenceByInspection = [];
+if (inspection_evidence_table_exists($conn)) {
+    $evidenceResult = $conn->query(
+        'SELECT id, inspection_id, evidence_type, file_path, original_name, mime_type, file_size, external_url
+         FROM site_inspection_evidence
+         ORDER BY id ASC'
+    );
+    foreach ($evidenceResult?->fetch_all(MYSQLI_ASSOC) ?: [] as $evidence) {
+        $evidenceByInspection[(int)$evidence['inspection_id']][] = $evidence;
+    }
+}
+
 $costingVersionsByInspection = [];
 if (site_inspection_costing_versions_ready($conn)) {
     $versionResult = $conn->query(
@@ -1160,7 +1297,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261030-2',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1209,6 +1346,18 @@ require __DIR__ . '/../layout/header.php';
                     $showCostingVersionLabel = count($costingVersions) > 1
                         || (string)($costingVersions[0]['review_status'] ?? '') === 'Returned';
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
+                    $inspectionEvidence = $evidenceByInspection[$inspectionId] ?? [];
+                    $inspectionPhotos = array_values(array_filter(
+                        $inspectionEvidence,
+                        static fn(array $evidence): bool => ($evidence['evidence_type'] ?? '') === 'photo'
+                    ));
+                    $inspectionDriveLink = '';
+                    foreach ($inspectionEvidence as $evidence) {
+                        if (($evidence['evidence_type'] ?? '') === 'google_drive') {
+                            $inspectionDriveLink = trim((string)($evidence['external_url'] ?? ''));
+                            break;
+                        }
+                    }
                     $totalCost = array_sum(array_map(static fn($item) => (float)($item['line_total'] ?? 0), $costItems));
                     $costTotalsByType = array_fill_keys(array_keys(inquiry_quote_item_type_options()), 0.0);
                     foreach ($costItems as $savedCostItem) {
@@ -1531,7 +1680,7 @@ require __DIR__ . '/../layout/header.php';
                                     </details>
                                 <?php endif; ?>
 
-                                <form method="POST" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form>
+                                <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
@@ -1571,6 +1720,46 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 </label>
                             </div>
+
+                            <section class="inspection-evidence" data-inspection-evidence data-saved-photo-count="<?php echo count($inspectionPhotos); ?>">
+                                <div class="inspection-evidence__head">
+                                    <div>
+                                        <strong>Inspection Evidence <span>(Optional)</span></strong>
+                                        <small>Add up to 3 photos. Use Google Drive for videos or many files.</small>
+                                    </div>
+                                </div>
+
+                                <?php if ($inspectionPhotos): ?>
+                                    <div class="inspection-evidence__saved" aria-label="Saved inspection photos">
+                                        <?php foreach ($inspectionPhotos as $inspectionPhoto): ?>
+                                            <figure>
+                                                <img src="<?php echo htmlspecialchars(inspection_evidence_public_path((string)$inspectionPhoto['file_path']), ENT_QUOTES, 'UTF-8'); ?>" alt="Saved inspection evidence">
+                                                <figcaption><?php echo htmlspecialchars((string)($inspectionPhoto['original_name'] ?: 'Inspection photo'), ENT_QUOTES, 'UTF-8'); ?></figcaption>
+                                            </figure>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($canEditCosting && count($inspectionPhotos) < 3): ?>
+                                    <label class="inspection-evidence__upload">
+                                        <span>Upload Photos</span>
+                                        <input type="file" name="inspection_photos[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple data-inspection-photo-input>
+                                        <small>JPG, PNG, or WEBP. Maximum 2 MB each.</small>
+                                    </label>
+                                    <div class="inspection-evidence__feedback" data-inspection-photo-feedback hidden></div>
+                                    <div class="inspection-evidence__preview" data-inspection-photo-preview></div>
+                                <?php endif; ?>
+
+                                <label class="inspection-evidence__drive">
+                                    <span>Google Drive Link <small>(Optional)</small></span>
+                                    <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://drive.google.com/..." <?php echo !$canEditCosting ? 'disabled' : ''; ?> data-inspection-drive-url>
+                                    <small>For videos or many photos. Set access to Anyone with the link - Viewer.</small>
+                                </label>
+
+                                <?php if (!$canEditCosting && $inspectionDriveLink !== ''): ?>
+                                    <a class="inspection-evidence__drive-link" href="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer">Open Google Drive</a>
+                                <?php endif; ?>
+                            </section>
 
                             <details class="inspection-disclosure inspection-disclosure--notes">
                                 <summary>Additional Notes (Optional)</summary>
@@ -1868,7 +2057,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

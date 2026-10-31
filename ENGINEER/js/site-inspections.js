@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
             engineer_findings: form.querySelector('textarea[name="engineer_findings"]')?.value || '',
             risk_notes: form.querySelector('textarea[name="risk_notes"]')?.value || '',
             client_requests: form.querySelector('textarea[name="client_requests"]')?.value || '',
+            inspection_drive_url: form.querySelector('input[name="inspection_drive_url"]')?.value || '',
             rows,
             direct_costs: Object.fromEntries(Array.from(form.querySelectorAll('[data-direct-cost]')).map(function (field) {
                 return [field.name.match(/^direct_cost\[([^\]]+)\]$/)?.[1] || '', field.value];
@@ -124,6 +125,10 @@ document.addEventListener('DOMContentLoaded', function () {
             findings: normalizeText(form.querySelector('textarea[name="engineer_findings"]')?.value),
             riskNotes: normalizeText(form.querySelector('textarea[name="risk_notes"]')?.value),
             clientRequests: normalizeText(form.querySelector('textarea[name="client_requests"]')?.value),
+            driveUrl: normalizeText(form.querySelector('input[name="inspection_drive_url"]')?.value),
+            newPhotos: Array.from(form.querySelector('input[name="inspection_photos[]"]')?.files || []).map(function (file) {
+                return `${file.name}:${file.size}:${file.lastModified}`;
+            }),
             rows: Array.from(form.querySelectorAll('.costing-row')).map(function (row) {
                 return {
                     type: normalizeText(row.querySelector('[name="item_type[]"]')?.value).toLowerCase(),
@@ -478,6 +483,8 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelector('textarea[name="engineer_findings"]').value = payload.engineer_findings || '';
         form.querySelector('textarea[name="risk_notes"]').value = payload.risk_notes || '';
         form.querySelector('textarea[name="client_requests"]').value = payload.client_requests || '';
+        const driveUrl = form.querySelector('input[name="inspection_drive_url"]');
+        if (driveUrl) driveUrl.value = payload.inspection_drive_url || driveUrl.value;
 
         const rowsBox = form.querySelector('[data-costing-rows]');
         const firstRow = rowsBox?.querySelector('.costing-row');
@@ -1223,6 +1230,99 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const bindInspectionEvidence = function (form) {
+        const evidence = form.querySelector('[data-inspection-evidence]');
+        const photoInput = evidence?.querySelector('[data-inspection-photo-input]');
+        const preview = evidence?.querySelector('[data-inspection-photo-preview]');
+        const feedback = evidence?.querySelector('[data-inspection-photo-feedback]');
+        const driveUrl = evidence?.querySelector('[data-inspection-drive-url]');
+        if (!evidence) return;
+
+        const savedPhotoCount = Number.parseInt(evidence.dataset.savedPhotoCount || '0', 10) || 0;
+        let previewUrls = [];
+
+        const clearPreviewUrls = function () {
+            previewUrls.forEach(function (url) { URL.revokeObjectURL(url); });
+            previewUrls = [];
+        };
+
+        const setPhotoFiles = function (files) {
+            if (!photoInput || typeof DataTransfer === 'undefined') return;
+            const transfer = new DataTransfer();
+            files.forEach(function (file) { transfer.items.add(file); });
+            photoInput.files = transfer.files;
+        };
+
+        const renderPhotoPreview = function () {
+            if (!photoInput || !preview) return;
+            clearPreviewUrls();
+            preview.innerHTML = '';
+
+            Array.from(photoInput.files || []).forEach(function (file, index) {
+                const card = document.createElement('figure');
+                const image = document.createElement('img');
+                const caption = document.createElement('figcaption');
+                const remove = document.createElement('button');
+                const previewUrl = URL.createObjectURL(file);
+                previewUrls.push(previewUrl);
+                image.src = previewUrl;
+                image.alt = 'Selected inspection photo';
+                caption.textContent = file.name;
+                remove.type = 'button';
+                remove.textContent = 'Remove';
+                remove.addEventListener('click', function () {
+                    const remaining = Array.from(photoInput.files || []).filter(function (_, fileIndex) {
+                        return fileIndex !== index;
+                    });
+                    setPhotoFiles(remaining);
+                    renderPhotoPreview();
+                    updateSaveDraftState(form);
+                });
+                card.append(image, caption, remove);
+                preview.appendChild(card);
+            });
+        };
+
+        photoInput?.addEventListener('change', function () {
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            const selected = Array.from(photoInput.files || []);
+            const invalidType = selected.some(function (file) { return !allowedTypes.includes(file.type); });
+            const tooLarge = selected.some(function (file) { return file.size > 2 * 1024 * 1024; });
+            const tooMany = savedPhotoCount + selected.length > 3;
+            let message = '';
+            if (tooMany) message = `You can add ${Math.max(0, 3 - savedPhotoCount)} more photo(s) only.`;
+            else if (tooLarge) message = 'Each photo must be 2 MB or smaller.';
+            else if (invalidType) message = 'Use JPG, PNG, or WEBP photos only.';
+
+            if (message !== '') {
+                photoInput.value = '';
+                if (feedback) {
+                    feedback.textContent = message;
+                    feedback.hidden = false;
+                }
+            } else if (feedback) {
+                feedback.textContent = '';
+                feedback.hidden = true;
+            }
+            renderPhotoPreview();
+            updateSaveDraftState(form);
+        });
+
+        driveUrl?.addEventListener('input', function () {
+            clearFieldError(driveUrl);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+        driveUrl?.addEventListener('blur', function () {
+            const value = driveUrl.value.trim();
+            if (value !== '' && !/^https:\/\/drive\.google\.com\//i.test(value)) {
+                setFieldError(driveUrl, 'Use a valid Google Drive link.');
+            } else {
+                clearFieldError(driveUrl);
+            }
+        });
+    };
+
     const bindCostingForm = function (form) {
         if (!form || form.dataset.costingHandlersBound === '1') {
             return;
@@ -1243,6 +1343,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('[data-asset-requirement-row]').forEach(function (row) {
             bindAssetRequirementRow(form, row);
         });
+        bindInspectionEvidence(form);
 
         // Kunin muna ang saved server values bago mag-restore ng unsaved browser draft.
         form.dataset.savedSnapshot = formSnapshot(form);

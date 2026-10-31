@@ -1512,13 +1512,74 @@ document.addEventListener('DOMContentLoaded', function () {
                 const card = document.createElement('figure');
                 const image = document.createElement('img');
                 const caption = document.createElement('figcaption');
+                const remove = document.createElement('button');
+                card.dataset.savedEvidenceId = String(photo.id || '');
                 image.src = photo.url;
                 image.alt = 'Saved inspection evidence';
                 caption.textContent = photo.name || 'Inspection photo';
-                card.append(image, caption);
+                remove.type = 'button';
+                remove.dataset.removeSavedPhoto = '';
+                remove.textContent = 'Remove';
+                card.append(image, caption, remove);
                 savedBox.appendChild(card);
             });
         };
+
+        const deleteSavedPhoto = function (button) {
+            const card = button.closest('[data-saved-evidence-id]');
+            const evidenceId = card?.dataset.savedEvidenceId || '';
+            if (!card || !evidenceId) return;
+
+            const data = new FormData();
+            data.set('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+            data.set('inspection_id', form.querySelector('input[name="inspection_id"]')?.value || '');
+            data.set('evidence_action', 'delete_photo');
+            data.set('evidence_id', evidenceId);
+            button.disabled = true;
+            button.textContent = 'Removing...';
+
+            fetch(form.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: data,
+            })
+                .then(function (response) {
+                    return parseInspectionJsonResponse(response, 'Unable to remove the photo. Please try again.');
+                })
+                .then(function (payload) {
+                    const savedBox = card.parentElement;
+                    card.remove();
+                    savedPhotoCount = Math.max(0, savedPhotoCount - 1);
+                    evidence.dataset.savedPhotoCount = String(savedPhotoCount);
+                    if (savedBox && !savedBox.querySelector('figure')) savedBox.remove();
+                    const uploadBox = photoInput?.closest('.inspection-evidence__upload');
+                    if (uploadBox) uploadBox.hidden = false;
+                    if (feedback) {
+                        feedback.className = 'inspection-evidence__feedback is-saved';
+                        feedback.textContent = payload.message || 'Photo removed.';
+                        feedback.hidden = false;
+                    }
+                })
+                .catch(function (error) {
+                    button.disabled = false;
+                    button.textContent = 'Remove';
+                    if (feedback) {
+                        feedback.className = 'inspection-evidence__feedback is-error';
+                        feedback.textContent = error.message || 'Unable to remove the photo.';
+                        feedback.hidden = false;
+                    }
+                });
+        };
+
+        evidence.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-remove-saved-photo]');
+            if (!button) return;
+            deleteSavedPhoto(button);
+        });
 
         const uploadSelectedPhotos = function () {
             const files = Array.from(photoInput?.files || []);

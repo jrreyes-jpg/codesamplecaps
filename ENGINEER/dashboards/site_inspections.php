@@ -398,6 +398,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid request. Please try again.';
     } elseif ($inspectionId <= 0 || !engineer_owns_inspection($conn, $inspectionId, $userId)) {
         $error = 'Inspection not found.';
+    } elseif ($evidenceAction === 'delete_photo') {
+        $evidenceId = (int)($_POST['evidence_id'] ?? 0);
+        $allowedToEditEvidence = in_array($currentStatus, ['Ongoing', 'Completed'], true)
+            || ($currentStatus === 'Submitted' && $currentReviewStatus === 'Returned');
+        $deletedFilePath = '';
+
+        if (!$isAjaxRequest || $evidenceId <= 0) {
+            $error = 'Invalid photo delete request.';
+        } elseif (!$allowedToEditEvidence) {
+            $error = 'This inspection report cannot be changed right now.';
+        } else {
+            $photoStmt = $conn->prepare(
+                "SELECT file_path
+                 FROM site_inspection_evidence
+                 WHERE id = ? AND inspection_id = ? AND evidence_type = 'photo'
+                 LIMIT 1"
+            );
+            if (!$photoStmt) {
+                $error = 'Unable to find the photo.';
+            } else {
+                $photoStmt->bind_param('ii', $evidenceId, $inspectionId);
+                $photoStmt->execute();
+                $photo = $photoStmt->get_result()->fetch_assoc();
+                $photoStmt->close();
+                if (!$photo) {
+                    $error = 'Photo not found or already removed.';
+                } else {
+                    $deletedFilePath = (string)$photo['file_path'];
+                    $deleteStmt = $conn->prepare(
+                        "DELETE FROM site_inspection_evidence
+                         WHERE id = ? AND inspection_id = ? AND evidence_type = 'photo'"
+                    );
+                    if (!$deleteStmt) {
+                        $error = 'Unable to remove the photo.';
+                    } else {
+                        $deleteStmt->bind_param('ii', $evidenceId, $inspectionId);
+                        $deleteStmt->execute();
+                        if ($deleteStmt->affected_rows !== 1) {
+                            $error = 'Photo not found or already removed.';
+                        }
+                        $deleteStmt->close();
+                    }
+                }
+            }
+        }
+
+        if ($error === '' && $deletedFilePath !== '') {
+            inspection_evidence_delete_photo_file($deletedFilePath);
+            $message = 'Photo removed.';
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'success' => $error === '',
+            'message' => $error !== '' ? $error : $message,
+            'inspection_id' => $inspectionId,
+            'evidence_id' => $evidenceId,
+        ]);
+        exit;
     } elseif ($evidenceAction === 'upload_photos') {
         $allowedToEditEvidence = in_array($currentStatus, ['Ongoing', 'Completed'], true)
             || ($currentStatus === 'Submitted' && $currentReviewStatus === 'Returned');
@@ -474,6 +533,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $insertPhotoStmt->bind_param('isssii', $inspectionId, $fileName, $originalName, $mimeType, $fileSize, $userId);
                     $insertPhotoStmt->execute();
                     $savedPhotos[] = [
+                        'id' => (int)$conn->insert_id,
                         'name' => $originalName,
                         'url' => inspection_evidence_public_path($fileName),
                     ];
@@ -1880,16 +1940,19 @@ require __DIR__ . '/../layout/header.php';
                                 <?php if ($inspectionPhotos): ?>
                                     <div class="inspection-evidence__saved" aria-label="Saved inspection photos">
                                         <?php foreach ($inspectionPhotos as $inspectionPhoto): ?>
-                                            <figure>
+                                            <figure data-saved-evidence-id="<?php echo (int)$inspectionPhoto['id']; ?>">
                                                 <img src="<?php echo htmlspecialchars(inspection_evidence_public_path((string)$inspectionPhoto['file_path']), ENT_QUOTES, 'UTF-8'); ?>" alt="Saved inspection evidence">
                                                 <figcaption><?php echo htmlspecialchars((string)($inspectionPhoto['original_name'] ?: 'Inspection photo'), ENT_QUOTES, 'UTF-8'); ?></figcaption>
+                                                <?php if ($canEditCosting): ?>
+                                                    <button type="button" data-remove-saved-photo>Remove</button>
+                                                <?php endif; ?>
                                             </figure>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($canEditCosting && count($inspectionPhotos) < 3): ?>
-                                    <label class="inspection-evidence__upload">
+                                <?php if ($canEditCosting): ?>
+                                    <label class="inspection-evidence__upload"<?php echo count($inspectionPhotos) >= 3 ? ' hidden' : ''; ?>>
                                         <span>Upload Photos</span>
                                         <input type="file" name="inspection_photos[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple data-inspection-photo-input>
                                         <small>JPG, PNG, or WEBP. Maximum 2 MB each.</small>
@@ -2211,7 +2274,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-8',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-10',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

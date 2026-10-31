@@ -114,3 +114,14 @@ function inspection_evidence_store_photo(array $photo, int $inspectionId): array
 
     return ['error' => '', 'file_name' => $fileName, 'absolute_path' => $destination];
 }
+
+function inspection_evidence_delete_photo_file(string $fileName): bool
+{
+    $safeName = basename($fileName);
+    if ($safeName === '' || $safeName !== $fileName) {
+        return false;
+    }
+
+    $path = inspection_evidence_storage_directory() . DIRECTORY_SEPARATOR . $safeName;
+    return !is_file($path) || unlink($path);
+}

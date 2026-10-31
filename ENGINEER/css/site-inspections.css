@@ -1619,6 +1619,19 @@ body.inspection-modal-open {
     font-weight: 900;
 }
 
+.costing-row label .costing-readonly-value {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding: 9px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
 .costing-row label span b,
 .inspection-costing-notes label span b {
     color: #dc2626;

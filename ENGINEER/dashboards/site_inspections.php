@@ -1998,6 +1998,11 @@ require __DIR__ . '/../layout/header.php';
                                         <label data-material-field>
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
+                                            <?php if (!$canEditCosting): ?>
+                                                <span class="costing-readonly-value">
+                                                    <?php echo htmlspecialchars((string)($item['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            <?php else: ?>
                                             <span class="material-combobox" data-material-combobox>
                                                 <input type="text" data-material-combobox-input placeholder="Search or select material" autocomplete="off" aria-label="Search or select material reference" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <button type="button" data-material-combobox-toggle aria-label="Show material options" <?php echo !$canEditCosting ? 'disabled' : ''; ?>></button>
@@ -2018,8 +2023,9 @@ require __DIR__ . '/../layout/header.php';
                                                 <?php endforeach; ?>
                                             </select>
                                             <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
+                                            <?php endif; ?>
                                         </label>
-                                        <label data-item-name-field<?php echo (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
+                                        <label data-item-name-field<?php echo !$canEditCosting || (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
                                             <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
                                             <input type="text" name="item_name[]" placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                             <span class="material-name-suggestions" data-material-name-suggestions hidden></span>
@@ -2075,7 +2081,7 @@ require __DIR__ . '/../layout/header.php';
                                                 autocomplete="off"
                                                 maxlength="20"
                                                 placeholder="0.00"
-                                                value="<?php echo (float)($costTotalsByType[$directType] ?? 0) > 0 ? htmlspecialchars(number_format((float)$costTotalsByType[$directType], 2, '.', ''), ENT_QUOTES, 'UTF-8') : ''; ?>"
+                                                value="<?php echo !$canEditCosting || (float)($costTotalsByType[$directType] ?? 0) > 0 ? htmlspecialchars(number_format((float)($costTotalsByType[$directType] ?? 0), 2, '.', ''), ENT_QUOTES, 'UTF-8') : ''; ?>"
                                                 data-direct-cost
                                                 data-costing-decimal
                                                 <?php echo !$canEditCosting ? 'disabled' : ''; ?>

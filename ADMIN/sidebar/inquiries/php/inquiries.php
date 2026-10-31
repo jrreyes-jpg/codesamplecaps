@@ -2848,6 +2848,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     $latestCostItems,
                                                     static fn(array $item): bool => (string)($item['item_type'] ?? '') !== 'material'
                                                 ));
+                                                $fixedCostTypes = inquiry_quote_item_type_options();
+                                                unset($fixedCostTypes['material']);
+                                                $fixedCostTotals = array_fill_keys(array_keys($fixedCostTypes), 0.0);
+                                                foreach ($fixedCostItems as $fixedCostItem) {
+                                                    $fixedCostType = inquiry_quote_normalize_item_type((string)($fixedCostItem['item_type'] ?? ''));
+                                                    if (array_key_exists($fixedCostType, $fixedCostTotals)) {
+                                                        $fixedCostTotals[$fixedCostType] += (float)($fixedCostItem['line_total'] ?? 0);
+                                                    }
+                                                }
                                                 $showMaterialNotes = false;
                                                 foreach ($materialCostItems as $materialCostItem) {
                                                     if (trim((string)($materialCostItem['notes'] ?? '')) !== '') {
@@ -2874,27 +2883,25 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                             <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.'), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            <?php if ($showMaterialNotes): ?><span><?php echo htmlspecialchars((string)($costItem['notes'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                                                            <?php if ($showMaterialNotes): ?><span><?php echo htmlspecialchars((string)($costItem['notes'] ?: 'No note'), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
                                                             <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
                                                 <?php endif; ?>
 
-                                                <?php if ($fixedCostItems): ?>
                                                 <div class="submitted-fixed-costs" aria-label="Other cost categories">
                                                     <div class="submitted-fixed-costs__row submitted-fixed-costs__row--head">
                                                         <span>Cost Category</span>
                                                         <span>Amount</span>
                                                     </div>
-                                                    <?php foreach ($fixedCostItems as $costItem): ?>
+                                                    <?php foreach ($fixedCostTypes as $fixedCostType => $fixedCostLabel): ?>
                                                         <div class="submitted-fixed-costs__row">
-                                                            <strong><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                            <strong><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                            <strong><?php echo htmlspecialchars($fixedCostLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                            <strong><?php echo htmlspecialchars(inquiry_center_format_money((float)($fixedCostTotals[$fixedCostType] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
-                                                <?php endif; ?>
                                                 <div class="submitted-inspection-report__total">
                                                     <span>Total Estimated Cost</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>

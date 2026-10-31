@@ -184,6 +184,40 @@ function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId
     return $stmt->get_result()->fetch_assoc() ?: null;
 }
 
+function engineer_inspection_normalize_material_name(string $name): string
+{
+    $name = preg_replace('/\s+/u', ' ', trim($name)) ?? trim($name);
+    return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+}
+
+function engineer_inspection_valid_manual_material_name(string $name): bool
+{
+    $name = preg_replace('/\s+/u', ' ', trim($name)) ?? trim($name);
+    $length = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
+    return $length >= 2 && $length <= 100 && preg_match('/\p{L}/u', $name) === 1;
+}
+
+function engineer_inspection_find_active_material_by_name(mysqli $conn, string $materialName): ?array
+{
+    $normalizedName = engineer_inspection_normalize_material_name($materialName);
+    if ($normalizedName === '') {
+        return null;
+    }
+
+    $result = $conn->query("SELECT id, material_name FROM materials WHERE status = 'active'");
+    if (!$result) {
+        return null;
+    }
+
+    while ($material = $result->fetch_assoc()) {
+        if (engineer_inspection_normalize_material_name((string)$material['material_name']) === $normalizedName) {
+            return $material;
+        }
+    }
+
+    return null;
+}
+
 function engineer_inspection_asset_requirements_table_exists(mysqli $conn): bool
 {
     $result = $conn->query("SHOW TABLES LIKE 'site_inspection_asset_requirements'");
@@ -683,6 +717,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $itemName = trim((string)$linkedMaterial['material_name']);
                 $unit = trim((string)$linkedMaterial['unit']);
+            } else {
+                $itemName = preg_replace('/\s+/u', ' ', $itemName) ?? $itemName;
+                if (!engineer_inspection_valid_manual_material_name($itemName)) {
+                    $error = 'Enter a clear material name with 2 to 100 characters and at least one letter.';
+                    break;
+                }
+
+                $existingMaterial = engineer_inspection_find_active_material_by_name($conn, $itemName);
+                if ($existingMaterial) {
+                    $error = (string)$existingMaterial['material_name'] . ' already exists. Select it from Material Reference.';
+                    break;
+                }
             }
 
             $lineTotal = $quantity * $unitCost;
@@ -1297,7 +1343,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-2',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-5',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1785,7 +1831,12 @@ require __DIR__ . '/../layout/header.php';
                                         <label data-material-field>
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
-                                            <select name="material_id[]" data-material-picker <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <span class="material-combobox" data-material-combobox>
+                                                <input type="text" data-material-combobox-input placeholder="Search or select material" autocomplete="off" aria-label="Search or select material reference" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <button type="button" data-material-combobox-toggle aria-label="Show material options" <?php echo !$canEditCosting ? 'disabled' : ''; ?>></button>
+                                                <span class="material-combobox__list" data-material-combobox-list></span>
+                                            </span>
+                                            <select class="material-picker-source" name="material_id[]" data-material-picker tabindex="-1" aria-hidden="true" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <option value="">Manual / Not in Inventory</option>
                                                 <?php foreach ($materialOptions as $material): ?>
                                                     <option
@@ -1803,7 +1854,8 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label data-item-name-field<?php echo (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
                                             <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="item_name[]" placeholder="Enter material name" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="item_name[]" placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <span class="material-name-suggestions" data-material-name-suggestions hidden></span>
                                         </label>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
@@ -2057,7 +2109,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-3',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-7',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

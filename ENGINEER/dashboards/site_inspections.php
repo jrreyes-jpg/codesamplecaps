@@ -1323,8 +1323,16 @@ require __DIR__ . '/../layout/header.php';
                     if ($cardLocation === '') {
                         $cardLocation = trim((string)($inspection['province'] ?? '')) ?: 'Not set';
                     }
+                    $scheduleSyncKey = hash('sha256', implode('|', [
+                        (string)($inspection['scheduled_at'] ?? ''),
+                        (string)($inspection['engineer_id'] ?? ''),
+                        (string)($inspection['client_schedule_response'] ?? ''),
+                        (string)($inspection['engineer_schedule_response'] ?? ''),
+                        $currentScheduleReason,
+                        $visibleSiteNotes,
+                    ]));
                     ?>
-                    <article class="inspection-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes])), ENT_QUOTES, 'UTF-8'); ?>">
+                    <article class="inspection-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inspection-card__head">
                             <div class="inspection-card__identity">
                                 <?php if ($unreadInspectionNotificationId > 0): ?>
@@ -1860,7 +1868,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261030-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

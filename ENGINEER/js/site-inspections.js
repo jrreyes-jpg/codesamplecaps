@@ -2336,14 +2336,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             window.localStorage.removeItem(activeModalKey);
                         }
                         currentCard.remove();
-                        scheduleWasUpdated = true;
                         return;
                     }
                     if (currentCard.dataset.inspectionSyncKey === nextCard.dataset.inspectionSyncKey) return;
 
+                    const scheduleChanged = currentCard.dataset.inspectionScheduleKey !== nextCard.dataset.inspectionScheduleKey;
                     const keepModalOpen = !currentCard.querySelector('.inspection-modal')?.hidden;
                     replaceInspectionCardSnapshot(currentCard, nextCard, keepModalOpen);
-                    scheduleWasUpdated = true;
+                    if (scheduleChanged) scheduleWasUpdated = true;
                 });
 
                 mergeAssignedInspectionCards(nextDocument);

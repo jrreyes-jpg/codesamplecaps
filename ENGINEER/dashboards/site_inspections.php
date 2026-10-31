@@ -728,7 +728,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Throwable $notificationError) {
                         error_log('Inspection report Admin notification failed: ' . $notificationError->getMessage());
                     }
-                    $message = 'Inspection costing submitted to Admin for review.';
+                    $message = 'Inspection report submitted to Admin for review.';
                     $savedStatus = 'Submitted';
                 } catch (Throwable $exception) {
                     $conn->rollback();
@@ -1251,7 +1251,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $conn->commit();
                 $message = $costingAction === 'submit_to_admin'
-                    ? 'Costing V' . $submittedVersionNo . ' submitted to Admin.'
+                    ? ($currentReviewStatus === 'Returned'
+                        ? 'Updated inspection report resubmitted to Admin for review.'
+                        : 'Inspection report submitted to Admin for review.')
                     : 'Inspection draft saved.';
                 if ($costingAction === 'submit_to_admin') {
                     try {
@@ -1528,7 +1530,7 @@ require __DIR__ . '/../layout/header.php';
                 <?php endforeach; ?>
             </div>
         </div>
-        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection costing submitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
+        <?php if (in_array($message, ['Inspection draft saved.', 'Inspection report submitted to Admin for review.', 'Updated inspection report resubmitted to Admin for review.', 'Reschedule request sent to Admin.'], true)): ?>
             <div class="shared-toast shared-toast--success" data-shared-toast role="status">
                 <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                 <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>

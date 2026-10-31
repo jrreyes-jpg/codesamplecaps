@@ -1510,6 +1510,29 @@ body.inspection-modal-open {
     font-weight: 800;
 }
 
+.inspection-evidence__feedback.is-saving {
+    color: #1d4ed8;
+}
+
+.inspection-evidence__feedback.is-saved {
+    color: #15803d;
+}
+
+.inspection-evidence__feedback.is-error {
+    color: #b91c1c;
+}
+
+.inspection-evidence__feedback button {
+    margin-left: 6px;
+    padding: 5px 9px;
+    border: 1px solid #b91c1c;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #b91c1c;
+    font: inherit;
+    cursor: pointer;
+}
+
 .inspection-evidence__drive-link {
     justify-self: start;
     color: #166534;

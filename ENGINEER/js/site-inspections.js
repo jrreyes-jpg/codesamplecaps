@@ -1454,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const driveUrl = evidence?.querySelector('[data-inspection-drive-url]');
         if (!evidence) return;
 
-        const savedPhotoCount = Number.parseInt(evidence.dataset.savedPhotoCount || '0', 10) || 0;
+        let savedPhotoCount = Number.parseInt(evidence.dataset.savedPhotoCount || '0', 10) || 0;
         let previewUrls = [];
 
         const clearPreviewUrls = function () {
@@ -1499,6 +1499,89 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         };
 
+        const appendSavedPhotos = function (photos) {
+            if (!Array.isArray(photos) || photos.length === 0) return;
+            let savedBox = evidence.querySelector('.inspection-evidence__saved');
+            if (!savedBox) {
+                savedBox = document.createElement('div');
+                savedBox.className = 'inspection-evidence__saved';
+                savedBox.setAttribute('aria-label', 'Saved inspection photos');
+                evidence.insertBefore(savedBox, evidence.querySelector('.inspection-evidence__upload'));
+            }
+            photos.forEach(function (photo) {
+                const card = document.createElement('figure');
+                const image = document.createElement('img');
+                const caption = document.createElement('figcaption');
+                image.src = photo.url;
+                image.alt = 'Saved inspection evidence';
+                caption.textContent = photo.name || 'Inspection photo';
+                card.append(image, caption);
+                savedBox.appendChild(card);
+            });
+        };
+
+        const uploadSelectedPhotos = function () {
+            const files = Array.from(photoInput?.files || []);
+            if (!photoInput || files.length === 0 || evidence.dataset.photoUploading === 'true') return;
+
+            const data = new FormData();
+            data.set('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+            data.set('inspection_id', form.querySelector('input[name="inspection_id"]')?.value || '');
+            data.set('evidence_action', 'upload_photos');
+            files.forEach(function (file) { data.append('inspection_photos[]', file); });
+            evidence.dataset.photoUploading = 'true';
+            photoInput.disabled = true;
+            if (feedback) {
+                feedback.className = 'inspection-evidence__feedback is-saving';
+                feedback.textContent = 'Saving photo as draft...';
+                feedback.hidden = false;
+            }
+
+            fetch(form.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: data,
+            })
+                .then(function (response) {
+                    return parseInspectionJsonResponse(response, 'Unable to save the photo. Please try again.');
+                })
+                .then(function (payload) {
+                    appendSavedPhotos(payload.photos || []);
+                    savedPhotoCount += (payload.photos || []).length;
+                    evidence.dataset.savedPhotoCount = String(savedPhotoCount);
+                    photoInput.value = '';
+                    renderPhotoPreview();
+                    if (feedback) {
+                        feedback.className = 'inspection-evidence__feedback is-saved';
+                        feedback.textContent = payload.message || 'Photo saved as draft.';
+                    }
+                    if (savedPhotoCount >= 3) {
+                        const uploadBox = photoInput.closest('.inspection-evidence__upload');
+                        if (uploadBox) uploadBox.hidden = true;
+                    }
+                    updateSaveDraftState(form);
+                })
+                .catch(function (error) {
+                    if (feedback) {
+                        feedback.className = 'inspection-evidence__feedback is-error';
+                        feedback.textContent = `${error.message || 'Photo not saved.'} Your selected photo is still here. `;
+                        const retry = document.createElement('button');
+                        retry.type = 'button';
+                        retry.textContent = 'Retry Upload';
+                        retry.addEventListener('click', uploadSelectedPhotos);
+                        feedback.appendChild(retry);
+                    }
+                })
+                .finally(function () {
+                    evidence.dataset.photoUploading = 'false';
+                    if (photoInput && savedPhotoCount < 3) photoInput.disabled = false;
+                });
+        };
+
         photoInput?.addEventListener('change', function () {
             const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
             const selected = Array.from(photoInput.files || []);
@@ -1522,6 +1605,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             renderPhotoPreview();
             updateSaveDraftState(form);
+            if (message === '' && selected.length > 0) {
+                uploadSelectedPhotos();
+            }
+        });
+
+        window.addEventListener('beforeunload', function (event) {
+            const hasPendingPhoto = (photoInput?.files?.length || 0) > 0;
+            if (evidence.dataset.photoUploading === 'true' || hasPendingPhoto) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
         });
 
         driveUrl?.addEventListener('input', function () {

@@ -383,6 +383,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $costingAction = (string)($_POST['costing_action'] ?? 'save_draft');
     $workflowAction = (string)($_POST['workflow_action'] ?? '');
     $scheduleResponseAction = (string)($_POST['schedule_response_action'] ?? '');
+    $evidenceAction = (string)($_POST['evidence_action'] ?? '');
     $workflowTargets = [
         'start' => 'Ongoing',
         'complete' => 'Completed',
@@ -397,6 +398,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid request. Please try again.';
     } elseif ($inspectionId <= 0 || !engineer_owns_inspection($conn, $inspectionId, $userId)) {
         $error = 'Inspection not found.';
+    } elseif ($evidenceAction === 'upload_photos') {
+        $allowedToEditEvidence = in_array($currentStatus, ['Ongoing', 'Completed'], true)
+            || ($currentStatus === 'Submitted' && $currentReviewStatus === 'Returned');
+        $uploadedPhotos = isset($_FILES['inspection_photos']) && is_array($_FILES['inspection_photos'])
+            ? array_values(array_filter(
+                inspection_evidence_uploaded_files($_FILES['inspection_photos']),
+                static fn(array $file): bool => (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE
+            ))
+            : [];
+        $savedPhotos = [];
+        $newEvidenceFiles = [];
+
+        if (!$isAjaxRequest) {
+            $error = 'Invalid photo upload request.';
+        } elseif (!$allowedToEditEvidence) {
+            $error = 'This inspection report cannot be changed right now.';
+        } elseif (!inspection_evidence_table_exists($conn)) {
+            $error = 'Inspection Evidence setup is not ready yet.';
+        } elseif (empty($uploadedPhotos)) {
+            $error = 'Select at least one photo.';
+        } else {
+            $countStmt = $conn->prepare(
+                "SELECT COUNT(*) AS photo_count
+                 FROM site_inspection_evidence
+                 WHERE inspection_id = ? AND evidence_type = 'photo'"
+            );
+            if (!$countStmt) {
+                $error = 'Unable to check saved inspection photos.';
+            } else {
+                $countStmt->bind_param('i', $inspectionId);
+                $countStmt->execute();
+                $savedCount = (int)($countStmt->get_result()->fetch_assoc()['photo_count'] ?? 0);
+                $countStmt->close();
+                if ($savedCount + count($uploadedPhotos) > 3) {
+                    $error = 'You can save up to 3 inspection photos only.';
+                }
+            }
+        }
+
+        $validatedPhotos = [];
+        if ($error === '') {
+            foreach ($uploadedPhotos as $uploadedPhoto) {
+                $validatedPhoto = inspection_evidence_validate_photo($uploadedPhoto);
+                if (($validatedPhoto['error'] ?? '') !== '') {
+                    $error = (string)$validatedPhoto['error'];
+                    break;
+                }
+                $validatedPhotos[] = $validatedPhoto;
+            }
+        }
+
+        if ($error === '') {
+            $conn->begin_transaction();
+            try {
+                $insertPhotoStmt = $conn->prepare(
+                    "INSERT INTO site_inspection_evidence
+                     (inspection_id, evidence_type, file_path, original_name, mime_type, file_size, uploaded_by)
+                     VALUES (?, 'photo', ?, ?, ?, ?, ?)"
+                );
+                if (!$insertPhotoStmt) {
+                    throw new RuntimeException('Unable to save inspection photos.');
+                }
+
+                foreach ($validatedPhotos as $validatedPhoto) {
+                    $storedPhoto = inspection_evidence_store_photo($validatedPhoto, $inspectionId);
+                    if (($storedPhoto['error'] ?? '') !== '') {
+                        throw new RuntimeException((string)$storedPhoto['error']);
+                    }
+                    $newEvidenceFiles[] = (string)$storedPhoto['absolute_path'];
+                    $fileName = (string)$storedPhoto['file_name'];
+                    $originalName = (string)$validatedPhoto['original_name'];
+                    $mimeType = (string)$validatedPhoto['mime_type'];
+                    $fileSize = (int)$validatedPhoto['file_size'];
+                    $insertPhotoStmt->bind_param('isssii', $inspectionId, $fileName, $originalName, $mimeType, $fileSize, $userId);
+                    $insertPhotoStmt->execute();
+                    $savedPhotos[] = [
+                        'name' => $originalName,
+                        'url' => inspection_evidence_public_path($fileName),
+                    ];
+                }
+                $conn->commit();
+                $message = count($savedPhotos) === 1 ? 'Photo saved as draft.' : 'Photos saved as draft.';
+            } catch (Throwable $exception) {
+                $conn->rollback();
+                foreach ($newEvidenceFiles as $newEvidenceFile) {
+                    if (is_file($newEvidenceFile)) {
+                        @unlink($newEvidenceFile);
+                    }
+                }
+                $error = 'Unable to save the photo. Please try again.';
+            }
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'success' => $error === '',
+            'message' => $error !== '' ? $error : $message,
+            'inspection_id' => $inspectionId,
+            'photos' => $savedPhotos,
+        ]);
+        exit;
     } elseif ($scheduleResponseAction === 'request_reschedule') {
         $reason = trim((string)($_POST['schedule_response_note'] ?? ''));
         $preferredDate = trim((string)($_POST['schedule_preferred_date'] ?? ''));
@@ -1343,7 +1445,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-5',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-6',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -2109,7 +2211,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-7',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-8',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

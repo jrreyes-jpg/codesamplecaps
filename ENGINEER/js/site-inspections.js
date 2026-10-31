@@ -27,6 +27,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }).format(Number(raw));
     };
 
+    // Lagyan agad ng comma habang nagta-type, pero panatilihin ang cursor.
+    const formatMoneyFieldWhileTyping = function (field) {
+        if (!field) return false;
+
+        const originalValue = field.value;
+        const originalCursor = field.selectionStart ?? originalValue.length;
+        const logicalCursor = originalValue.slice(0, originalCursor).replace(/,/g, '').length;
+        const cleanValue = originalValue.replace(/,/g, '').replace(/[^\d.]/g, '');
+        const parts = cleanValue.split('.');
+        const whole = parts.shift() || '';
+        const decimal = parts.join('').slice(0, 2);
+        const hasDecimalPoint = cleanValue.includes('.');
+        const normalizedWhole = whole === '' && hasDecimalPoint ? '0' : whole;
+        const normalizedRaw = `${normalizedWhole}${hasDecimalPoint ? `.${decimal}` : ''}`;
+        const formattedWhole = normalizedWhole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        const formattedValue = `${formattedWhole}${hasDecimalPoint ? `.${decimal}` : ''}`;
+
+        field.value = formattedValue;
+
+        let nextCursor = 0;
+        let logicalCount = 0;
+        while (nextCursor < formattedValue.length && logicalCount < logicalCursor) {
+            if (formattedValue[nextCursor] !== ',') logicalCount += 1;
+            nextCursor += 1;
+        }
+        field.setSelectionRange(nextCursor, nextCursor);
+
+        return originalValue.replace(/,/g, '') !== normalizedRaw;
+    };
+
     const normalizeCostType = function (type) {
         const value = String(type || '').trim().toLowerCase();
         const legacyTypes = {
@@ -828,22 +858,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (field.value !== value) field.value = value;
     };
 
-    const cleanUnitCostInput = function (field) {
-        if (!field) return false;
-
-        const originalValue = field.value;
-        const cleanValue = field.value.replace(/[^\d.]/g, '');
-        const parts = cleanValue.split('.');
-        const whole = parts.shift() || '';
-        const decimal = parts.join('').slice(0, 2);
-        const value = whole === '' && (parts.length > 0 || decimal !== '')
-            ? `0.${decimal}`
-            : `${whole}${parts.length > 0 ? `.${decimal}` : ''}`;
-
-        if (field.value !== value) field.value = value;
-        return originalValue !== value;
-    };
-
     const updateCostEntryNumbers = function (form) {
         form.querySelectorAll('.costing-row').forEach(function (row, index) {
             const number = row.querySelector('[data-costing-row-number]');
@@ -1312,17 +1326,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelectorAll('[data-costing-decimal]').forEach(function (field) {
-            if (field.name === 'unit_cost[]') {
-                field.addEventListener('focus', function () {
-                    field.value = moneyRawText(field.value);
-                });
-            }
             field.addEventListener('input', function () {
                 if (field.name === 'quantity[]') {
                     const unit = row.querySelector('select[name="unit[]"]')?.value || '';
                     cleanQuantityInput(field, unit);
                 } else if (field.name === 'unit_cost[]') {
-                    const removedInvalidText = cleanUnitCostInput(field);
+                    const removedInvalidText = formatMoneyFieldWhileTyping(field);
                     const value = field.value.trim();
                     clearFieldError(field);
                     if (removedInvalidText) {
@@ -1747,11 +1756,8 @@ document.addEventListener('DOMContentLoaded', function () {
         updateCostEntryNumbers(form);
 
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
-            field.addEventListener('focus', function () {
-                field.value = moneyRawText(field.value);
-            });
             field.addEventListener('input', function () {
-                const removedInvalidText = cleanUnitCostInput(field);
+                const removedInvalidText = formatMoneyFieldWhileTyping(field);
                 const amount = field.value.trim();
                 clearFieldError(field);
                 if (removedInvalidText) {

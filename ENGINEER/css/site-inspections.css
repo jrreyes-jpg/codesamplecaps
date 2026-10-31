@@ -612,7 +612,8 @@
     place-items: center;
     padding: 24px;
     background: rgba(15, 23, 42, 0.46);
-    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
 }
 
 .inspection-modal__panel {

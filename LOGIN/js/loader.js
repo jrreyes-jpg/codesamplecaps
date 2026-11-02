@@ -2,17 +2,29 @@
     "use strict";
 
     var loader = document.getElementById("pageLoader");
-    var startedAt = Date.now();
-    var minimumDisplayTime = 2000;
-    var maximumDisplayTime = 2200;
-    var fadeDuration = 420;
+    var shownAt = 0;
+    var showDelay = 350;
+    var minimumVisibleTime = 300;
+    var maximumDisplayTime = 8000;
+    var fadeDuration = 180;
+    var showTimer;
     var isHidden = false;
+    var isVisible = false;
 
     if (!loader) {
         return;
     }
 
-    document.body.classList.add("loader-lock");
+    function showLoader() {
+        if (isHidden) {
+            return;
+        }
+
+        isVisible = true;
+        shownAt = Date.now();
+        loader.classList.add("is-visible");
+        document.body.classList.add("loader-lock");
+    }
 
     function hideLoader() {
         if (isHidden) {
@@ -20,6 +32,8 @@
         }
 
         isHidden = true;
+        window.clearTimeout(showTimer);
+        loader.classList.remove("is-visible");
         loader.classList.add("is-hidden");
         document.body.classList.remove("loader-lock");
 
@@ -30,15 +44,14 @@
     }
 
     function scheduleHide() {
-        var elapsed = Date.now() - startedAt;
-        var remaining = Math.max(minimumDisplayTime - elapsed, 0);
+        var elapsed = isVisible ? Date.now() - shownAt : minimumVisibleTime;
+        var remaining = Math.max(minimumVisibleTime - elapsed, 0);
 
         window.setTimeout(hideLoader, remaining);
     }
 
-    window.addEventListener("load", function () {
-        scheduleHide();
-    });
+    showTimer = window.setTimeout(showLoader, showDelay);
+    window.addEventListener("load", scheduleHide, { once: true });
 
     window.setTimeout(hideLoader, maximumDisplayTime);
 })();

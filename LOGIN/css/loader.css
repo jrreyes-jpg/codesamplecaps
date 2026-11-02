@@ -24,10 +24,17 @@
         linear-gradient(118deg, rgba(255, 255, 255, 0.86), rgba(226, 247, 247, 0.7) 42%, rgba(242, 251, 245, 0.88)),
         var(--loader-bg);
     backdrop-filter: blur(14px) saturate(120%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    isolation: isolate;
+    transition: opacity 180ms var(--loader-ease);
+}
+
+.page-loader.is-visible {
     opacity: 1;
     visibility: visible;
-    isolation: isolate;
-    transition: opacity 760ms var(--loader-ease);
+    pointer-events: auto;
 }
 
 .page-loader::before,
@@ -61,8 +68,8 @@
     visibility: hidden;
     pointer-events: none;
     transition:
-        opacity 760ms var(--loader-ease),
-        visibility 0s linear 760ms;
+        opacity 180ms var(--loader-ease),
+        visibility 0s linear 180ms;
 }
 
 .page-loader__content {

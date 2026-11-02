@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../config/service_location_dataset.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
 
-service_location_dataset_maybe_refresh();
+// Gamitin ang saved location data para mabilis ang page.
 $serviceHierarchy = service_area_hierarchy();
 $serviceBarangays = service_barangays_hierarchy($conn);
 $preferredInspectionDateRange = inquiry_preferred_date_range();
@@ -26,7 +26,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Edge Automation Technology Services, Co. - Professional engineering automation and technology solutions">
     <title>Edge Automation Technology Services, Co.</title>
-    <link rel="stylesheet" href="../css/loader.css">
+    <link rel="stylesheet" href="../css/loader.css?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../css/loader.css')); ?>">
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
     <link rel="stylesheet" href="../css/public-confirmation.css">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
@@ -729,7 +729,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
         window.edgeServiceBarangays = <?php echo json_encode($serviceBarangays, JSON_UNESCAPED_SLASHES); ?>;
         window.edgeInquiryStatus = <?php echo json_encode((string)($_GET['inquiry'] ?? ''), JSON_UNESCAPED_SLASHES); ?>;
     </script>
-    <script src="../js/loader.js" defer></script>
+    <script src="../js/loader.js?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../js/loader.js')); ?>" defer></script>
     <script src="../js/public-confirmation.js" defer></script>
     <script src="../js/index.js?v=<?php echo rawurlencode($inquiryFormScriptVersion); ?>" defer></script>
 

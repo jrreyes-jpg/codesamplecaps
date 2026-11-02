@@ -323,7 +323,6 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="inspection-monitor-modal__actions">',
         '<span data-inspection-monitor-refreshed>Not refreshed yet.</span>',
         '<button type="button" class="btn-secondary" data-inspection-monitor-refresh>Refresh</button>',
-        '<button type="button" class="btn-primary" data-inspection-monitor-close>Close</button>',
         '</div>',
         '</div>',
     ].join('');
@@ -331,15 +330,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const inspectionMonitorContent = inspectionMonitorModal.querySelector('[data-inspection-monitor-content]');
     const inspectionMonitorFeedback = inspectionMonitorModal.querySelector('[data-inspection-monitor-feedback]');
+    const inspectionMonitorActions = inspectionMonitorModal.querySelector('.inspection-monitor-modal__actions');
     const inspectionMonitorRefresh = inspectionMonitorModal.querySelector('[data-inspection-monitor-refresh]');
     const inspectionMonitorRefreshed = inspectionMonitorModal.querySelector('[data-inspection-monitor-refreshed]');
     let inspectionMonitorId = 0;
     let inspectionMonitorTrigger = null;
     let inspectionMonitorRefreshing = false;
 
-    const appendMonitorDetail = function (grid, label, value) {
+    const appendMonitorDetail = function (grid, label, value, stateClass) {
         const item = document.createElement('div');
         item.className = 'inspection-monitor-modal__detail';
+        if (stateClass) item.classList.add(stateClass);
         const title = document.createElement('span');
         const text = document.createElement('strong');
         title.textContent = label;
@@ -355,13 +356,13 @@ document.addEventListener('DOMContentLoaded', function () {
         summary.className = 'inspection-monitor-modal__grid';
         appendMonitorDetail(summary, 'Assigned Engineer', inspection.engineer);
         appendMonitorDetail(summary, 'Official Schedule', inspection.scheduled_at);
-        if (inspection.started_at && inspection.started_at !== 'Not set') {
-            appendMonitorDetail(summary, 'Actual Started', inspection.started_at);
-        }
         if (inspection.status === 'Submitted') {
-            appendMonitorDetail(summary, 'Current Status', 'Submitted — Waiting for Admin Review');
-            appendMonitorDetail(summary, 'Submitted At', inspection.submitted_at);
+            appendMonitorDetail(summary, 'Current Status', 'Submitted — Waiting for Admin Review', 'is-pending-review');
         }
+        const isSubmitted = inspection.status === 'Submitted';
+        inspectionMonitorActions.hidden = isSubmitted;
+        inspectionMonitorRefresh.hidden = isSubmitted;
+        inspectionMonitorRefreshed.hidden = isSubmitted;
         inspectionMonitorContent.appendChild(summary);
 
         const inquiryModal = inspectionMonitorTrigger?.closest('.inquiry-modal');
@@ -411,20 +412,6 @@ document.addEventListener('DOMContentLoaded', function () {
         timeline.append(timelineTitle, timelineList);
         inspectionMonitorContent.appendChild(timeline);
 
-        if (inspection.report_available) {
-            const reportToggle = document.createElement('button');
-            reportToggle.type = 'button';
-            reportToggle.className = 'btn-secondary inspection-monitor-modal__report-toggle';
-            reportToggle.textContent = 'View Submitted Report';
-            reportToggle.addEventListener('click', function () {
-                closeInspectionMonitor();
-                activateModalTab(inquiryModal, 'inspection');
-                window.requestAnimationFrame(function () {
-                    inquiryModal?.querySelector('.submitted-inspection-report')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-            });
-            inspectionMonitorContent.appendChild(reportToggle);
-        }
     };
 
     const setInspectionMonitorFeedback = function (message, isError) {

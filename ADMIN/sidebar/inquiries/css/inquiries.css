@@ -3404,6 +3404,16 @@ body.inquiry-modal-open {
     margin-top: 0;
 }
 
+.inspection-monitor-modal__detail.is-pending-review {
+    border-color: #fdba74;
+    background: #fff7ed;
+}
+
+.inspection-monitor-modal__detail.is-pending-review span,
+.inspection-monitor-modal__detail.is-pending-review strong {
+    color: #9a3412;
+}
+
 .inspection-monitor-modal__detail span,
 .inspection-monitor-modal__hold span,
 .inspection-monitor-modal__timeline span {
@@ -3522,12 +3532,6 @@ body.inquiry-modal-open {
     color: #1d4ed8;
 }
 
-.inspection-monitor-modal__report-toggle {
-    display: block;
-    width: fit-content;
-    margin: 14px 0 0 auto;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .inspection-monitor-modal__timeline .is-current {
         animation: none;
@@ -3549,9 +3553,6 @@ body.inquiry-modal-open {
         grid-template-columns: 1fr;
     }
 
-    .inspection-monitor-modal__report-toggle {
-        width: 100%;
-    }
 
     .inspection-monitor-modal__actions > :is(button, span) {
         width: 100%;

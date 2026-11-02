@@ -580,7 +580,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                         'status' => $monitorPhase,
                         'scheduled_at' => site_inspection_format_date($inspection['scheduled_at'] ?? null),
                         'started_at' => site_inspection_format_datetime($inspection['started_at'] ?? null),
-                        'submitted_at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null),
                         'hold_reason' => (string)($inspection['status'] ?? '') === 'On Hold'
                             ? (string)($inspection['hold_reason'] ?? '')
                             : '',
@@ -590,7 +589,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                             ['label' => 'Ongoing', 'at' => site_inspection_format_datetime($inspection['started_at'] ?? null)],
                             ['label' => 'Submitted', 'at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null)],
                         ],
-                        'report_available' => !empty($inspection['submitted_at']),
                     ],
                 ];
             }
@@ -2339,7 +2337,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261102-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261102-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
@@ -2347,7 +2345,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-4',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];
 include __DIR__ . '/../../../layout/header.php';

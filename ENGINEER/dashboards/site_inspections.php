@@ -1508,6 +1508,7 @@ foreach ($inspections as $filterInspection) {
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
     '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-6',
+    '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 require __DIR__ . '/../layout/header.php';
@@ -1931,7 +1932,7 @@ require __DIR__ . '/../layout/header.php';
                                 </label>
                             </div>
 
-                            <section class="inspection-evidence" data-inspection-evidence data-saved-photo-count="<?php echo count($inspectionPhotos); ?>">
+                            <section class="inspection-evidence" data-inspection-evidence data-inspection-evidence-gallery data-saved-photo-count="<?php echo count($inspectionPhotos); ?>">
                                 <div class="inspection-evidence__head">
                                     <div>
                                         <strong>Inspection Evidence <span>(Optional)</span></strong>
@@ -1943,7 +1944,7 @@ require __DIR__ . '/../layout/header.php';
                                     <div class="inspection-evidence__saved" aria-label="Saved inspection photos">
                                         <?php foreach ($inspectionPhotos as $inspectionPhoto): ?>
                                             <figure data-saved-evidence-id="<?php echo (int)$inspectionPhoto['id']; ?>">
-                                                <img src="<?php echo htmlspecialchars(inspection_evidence_public_path((string)$inspectionPhoto['file_path']), ENT_QUOTES, 'UTF-8'); ?>" alt="Saved inspection evidence">
+                                                <img src="<?php echo htmlspecialchars(inspection_evidence_public_path((string)$inspectionPhoto['file_path']), ENT_QUOTES, 'UTF-8'); ?>" alt="Saved inspection evidence" data-inspection-photo-lightbox data-photo-name="<?php echo htmlspecialchars((string)($inspectionPhoto['original_name'] ?: 'Inspection photo'), ENT_QUOTES, 'UTF-8'); ?>" role="button" tabindex="0">
                                                 <figcaption><?php echo htmlspecialchars((string)($inspectionPhoto['original_name'] ?: 'Inspection photo'), ENT_QUOTES, 'UTF-8'); ?></figcaption>
                                                 <?php if ($canEditCosting): ?>
                                                     <button type="button" data-remove-saved-photo>Remove</button>
@@ -2282,6 +2283,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-11',
 ];
 require __DIR__ . '/../layout/footer.php';

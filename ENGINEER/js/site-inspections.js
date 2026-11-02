@@ -1521,6 +1521,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 previewUrls.push(previewUrl);
                 image.src = previewUrl;
                 image.alt = 'Selected inspection photo';
+                image.dataset.inspectionPhotoLightbox = '';
+                image.dataset.photoName = file.name;
+                image.setAttribute('role', 'button');
+                image.tabIndex = 0;
                 caption.textContent = file.name;
                 remove.type = 'button';
                 remove.textContent = 'Remove';
@@ -1554,6 +1558,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.dataset.savedEvidenceId = String(photo.id || '');
                 image.src = photo.url;
                 image.alt = 'Saved inspection evidence';
+                image.dataset.inspectionPhotoLightbox = '';
+                image.dataset.photoName = photo.name || 'Inspection photo';
+                image.setAttribute('role', 'button');
+                image.tabIndex = 0;
                 caption.textContent = photo.name || 'Inspection photo';
                 remove.type = 'button';
                 remove.dataset.removeSavedPhoto = '';

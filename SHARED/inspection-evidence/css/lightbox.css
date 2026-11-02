@@ -1,0 +1,113 @@
+.inspection-photo-lightbox[hidden] {
+    display: none;
+}
+
+.inspection-photo-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.88);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.inspection-photo-lightbox__panel {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+    width: min(1100px, calc(100vw - 48px));
+    height: min(88vh, 820px);
+}
+
+.inspection-photo-lightbox__image {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: contain;
+}
+
+.inspection-photo-lightbox__caption {
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.inspection-photo-lightbox__close,
+.inspection-photo-lightbox__nav {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.75);
+    color: #ffffff;
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.inspection-photo-lightbox__close {
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    font-size: 1.5rem;
+}
+
+.inspection-photo-lightbox__nav {
+    top: 50%;
+    width: 46px;
+    height: 46px;
+    transform: translateY(-50%);
+    font-size: 1.7rem;
+}
+
+.inspection-photo-lightbox__nav--previous {
+    left: 0;
+}
+
+.inspection-photo-lightbox__nav--next {
+    right: 0;
+}
+
+.inspection-photo-lightbox__nav[hidden] {
+    display: none;
+}
+
+.inspection-photo-lightbox button:hover,
+.inspection-photo-lightbox button:focus-visible {
+    background: #166534;
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+[data-inspection-photo-lightbox] {
+    cursor: zoom-in;
+}
+
+@media (max-width: 700px) {
+    .inspection-photo-lightbox {
+        padding: 14px;
+    }
+
+    .inspection-photo-lightbox__panel {
+        width: calc(100vw - 28px);
+        height: 86vh;
+    }
+
+    .inspection-photo-lightbox__close {
+        width: 40px;
+        height: 40px;
+    }
+
+    .inspection-photo-lightbox__nav {
+        width: 40px;
+        height: 40px;
+    }
+}

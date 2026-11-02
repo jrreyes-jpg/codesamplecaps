@@ -2367,10 +2367,12 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261030-3',
+    '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261030-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];

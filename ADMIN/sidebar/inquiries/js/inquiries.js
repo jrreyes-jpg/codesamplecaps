@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="inquiry-confirm__panel inspection-evidence-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionEvidenceTitle">',
         '<h3 id="inspectionEvidenceTitle">Inspection Evidence</h3>',
         '<p>Photos and Google Drive evidence submitted by the Engineer.</p>',
-        '<div class="inspection-evidence-grid" data-inspection-evidence-grid></div>',
+        '<div class="inspection-evidence-grid" data-inspection-evidence-grid data-inspection-evidence-gallery></div>',
         '<div class="inspection-evidence-empty" data-inspection-evidence-empty hidden>No uploaded photos.</div>',
         '<a class="inspection-evidence-drive" data-inspection-evidence-drive target="_blank" rel="noopener noreferrer" hidden>Open Google Drive</a>',
         '<div class="inquiry-confirm__actions">',
@@ -237,6 +237,10 @@ document.addEventListener('DOMContentLoaded', function () {
             image.src = photo.url || '';
             image.alt = photo.name || 'Inspection photo';
             image.loading = 'lazy';
+            image.dataset.inspectionPhotoLightbox = '';
+            image.dataset.photoName = photo.name || 'Inspection photo';
+            image.setAttribute('role', 'button');
+            image.tabIndex = 0;
             caption.textContent = photo.name || 'Inspection photo';
             figure.append(image, caption);
             grid?.appendChild(figure);

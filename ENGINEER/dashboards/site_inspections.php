@@ -1521,20 +1521,6 @@ if (inspection_evidence_table_exists($conn)) {
     }
 }
 
-$costingVersionsByInspection = [];
-if (site_inspection_costing_versions_ready($conn)) {
-    $versionResult = $conn->query(
-        'SELECT inspection_id, version_no, total_cost, review_status, admin_remarks, submitted_at, reviewed_at
-         FROM site_inspection_costing_versions
-         ORDER BY inspection_id ASC, version_no DESC'
-    );
-    if ($versionResult) {
-        while ($versionRow = $versionResult->fetch_assoc()) {
-            $costingVersionsByInspection[(int)$versionRow['inspection_id']][] = $versionRow;
-        }
-    }
-}
-
 $initialQuotationsByInquiry = [];
 $initialQuotationItemsByInquiry = [];
 if (!empty($inspections)
@@ -1588,7 +1574,7 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261102-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261102-2',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -1634,10 +1620,6 @@ require __DIR__ . '/../layout/header.php';
                     $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
                     $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
-                    $costingVersions = $costingVersionsByInspection[$inspectionId] ?? [];
-                    $currentCostingVersion = (int)($costingVersions[0]['version_no'] ?? 0);
-                    $showCostingVersionLabel = count($costingVersions) > 1
-                        || (string)($costingVersions[0]['review_status'] ?? '') === 'Returned';
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $inspectionEvidence = $evidenceByInspection[$inspectionId] ?? [];
                     $inspectionPhotos = array_values(array_filter(
@@ -1991,22 +1973,8 @@ require __DIR__ . '/../layout/header.php';
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
-                                <strong><?php echo $canEditCosting ? 'Inspection Report &amp; Cost Estimate' : 'Submitted Inspection Report &amp; Cost Estimate'; ?><?php echo $showCostingVersionLabel && $currentCostingVersion > 0 ? ' V' . $currentCostingVersion : ''; ?></strong>
+                                <strong><?php echo $canEditCosting ? 'Inspection Report &amp; Cost Estimate' : 'Submitted Inspection Report &amp; Cost Estimate'; ?></strong>
                             </div>
-                            <?php if (count($costingVersions) > 1): ?>
-                                <div class="costing-version-history" aria-label="Costing version history">
-                                    <strong>Version History</strong>
-                                    <div class="costing-version-history__list">
-                                        <?php foreach ($costingVersions as $costingVersion): ?>
-                                            <?php $versionStatusClass = strtolower((string)$costingVersion['review_status']); ?>
-                                            <div class="costing-version-history__item is-<?php echo htmlspecialchars($versionStatusClass, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <span>V<?php echo (int)$costingVersion['version_no']; ?></span>
-                                                <small><?php echo htmlspecialchars((string)$costingVersion['review_status'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars(site_inspection_format_datetime($costingVersion['submitted_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
                             <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isLegacyCompletedPending): ?>
                                 <div class="inspection-submit-note inspection-submit-note--waiting">This costing is not yet sent. Review it, then submit it to Admin.</div>

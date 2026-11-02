@@ -9,71 +9,6 @@
     gap: 14px;
 }
 
-.inspection-version-history {
-    margin: 12px 0;
-    padding: 12px;
-    border: 1px solid #d9e2ec;
-    border-radius: 12px;
-    background: #f8fafc;
-}
-
-.inspection-version-history__list {
-    display: grid;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.inspection-version-history__item {
-    display: grid;
-    grid-template-columns: auto minmax(140px, auto);
-    align-items: center;
-    gap: 4px 12px;
-    padding: 9px 10px;
-    border-left: 4px solid #94a3b8;
-    border-radius: 8px;
-    background: #fff;
-}
-
-.inspection-version-history__item > div {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.inspection-version-history__item.is-pending {
-    border-left-color: #2563eb;
-}
-
-.inspection-version-history__item.is-returned {
-    border-left-color: #f59e0b;
-}
-
-.inspection-version-history__item.is-approved {
-    border-left-color: #16a34a;
-}
-
-.inspection-version-history__item small {
-    color: #64748b;
-    text-align: right;
-}
-
-.inspection-version-history__item p {
-    grid-column: 1 / -1;
-    margin: 3px 0 0;
-    color: #92400e;
-    overflow-wrap: anywhere;
-}
-
-@media (max-width: 640px) {
-    .inspection-version-history__item {
-        grid-template-columns: 1fr;
-    }
-
-    .inspection-version-history__item small {
-        text-align: left;
-    }
-}
-
 /* Direct quotation page para quotation muna bago inspection. */
 .quotation-create-shell {
     max-width: 1440px;
@@ -3456,8 +3391,7 @@ body.inquiry-modal-open {
 
 .inspection-monitor-modal__detail,
 .inspection-monitor-modal__hold,
-.inspection-monitor-modal__timeline,
-.inspection-monitor-modal__report {
+.inspection-monitor-modal__timeline {
     min-width: 0;
     margin-top: 14px;
     padding: 13px;
@@ -3479,9 +3413,7 @@ body.inquiry-modal-open {
 }
 
 .inspection-monitor-modal__detail strong,
-.inspection-monitor-modal__hold p,
-.inspection-monitor-modal__report p,
-.inspection-monitor-modal__materials div {
+.inspection-monitor-modal__hold p {
     overflow-wrap: anywhere;
 }
 
@@ -3590,34 +3522,16 @@ body.inquiry-modal-open {
     color: #1d4ed8;
 }
 
-.inspection-monitor-modal__materials {
-    display: grid;
-    gap: 7px;
-    margin-top: 10px;
-}
-
 .inspection-monitor-modal__report-toggle {
     display: block;
     width: fit-content;
     margin: 14px 0 0 auto;
 }
 
-.inspection-monitor-modal__report[hidden] {
-    display: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .inspection-monitor-modal__timeline .is-current {
         animation: none;
     }
-}
-
-.inspection-monitor-modal__materials div {
-    padding: 9px;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #334155;
-    font-size: 0.86rem;
 }
 
 @media (max-width: 640px) {

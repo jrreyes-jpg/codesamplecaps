@@ -358,6 +358,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (inspection.started_at && inspection.started_at !== 'Not set') {
             appendMonitorDetail(summary, 'Actual Started', inspection.started_at);
         }
+        if (inspection.status === 'Submitted') {
+            appendMonitorDetail(summary, 'Current Status', 'Submitted — Waiting for Admin Review');
+            appendMonitorDetail(summary, 'Submitted At', inspection.submitted_at);
+        }
         inspectionMonitorContent.appendChild(summary);
 
         const inquiryModal = inspectionMonitorTrigger?.closest('.inquiry-modal');
@@ -407,45 +411,19 @@ document.addEventListener('DOMContentLoaded', function () {
         timeline.append(timelineTitle, timelineList);
         inspectionMonitorContent.appendChild(timeline);
 
-        if (inspection.report) {
+        if (inspection.report_available) {
             const reportToggle = document.createElement('button');
             reportToggle.type = 'button';
             reportToggle.className = 'btn-secondary inspection-monitor-modal__report-toggle';
-            reportToggle.textContent = 'View Report';
-
-            const report = document.createElement('section');
-            report.className = 'inspection-monitor-modal__report';
-            report.id = 'inspectionMonitorReport';
-            report.hidden = true;
-            const reportTitle = document.createElement('strong');
-            reportTitle.textContent = 'Submitted Report';
-            report.appendChild(reportTitle);
-            const findings = document.createElement('p');
-            findings.textContent = inspection.report.findings || 'No findings provided.';
-            report.appendChild(findings);
-            const materials = inspection.report.materials || [];
-            if (materials.length) {
-                const list = document.createElement('div');
-                list.className = 'inspection-monitor-modal__materials';
-                materials.forEach(function (item) {
-                    const row = document.createElement('div');
-                    row.textContent = [item.type, item.name, item.quantity + ' ' + item.unit, item.remarks || 'No remarks'].join(' | ');
-                    list.appendChild(row);
-                });
-                report.appendChild(list);
-            } else {
-                const empty = document.createElement('p');
-                empty.textContent = 'No submitted material recommendations.';
-                report.appendChild(empty);
-            }
+            reportToggle.textContent = 'View Submitted Report';
             reportToggle.addEventListener('click', function () {
-                report.hidden = !report.hidden;
-                reportToggle.textContent = report.hidden ? 'View Report' : 'Hide Report';
-                reportToggle.setAttribute('aria-expanded', String(!report.hidden));
+                closeInspectionMonitor();
+                activateModalTab(inquiryModal, 'inspection');
+                window.requestAnimationFrame(function () {
+                    inquiryModal?.querySelector('.submitted-inspection-report')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
             });
-            reportToggle.setAttribute('aria-expanded', 'false');
-            reportToggle.setAttribute('aria-controls', report.id);
-            inspectionMonitorContent.append(reportToggle, report);
+            inspectionMonitorContent.appendChild(reportToggle);
         }
     };
 

@@ -556,7 +556,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
         $stmt = $conn->prepare(
             "SELECT si.id, si.status, si.scheduled_at, si.created_at, si.acknowledged_at,
                     si.started_at, {$holdSelect} si.completed_at, si.submitted_at, si.updated_at,
-                    si.engineer_findings, si.risk_notes, si.client_requests, u.full_name AS engineer_name
+                    u.full_name AS engineer_name
              FROM site_inspections si
              INNER JOIN users u ON u.id = si.engineer_id
              WHERE si.id = ?
@@ -573,34 +573,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                     'Ongoing', 'On Hold', 'Completed' => 'Ongoing',
                     default => 'Assigned',
                 };
-                $report = null;
-                if (!empty($inspection['submitted_at'])) {
-                    $costStmt = $conn->prepare(
-                        'SELECT item_type, item_name, quantity, unit, notes
-                         FROM site_inspection_cost_items
-                         WHERE inspection_id = ?
-                         ORDER BY id ASC'
-                    );
-                    $items = [];
-                    if ($costStmt) {
-                        $costStmt->bind_param('i', $inspectionId);
-                        $costStmt->execute();
-                        $items = $costStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                    }
-                    $report = [
-                        'findings' => (string)($inspection['engineer_findings'] ?? ''),
-                        'risk_notes' => (string)($inspection['risk_notes'] ?? ''),
-                        'client_requests' => (string)($inspection['client_requests'] ?? ''),
-                        'materials' => array_map(static fn(array $item): array => [
-                            'type' => inquiry_quote_item_type_label((string)($item['item_type'] ?? '')),
-                            'name' => (string)($item['item_name'] ?? ''),
-                            'quantity' => rtrim(rtrim(number_format((float)($item['quantity'] ?? 0), 2), '0'), '.'),
-                            'unit' => (string)($item['unit'] ?? ''),
-                            'remarks' => (string)($item['notes'] ?? ''),
-                        ], $items),
-                    ];
-                }
-
                 $response = [
                     'success' => true,
                     'inspection' => [
@@ -608,7 +580,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                         'status' => $monitorPhase,
                         'scheduled_at' => site_inspection_format_date($inspection['scheduled_at'] ?? null),
                         'started_at' => site_inspection_format_datetime($inspection['started_at'] ?? null),
-                        'latest_activity' => site_inspection_format_datetime($inspection['updated_at'] ?? null),
+                        'submitted_at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null),
                         'hold_reason' => (string)($inspection['status'] ?? '') === 'On Hold'
                             ? (string)($inspection['hold_reason'] ?? '')
                             : '',
@@ -618,7 +590,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'monitor
                             ['label' => 'Ongoing', 'at' => site_inspection_format_datetime($inspection['started_at'] ?? null)],
                             ['label' => 'Submitted', 'at' => site_inspection_format_datetime($inspection['submitted_at'] ?? null)],
                         ],
-                        'report' => $report,
+                        'report_available' => !empty($inspection['submitted_at']),
                     ],
                 ];
             }
@@ -2206,20 +2178,6 @@ if (inspection_evidence_table_exists($conn)) {
     }
 }
 
-$costingVersionsByInspection = [];
-if (site_inspection_costing_versions_ready($conn)) {
-    $costingVersionResult = $conn->query(
-        'SELECT inspection_id, version_no, total_cost, review_status, admin_remarks, submitted_at, reviewed_at
-         FROM site_inspection_costing_versions
-         ORDER BY inspection_id ASC, version_no DESC'
-    );
-    if ($costingVersionResult) {
-        while ($costingVersion = $costingVersionResult->fetch_assoc()) {
-            $costingVersionsByInspection[(int)$costingVersion['inspection_id']][] = $costingVersion;
-        }
-    }
-}
-
 $costingReviewByInquiry = [];
 $costingReviewResult = $conn->query(
     "SELECT
@@ -2381,7 +2339,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261030-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
@@ -2389,7 +2347,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2501,10 +2459,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $latestInspectionEvidence = $costingReview ? ($inspectionEvidenceByInspection[(int)$costingReview['id']] ?? []) : []; ?>
-                    <?php $costingVersions = $costingReview ? ($costingVersionsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
-                    <?php $currentCostingVersion = (int)($costingVersions[0]['version_no'] ?? 0); ?>
-                    <?php $showCostingVersionLabel = count($costingVersions) > 1
-                        || (string)($costingVersions[0]['review_status'] ?? '') === 'Returned'; ?>
                     <?php
                         $outOfStockInspectionItems = [];
                         foreach ($latestCostItems as $latestCostItem) {
@@ -2838,7 +2792,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <section class="submitted-inspection-report">
                                                 <div class="submitted-inspection-report__head">
                                                     <div>
-                                                    <span>Submitted Inspection Costing<?php echo $showCostingVersionLabel && $currentCostingVersion > 0 ? ' V' . $currentCostingVersion : ''; ?></span>
+                                                    <span>Submitted Inspection Costing</span>
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
@@ -2847,26 +2801,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                 </div>
 
-                                                <?php if (count($costingVersions) > 1): ?>
-                                                    <div class="inspection-version-history" aria-label="Costing version history">
-                                                        <strong>Version History</strong>
-                                                        <div class="inspection-version-history__list">
-                                                            <?php foreach ($costingVersions as $costingVersion): ?>
-                                                                <?php $versionStatusClass = strtolower((string)$costingVersion['review_status']); ?>
-                                                                <div class="inspection-version-history__item is-<?php echo htmlspecialchars($versionStatusClass, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <div>
-                                                                        <strong>V<?php echo (int)$costingVersion['version_no']; ?></strong>
-                                                                        <span><?php echo htmlspecialchars((string)$costingVersion['review_status'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                                    </div>
-                                                                    <small><?php echo htmlspecialchars(inquiry_center_format_datetime($costingVersion['submitted_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></small>
-                                                                    <?php if (trim((string)($costingVersion['admin_remarks'] ?? '')) !== ''): ?>
-                                                                        <p><?php echo nl2br(htmlspecialchars((string)$costingVersion['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            <?php endforeach; ?>
-                                                        </div>
-                                                    </div>
-                                                <?php endif; ?>
 
                                                 <div class="inquiry-details-grid submitted-inspection-report__details">
                                                     <div class="inquiry-detail inquiry-detail--wide">

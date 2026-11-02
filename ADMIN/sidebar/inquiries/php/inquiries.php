@@ -1261,7 +1261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             try {
                 $reviewStmt = $conn->prepare(
-                    'SELECT status, admin_review_status, admin_remarks, submitted_at, engineer_findings
+                    'SELECT status, engineer_id, admin_review_status, admin_remarks, submitted_at, engineer_findings
                      FROM site_inspections
                      WHERE id = ? AND inquiry_id = ?
                      LIMIT 1
@@ -1347,6 +1347,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $remarksToStore,
                     $adminId
                 );
+
+                if ($targetReviewStatus === 'Returned') {
+                    $engineerId = (int)($inspectionBeforeReview['engineer_id'] ?? 0);
+                    user_notifications_create_if_missing(
+                        $conn,
+                        $engineerId,
+                        'inspection_returned_for_revision',
+                        $inspectionId,
+                        'Inspection Returned for Revision',
+                        'Admin returned your inspection report. Open it to view the reason.',
+                        '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $inspectionId,
+                        'inspection_returned:' . $inspectionId . ':' . hash('sha256', (string)($inspectionBeforeReview['submitted_at'] ?? '') . '|' . $remarksToStore)
+                    );
+                }
 
                 audit_log_event(
                     $conn,
@@ -2365,6 +2379,7 @@ $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261030-3',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
@@ -2372,8 +2387,9 @@ $adminCssFiles = [
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261030-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];
 include __DIR__ . '/../../../layout/header.php';

@@ -215,18 +215,26 @@ document.addEventListener('DOMContentLoaded', function () {
         const submitButton = form.querySelector('[data-submit-costing]');
         if (submitButton) {
             const canSubmit = isCostingReadyForSubmit(form);
-            submitButton.disabled = false;
-            submitButton.classList.toggle('is-locked', !canSubmit);
-            submitButton.setAttribute('aria-disabled', canSubmit ? 'false' : 'true');
-            submitButton.title = canSubmit ? '' : 'Click to see the missing or invalid fields.';
+            const isReturnedRevision = form.dataset.returnedRevision === 'true';
+            const hasRevisionChange = !isReturnedRevision
+                || isDirty
+                || form.dataset.revisionHasSavedChanges === 'true';
+            submitButton.disabled = !hasRevisionChange;
+            submitButton.classList.toggle('is-locked', !canSubmit || !hasRevisionChange);
+            submitButton.setAttribute('aria-disabled', canSubmit && hasRevisionChange ? 'false' : 'true');
+            submitButton.title = !hasRevisionChange
+                ? 'Change the returned report before resubmitting.'
+                : (canSubmit ? '' : 'Click to see the missing or invalid fields.');
 
             const guidance = form.querySelector('[data-submit-guidance]');
             if (guidance) {
                 const missingItems = getCostingMissingItems(form);
-                guidance.classList.toggle('is-ready', canSubmit);
-                guidance.textContent = canSubmit
-                    ? 'Ready to submit to Admin.'
-                    : `Cannot submit yet. Check: ${missingItems.join(', ')}.`;
+                guidance.classList.toggle('is-ready', canSubmit && hasRevisionChange);
+                guidance.textContent = !hasRevisionChange
+                    ? 'Make at least one valid change before resubmitting to Admin.'
+                    : (canSubmit
+                        ? 'Ready to submit to Admin.'
+                        : `Cannot submit yet. Check: ${missingItems.join(', ')}.`);
             }
         }
 
@@ -2194,7 +2202,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const setInspectionSubmittingState = function (form, isSubmitting) {
         const modal = form.closest('.inspection-modal');
-        const loading = document.querySelector('[data-inspection-submit-loading]');
         const controls = modal?.querySelectorAll('button, input, select, textarea') || [];
 
         controls.forEach(function (control) {
@@ -2211,8 +2218,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         modal?.setAttribute('aria-busy', isSubmitting ? 'true' : 'false');
         document.body.classList.toggle('inspection-is-submitting', isSubmitting);
-        if (loading) {
-            loading.hidden = !isSubmitting;
+        if (isSubmitting) {
+            window.edgeActionLoading?.show({
+                title: 'Submitting inspection report...',
+                message: 'Please wait. Do not close this page.',
+            });
+        } else {
+            window.edgeActionLoading?.hide();
         }
     };
 
@@ -2836,6 +2848,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (html) {
                 const nextDocument = new DOMParser().parseFromString(html, 'text/html');
                 let scheduleWasUpdated = false;
+                let reportWasReturned = false;
 
                 inspectionPanel.querySelectorAll(':scope > [data-inspection-card-id]').forEach(function (currentCard) {
                     const inspectionId = currentCard.dataset.inspectionCardId || '';
@@ -2858,14 +2871,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (currentCard.dataset.inspectionSyncKey === nextCard.dataset.inspectionSyncKey) return;
 
                     const scheduleChanged = currentCard.dataset.inspectionScheduleKey !== nextCard.dataset.inspectionScheduleKey;
+                    const reviewChanged = currentCard.dataset.inspectionReviewKey !== nextCard.dataset.inspectionReviewKey;
+                    const wasReturned = reviewChanged && nextCard.dataset.inspectionReviewStatus === 'Returned';
                     const keepModalOpen = !currentCard.querySelector('.inspection-modal')?.hidden;
                     replaceInspectionCardSnapshot(currentCard, nextCard, keepModalOpen);
                     if (scheduleChanged) scheduleWasUpdated = true;
+                    if (wasReturned) reportWasReturned = true;
                 });
 
                 mergeAssignedInspectionCards(nextDocument);
                 if (scheduleWasUpdated && typeof window.showToast === 'function') {
                     window.showToast('Inspection schedule updated by Admin.', 'success', { duration: 5000 });
+                }
+                if (reportWasReturned && typeof window.showToast === 'function') {
+                    window.showToast('Admin returned the inspection report. Open it to view the reason.', 'warning', { duration: 7000 });
                 }
             })
             .catch(function () {

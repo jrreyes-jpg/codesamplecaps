@@ -321,6 +321,77 @@ function engineer_inspection_draft_is_unchanged(mysqli $conn, int $inspectionId,
     return true;
 }
 
+function engineer_inspection_matches_latest_submitted_version(
+    mysqli $conn,
+    int $inspectionId,
+    array $rows,
+    string $findings,
+    string $riskNotes,
+    string $clientRequests
+): bool {
+    if (!site_inspection_costing_versions_ready($conn)) {
+        return false;
+    }
+
+    $versionStmt = $conn->prepare(
+        'SELECT id, engineer_findings, risk_notes, client_requests
+         FROM site_inspection_costing_versions
+         WHERE inspection_id = ?
+         ORDER BY version_no DESC LIMIT 1'
+    );
+    if (!$versionStmt) {
+        return false;
+    }
+    $versionStmt->bind_param('i', $inspectionId);
+    $versionStmt->execute();
+    $version = $versionStmt->get_result()->fetch_assoc();
+    $versionStmt->close();
+    if (!$version) {
+        return false;
+    }
+
+    if (trim((string)($version['engineer_findings'] ?? '')) !== trim($findings)
+        || trim((string)($version['risk_notes'] ?? '')) !== trim($riskNotes)
+        || trim((string)($version['client_requests'] ?? '')) !== trim($clientRequests)) {
+        return false;
+    }
+
+    $itemsStmt = $conn->prepare(
+        'SELECT item_type, inventory_id, material_id, item_name, quantity, unit, unit_cost, notes
+         FROM site_inspection_costing_version_items
+         WHERE costing_version_id = ?
+         ORDER BY id ASC'
+    );
+    if (!$itemsStmt) {
+        return false;
+    }
+    $versionId = (int)$version['id'];
+    $itemsStmt->bind_param('i', $versionId);
+    $itemsStmt->execute();
+    $savedRows = $itemsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $itemsStmt->close();
+
+    if (count($savedRows) !== count($rows)) {
+        return false;
+    }
+
+    foreach ($rows as $index => $row) {
+        $saved = $savedRows[$index];
+        if ((string)$saved['item_type'] !== (string)$row['item_type']
+            || (int)($saved['inventory_id'] ?? 0) !== (int)($row['inventory_id'] ?? 0)
+            || (int)($saved['material_id'] ?? 0) !== (int)($row['material_id'] ?? 0)
+            || trim((string)$saved['item_name']) !== trim((string)$row['item_name'])
+            || trim((string)$saved['unit']) !== trim((string)$row['unit'])
+            || trim((string)($saved['notes'] ?? '')) !== trim((string)($row['notes'] ?? ''))
+            || abs((float)$saved['quantity'] - (float)$row['quantity']) > 0.000001
+            || abs((float)$saved['unit_cost'] - (float)$row['unit_cost']) > 0.000001) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function engineer_inspection_complete_site_address(array $inspection): string
 {
     $parts = [];
@@ -1049,6 +1120,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Total costing must be greater than 0 before submitting.';
             } elseif (!site_inspection_costing_versions_ready($conn)) {
                 $error = 'Costing version setup is not ready. Apply the required database migration.';
+            } elseif ($currentReviewStatus === 'Returned'
+                && engineer_inspection_matches_latest_submitted_version(
+                    $conn,
+                    $inspectionId,
+                    $rows,
+                    $engineerFindings,
+                    $riskNotes,
+                    $clientRequests
+                )) {
+                $error = 'Change the returned report or costing before resubmitting to Admin.';
             }
         }
 
@@ -1507,7 +1588,8 @@ foreach ($inspections as $filterInspection) {
 }
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261031-6',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261102-1',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
@@ -1600,6 +1682,15 @@ require __DIR__ . '/../layout/header.php';
                         : ($inspectionStatus === 'Submitted' ? 'Costing Submitted' : $inspectionStatus);
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $isReturnedForRevision = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned';
+                    $revisionHasSavedChanges = $isReturnedForRevision
+                        && !engineer_inspection_matches_latest_submitted_version(
+                            $conn,
+                            $inspectionId,
+                            $costItems,
+                            (string)($inspection['engineer_findings'] ?? ''),
+                            (string)($inspection['risk_notes'] ?? ''),
+                            (string)($inspection['client_requests'] ?? '')
+                        );
                     // Para sa dating completed report bago ang one-click submit flow.
                     $isLegacyCompletedPending = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Pending';
                     $isScheduleDateReached = engineer_inspection_schedule_date_is_reached($inspection['scheduled_at'] ?? null);
@@ -1691,8 +1782,13 @@ require __DIR__ . '/../layout/header.php';
                         $currentScheduleReason,
                         $visibleSiteNotes,
                     ]));
+                    $reviewSyncKey = hash('sha256', implode('|', [
+                        $adminReviewStatus,
+                        (string)($inspection['admin_reviewed_at'] ?? ''),
+                        (string)($inspection['admin_remarks'] ?? ''),
+                    ]));
                     ?>
-                    <article class="inspection-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>">
+                    <article class="inspection-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes, $reviewSyncKey])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-key="<?php echo htmlspecialchars($reviewSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inspection-card__head">
                             <div class="inspection-card__identity">
                                 <?php if ($unreadInspectionNotificationId > 0): ?>
@@ -1891,7 +1987,7 @@ require __DIR__ . '/../layout/header.php';
                                     </details>
                                 <?php endif; ?>
 
-                                <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form>
+                                <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form data-returned-revision="<?php echo $isReturnedForRevision ? 'true' : 'false'; ?>" data-revision-has-saved-changes="<?php echo $revisionHasSavedChanges ? 'true' : 'false'; ?>">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <div class="costing-head">
@@ -2271,20 +2367,14 @@ require __DIR__ . '/../layout/header.php';
             </div>
         </div>
 
-        <div class="inspection-submit-loading" data-inspection-submit-loading hidden role="status" aria-live="polite" aria-label="Submitting inspection report">
-            <div class="inspection-submit-loading__panel">
-                <img src="/codesamplecaps/IMAGES/edge.jpg" alt="" aria-hidden="true">
-                <strong>Submitting report...</strong>
-                <span>Please wait. Do not close this page.</span>
-            </div>
-        </div>
     </div>
 </main>
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261031-11',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261102-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

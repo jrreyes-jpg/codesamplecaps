@@ -2570,10 +2570,26 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form?.addEventListener('submit', function (event) {
+            if (form.dataset.submitting === '1') {
+                event.preventDefault();
+                return;
+            }
+
             if (!validateRemarks(true)) {
                 event.preventDefault();
                 remarks?.focus();
+                return;
             }
+
+            form.dataset.submitting = '1';
+            modal.setAttribute('aria-busy', 'true');
+            modal.querySelectorAll('button').forEach(function (control) {
+                control.disabled = true;
+            });
+            window.edgeActionLoading?.show({
+                title: 'Sending revision request...',
+                message: 'Please wait while the Engineer is notified.',
+            });
         });
     });
 

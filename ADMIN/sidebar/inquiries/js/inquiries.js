@@ -149,11 +149,6 @@ document.addEventListener('DOMContentLoaded', function () {
         '<button type="button" class="btn-secondary" data-inquiry-confirm-no>No</button>',
         '<button type="button" class="btn-primary" data-inquiry-confirm-yes>Yes</button>',
         '</div>',
-        '<div class="inquiry-confirm__loading" data-inquiry-confirm-loading hidden>',
-        '<img src="/codesamplecaps/IMAGES/edge.jpg" alt="" aria-hidden="true">',
-        '<strong>Creating quotation...</strong>',
-        '<span>Please wait.</span>',
-        '</div>',
         '</div>',
     ].join('');
     document.body.appendChild(confirmBox);
@@ -522,17 +517,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const showConfirm = function (form, message, details, labels = {}) {
         pendingConfirmForm = form;
         form.dataset.confirmationMode = labels.mode || 'submit';
-        confirmBox.classList.remove('is-loading');
         delete confirmBox.dataset.submitting;
         const titleBox = confirmBox.querySelector('#inquiryConfirmTitle');
         const messageBox = confirmBox.querySelector('[data-inquiry-confirm-message]');
         const detailsBox = confirmBox.querySelector('[data-inquiry-confirm-details]');
         const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
         const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
-        const loadingBox = confirmBox.querySelector('[data-inquiry-confirm-loading]');
         if (cancelButton) cancelButton.disabled = false;
         if (confirmButton) confirmButton.disabled = false;
-        if (loadingBox) loadingBox.hidden = true;
         if (titleBox) {
             titleBox.textContent = labels.title || 'Are you sure?';
         }
@@ -586,10 +578,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const lockConfirmForQuotationDraft = function () {
         const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
         const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
-        const loadingBox = confirmBox.querySelector('[data-inquiry-confirm-loading]');
         confirmBox.dataset.submitting = '1';
-        confirmBox.classList.add('is-loading');
-        if (loadingBox) loadingBox.hidden = false;
         if (cancelButton) {
             cancelButton.disabled = true;
         }
@@ -597,6 +586,11 @@ document.addEventListener('DOMContentLoaded', function () {
             confirmButton.disabled = true;
             confirmButton.textContent = 'Creating draft...';
         }
+        confirmBox.hidden = true;
+        window.edgeActionLoading?.show({
+            title: 'Creating quotation...',
+            message: 'Please wait while the quotation draft is prepared.',
+        });
     };
 
     const inquiryReviewHasChanges = function (modal) {

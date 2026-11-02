@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
 require_once __DIR__ . '/../../../../config/user_notifications.php';
 require_once __DIR__ . '/../../../../config/walk_in_inquiry_schedule.php';
 require_once __DIR__ . '/../../../../config/inquiry_budget.php';
+require_once __DIR__ . '/../../../../config/inspection_evidence.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
@@ -2179,6 +2180,18 @@ if ($costingResult) {
     }
 }
 
+$inspectionEvidenceByInspection = [];
+if (inspection_evidence_table_exists($conn)) {
+    $inspectionEvidenceResult = $conn->query(
+        'SELECT inspection_id, evidence_type, file_path, original_name, external_url
+         FROM site_inspection_evidence
+         ORDER BY id ASC'
+    );
+    foreach ($inspectionEvidenceResult?->fetch_all(MYSQLI_ASSOC) ?: [] as $inspectionEvidence) {
+        $inspectionEvidenceByInspection[(int)$inspectionEvidence['inspection_id']][] = $inspectionEvidence;
+    }
+}
+
 $costingVersionsByInspection = [];
 if (site_inspection_costing_versions_ready($conn)) {
     $costingVersionResult = $conn->query(
@@ -2469,6 +2482,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php $latestInspection = $inspectionByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $costingReview = $costingReviewByInquiry[(int)$inquiry['id']] ?? null; ?>
                     <?php $latestCostItems = $costingReview ? ($costItemsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
+                    <?php $latestInspectionEvidence = $costingReview ? ($inspectionEvidenceByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $costingVersions = $costingReview ? ($costingVersionsByInspection[(int)$costingReview['id']] ?? []) : []; ?>
                     <?php $currentCostingVersion = (int)($costingVersions[0]['version_no'] ?? 0); ?>
                     <?php $showCostingVersionLabel = count($costingVersions) > 1
@@ -2490,6 +2504,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             }
                         }
                         $hasOutOfStockInspectionMaterial = !empty($outOfStockInspectionItems);
+                        $inspectionEvidencePhotos = [];
+                        $inspectionEvidenceDriveLink = '';
+                        foreach ($latestInspectionEvidence as $inspectionEvidence) {
+                            if (($inspectionEvidence['evidence_type'] ?? '') === 'photo' && trim((string)($inspectionEvidence['file_path'] ?? '')) !== '') {
+                                $inspectionEvidencePhotos[] = [
+                                    'url' => inspection_evidence_public_path((string)$inspectionEvidence['file_path']),
+                                    'name' => (string)($inspectionEvidence['original_name'] ?: 'Inspection photo'),
+                                ];
+                            } elseif (($inspectionEvidence['evidence_type'] ?? '') === 'google_drive') {
+                                $inspectionEvidenceDriveLink = trim((string)($inspectionEvidence['external_url'] ?? ''));
+                            }
+                        }
+                        $hasInspectionEvidence = !empty($inspectionEvidencePhotos) || $inspectionEvidenceDriveLink !== '';
                     ?>
                     <?php $latestCostTotal = (float)($costingReview['costing_total'] ?? 0); ?>
                     <?php $quotationDraft = $quotationDraftByInquiry[(int)$inquiry['id']] ?? null; ?>
@@ -2797,7 +2824,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
-                                                            <button type="button" class="inspection-stock-alert inspection-stock-alert--button" data-inspection-stock-open data-stock-items="<?php echo htmlspecialchars((string)json_encode($outOfStockInspectionItems, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>">Out of Stock</button>
+                                                            <button type="button" class="inspection-stock-alert inspection-stock-alert--button" data-inspection-stock-open data-stock-items="<?php echo htmlspecialchars((string)json_encode($outOfStockInspectionItems, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>">Stock Issue: <?php echo count($outOfStockInspectionItems); ?> Material<?php echo count($outOfStockInspectionItems) === 1 ? '' : 's'; ?></button>
                                                         <?php endif; ?>
                                                     </div>
                                                 </div>
@@ -2824,7 +2851,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php endif; ?>
 
                                                 <div class="inquiry-details-grid submitted-inspection-report__details">
-                                                    <div class="inquiry-detail inquiry-detail--wide"><span>Engineer Findings</span><strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['engineer_findings'] ?: 'No findings provided.'), ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                                    <div class="inquiry-detail inquiry-detail--wide">
+                                                        <div class="inquiry-detail__action-line">
+                                                            <span>Engineer Findings</span>
+                                                            <?php if ($hasInspectionEvidence): ?>
+                                                                <button
+                                                                    type="button"
+                                                                    class="inspection-evidence-button"
+                                                                    data-inspection-evidence-open
+                                                                    data-evidence-photos="<?php echo htmlspecialchars((string)json_encode($inspectionEvidencePhotos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
+                                                                    data-evidence-drive="<?php echo htmlspecialchars($inspectionEvidenceDriveLink, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                >View Evidence<?php echo !empty($inspectionEvidencePhotos) ? ' (' . count($inspectionEvidencePhotos) . ')' : ''; ?></button>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <strong><?php echo nl2br(htmlspecialchars((string)($latestInspection['engineer_findings'] ?: 'No findings provided.'), ENT_QUOTES, 'UTF-8')); ?></strong>
+                                                    </div>
                                                     <?php if (trim((string)($latestInspection['risk_notes'] ?? '')) !== ''): ?>
                                                         <div class="inquiry-detail"><span>Risk / Safety Notes</span><strong><?php echo nl2br(htmlspecialchars((string)$latestInspection['risk_notes'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                                     <?php endif; ?>
@@ -2877,9 +2918,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <span>Line Total</span>
                                                     </div>
                                                     <?php foreach ($materialCostItems as $costItem): ?>
+                                                        <?php $isCostItemOutOfStock = (int)($costItem['material_id'] ?? 0) > 0
+                                                            && ($costItem['material_available'] ?? null) !== null
+                                                            && (float)$costItem['material_available'] <= 0; ?>
                                                         <div class="inquiry-costing-table__row submitted-inspection-costing__row<?php echo $showMaterialNotes ? '' : ' submitted-inspection-costing__row--no-notes'; ?>">
                                                             <span><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            <span><?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span class="submitted-material-name">
+                                                                <?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?>
+                                                                <?php if ($isCostItemOutOfStock): ?><small>Out of Stock</small><?php endif; ?>
+                                                            </span>
                                                             <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.'), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>

@@ -2840,6 +2840,114 @@ body.inquiry-modal-open {
     font-size: 0.84rem;
 }
 
+.inspection-evidence-button {
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 1px solid #86efac;
+    border-radius: 999px;
+    background: #f0fdf4;
+    color: #166534;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.inspection-evidence-button:hover,
+.inspection-evidence-button:focus-visible {
+    background: #dcfce7;
+    outline: 2px solid #22c55e;
+    outline-offset: 2px;
+}
+
+.inspection-evidence-modal__panel {
+    width: min(720px, calc(100vw - 40px));
+    max-height: min(82vh, 680px);
+    overflow-y: auto;
+}
+
+.inspection-evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.inspection-evidence-grid figure {
+    min-width: 0;
+    margin: 0;
+    padding: 8px;
+    border: 1px solid #dbe7ef;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.inspection-evidence-grid img {
+    display: block;
+    width: 100%;
+    height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.inspection-evidence-grid figcaption {
+    margin-top: 7px;
+    color: #475569;
+    font-size: 0.76rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.inspection-evidence-empty {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    text-align: center;
+}
+
+.inspection-evidence-drive {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 14px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: #166534;
+    color: #ffffff;
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.inspection-evidence-drive[hidden] {
+    display: none;
+}
+
+.submitted-material-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.submitted-material-name small {
+    color: #b45309;
+    font-size: 0.72rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+    .inspection-evidence-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .inspection-evidence-grid img {
+        height: 190px;
+    }
+}
+
 .submitted-inspection-timeline {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));

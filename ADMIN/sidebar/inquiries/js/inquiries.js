@@ -200,6 +200,67 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionStockModal.hidden = true;
     };
 
+    const inspectionEvidenceModal = document.createElement('div');
+    inspectionEvidenceModal.className = 'inquiry-confirm';
+    inspectionEvidenceModal.hidden = true;
+    inspectionEvidenceModal.innerHTML = [
+        '<div class="inquiry-confirm__panel inspection-evidence-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionEvidenceTitle">',
+        '<h3 id="inspectionEvidenceTitle">Inspection Evidence</h3>',
+        '<p>Photos and Google Drive evidence submitted by the Engineer.</p>',
+        '<div class="inspection-evidence-grid" data-inspection-evidence-grid></div>',
+        '<div class="inspection-evidence-empty" data-inspection-evidence-empty hidden>No uploaded photos.</div>',
+        '<a class="inspection-evidence-drive" data-inspection-evidence-drive target="_blank" rel="noopener noreferrer" hidden>Open Google Drive</a>',
+        '<div class="inquiry-confirm__actions">',
+        '<button type="button" class="btn-primary" data-inspection-evidence-close>Close</button>',
+        '</div>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(inspectionEvidenceModal);
+    let inspectionEvidenceTrigger = null;
+
+    const openInspectionEvidenceModal = function (button) {
+        const grid = inspectionEvidenceModal.querySelector('[data-inspection-evidence-grid]');
+        const empty = inspectionEvidenceModal.querySelector('[data-inspection-evidence-empty]');
+        const drive = inspectionEvidenceModal.querySelector('[data-inspection-evidence-drive]');
+        let photos = [];
+        try {
+            photos = JSON.parse(button.dataset.evidencePhotos || '[]');
+        } catch (error) {
+            photos = [];
+        }
+
+        grid?.replaceChildren();
+        photos.forEach(function (photo) {
+            const figure = document.createElement('figure');
+            const image = document.createElement('img');
+            const caption = document.createElement('figcaption');
+            image.src = photo.url || '';
+            image.alt = photo.name || 'Inspection photo';
+            image.loading = 'lazy';
+            caption.textContent = photo.name || 'Inspection photo';
+            figure.append(image, caption);
+            grid?.appendChild(figure);
+        });
+
+        if (empty) empty.hidden = photos.length > 0;
+        const driveUrl = String(button.dataset.evidenceDrive || '').trim();
+        if (drive) {
+            drive.hidden = driveUrl === '';
+            if (driveUrl !== '') drive.href = driveUrl;
+            else drive.removeAttribute('href');
+        }
+
+        inspectionEvidenceTrigger = button;
+        inspectionEvidenceModal.hidden = false;
+        inspectionEvidenceModal.querySelector('[data-inspection-evidence-close]')?.focus();
+    };
+
+    const closeInspectionEvidenceModal = function () {
+        inspectionEvidenceModal.hidden = true;
+        inspectionEvidenceTrigger?.focus();
+        inspectionEvidenceTrigger = null;
+    };
+
     const discardConfirmBox = document.createElement('div');
     discardConfirmBox.className = 'inquiry-confirm';
     discardConfirmBox.hidden = true;
@@ -424,6 +485,15 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.addEventListener('click', function (event) {
+        const evidenceButton = event.target.closest('[data-inspection-evidence-open]');
+        if (evidenceButton) {
+            openInspectionEvidenceModal(evidenceButton);
+            return;
+        }
+        if (event.target === inspectionEvidenceModal || event.target.closest('[data-inspection-evidence-close]')) {
+            closeInspectionEvidenceModal();
+            return;
+        }
         const stockButton = event.target.closest('[data-inspection-stock-open]');
         if (stockButton) {
             openInspectionStockModal(stockButton);
@@ -449,6 +519,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     inspectionMonitorRefresh?.addEventListener('click', refreshInspectionMonitor);
     document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !inspectionEvidenceModal.hidden) {
+            event.preventDefault();
+            closeInspectionEvidenceModal();
+            return;
+        }
         if (event.key === 'Escape' && !inspectionStockModal.hidden) {
             event.preventDefault();
             closeInspectionStockModal();

@@ -12,7 +12,9 @@ $isProjectsTrash = $isProjects && str_contains($currentQuery, 'view=trash');
 $isInventory = str_contains($currentPath, '/ADMIN/sidebar/inventory/php/inventory.php');
 $isAssets = str_contains($currentPath, '/ADMIN/sidebar/assets/php/assets.php');
 $isQuotationEditor = str_contains($currentPath, '/ADMIN/sidebar/inquiries/php/create_quotation.php');
-$isQuotations = str_contains($currentPath, '/ADMIN/sidebar/quotations/php/quotations.php') || $isQuotationEditor;
+$isQuotations = str_contains($currentPath, '/ADMIN/sidebar/quotations/php/quotations.php')
+    || str_contains($currentPath, '/ADMIN/sidebar/quotations/php/quotation_details.php')
+    || $isQuotationEditor;
 $isReports = str_contains($currentPath, '/ADMIN/sidebar/reports/php/reports.php');
 $isActivityHistory = str_contains($currentPath, '/ADMIN/sidebar/activity_history/php/activity_history.php');
 $isInquiries = str_contains($currentPath, '/ADMIN/sidebar/inquiries/php/inquiries.php') && !$isQuotationEditor;

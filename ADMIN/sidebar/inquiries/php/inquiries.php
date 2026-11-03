@@ -286,6 +286,11 @@ function inquiry_center_quotation_prerequisite_message(?array $quotationDraft): 
 
 function inquiry_center_validate_quotation_before_send(mysqli $conn, int $draftId, array $quotation): int
 {
+    $quotationNo = trim((string)($quotation['quotation_no'] ?? ''));
+    if ($quotationNo === '' || inquiry_quote_is_system_placeholder_number($quotationNo)) {
+        throw new RuntimeException('Enter the official Edge quotation number before sending.');
+    }
+
     $items = inquiry_quote_fetch_items($conn, $draftId);
     if (count($items) === 0) {
         throw new RuntimeException('Add at least one valid cost item before sending the quotation.');
@@ -2582,7 +2587,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <span aria-hidden="true"></span>New
                                     </span>
                                 <?php endif; ?>
-                                <span class="inquiry-card__eyebrow">Contact Person · <?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in' : 'Online'; ?></span>
+                                <span class="inquiry-card__eyebrow"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry' : 'Online Inquiry'; ?></span>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             </div>
                             <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -2924,7 +2929,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                             <span><?php echo htmlspecialchars(site_inspection_format_datetime($quotationDraft['updated_at'] ?? $latestInspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
                                                         </div>
                                                         <?php if ($quotationDraft): ?>
-                                                            <a class="submitted-inspection-review-state__quotation-link" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?id=<?php echo (int)$quotationDraft['id']; ?>">View Quotation</a>
+                                                            <a class="submitted-inspection-review-state__quotation-link" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=<?php echo (int)$quotationDraft['id']; ?>">View Quotation</a>
                                                         <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>

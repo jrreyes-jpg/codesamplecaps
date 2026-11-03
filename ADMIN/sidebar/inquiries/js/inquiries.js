@@ -290,6 +290,24 @@ document.addEventListener('DOMContentLoaded', function () {
     ].join('');
     document.body.appendChild(quotationDraftDiscardBox);
 
+    // Ikabit agad para gumana kahit quotation editor lang ang page.
+    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-keep]')?.addEventListener('click', function () {
+        pendingQuotationDraftDiscard = null;
+        quotationDraftDiscardBox.hidden = true;
+    });
+    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-yes]')?.addEventListener('click', function () {
+        const discardAction = pendingQuotationDraftDiscard;
+        pendingQuotationDraftDiscard = null;
+        quotationDraftDiscardBox.hidden = true;
+        discardAction?.();
+    });
+    quotationDraftDiscardBox.addEventListener('click', function (event) {
+        if (event.target === quotationDraftDiscardBox) {
+            pendingQuotationDraftDiscard = null;
+            quotationDraftDiscardBox.hidden = true;
+        }
+    });
+
     const prerequisiteNotice = document.createElement('div');
     prerequisiteNotice.className = 'inquiry-confirm inquiry-prerequisite-modal';
     prerequisiteNotice.hidden = true;
@@ -3183,7 +3201,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (marginInput) {
                 marginInput.value = String(draft.markup_percent || '');
             }
-            if (quotationNumberInput && draft.quotation_number) {
+            if (quotationNumberInput && draft.quotation_number && !/^IQ-\d{8}-[A-F0-9]{6}$/i.test(String(draft.quotation_number))) {
                 quotationNumberInput.value = String(draft.quotation_number);
             }
             return true;
@@ -3705,18 +3723,6 @@ document.addEventListener('DOMContentLoaded', function () {
     discardConfirmBox.addEventListener('click', function (event) {
         if (event.target === discardConfirmBox) {
             closeDiscardConfirm(true);
-        }
-    });
-
-    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-keep]')?.addEventListener('click', closeQuotationDraftDiscardConfirm);
-    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-yes]')?.addEventListener('click', function () {
-        const discardAction = pendingQuotationDraftDiscard;
-        closeQuotationDraftDiscardConfirm();
-        discardAction?.();
-    });
-    quotationDraftDiscardBox.addEventListener('click', function (event) {
-        if (event.target === quotationDraftDiscardBox) {
-            closeQuotationDraftDiscardConfirm();
         }
     });
 

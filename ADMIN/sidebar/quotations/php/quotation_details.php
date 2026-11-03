@@ -1,0 +1,143 @@
+<?php
+require_once __DIR__ . '/../../../../config/auth_middleware.php';
+require_once __DIR__ . '/../../../../config/database.php';
+require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+
+require_role('admin');
+
+function admin_quote_details_e($value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function admin_quote_details_date($value): string
+{
+    $time = strtotime((string)$value);
+    return $time ? date('M d, Y g:i A', $time) : 'Not recorded';
+}
+
+function admin_quote_details_status_class(string $status): string
+{
+    return match ($status) {
+        'accepted' => 'is-success',
+        'sent' => 'is-active',
+        'revision_requested' => 'is-warning',
+        'rejected' => 'is-error',
+        'approved' => 'is-ready',
+        default => 'is-neutral',
+    };
+}
+
+$quotationId = (int)($_GET['id'] ?? 0);
+$quotation = $quotationId > 0 ? inquiry_quote_fetch_full($conn, $quotationId) : null;
+$items = $quotation ? inquiry_quote_fetch_items($conn, $quotationId) : [];
+$history = $quotation ? inquiry_quote_fetch_history($conn, $quotationId) : [];
+$statusLabels = [
+    'draft' => 'Draft',
+    'approved' => 'Ready to Send',
+    'sent' => 'Awaiting Client',
+    'revision_requested' => 'Revision Requested',
+    'accepted' => 'Accepted',
+    'rejected' => 'Rejected',
+];
+$selectedStatus = $quotation
+    ? inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'))
+    : 'draft';
+$quotationNumber = trim((string)($quotation['quotation_no'] ?? ''));
+$quotationNumberLabel = $quotationNumber === '' || inquiry_quote_is_system_placeholder_number($quotationNumber)
+    ? 'Number not assigned'
+    : $quotationNumber;
+
+$adminPageTitle = 'Quotation Details - Edge Automation';
+$adminCssFiles = [
+    '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-5',
+];
+$adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
+
+include __DIR__ . '/../../../layout/header.php';
+include __DIR__ . '/../../../admin_sidebar.php';
+?>
+<main class="main-content">
+    <div class="admin-quotation-page admin-quotation-details-page">
+        <a class="admin-quotation-back" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">&larr; Back to Quotation List</a>
+
+        <?php if (!$quotation): ?>
+            <section class="admin-quotation-detail">
+                <div class="admin-quotation-empty">
+                    <h1>Quotation not found</h1>
+                    <p>The quotation may have been removed or is not available.</p>
+                </div>
+            </section>
+        <?php else: ?>
+            <section class="admin-quotation-detail">
+                <div class="admin-quotation-detail-head">
+                    <div>
+                        <p class="admin-quotation-kicker"><?php echo admin_quote_details_e($quotationNumberLabel); ?></p>
+                        <h1><?php echo admin_quote_details_e($quotation['client_name'] ?? 'Client'); ?></h1>
+                        <p><?php echo admin_quote_details_e($quotation['service_category'] ?? 'Service not provided'); ?></p>
+                    </div>
+                    <span class="quote-status <?php echo admin_quote_details_status_class($selectedStatus); ?>"><?php echo admin_quote_details_e($statusLabels[$selectedStatus] ?? inquiry_quote_status_label($selectedStatus)); ?></span>
+                </div>
+
+                <div class="admin-quotation-summary">
+                    <article><span>Client Email</span><strong><?php echo admin_quote_details_e($quotation['email'] ?? 'Not provided'); ?></strong></article>
+                    <article><span>Total</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></article>
+                    <article><span>Prepared By</span><strong><?php echo admin_quote_details_e($quotation['preparer_name'] ?? 'Admin'); ?></strong></article>
+                </div>
+
+                <div class="admin-quotation-actions">
+                    <?php if ($selectedStatus === 'draft'): ?>
+                        <a class="button-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>">Edit Draft</a>
+                    <?php endif; ?>
+                    <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo $quotationId; ?>">Preview Quotation</a>
+                    <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=inspection">Open Inquiry</a>
+                </div>
+
+                <div class="admin-quotation-section">
+                    <h2>Quotation Items</h2>
+                    <div class="admin-quotation-table-wrap">
+                        <table>
+                            <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Line Total</th></tr></thead>
+                            <tbody>
+                            <?php if (!$items): ?><tr><td colspan="5">No quotation items.</td></tr><?php endif; ?>
+                            <?php foreach ($items as $item): ?>
+                                <tr>
+                                    <td data-label="Item">
+                                        <strong><?php echo admin_quote_details_e($item['item_name'] ?? 'Item'); ?></strong>
+                                        <small><?php echo admin_quote_details_e(inquiry_quote_item_type_label((string)($item['item_type'] ?? ''))); ?></small>
+                                        <?php if (trim((string)($item['notes'] ?? '')) !== ''): ?><small>Note: <?php echo admin_quote_details_e($item['notes']); ?></small><?php endif; ?>
+                                    </td>
+                                    <td data-label="Qty"><?php echo admin_quote_details_e($item['quantity'] ?? 0); ?></td>
+                                    <td data-label="Unit"><?php echo admin_quote_details_e($item['unit'] ?? 'unit'); ?></td>
+                                    <td data-label="Unit Cost"><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($item['unit_cost'] ?? 0))); ?></td>
+                                    <td data-label="Line Total"><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($item['line_total'] ?? 0))); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="admin-quotation-totals">
+                        <p><span>Subtotal</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['subtotal'] ?? 0))); ?></strong></p>
+                        <p><span>Markup (<?php echo admin_quote_details_e(number_format((float)($quotation['profit_margin_percent'] ?? 0), 2)); ?>%)</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['profit_amount'] ?? 0))); ?></strong></p>
+                        <p class="is-total"><span>Grand Total</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></p>
+                    </div>
+                </div>
+
+                <div class="admin-quotation-section">
+                    <h2>Status History</h2>
+                    <div class="admin-quotation-history">
+                        <?php if (!$history): ?><p>No status history yet.</p><?php endif; ?>
+                        <?php foreach ($history as $entry): ?>
+                            <article>
+                                <span class="history-dot" aria-hidden="true"></span>
+                                <div><strong><?php echo admin_quote_details_e(inquiry_quote_status_label((string)($entry['status'] ?? 'draft'))); ?></strong><p><?php echo admin_quote_details_e($entry['full_name'] ?? 'System'); ?> · <?php echo admin_quote_details_e(admin_quote_details_date($entry['created_at'] ?? '')); ?></p></div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </section>
+        <?php endif; ?>
+    </div>
+</main>
+<?php include __DIR__ . '/../../../layout/footer.php'; ?>

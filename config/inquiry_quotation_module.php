@@ -190,6 +190,11 @@ function inquiry_quote_generate_number(): string
     return 'IQ-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
 }
 
+function inquiry_quote_is_system_placeholder_number(?string $quotationNo): bool
+{
+    return preg_match('/^IQ-\d{8}-[A-F0-9]{6}$/i', trim((string)$quotationNo)) === 1;
+}
+
 function inquiry_quote_fetch_by_inquiry(mysqli $conn): array
 {
     $drafts = [];
@@ -736,7 +741,7 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
 
     $profitAmount = round($subtotal * ($marginPercent / 100), 2);
     $grandTotal = round($subtotal + $profitAmount, 2);
-    $quotationNo = inquiry_quote_generate_number();
+    $quotationNo = '';
 
     $conn->begin_transaction();
 
@@ -1142,7 +1147,7 @@ function inquiry_quote_reopen_for_revision(mysqli $conn, int $draftId, int $admi
     $conn->begin_transaction();
     try {
         $sourceStmt = $conn->prepare(
-            'SELECT id, parent_draft_id, revision_no, inquiry_id, inspection_id, status,
+            'SELECT id, parent_draft_id, revision_no, inquiry_id, inspection_id, status, quotation_no,
                     subtotal, profit_margin_percent, profit_amount, grand_total
              FROM inquiry_quotation_drafts
              WHERE id = ? FOR UPDATE'
@@ -1171,7 +1176,21 @@ function inquiry_quote_reopen_for_revision(mysqli $conn, int $draftId, int $admi
         $versionStmt->bind_param('ii', $rootDraftId, $rootDraftId);
         $versionStmt->execute();
         $revisionNo = (int)($versionStmt->get_result()->fetch_assoc()['latest_revision'] ?? 0) + 1;
-        $quotationNo = inquiry_quote_generate_number() . '-V' . ($revisionNo + 1);
+        $rootNumberStmt = $conn->prepare(
+            'SELECT quotation_no FROM inquiry_quotation_drafts WHERE id = ? LIMIT 1'
+        );
+        if (!$rootNumberStmt) {
+            throw new RuntimeException('Unable to load the original quotation number.');
+        }
+        $rootNumberStmt->bind_param('i', $rootDraftId);
+        $rootNumberStmt->execute();
+        $rootNumberRow = $rootNumberStmt->get_result()->fetch_assoc();
+        $baseQuotationNo = trim((string)($rootNumberRow['quotation_no'] ?? $source['quotation_no'] ?? ''));
+        $baseQuotationNo = preg_replace('/-(?:R|V)\d+$/i', '', $baseQuotationNo) ?: $baseQuotationNo;
+        if ($baseQuotationNo === '') {
+            throw new RuntimeException('Original quotation number is missing.');
+        }
+        $quotationNo = $baseQuotationNo . '-R' . $revisionNo;
         $status = 'Draft';
         $inquiryId = (int)$source['inquiry_id'];
         $inspectionId = !empty($source['inspection_id']) ? (int)$source['inspection_id'] : null;

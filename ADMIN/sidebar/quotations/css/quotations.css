@@ -1,8 +1,16 @@
 .admin-quotation-page {
-    min-height: calc(100vh - 110px);
-    padding: 30px clamp(16px, 3vw, 40px) 48px;
+    box-sizing: border-box;
+    min-height: calc(100dvh - 110px);
+    padding: 30px clamp(16px, 3vw, 40px);
     background: linear-gradient(135deg, #f7fbf9 0%, #e3fff2 100%);
     color: #121a2b;
+}
+
+/* Pareho ng Inquiry Center: green page at white cards lang. */
+.admin-quotation-list-page {
+    min-height: 0;
+    padding: 0;
+    background: transparent;
 }
 
 .admin-quotation-heading,
@@ -17,15 +25,22 @@
     gap: 16px;
 }
 
-.admin-quotation-heading { margin-bottom: 18px; }
+.admin-quotation-heading {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(320px, 650px) minmax(220px, 1fr);
+    margin-bottom: 18px;
+}
+.admin-quotation-heading > div { grid-column: 1; }
 .admin-quotation-heading h1 { margin: 0 0 4px; font-size: clamp(28px, 3vw, 40px); }
 .admin-quotation-heading p,
 .admin-quotation-detail-head p,
 .admin-quotation-history article p { margin: 0; color: #66758d; }
 
 .admin-quotation-search {
+    grid-column: 2;
+    justify-self: center;
     display: grid;
-    width: min(100%, 520px);
+    width: 100%;
     gap: 10px;
 }
 
@@ -34,6 +49,7 @@
 
 .admin-quotation-search input[type="search"],
 .admin-quotation-search button,
+.admin-quotation-search__clear,
 .button-primary,
 .button-secondary {
     min-height: 48px;
@@ -51,6 +67,7 @@
 }
 
 .admin-quotation-search button,
+.admin-quotation-search__clear,
 .button-primary,
 .button-secondary {
     border: 0;
@@ -62,6 +79,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.admin-quotation-search__clear {
+    border: 1px solid #cbd7e5;
+    background: #ffffff;
+    color: #475569;
+}
+
+.admin-quotation-search__clear:hover,
+.admin-quotation-search__clear:focus-visible {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+    outline: none;
 }
 
 .button-secondary { background: #e7edf5; color: #344258; }
@@ -94,6 +124,19 @@
     align-items: start;
 }
 
+.admin-quotation-layout.is-list-only {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-quotation-layout.is-list-only .admin-quotation-list {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
 .admin-quotation-list,
 .admin-quotation-detail {
     min-width: 0;
@@ -107,20 +150,76 @@
 .admin-quotation-list { display: grid; gap: 12px; }
 
 .admin-quotation-card {
-    display: block;
-    padding: 15px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 18px;
+    align-items: center;
+    padding: 14px 16px;
     border: 1px solid #dce5ed;
     border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(28, 74, 53, 0.07);
     color: inherit;
     text-decoration: none;
 }
 
+.admin-quotation-card__main {
+    grid-column: 1;
+}
+
+.admin-quotation-card__main h2 {
+    margin: 7px 0 5px;
+    font-size: 19px;
+    overflow-wrap: anywhere;
+}
+
+.admin-quotation-card__number {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.admin-quotation-card__number.has-warning {
+    color: #b45309;
+}
+
+.admin-quotation-card__updated {
+    color: #66758d;
+    font-size: 12px;
+}
+
+.admin-quotation-card__side {
+    grid-column: 2;
+    display: flex;
+    min-width: 160px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 9px;
+}
+
+.admin-quotation-card__view {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 15px;
+    border-radius: 10px;
+    background: #126c37;
+    color: #ffffff;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-quotation-card__view:hover { background: #0e572d; }
+
+.admin-quotation-card__view.is-complete-draft { background: #b45309; }
+.admin-quotation-card__view.is-complete-draft:hover { background: #92400e; }
+
 .admin-quotation-card:hover,
 .admin-quotation-card.is-selected { border-color: #16a456; background: #f1fff7; }
-.admin-quotation-card h2 { margin: 7px 0 5px; font-size: 19px; overflow-wrap: anywhere; }
 .admin-quotation-card p { margin: 3px 0; color: #66758d; overflow-wrap: anywhere; }
 .admin-quotation-card strong { color: #126c37; }
-.admin-quotation-card-meta span { color: #66758d; font-size: 12px; overflow-wrap: anywhere; }
+.admin-quotation-card__total { display: inline-flex; align-items: center; gap: 7px; }
+.admin-quotation-card__total small { font-size: 12px; font-weight: 700; }
 
 .admin-quotation-pagination {
     display: flex;
@@ -225,8 +324,41 @@
 .history-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: #12a84f; }
 .admin-quotation-empty { padding: 28px 16px; text-align: center; color: #66758d; }
 
+.admin-quotation-details-page {
+    width: 100%;
+}
+
+.admin-quotation-details-page > * {
+    width: min(100%, 1180px);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.admin-quotation-back {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 42px;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 9px 14px;
+    border: 1px solid #b9ddc8;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #126c37;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.admin-quotation-detail-head h1 {
+    margin: 5px 0;
+    font-size: clamp(23px, 2.4vw, 32px);
+    overflow-wrap: anywhere;
+}
+
 @media (max-width: 1100px) {
-    .admin-quotation-heading { align-items: stretch; flex-direction: column; }
+    .admin-quotation-heading { grid-template-columns: 1fr; align-items: stretch; }
+    .admin-quotation-heading > div,
+    .admin-quotation-search { grid-column: 1; }
     .admin-quotation-search { width: 100%; }
     .admin-quotation-layout { grid-template-columns: 1fr; }
     .admin-quotation-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -234,16 +366,30 @@
 
 @media (max-width: 760px) {
     .admin-quotation-page { padding: 20px 12px 36px; }
+    .admin-quotation-list-page { padding: 0; }
     .admin-quotation-list { grid-template-columns: 1fr; }
     .admin-quotation-detail-head { flex-direction: column; }
     .admin-quotation-summary { grid-template-columns: 1fr; }
     .button-primary,
     .button-secondary { width: 100%; }
+    .admin-quotation-card { grid-template-columns: 1fr; }
+    .admin-quotation-card__main,
+    .admin-quotation-card__side { grid-column: 1; }
+    .admin-quotation-card__side {
+        min-width: 0;
+        align-items: stretch;
+    }
+    .admin-quotation-card__side .quote-status { width: fit-content; }
+    .admin-quotation-card__total { justify-content: space-between; }
+    .admin-quotation-card__view {
+        width: 100%;
+    }
 }
 
 @media (max-width: 600px) {
     .admin-quotation-search > div { flex-direction: column; }
-    .admin-quotation-search button { width: 100%; }
+    .admin-quotation-search button,
+    .admin-quotation-search__clear { width: 100%; }
     .admin-quotation-list,
     .admin-quotation-detail { padding: 14px; border-radius: 16px; }
     .admin-quotation-table-wrap { overflow: visible; border: 0; }

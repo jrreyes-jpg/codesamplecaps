@@ -39,8 +39,8 @@ if ($isEditMode) {
 
 $isInitialQuotationDraft = !$isEditMode
     || (empty($quotationDraft['parent_draft_id']) && (int)($quotationDraft['revision_no'] ?? 0) === 0);
-$quotationVersion = $isInitialQuotationDraft ? 0 : ((int)($quotationDraft['revision_no'] ?? 0) + 1);
-$quotationDraftLabel = $isInitialQuotationDraft ? 'Admin quotation draft' : 'Quotation V' . $quotationVersion . ' draft';
+$quotationVersion = $isInitialQuotationDraft ? 0 : (int)($quotationDraft['revision_no'] ?? 0);
+$quotationDraftLabel = $isInitialQuotationDraft ? 'Admin quotation draft' : 'Quotation R' . $quotationVersion . ' draft';
 
 if ($inquiryId <= 0) {
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
@@ -120,9 +120,14 @@ function inquiry_quote_render_unit_options(array $unitOptionsByType, array $mate
     }
 }
 
-$quotationNo = trim((string)($_POST['quotation_no'] ?? ($isEditMode
-    ? (string)$quotationDraft['quotation_no']
-    : inquiry_quote_generate_number())));
+$savedQuotationNo = $isEditMode ? (string)$quotationDraft['quotation_no'] : '';
+if ($isInitialQuotationDraft && inquiry_quote_is_system_placeholder_number($savedQuotationNo)) {
+    $savedQuotationNo = '';
+}
+$quotationNo = trim((string)($_POST['quotation_no'] ?? $savedQuotationNo));
+if ($isEditMode && !$isInitialQuotationDraft) {
+    $quotationNo = (string)$quotationDraft['quotation_no'];
+}
 $error = '';
 $defaultItems = $savedItems ?: [[
     'item_type' => 'material',
@@ -389,7 +394,7 @@ $adminCssFiles = [
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-6',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-3',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -416,8 +421,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
                 <div class="quotation-create-number">
                     <label for="quotationNumber">Quotation Number</label>
-                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off" required>
-                    <small>Follow the official Edge format.</small>
+                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off" required<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
+                    <small><?php echo $isInitialQuotationDraft ? 'Follow the official Edge format. This locks after sending.' : 'Revision number is based on the original quotation.'; ?></small>
                 </div>
             </div>
 

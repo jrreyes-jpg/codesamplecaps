@@ -160,14 +160,8 @@
         </form>
     </div>
 </section>
-
 <section class="walk-in-otp-modal" data-walk-in-otp-modal aria-hidden="true">
     <div class="walk-in-otp-card" role="dialog" aria-modal="true" aria-labelledby="walk-in-otp-title">
-        <div class="walk-in-otp-loading" data-walk-in-otp-loading aria-live="polite">
-            <span class="walk-in-otp-spinner" aria-hidden="true"></span>
-            <h3>Sending code...</h3>
-            <p>Please wait. Do not close this page.</p>
-        </div>
         <div class="walk-in-otp-content" data-walk-in-otp-content>
             <div class="walk-in-otp-heading">
                 <span class="walk-in-otp-icon" aria-hidden="true">&#9993;</span>
@@ -190,7 +184,6 @@
         </div>
     </div>
 </section>
-
 <section class="walk-in-confirm-modal" data-walk-in-confirm-modal aria-hidden="true">
     <div class="walk-in-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="walk-in-confirm-title" aria-describedby="walk-in-confirm-message">
         <h3 id="walk-in-confirm-title" data-walk-in-confirm-title>Clear this form?</h3>
@@ -201,11 +194,4 @@
         </div>
     </div>
 </section>
-
-<section class="walk-in-save-modal" data-walk-in-save-modal aria-hidden="true">
-    <div class="walk-in-save-card" role="alertdialog" aria-modal="true" aria-labelledby="walk-in-save-title">
-        <span class="walk-in-otp-spinner" aria-hidden="true"></span>
-        <h3 id="walk-in-save-title" tabindex="-1" data-walk-in-save-title>Saving inquiry...</h3>
-        <p data-walk-in-save-message>Please wait. Do not close this page.</p>
-    </div>
-</section>
+<!-- Shared action loading ang gamit sa send at save. -->

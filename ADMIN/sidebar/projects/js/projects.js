@@ -1477,9 +1477,6 @@ function initWalkInInquiryPanel() {
     const confirmMessage = confirmModal?.querySelector('[data-walk-in-confirm-message]');
     const confirmAccept = confirmModal?.querySelector('[data-walk-in-confirm-accept]');
     const confirmCancel = confirmModal?.querySelector('[data-walk-in-confirm-cancel]');
-    const saveModal = document.querySelector('[data-walk-in-save-modal]');
-    const saveTitle = saveModal?.querySelector('[data-walk-in-save-title]');
-    const saveMessage = saveModal?.querySelector('[data-walk-in-save-message]');
     const otpModal = document.querySelector('[data-walk-in-otp-modal]');
     const otpEmail = otpModal?.querySelector('[data-walk-in-otp-email]');
     const otpCode = otpModal?.querySelector('[data-walk-in-otp-code]');
@@ -1889,6 +1886,7 @@ function initWalkInInquiryPanel() {
     }
 
     function closeOtpModal() {
+        window.edgeActionLoading?.hide();
         window.clearInterval(otpClock);
         otpClock = null;
         otpModal?.classList.remove('is-open');
@@ -1981,16 +1979,22 @@ function initWalkInInquiryPanel() {
         panel.classList.add('is-otp-locked');
         document.body.classList.add('walk-in-otp-lock');
         if (dialog) dialog.inert = true;
-        otpModal?.classList.toggle('is-sending', isSending);
-        otpModal?.setAttribute('aria-busy', isSending ? 'true' : 'false');
+        if (isSending) {
+            window.edgeActionLoading?.show({
+                title: 'Sending code...',
+                message: 'Please wait. Do not close this page.',
+            });
+            return;
+        }
         otpModal?.classList.add('is-open');
         otpModal?.setAttribute('aria-hidden', 'false');
-        if (!isSending) otpCode?.focus({ preventScroll: true });
+        otpCode?.focus({ preventScroll: true });
     }
 
     function showOtpEntry() {
-        otpModal?.classList.remove('is-sending');
-        otpModal?.setAttribute('aria-busy', 'false');
+        window.edgeActionLoading?.hide();
+        otpModal?.classList.add('is-open');
+        otpModal?.setAttribute('aria-hidden', 'false');
         if (Date.now() >= otpLockedUntil) {
             if (otpCode) otpCode.disabled = false;
             if (otpVerifyButton) otpVerifyButton.disabled = false;
@@ -2415,7 +2419,7 @@ function initWalkInInquiryPanel() {
     }
 
     function askToCloseOtp() {
-        if (!otpModal?.classList.contains('is-open') || otpModal.classList.contains('is-sending')) return;
+        if (!otpModal?.classList.contains('is-open')) return;
         showConfirm({
             title: 'Cancel email verification?',
             message: 'You will return to the Walk-in Inquiry form.',
@@ -2523,17 +2527,12 @@ function initWalkInInquiryPanel() {
 
     function showSaveLoading(action) {
         const isConfirmed = action === 'confirmed';
-        if (saveTitle) saveTitle.textContent = isConfirmed ? 'Saving inspection...' : 'Saving pending inquiry...';
-        if (saveMessage) {
-            saveMessage.textContent = isConfirmed
-                ? 'Sending schedule emails. Please wait.'
-                : 'Please wait. Do not close this page.';
-        }
         panel.classList.add('is-save-locked');
-        saveModal?.classList.add('is-open');
-        saveModal?.setAttribute('aria-hidden', 'false');
         document.body.classList.add('walk-in-save-lock');
-        saveTitle?.focus({ preventScroll: true });
+        window.edgeActionLoading?.show({
+            title: isConfirmed ? 'Saving inspection...' : 'Saving pending inquiry...',
+            message: isConfirmed ? 'Sending schedule emails. Please wait.' : 'Please wait. Do not close this page.',
+        });
     }
 
     document.addEventListener('click', function (event) {

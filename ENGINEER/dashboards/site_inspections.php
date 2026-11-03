@@ -1575,7 +1575,7 @@ foreach ($inspections as $filterInspection) {
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
     '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261102-2',
-    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
@@ -2340,7 +2340,7 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261102-2',
 ];

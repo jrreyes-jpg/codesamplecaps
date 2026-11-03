@@ -2340,8 +2340,8 @@ $adminPageTitle = 'Inquiry Center - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
@@ -2349,10 +2349,10 @@ $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261103-1',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261103-1',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

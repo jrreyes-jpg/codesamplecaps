@@ -29,27 +29,32 @@
     position: relative;
     display: grid;
     place-items: center;
-    width: 82px;
-    height: 82px;
+    width: 92px;
+    height: 76px;
     margin-bottom: 14px;
 }
 
 .edge-action-loading__logo-wrap::before {
     position: absolute;
-    inset: 0;
-    border: 4px solid #dbeafe;
+    right: 0;
+    bottom: 2px;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #dcfce7;
     border-top-color: #16a34a;
-    border-right-color: #0ea5e9;
     border-radius: 50%;
     content: "";
     animation: edge-action-ring-spin 0.85s linear infinite;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px #ffffff;
 }
 
 .edge-action-loading__logo {
-    width: 62px;
-    height: 62px;
-    border-radius: 50%;
-    object-fit: cover;
+    width: 76px;
+    height: 76px;
+    margin-right: 12px;
+    border-radius: 12px;
+    object-fit: contain;
 }
 
 .edge-action-loading__title {

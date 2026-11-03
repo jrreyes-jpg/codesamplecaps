@@ -16,7 +16,7 @@
         loading.innerHTML = [
             '<div class="edge-action-loading__panel">',
             '<span class="edge-action-loading__logo-wrap" aria-hidden="true">',
-            '<img class="edge-action-loading__logo" src="/codesamplecaps/IMAGES/edge.jpg" alt="">',
+            '<img class="edge-action-loading__logo" src="/codesamplecaps/IMAGES/edge-favicon.png" alt="">',
             '</span>',
             '<strong class="edge-action-loading__title">Please wait...</strong>',
             '<span class="edge-action-loading__message">Do not close this page.</span>',

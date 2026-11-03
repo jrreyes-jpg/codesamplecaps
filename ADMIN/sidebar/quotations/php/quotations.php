@@ -56,8 +56,11 @@ foreach ($requiredTables as $table) {
     }
 }
 
-$allowedStatuses = ['all', 'draft', 'approved', 'sent', 'revision_requested', 'accepted', 'rejected'];
+$allowedStatuses = ['all', 'draft', 'sent', 'revision_requested', 'accepted', 'rejected'];
 $activeStatus = strtolower(trim((string)($_GET['status'] ?? 'all')));
+if ($activeStatus === 'approved') {
+    $activeStatus = 'draft';
+}
 if (!in_array($activeStatus, $allowedStatuses, true)) {
     $activeStatus = 'all';
 }
@@ -88,6 +91,7 @@ $counts = array_fill_keys($allowedStatuses, 0);
 $counts['all'] = count($allQuotations);
 foreach ($allQuotations as $quotation) {
     $status = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
+    $status = $status === 'approved' ? 'draft' : $status;
     if (isset($counts[$status])) {
         $counts[$status]++;
     }
@@ -95,6 +99,7 @@ foreach ($allQuotations as $quotation) {
 
 $quotations = array_values(array_filter($allQuotations, static function (array $quotation) use ($activeStatus, $search): bool {
     $status = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
+    $status = $status === 'approved' ? 'draft' : $status;
     if ($activeStatus !== 'all' && $status !== $activeStatus) {
         return false;
     }
@@ -126,7 +131,6 @@ $quotations = array_slice($quotations, ($currentPage - 1) * $perPage, $perPage);
 $statusLabels = [
     'all' => 'All',
     'draft' => 'Draft',
-    'approved' => 'Ready to Send',
     'sent' => 'Awaiting Client',
     'revision_requested' => 'Revision Requested',
     'accepted' => 'Accepted',
@@ -185,12 +189,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php endif; ?>
                     <?php foreach ($quotations as $quotation):
                         $status = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
+                        $displayStatus = $status === 'approved' ? 'draft' : $status;
                         $quotationNumber = trim((string)($quotation['quotation_no'] ?? ''));
                         $isNumberMissing = $quotationNumber === '' || inquiry_quote_is_system_placeholder_number($quotationNumber);
                         $quotationNumberLabel = $isNumberMissing
-                            ? 'Number not assigned'
+                            ? 'Quotation number not assigned'
                             : $quotationNumber;
-                        $needsCompletion = $status === 'draft' && $isNumberMissing;
+                        $buttonLabel = match ($displayStatus) {
+                            'draft' => 'Edit Quotation',
+                            'revision_requested' => 'Revise Quotation',
+                            'accepted' => 'View Accepted Quotation',
+                            default => 'View Details',
+                        };
+                        $buttonUrl = match ($displayStatus) {
+                            'draft' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . (int)$quotation['id'],
+                            'revision_requested' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . (int)$quotation['inquiry_id'] . '&tab=quotation',
+                            default => '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$quotation['id'],
+                        };
                     ?>
                         <article class="admin-quotation-card">
                             <div class="admin-quotation-card__main">
@@ -199,9 +214,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <span class="admin-quotation-card__updated">Updated <?php echo admin_quote_e(admin_quote_date($quotation['updated_at'] ?? '')); ?></span>
                             </div>
                             <div class="admin-quotation-card__side">
-                                <span class="quote-status <?php echo admin_quote_status_class($status); ?>"><?php echo admin_quote_e($statusLabels[$status] ?? inquiry_quote_status_label($status)); ?></span>
+                                <span class="quote-status <?php echo admin_quote_status_class($displayStatus); ?>"><?php echo admin_quote_e($statusLabels[$displayStatus] ?? inquiry_quote_status_label($displayStatus)); ?></span>
                                 <span class="admin-quotation-card__total"><small>Total</small><strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></span>
-                                <a class="admin-quotation-card__view<?php echo $needsCompletion ? ' is-complete-draft' : ''; ?>" href="<?php echo $needsCompletion ? '/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . (int)$quotation['id'] : '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$quotation['id']; ?>"><?php echo $needsCompletion ? 'Complete Draft' : 'View Details'; ?></a>
+                                <a class="admin-quotation-card__view<?php echo $displayStatus === 'revision_requested' ? ' is-complete-draft' : ''; ?>" href="<?php echo admin_quote_e($buttonUrl); ?>"><?php echo admin_quote_e($buttonLabel); ?></a>
                             </div>
                         </article>
                     <?php endforeach; ?>

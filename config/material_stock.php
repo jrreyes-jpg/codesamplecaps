@@ -504,10 +504,11 @@ if (!function_exists('material_stock_permanently_delete_material')) {
 }
 
 if (!function_exists('material_stock_create_material')) {
-    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $unit, ?float $reorderLevel, ?string $description = null): string
+    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $specificCategory, string $unit, ?float $reorderLevel, ?string $description = null): string
     {
         $name = trim($name);
         $category = trim((string)$category);
+        $specificCategory = trim($specificCategory);
         $unit = trim($unit);
         $description = trim((string)$description);
 
@@ -525,13 +526,13 @@ if (!function_exists('material_stock_create_material')) {
             $temporaryCode = 'MAT-TEMP-' . bin2hex(random_bytes(12));
             $reorderValue = $reorderLevel === null ? '' : (string)$reorderLevel;
             $insert = $conn->prepare(
-                'INSERT INTO materials (material_code, material_name, description, category, unit, reorder_level)
-                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'))'
+                'INSERT INTO materials (material_code, material_name, description, category, specific_category, unit, reorder_level)
+                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'))'
             );
             if (!$insert) {
                 throw new RuntimeException('Unable to create material.');
             }
-            $insert->bind_param('ssssss', $temporaryCode, $name, $description, $category, $unit, $reorderValue);
+            $insert->bind_param('sssssss', $temporaryCode, $name, $description, $category, $specificCategory, $unit, $reorderValue);
             if (!$insert->execute()) {
                 throw new RuntimeException('Unable to create material.');
             }
@@ -566,6 +567,7 @@ if (!function_exists('material_stock_update_material')) {
         int $materialId,
         string $name,
         string $category,
+        string $specificCategory,
         string $unit,
         float $reorderLevel,
         string $description,
@@ -578,7 +580,7 @@ if (!function_exists('material_stock_update_material')) {
         $conn->begin_transaction();
         try {
             $lock = $conn->prepare(
-                "SELECT id, material_name, description, category, unit, reorder_level, physical_quantity, reserved_quantity
+                "SELECT id, material_name, description, category, specific_category, unit, reorder_level, physical_quantity, reserved_quantity
                  FROM materials
                  WHERE id = ? AND status = 'active'
                  FOR UPDATE"
@@ -602,13 +604,13 @@ if (!function_exists('material_stock_update_material')) {
 
             $update = $conn->prepare(
                 'UPDATE materials
-                 SET material_name = ?, description = NULLIF(?, \'\'), category = ?, unit = ?, reorder_level = ?
+                 SET material_name = ?, description = NULLIF(?, \'\'), category = ?, specific_category = NULLIF(?, \'\'), unit = ?, reorder_level = ?
                  WHERE id = ? AND status = \'active\''
             );
             if (!$update) {
                 throw new RuntimeException('Unable to update the material.');
             }
-            $update->bind_param('ssssdi', $name, $description, $category, $unit, $reorderLevel, $materialId);
+            $update->bind_param('sssssdi', $name, $description, $category, $specificCategory, $unit, $reorderLevel, $materialId);
             if (!$update->execute()) {
                 throw new RuntimeException('Unable to update the material.');
             }
@@ -617,6 +619,7 @@ if (!function_exists('material_stock_update_material')) {
                 'material_name' => (string)$current['material_name'],
                 'description' => (string)($current['description'] ?? ''),
                 'category' => (string)($current['category'] ?? ''),
+                'specific_category' => (string)($current['specific_category'] ?? ''),
                 'unit' => (string)$current['unit'],
                 'reorder_level' => (string)($current['reorder_level'] ?? ''),
             ];
@@ -624,6 +627,7 @@ if (!function_exists('material_stock_update_material')) {
                 'material_name' => $name,
                 'description' => $description,
                 'category' => $category,
+                'specific_category' => $specificCategory,
                 'unit' => $unit,
                 'reorder_level' => $reorderLevel,
             ];

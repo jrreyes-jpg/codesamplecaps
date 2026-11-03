@@ -57,6 +57,19 @@ function material_detail_suggestion_response_text(array $response): string
     return '';
 }
 
+function material_detail_gemini_response_text(array $response): string
+{
+    foreach ((array)($response['candidates'] ?? []) as $candidate) {
+        foreach ((array)($candidate['content']['parts'] ?? []) as $part) {
+            if (is_string($part['text'] ?? null)) {
+                return trim($part['text']);
+            }
+        }
+    }
+
+    return '';
+}
+
 function material_detail_suggestion_parse_json(string $text): ?array
 {
     $text = trim($text);
@@ -80,26 +93,54 @@ function material_detail_suggest_from_ai(string $materialName): ?array
     $apiKey = trim((string)$config->get('ASSET_CATEGORY_SUGGESTION_API_KEY'));
     $model = trim((string)$config->get('ASSET_CATEGORY_SUGGESTION_MODEL'));
     $endpoint = trim((string)$config->get('ASSET_CATEGORY_SUGGESTION_ENDPOINT'));
-    if ($provider !== 'openai' || $apiKey === '' || $model === '' || $endpoint === '' || !function_exists('curl_init')) {
+    if (!in_array($provider, ['openai', 'gemini'], true)
+        || $apiKey === ''
+        || $model === ''
+        || $endpoint === ''
+        || !function_exists('curl_init')) {
         return null;
     }
 
     $categories = material_detail_suggestion_categories();
     $units = material_detail_suggestion_units();
     $prompt = 'Classify this possible consumable inventory material: ' . json_encode($materialName) . ".\n"
-        . 'Use web search only as help. Return only JSON with keys kind, category, unit, description. '
+        . 'Return only JSON with keys kind, category, specific_category, unit, description. '
         . 'kind must be material or asset. Use asset for reusable tools, equipment, measuring devices, or computers. '
-        . 'For material, category must be one of: ' . implode('; ', $categories) . '. '
+        . 'For material, choose the closest category from: ' . implode('; ', $categories) . '. '
+        . 'Use Other only when no listed category fits. When category is Other, specific_category must be a short clear category name; otherwise it must be an empty string. '
         . 'Unit must be one of: ' . implode('; ', $units) . '. '
         . 'Description must be short, practical, uncertain details omitted, and 255 characters or less.';
 
-    $payload = [
-        'model' => $model,
-        'store' => false,
-        'tools' => [['type' => 'web_search']],
-        'input' => $prompt,
-    ];
-    $curl = curl_init($endpoint);
+    if ($provider === 'gemini') {
+        $requestUrl = rtrim($endpoint, '/') . '/' . rawurlencode($model) . ':generateContent';
+        $payload = [
+            'contents' => [[
+                'role' => 'user',
+                'parts' => [['text' => $prompt]],
+            ]],
+            'generationConfig' => [
+                'responseMimeType' => 'application/json',
+                'temperature' => 0.1,
+            ],
+        ];
+        $headers = [
+            'x-goog-api-key: ' . $apiKey,
+            'Content-Type: application/json',
+        ];
+    } else {
+        $requestUrl = $endpoint;
+        $payload = [
+            'model' => $model,
+            'store' => false,
+            'input' => $prompt,
+        ];
+        $headers = [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json',
+        ];
+    }
+
+    $curl = curl_init($requestUrl);
     if ($curl === false) {
         return null;
     }
@@ -110,10 +151,7 @@ function material_detail_suggest_from_ai(string $materialName): ?array
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 3,
         CURLOPT_TIMEOUT => 8,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json',
-        ],
+        CURLOPT_HTTPHEADER => $headers,
     ]);
     $rawResponse = curl_exec($curl);
     $statusCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
@@ -123,9 +161,12 @@ function material_detail_suggest_from_ai(string $materialName): ?array
     }
 
     $response = json_decode($rawResponse, true);
-    $details = is_array($response)
-        ? material_detail_suggestion_parse_json(material_detail_suggestion_response_text($response))
-        : null;
+    $responseText = is_array($response)
+        ? ($provider === 'gemini'
+            ? material_detail_gemini_response_text($response)
+            : material_detail_suggestion_response_text($response))
+        : '';
+    $details = material_detail_suggestion_parse_json($responseText);
     if (!is_array($details) || !in_array($details['kind'] ?? '', ['material', 'asset'], true)) {
         return null;
     }
@@ -134,9 +175,19 @@ function material_detail_suggest_from_ai(string $materialName): ?array
     }
 
     $category = trim((string)($details['category'] ?? ''));
+    $specificCategory = material_detail_normalize_name((string)($details['specific_category'] ?? ''));
     $unit = strtolower(trim((string)($details['unit'] ?? '')));
     $description = preg_replace('/\s+/', ' ', trim((string)($details['description'] ?? ''))) ?? '';
-    if (!in_array($category, $categories, true) || !in_array($unit, $units, true) || $description === '') {
+    if (!in_array($category, $categories, true)
+        || !in_array($unit, $units, true)
+        || $description === ''
+        || ($category === 'Other' && ($specificCategory === '' || !material_detail_suggestion_valid_name($specificCategory)))) {
+        return null;
+    }
+    if ($category !== 'Other') {
+        $specificCategory = '';
+    }
+    if ((function_exists('mb_strlen') ? mb_strlen($specificCategory) : strlen($specificCategory)) > 80) {
         return null;
     }
     if ((function_exists('mb_strlen') ? mb_strlen($description) : strlen($description)) > 255) {
@@ -146,6 +197,7 @@ function material_detail_suggest_from_ai(string $materialName): ?array
     return [
         'asset_like' => false,
         'category' => $category,
+        'specific_category' => $specificCategory,
         'unit' => $unit,
         'description' => $description,
     ];

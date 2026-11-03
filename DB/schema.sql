@@ -252,6 +252,7 @@ CREATE TABLE `materials` (
   `material_name` varchar(180) NOT NULL,
   `description` varchar(255) DEFAULT NULL,
   `category` varchar(80) DEFAULT NULL,
+  `specific_category` varchar(80) DEFAULT NULL,
   `unit` varchar(30) NOT NULL DEFAULT 'unit',
   `physical_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
   `reserved_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,

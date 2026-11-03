@@ -571,12 +571,30 @@
     display: none;
 }
 
+.material-create-modal .material-create-modal__clear--warning {
+    border: 1px solid #d97706;
+    background: #fff7ed;
+    color: #9a4d00;
+}
+
+.material-create-modal .material-create-modal__clear--warning:hover,
+.material-create-modal .material-create-modal__clear--warning:focus-visible {
+    border-color: #b45309;
+    background: #ffedd5;
+    color: #7c2d12;
+    outline: 3px solid rgba(217, 119, 6, .18);
+}
+
 .material-create-modal .material-master-form-grid {
     gap: 16px;
 }
 
 .material-create-modal .input-group {
     min-width: 0;
+}
+
+.material-create-modal .material-specific-category[hidden] {
+    display: none;
 }
 
 .material-create-modal .input-group label {
@@ -612,7 +630,12 @@
     outline: 3px solid rgba(21, 128, 61, .15);
 }
 
-.material-create-modal [aria-invalid="true"] {
+.material-create-modal .input-group input[aria-invalid="true"],
+.material-create-modal .input-group select[aria-invalid="true"],
+.material-create-modal .input-group textarea[aria-invalid="true"],
+.material-create-modal .input-group input[aria-invalid="true"]:focus,
+.material-create-modal .input-group select[aria-invalid="true"]:focus,
+.material-create-modal .input-group textarea[aria-invalid="true"]:focus {
     border-color: #dc2626;
     outline: 2px solid rgba(220, 38, 38, .12);
 }
@@ -708,6 +731,45 @@
 
 .material-form-error[hidden] {
     display: none;
+}
+
+.material-ai-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.material-ai-suggestion button {
+    min-height: 38px;
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+
+.material-ai-suggestion small {
+    color: #64748b;
+    font-size: .75rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.material-ai-suggestion small.is-success {
+    color: #15803d;
+}
+
+.material-ai-suggestion small.is-warning {
+    color: #b45309;
+}
+
+.material-ai-suggestion small.is-error {
+    color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+    .material-ai-suggestion {
+        align-items: stretch;
+        flex-direction: column;
+    }
 }
 
 .material-create-modal__actions button:disabled {

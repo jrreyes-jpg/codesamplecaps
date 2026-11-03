@@ -81,6 +81,17 @@
     color: #132238;
 }
 
+.quotation-create-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.quotation-create-title-row .quotation-create-status {
+    margin: 4px 0 0;
+}
+
 .quotation-create-heading p,
 .quotation-create-section-head p,
 .quotation-create-scope p {
@@ -181,7 +192,7 @@
 
 .quotation-create-item {
     display: grid;
-    grid-template-columns: minmax(150px, .9fr) minmax(230px, 1.4fr) minmax(210px, 1.25fr) minmax(82px, .5fr) minmax(105px, .65fr) minmax(155px, .9fr);
+    grid-template-columns: minmax(210px, 1.35fr) minmax(180px, 1.1fr) minmax(75px, .42fr) minmax(95px, .55fr) minmax(140px, .78fr) minmax(120px, .65fr) auto;
     align-items: end;
     gap: 10px;
     padding: 14px;
@@ -272,7 +283,7 @@
 }
 
 .quotation-create-item__line-total {
-    grid-column: 5;
+    grid-column: 6;
     min-width: 0;
     min-height: 42px;
     padding: 9px 10px;
@@ -289,33 +300,8 @@
     font-size: .94rem;
 }
 
-.quotation-create-item__notes {
-    grid-column: 1 / span 4;
-    min-width: 0;
-    padding: 9px 10px;
-    border: 1px solid #dce8e3;
-    border-radius: 9px;
-    background: #ffffff;
-}
-
-.quotation-create-item__notes summary {
-    color: #476256;
-    cursor: pointer;
-    font-size: .82rem;
-    font-weight: 700;
-    list-style-position: inside;
-}
-
-.quotation-create-item__notes[open] summary {
-    margin-bottom: 8px;
-}
-
-.quotation-create-item__notes input {
-    min-height: 38px;
-}
-
 .quotation-create-item .quotation-create-remove {
-    grid-column: 6;
+    grid-column: 7;
     margin-bottom: 0;
     justify-self: end;
 }
@@ -361,11 +347,28 @@
     font: inherit;
 }
 
+.quotation-create-item select option[value=""]:disabled {
+    display: none;
+}
+
 .quotation-create-item input:focus,
 .quotation-create-item select:focus,
 .quotation-create-summary input:focus {
     border-color: #16875e;
     outline: 3px solid rgba(22, 135, 94, 0.12);
+}
+
+.quotation-create-item input[aria-invalid="true"],
+.quotation-create-item select[aria-invalid="true"],
+.quotation-create-summary input[aria-invalid="true"] {
+    border-color: #dc2626;
+    background: #fffafa;
+}
+
+.quotation-create-item input[aria-invalid="true"]:focus,
+.quotation-create-item select[aria-invalid="true"]:focus,
+.quotation-create-summary input[aria-invalid="true"]:focus {
+    outline-color: rgba(220, 38, 38, 0.18);
 }
 
 .quotation-create-remove {
@@ -407,12 +410,118 @@
     margin-top: -4px;
 }
 
+.quotation-create-direct-costs {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid #dce8e3;
+    border-radius: 14px;
+    background: #f8fbfa;
+}
+
+.quotation-create-direct-costs__heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: #17382c;
+}
+
+.quotation-create-direct-costs__heading small {
+    color: #64746b;
+}
+
+.quotation-create-direct-costs__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.quotation-create-direct-cost {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+}
+
+.quotation-create-direct-cost > span:first-child {
+    color: #52655c;
+    font-size: .8rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.quotation-create-direct-cost__input {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid #cddbd5;
+    border-radius: 9px;
+    background: #ffffff;
+}
+
+.quotation-create-direct-cost__input:focus-within {
+    border-color: #16875e;
+    outline: 3px solid rgba(22, 135, 94, 0.12);
+}
+
+.quotation-create-direct-cost__input b {
+    padding-left: 10px;
+    color: #0f6847;
+    font-size: .82rem;
+}
+
+.quotation-create-direct-cost__input input {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 9px 10px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #18251f;
+    font: inherit;
+}
+
 .quotation-create-item.is-material-item.has-linked-material {
-    grid-template-columns: minmax(150px, .9fr) minmax(230px, 1.4fr) minmax(210px, 1.25fr) minmax(82px, .5fr) minmax(105px, .65fr) minmax(155px, .9fr);
+    grid-template-columns: minmax(210px, 1.35fr) minmax(180px, 1.1fr) minmax(75px, .42fr) minmax(95px, .55fr) minmax(140px, .78fr) minmax(120px, .65fr) auto;
 }
 
 .quotation-create-item.is-material-item.has-linked-material .quotation-create-item__material-reference {
-    grid-column: 2 / span 2;
+    grid-column: 1 / span 2;
+}
+
+.quotation-create-materials-note {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid #dce8e3;
+    border-radius: 12px;
+    background: #f8fbfa;
+}
+
+.quotation-create-materials-note > span {
+    color: #52655c;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.quotation-create-materials-note textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    padding: 10px;
+    border: 1px solid #cddbd5;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #18251f;
+    font: inherit;
+}
+
+.quotation-create-materials-note textarea:focus {
+    border-color: #16875e;
+    outline: 3px solid rgba(22, 135, 94, 0.12);
 }
 
 .quotation-create-item.is-material-item.has-linked-material .quotation-create-item__name {
@@ -536,10 +645,6 @@
         grid-column: span 1;
     }
 
-    .quotation-create-item__notes {
-        grid-column: span 3;
-    }
-
     .quotation-create-item .quotation-create-remove {
         grid-column: span 1;
     }
@@ -555,6 +660,10 @@
 }
 
 @media (max-width: 900px) {
+    .quotation-create-direct-costs__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .quotation-create-item {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -574,8 +683,7 @@
         grid-column: span 2;
     }
 
-    .quotation-create-item__name,
-    .quotation-create-item__notes {
+    .quotation-create-item__name {
         grid-column: span 2;
     }
 
@@ -638,7 +746,6 @@
     }
 
     .quotation-create-item__name,
-    .quotation-create-item__notes,
     .quotation-create-item__type,
     .quotation-create-item__material-reference,
     .quotation-create-item__quantity,
@@ -670,6 +777,16 @@
 
     .quotation-create-actions {
         gap: 10px;
+    }
+
+    .quotation-create-direct-costs__heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .quotation-create-direct-costs__grid {
+        grid-template-columns: 1fr;
     }
 
 }

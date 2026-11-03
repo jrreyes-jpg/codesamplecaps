@@ -449,11 +449,11 @@ foreach ($inventoryItems as $item) {
 $adminPageTitle = 'Inventory Management - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261103-5',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261103-5',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

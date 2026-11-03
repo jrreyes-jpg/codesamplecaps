@@ -18,6 +18,7 @@ $materialCategories = material_detail_suggestion_categories();
 $materialUnits = material_detail_suggestion_units();
 $wholeCountUnits = material_stock_whole_count_units();
 $materialNameMaxLength = 180;
+$materialSpecificCategoryMaxLength = 80;
 $materialDescriptionMaxLength = 255;
 
 $materialPostText = static function (mixed $value): string {
@@ -56,11 +57,13 @@ $validateMaterialValues = static function (array $values) use (
     $materialUnits,
     $materialTextLength,
     $materialNameMaxLength,
+    $materialSpecificCategoryMaxLength,
     $materialDescriptionMaxLength
 ): array {
     $name = material_detail_normalize_name((string)$values['material_name']);
     $description = trim((string)$values['description']);
     $category = trim((string)$values['category']);
+    $specificCategory = material_detail_normalize_name((string)($values['specific_category'] ?? ''));
     $unit = trim((string)$values['unit']);
     $reorderRaw = trim((string)$values['reorder_level']);
     $fieldErrors = [];
@@ -74,6 +77,17 @@ $validateMaterialValues = static function (array $values) use (
     }
     if (!in_array($category, $materialCategories, true)) {
         $fieldErrors['category'] = 'Select a category.';
+    }
+    if ($category === 'Other') {
+        if ($specificCategory === '') {
+            $fieldErrors['specific_category'] = 'Enter the specific category.';
+        } elseif ($materialTextLength($specificCategory) > $materialSpecificCategoryMaxLength) {
+            $fieldErrors['specific_category'] = 'Specific category must be 80 characters or less.';
+        } elseif (!material_detail_suggestion_valid_name($specificCategory)) {
+            $fieldErrors['specific_category'] = 'Enter a valid specific category.';
+        }
+    } else {
+        $specificCategory = '';
     }
     if (!in_array($unit, $materialUnits, true)) {
         $fieldErrors['unit'] = 'Select a unit.';
@@ -98,6 +112,7 @@ $validateMaterialValues = static function (array $values) use (
         'name' => $name,
         'description' => $description,
         'category' => $category,
+        'specific_category' => $specificCategory,
         'unit' => $unit,
         'reorder' => $thresholdError === null ? (float)$reorderRaw : null,
         'errors' => $fieldErrors,
@@ -127,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $submittedMaterialValues = [
                 'material_name' => $materialPostText($_POST['material_name'] ?? ''),
                 'category' => $materialPostText($_POST['category'] ?? ''),
+                'specific_category' => $materialPostText($_POST['specific_category'] ?? ''),
                 'unit' => $materialPostText($_POST['unit'] ?? ($_POST['locked_unit'] ?? '')),
                 'reorder_level' => $materialPostText($_POST['reorder_level'] ?? ''),
                 'description' => $materialPostText($_POST['description'] ?? ''),
@@ -159,6 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (int)$materialId,
                     $validated['name'],
                     $validated['category'],
+                    $validated['specific_category'],
                     $validated['unit'],
                     (float)$validated['reorder'],
                     $validated['description'],
@@ -170,6 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conn,
                     $validated['name'],
                     $validated['category'],
+                    $validated['specific_category'],
                     $validated['unit'],
                     (float)$validated['reorder'],
                     $validated['description']
@@ -251,6 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'values' => $submittedMaterialValues !== [] ? $submittedMaterialValues : [
                     'material_name' => $materialPostText($_POST['material_name'] ?? ''),
                     'category' => $materialPostText($_POST['category'] ?? ''),
+                    'specific_category' => $materialPostText($_POST['specific_category'] ?? ''),
                     'unit' => $materialPostText($_POST['unit'] ?? ($_POST['locked_unit'] ?? '')),
                     'reorder_level' => $materialPostText($_POST['reorder_level'] ?? ''),
                     'description' => $materialPostText($_POST['description'] ?? ''),
@@ -290,11 +309,11 @@ $displayMaterialQuantity = static function (float $quantity): string {
 $adminPageTitle = 'Consumable Material Master - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261103-5',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261103-5',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -403,6 +422,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-material-description="<?php echo htmlspecialchars((string)($material['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-material-category="<?php echo htmlspecialchars((string)($material['category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-material-specific-category="<?php echo htmlspecialchars((string)($material['specific_category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-unit-editable="<?php echo isset($deletableMaterialIds[(int)$material['id']]) ? 'true' : 'false'; ?>"
@@ -478,17 +498,27 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <input type="hidden" name="locked_unit" value="<?php echo htmlspecialchars((string)($materialFormValues['unit'] ?? '')); ?>" data-material-locked-unit <?php echo $materialFormUnitEditable ? 'disabled' : ''; ?>>
                     <div class="form-grid material-master-form-grid">
                         <div class="input-group material-master-name">
-                            <label for="material_name">Material Name</label>
+                            <label for="material_name">Material Name <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="material_name" name="material_name" maxlength="180" placeholder="e.g., CAT6 Cable or PVC Pipe 1/2&quot;" value="<?php echo htmlspecialchars((string)($materialFormValues['material_name'] ?? '')); ?>" <?php echo $materialFieldError('material_name') !== '' ? 'aria-invalid="true" aria-describedby="materialNameError"' : ''; ?> required>
                             <small id="materialNameError" class="material-form-error" data-material-field-error="material_name"<?php echo $materialFieldError('material_name') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('material_name')); ?></small>
+                            <div class="material-ai-suggestion">
+                                <button type="button" class="btn-secondary" data-material-ai-suggest>Suggest with AI</button>
+                                <small data-material-ai-feedback aria-live="polite"></small>
+                            </div>
                         </div>
                         <div class="input-group">
-                            <label for="category">Category</label>
+                            <label for="category">Category <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select id="category" name="category" <?php echo $materialFieldError('category') !== '' ? 'aria-invalid="true" aria-describedby="materialCategoryError"' : ''; ?> required><option value="" disabled<?php echo empty($materialFormValues['category']) ? ' selected' : ''; ?>>Select category</option><?php foreach ($materialCategories as $category): ?><option value="<?php echo htmlspecialchars($category); ?>"<?php echo ($materialFormValues['category'] ?? '') === $category ? ' selected' : ''; ?>><?php echo htmlspecialchars($category); ?></option><?php endforeach; ?></select>
                             <small id="materialCategoryError" class="material-form-error" data-material-field-error="category"<?php echo $materialFieldError('category') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('category')); ?></small>
                         </div>
+                        <div class="input-group material-specific-category" data-material-specific-category-field<?php echo ($materialFormValues['category'] ?? '') === 'Other' ? '' : ' hidden'; ?>>
+                            <label for="specific_category">Specific Category <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <input id="specific_category" name="specific_category" maxlength="80" placeholder="e.g., Abrasives and Cutting Accessories" value="<?php echo htmlspecialchars((string)($materialFormValues['specific_category'] ?? '')); ?>" <?php echo $materialFieldError('specific_category') !== '' ? 'aria-invalid="true" aria-describedby="materialSpecificCategoryError"' : ''; ?> <?php echo ($materialFormValues['category'] ?? '') === 'Other' ? 'required' : 'disabled'; ?>>
+                            <small id="materialSpecificCategoryError" class="material-form-error" data-material-field-error="specific_category"<?php echo $materialFieldError('specific_category') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('specific_category')); ?></small>
+                            <small class="material-field-hint">Use a short and clear category name.</small>
+                        </div>
                         <div class="input-group">
-                            <label for="unit">Unit</label>
+                            <label for="unit">Unit <span class="required-indicator" aria-hidden="true">*</span></label>
                             <?php $materialUnitDescriptions = trim(($materialFormUnitEditable ? '' : 'materialUnitLockReason ') . ($materialFieldError('unit') !== '' ? 'materialUnitError' : '')); ?>
                             <select id="unit" name="unit" <?php echo $materialFormUnitEditable ? '' : 'disabled '; ?><?php echo $materialFieldError('unit') !== '' ? 'aria-invalid="true" ' : ''; ?><?php echo $materialUnitDescriptions !== '' ? 'aria-describedby="' . htmlspecialchars($materialUnitDescriptions) . '" ' : ''; ?>required><option value="" disabled<?php echo empty($materialFormValues['unit']) ? ' selected' : ''; ?>>Select unit</option><?php foreach ($materialUnits as $unit): ?><option value="<?php echo htmlspecialchars($unit); ?>" data-whole-number="<?php echo in_array($unit, $wholeCountUnits, true) ? 'true' : 'false'; ?>"<?php echo ($materialFormValues['unit'] ?? '') === $unit ? ' selected' : ''; ?>><?php echo htmlspecialchars($unit); ?></option><?php endforeach; ?></select>
                             <small id="materialUnitLockReason" class="material-field-hint" data-material-unit-lock<?php echo $materialFormUnitEditable ? ' hidden' : ''; ?>>Unit cannot be changed because this material has stock or history.</small>
@@ -499,10 +529,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <label for="reorder_level">Low Stock Alert Level <span class="required-indicator" aria-hidden="true">*</span></label>
                                 <span class="material-field-info" data-material-tooltip>
                                     <button type="button" aria-label="About Low Stock Alert Level" aria-describedby="materialReorderTooltip" aria-expanded="false">i</button>
-                                    <span id="materialReorderTooltip" role="tooltip">Use 0 when no low-stock alert is needed. Zero stock is always Out of Stock.</span>
+                                    <span id="materialReorderTooltip" role="tooltip">0 means no low-stock warning. Out of Stock still applies.</span>
                                 </span>
                             </div>
-                            <input id="reorder_level" name="reorder_level" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" placeholder="e.g., 10" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '')); ?>" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>
+                            <input id="reorder_level" name="reorder_level" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '0')); ?>" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>
                             <small id="materialReorderError" class="material-form-error" data-material-field-error="reorder_level"<?php echo $materialFieldError('reorder_level') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('reorder_level')); ?></small>
                         </div>
                         <div class="input-group material-master-description">
@@ -512,7 +542,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
                     <div class="material-create-modal__actions">
-                        <button type="button" class="btn-secondary material-create-modal__clear" data-material-clear<?php echo $materialFormMode === 'edit' ? ' hidden' : ''; ?>>Clear Form</button>
+                        <button type="button" class="btn-secondary material-create-modal__clear material-create-modal__clear--warning" data-material-clear<?php echo $materialFormMode === 'edit' ? ' hidden' : ''; ?>>Clear Form</button>
                         <div class="material-create-modal__actions-end">
                             <button type="button" class="btn-secondary" data-material-modal-close>Cancel</button>
                             <button type="submit" class="btn-primary" data-material-submit><?php echo $materialFormMode === 'edit' ? 'Save Changes' : 'Add Material'; ?></button>

@@ -268,17 +268,21 @@
     const submitButton = modal.querySelector('[data-material-submit]');
     const clearButton = modal.querySelector('[data-material-clear]');
     const generalError = modal.querySelector('[data-material-general-error]');
+    const aiSuggestButton = modal.querySelector('[data-material-ai-suggest]');
+    const aiSuggestFeedback = modal.querySelector('[data-material-ai-feedback]');
     const modalTitle = modal.querySelector('#materialCreateModalTitle');
     const formAction = form ? form.querySelector('[data-material-form-action]') : null;
     const formId = form ? form.querySelector('[data-material-form-id]') : null;
     const requestToken = form ? form.querySelector('[data-material-request-token]') : null;
     const lockedUnit = form ? form.querySelector('[data-material-locked-unit]') : null;
     const unitLockReason = modal.querySelector('[data-material-unit-lock]');
+    const specificCategoryGroup = modal.querySelector('[data-material-specific-category-field]');
     const editButtons = Array.from(document.querySelectorAll('[data-material-edit-open]'));
     const tooltipWrappers = Array.from(modal.querySelectorAll('[data-material-tooltip]'));
     const fields = form ? {
         material_name: form.querySelector('#material_name'),
         category: form.querySelector('#category'),
+        specific_category: form.querySelector('#specific_category'),
         unit: form.querySelector('#unit'),
         reorder_level: form.querySelector('#reorder_level'),
         description: form.querySelector('#description')
@@ -291,7 +295,7 @@
     let isSubmitting = false;
 
     const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
-    const addDraftFieldNames = ['material_name', 'category', 'unit', 'reorder_level', 'description'];
+    const addDraftFieldNames = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'description'];
     const draftScope = String(modal.dataset.draftScope || 'unknown');
     const draftKeyPrefix = 'edge:admin:add-material-draft:';
     const draftScopeMarker = 'edge:admin:add-material-draft-scope';
@@ -400,6 +404,17 @@
                 return !option.disabled && option.value === value;
             });
             if (!valid) message = 'Select a category.';
+        } else if (name === 'specific_category') {
+            if (fields.category.value === 'Other') {
+                const normalized = value.replace(/\s+/gu, ' ');
+                if (normalized === '') {
+                    message = 'Enter the specific category.';
+                } else if (Array.from(normalized).length > 80) {
+                    message = 'Specific category must be 80 characters or less.';
+                } else if (!/[\p{L}\p{N}]/u.test(normalized) || /\p{C}/u.test(normalized)) {
+                    message = 'Enter a valid specific category.';
+                }
+            }
         } else if (name === 'unit') {
             const valid = Array.from(field.options).some(function (option) {
                 return !option.disabled && option.value === value;
@@ -437,7 +452,7 @@
     }
 
     function validateForm() {
-        const order = ['material_name', 'category', 'unit', 'reorder_level', 'description'];
+        const order = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'description'];
         let firstInvalid = null;
         order.forEach(function (name) {
             if (!validateField(name) && !firstInvalid) firstInvalid = fields[name];
@@ -445,11 +460,93 @@
         return firstInvalid;
     }
 
+    function showAiSuggestionFeedback(message, state) {
+        if (!aiSuggestFeedback) return;
+        aiSuggestFeedback.textContent = message;
+        aiSuggestFeedback.classList.toggle('is-success', state === 'success');
+        aiSuggestFeedback.classList.toggle('is-warning', state === 'warning');
+        aiSuggestFeedback.classList.toggle('is-error', state === 'error');
+    }
+
+    async function suggestMaterialDetails() {
+        if (!aiSuggestButton || !form || !fields.material_name) return;
+        if (!validateField('material_name')) {
+            fields.material_name.focus();
+            return;
+        }
+
+        const defaultText = aiSuggestButton.textContent;
+        const csrfToken = form.querySelector('input[name="csrf_token"]')?.value || '';
+        aiSuggestButton.disabled = true;
+        aiSuggestButton.textContent = 'Suggesting...';
+        showAiSuggestionFeedback('', '');
+
+        try {
+            const response = await fetch('/codesamplecaps/ADMIN/sidebar/inventory/php/suggest_material_details.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({
+                    material_name: fields.material_name.value.trim(),
+                    csrf_token: csrfToken
+                })
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error('Suggestion unavailable');
+            if (result.asset_like) {
+                showAiSuggestionFeedback('This looks like a reusable asset. Check it before adding as a material.', 'warning');
+                return;
+            }
+
+            const categoryExists = Array.from(fields.category.options).some(function (option) {
+                return option.value === result.category;
+            });
+            const unitExists = Array.from(fields.unit.options).some(function (option) {
+                return option.value === result.unit;
+            });
+            if (!categoryExists || !unitExists || typeof result.description !== 'string') {
+                throw new Error('Invalid suggestion');
+            }
+
+            fields.category.value = result.category;
+            fields.specific_category.value = typeof result.specific_category === 'string' ? result.specific_category : '';
+            fields.unit.value = result.unit;
+            fields.description.value = result.description;
+            updateSpecificCategoryField();
+            ['category', 'specific_category', 'unit', 'description'].forEach(function (name) {
+                fields[name].dataset.materialDirty = 'true';
+                validateField(name);
+            });
+            updateReorderStep();
+            saveAddDraft();
+            showAiSuggestionFeedback('Suggestion added. Review before saving.', 'success');
+        } catch (error) {
+            showAiSuggestionFeedback('AI suggestion is unavailable. Enter details manually.', 'error');
+        } finally {
+            aiSuggestButton.disabled = false;
+            aiSuggestButton.textContent = defaultText;
+        }
+    }
+
     function updateReorderStep() {
         if (fields.reorder_level) {
             const wholeNumber = selectedUnitNeedsWholeNumber();
             fields.reorder_level.step = wholeNumber ? '1' : '0.01';
             fields.reorder_level.max = wholeNumber ? '9999999999' : '9999999999.99';
+        }
+    }
+
+    function updateSpecificCategoryField() {
+        if (!specificCategoryGroup || !fields.specific_category || !fields.category) return;
+        const isOther = fields.category.value === 'Other';
+        specificCategoryGroup.hidden = !isOther;
+        fields.specific_category.disabled = !isOther;
+        fields.specific_category.required = isOther;
+        if (!isOther) {
+            fields.specific_category.value = '';
+            setFieldError('specific_category', '');
         }
     }
 
@@ -518,20 +615,23 @@
             fields.material_name.value = data.materialName || '';
             fields.description.value = data.materialDescription || '';
             fields.category.value = data.materialCategory || '';
+            fields.specific_category.value = data.materialSpecificCategory || '';
             fields.unit.value = data.materialUnit || '';
             fields.reorder_level.value = data.materialReorder || '';
             configureUnitLock(data.unitEditable === 'true');
         } else {
             configureUnitLock(true);
         }
+        updateSpecificCategoryField();
         updateReorderStep();
     }
 
     function clearAddForm(clearDraft) {
         if (!form) return;
-        ['material_name', 'reorder_level', 'description'].forEach(function (name) {
+        ['material_name', 'specific_category', 'description'].forEach(function (name) {
             if (fields[name]) fields[name].value = '';
         });
+        if (fields.reorder_level) fields.reorder_level.value = '0';
         ['category', 'unit'].forEach(function (name) {
             if (fields[name]) fields[name].selectedIndex = 0;
         });
@@ -542,6 +642,7 @@
         if (generalError) generalError.hidden = true;
         closeTooltips(false);
         configureUnitLock(true);
+        updateSpecificCategoryField();
         updateReorderStep();
         if (clearDraft) clearStoredAddDraft();
     }
@@ -550,7 +651,7 @@
         const draft = readAddDraft();
         if (!draft) return;
 
-        ['material_name', 'reorder_level', 'description'].forEach(function (name) {
+        ['material_name', 'specific_category', 'reorder_level', 'description'].forEach(function (name) {
             if (fields[name] && typeof draft[name] === 'string') fields[name].value = draft[name];
         });
         ['category', 'unit'].forEach(function (name) {
@@ -560,6 +661,7 @@
             });
             fields[name].value = hasOption ? draft[name] : '';
         });
+        updateSpecificCategoryField();
         updateReorderStep();
         addDraftFieldNames.forEach(function (name) {
             if (!fields[name] || fields[name].value.trim() === '') return;
@@ -571,6 +673,7 @@
     function resetMaterialForm() {
         if (!form) return;
         form.reset();
+        showAiSuggestionFeedback('', '');
         clearAddForm(false);
         closeButtons.forEach(function (button) { button.disabled = false; });
         if (clearButton) clearButton.disabled = false;
@@ -632,6 +735,7 @@
             panel.focus({ preventScroll: true });
         });
     }
+    aiSuggestButton?.addEventListener('click', suggestMaterialDetails);
 
     modal.addEventListener('click', function (event) {
         if (event.target === modal) {
@@ -682,6 +786,10 @@
                     updateReorderStep();
                     fields.reorder_level.dataset.materialDirty = 'true';
                     validateField('reorder_level');
+                }
+                if (name === 'category') {
+                    updateSpecificCategoryField();
+                    if (fields.category.value === 'Other') validateField('specific_category');
                 }
                 validateField(name);
                 saveAddDraft();
@@ -768,5 +876,8 @@
     if (modal.dataset.autoOpen === 'true') {
         if (modal.dataset.autoMode === 'add') saveAddDraft();
         openModal(true);
+    } else if (isAddMode() && readAddDraft()) {
+        restoreAddDraft();
+        openModal(false);
     }
 })();

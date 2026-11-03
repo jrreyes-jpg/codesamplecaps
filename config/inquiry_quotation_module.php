@@ -26,6 +26,7 @@ function inquiry_quote_normalize_item_type(?string $itemType): string
         'equipment' => 'misc_safety_temp',
         'service' => 'misc_safety_temp',
         'other' => 'misc_safety_temp',
+        'custom_other' => 'misc_safety_temp',
     ];
     $normalized = $legacyTypes[$normalized] ?? $normalized;
 

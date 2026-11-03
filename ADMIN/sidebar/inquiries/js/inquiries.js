@@ -2583,11 +2583,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const items = quotationCreate.querySelector('[data-quotation-items]');
         const template = quotationCreate.querySelector('[data-quotation-item-template]');
         const addButton = quotationCreate.querySelector('[data-quotation-add-item]');
+        const directCostInputs = Array.from(quotationCreate.querySelectorAll('[data-quotation-direct-cost]'));
         const subtotalOutput = quotationCreate.querySelector('[data-quotation-subtotal]');
         const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
         const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
         const quotationNumberInput = quotationCreate.querySelector('input[name="quotation_no"]');
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
+        const materialsNoteInput = form?.querySelector('textarea[name="materials_note"]');
         const markupError = form?.querySelector('[data-quotation-markup-error]');
         const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
@@ -2614,21 +2616,45 @@ document.addEventListener('DOMContentLoaded', function () {
                 equipment: 'misc_safety_temp',
                 service: 'misc_safety_temp',
                 other: 'misc_safety_temp',
+                custom_other: 'misc_safety_temp',
             };
 
             return legacyTypes[value] || value;
         };
-        const serializeQuotationForm = function () {
-            return form ? new URLSearchParams(new FormData(form)).toString() : '';
-        };
-
-        let initialQuotationState = '';
+        let quotationDirty = false;
+        let quotationSavedState = '';
         let quotationSubmitAccepted = false;
         let quotationLeaveAccepted = false;
         let localDraftTimer = null;
 
+        const getQuotationFormState = function () {
+            if (!form) {
+                return '';
+            }
+
+            return JSON.stringify({
+                quotation_number: quotationNumberInput?.value.trim() || '',
+                markup_percent: marginInput?.value.trim() || '',
+                materials_note: materialsNoteInput?.value.trim() || '',
+                rows: Array.from(items?.querySelectorAll('[data-quotation-item]') || []).map(function (row) {
+                    return {
+                        material_id: row.querySelector('select[name="material_id[]"]')?.value || '',
+                        item_name: row.querySelector('input[name="item_name[]"]')?.value.trim() || '',
+                        quantity: row.querySelector('input[name="quantity[]"]')?.value.trim() || '',
+                        unit: row.querySelector('select[name="unit[]"]')?.value || '',
+                        unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '',
+                    };
+                }),
+                direct_costs: directCostInputs.map(function (input) {
+                    const value = input.value.trim();
+                    return value === '' || Number(value) === 0 ? '' : value;
+                }),
+            });
+        };
+
         const isQuotationDirty = function () {
-            return serializeQuotationForm() !== initialQuotationState;
+            return quotationDirty
+                && (quotationSavedState === '' || getQuotationFormState() !== quotationSavedState);
         };
 
         const updateEditSubmitState = function () {
@@ -2636,7 +2662,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            updateSubmitButton.disabled = serializeQuotationForm() === initialQuotationState;
+            updateSubmitButton.disabled = !isQuotationDirty();
+        };
+
+        const markQuotationDirty = function () {
+            quotationDirty = true;
+            updateEditSubmitState();
         };
 
         const readLocalQuotationDraft = function () {
@@ -2696,6 +2727,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 saved_at: Date.now(),
                 quotation_number: quotationNumberInput?.value || '',
                 markup_percent: marginInput?.value || '',
+                materials_note: materialsNoteInput?.value || '',
                 rows: Array.from(items?.querySelectorAll('[data-quotation-item]') || []).map(function (row) {
                     return {
                         type: row.querySelector('select[name="item_type[]"]')?.value || 'material',
@@ -2706,6 +2738,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
                         notes: row.querySelector('input[name="item_notes[]"]')?.value || '',
                     };
+                }),
+                direct_costs: directCostInputs.map(function (input) {
+                    return input.value || '0.00';
                 }),
             };
         };
@@ -2750,6 +2785,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 subtotal += lineTotal;
                 if (lineTotalOutput) lineTotalOutput.textContent = lineTotal.toFixed(2);
+            });
+            directCostInputs.forEach(function (input) {
+                const directCost = Number.parseFloat(input.value || '0');
+                if (Number.isFinite(directCost) && directCost >= 0) {
+                    subtotal += directCost;
+                }
             });
 
             const margin = Number.parseFloat(marginInput?.value || '0');
@@ -3094,6 +3135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentUnit = row.querySelector('select[name="unit[]"]')?.value || '';
             const itemName = row.querySelector('input[name="item_name[]"]');
             const quantityInput = row.querySelector('input[name="quantity[]"]');
+            const unitCostInput = row.querySelector('input[name="unit_cost[]"]');
 
             row.classList.toggle('is-material-item', isMaterial);
             row.classList.toggle('has-linked-material', isLinkedMaterial);
@@ -3201,8 +3243,17 @@ document.addEventListener('DOMContentLoaded', function () {
             if (marginInput) {
                 marginInput.value = String(draft.markup_percent || '');
             }
+            if (materialsNoteInput && typeof draft.materials_note === 'string') {
+                materialsNoteInput.value = draft.materials_note;
+            }
             if (quotationNumberInput && draft.quotation_number && !/^IQ-\d{8}-[A-F0-9]{6}$/i.test(String(draft.quotation_number))) {
                 quotationNumberInput.value = String(draft.quotation_number);
+            }
+            if (Array.isArray(draft.direct_costs)) {
+                directCostInputs.forEach(function (input, index) {
+                    const savedDirectCost = String(draft.direct_costs[index] ?? '');
+                    input.value = Number(savedDirectCost) === 0 ? '' : savedDirectCost;
+                });
             }
             return true;
         };
@@ -3216,26 +3267,18 @@ document.addEventListener('DOMContentLoaded', function () {
             syncMaterialReference(items.lastElementChild);
             syncMaterialReferenceOptionAvailability();
             updateQuotationPreview();
-            updateEditSubmitState();
+            markQuotationDirty();
             scheduleLocalQuotationDraftSave();
         });
 
         const hasMeaningfulQuotationItemData = function (row) {
-            const type = row.querySelector('select[name="item_type[]"]')?.value || 'material';
-            const materialId = row.querySelector('select[name="material_id[]"]')?.value || '';
             const itemName = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
             const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
-            const unit = row.querySelector('select[name="unit[]"]')?.value || '';
             const unitCost = row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
-            const notes = row.querySelector('input[name="item_notes[]"]')?.value.trim() || '';
 
-            return materialId !== ''
-                || itemName !== ''
+            return itemName !== ''
                 || quantity !== ''
-                || unitCost !== ''
-                || notes !== ''
-                || type !== 'material'
-                || (unit !== '' && unit !== 'pcs');
+                || unitCost !== '';
         };
 
         const quotationItemLabel = function (row) {
@@ -3253,7 +3296,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row?.remove();
             validateDuplicateMaterialReferences(true);
             updateQuotationPreview();
-            updateEditSubmitState();
+            markQuotationDirty();
             scheduleLocalQuotationDraftSave();
         };
 
@@ -3312,7 +3355,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
             updateQuotationPreview();
-            updateEditSubmitState();
+            markQuotationDirty();
             scheduleLocalQuotationDraftSave();
         });
 
@@ -3400,10 +3443,12 @@ document.addEventListener('DOMContentLoaded', function () {
             quotationSubmitAccepted = true;
         });
 
-        const leaveInitialQuotationWithoutSaving = function (destination) {
+        const leaveQuotationWithoutSaving = function (destination) {
             showQuotationDraftDiscardConfirm(function () {
                 quotationLeaveAccepted = true;
-                clearLocalQuotationDraft();
+                if (isInitialQuotation) {
+                    clearLocalQuotationDraft();
+                }
                 window.location.assign(destination);
             });
         };
@@ -3419,17 +3464,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (isInitialQuotation) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                leaveInitialQuotationWithoutSaving(destination);
-                return;
-            }
-
-            if (!window.confirm('You have unsaved changes. Leave without saving?')) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            leaveQuotationWithoutSaving(destination);
         }, true);
 
         window.addEventListener('beforeunload', function (event) {
@@ -3454,17 +3491,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         form?.querySelector('[data-quotation-cancel]')?.addEventListener('click', function (event) {
-            if (!isInitialQuotation || !isQuotationDirty()) {
+            if (!isQuotationDirty()) {
                 return;
             }
 
             event.preventDefault();
             event.stopImmediatePropagation();
-            leaveInitialQuotationWithoutSaving(this.href);
+            leaveQuotationWithoutSaving(this.href);
         });
 
         form?.addEventListener('input', function (event) {
             const row = event.target.closest('[data-quotation-item]');
+            if (event.target.matches('input[name="quantity[]"], input[name="unit_cost[]"], input[name="profit_margin_percent"]')
+                && event.target.value !== ''
+                && Number(event.target.value) < 0) {
+                event.target.value = '';
+            }
             if (event.target === marginInput) {
                 validateMarkup(true, false);
             }
@@ -3475,13 +3517,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 validateEstimatedUnitCost(row, true, false);
             }
             updateQuotationPreview();
-            updateEditSubmitState();
+            markQuotationDirty();
             scheduleLocalQuotationDraftSave();
         });
 
         quotationNumberInput?.addEventListener('input', function () {
-            updateEditSubmitState();
+            markQuotationDirty();
             scheduleLocalQuotationDraftSave();
+        });
+        form?.addEventListener('keydown', function (event) {
+            if (!event.target.matches('input[name="quantity[]"], input[name="unit_cost[]"], input[name="profit_margin_percent"]')) {
+                return;
+            }
+            if (['-', '+', 'e', 'E'].includes(event.key)) {
+                event.preventDefault();
+            }
         });
         marginInput?.addEventListener('blur', function () {
             validateMarkup(true, true);
@@ -3520,15 +3570,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 validateMaterialReference(row, true);
             }
         }, true);
-        form?.addEventListener('change', updateEditSubmitState);
         items?.querySelectorAll('[data-quotation-item]').forEach(function (row) {
             syncMaterialReference(row);
         });
+        directCostInputs.forEach(function (input) {
+            if (input.value !== '' && Number(input.value) === 0) {
+                input.value = '';
+            }
+        });
         syncMaterialReferenceOptionAvailability();
         updateQuotationPreview();
-        initialQuotationState = serializeQuotationForm();
+        quotationSavedState = getQuotationFormState();
         const savedLocalDraft = readLocalQuotationDraft();
         if (restoreLocalQuotationDraft(savedLocalDraft)) {
+            quotationDirty = true;
             updateQuotationPreview();
             validateDuplicateMaterialReferences(false);
             let hasShownRestoreNotice = false;

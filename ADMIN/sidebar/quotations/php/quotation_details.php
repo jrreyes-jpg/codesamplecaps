@@ -23,7 +23,7 @@ function admin_quote_details_status_class(string $status): string
         'sent' => 'is-active',
         'revision_requested' => 'is-warning',
         'rejected' => 'is-error',
-        'approved' => 'is-ready',
+        'approved' => 'is-neutral',
         default => 'is-neutral',
     };
 }
@@ -32,9 +32,19 @@ $quotationId = (int)($_GET['id'] ?? 0);
 $quotation = $quotationId > 0 ? inquiry_quote_fetch_full($conn, $quotationId) : null;
 $items = $quotation ? inquiry_quote_fetch_items($conn, $quotationId) : [];
 $history = $quotation ? inquiry_quote_fetch_history($conn, $quotationId) : [];
+$materialsNote = '';
+foreach ($items as $quotationItem) {
+    if (inquiry_quote_normalize_item_type((string)($quotationItem['item_type'] ?? '')) === 'material'
+        && trim((string)($quotationItem['notes'] ?? '')) !== '') {
+        $materialsNote = trim((string)$quotationItem['notes']);
+        break;
+    }
+}
+$sendCsrfToken = auth_csrf_token('admin_inquiries');
+$clientEmail = trim((string)($quotation['email'] ?? ''));
 $statusLabels = [
     'draft' => 'Draft',
-    'approved' => 'Ready to Send',
+    'approved' => 'Draft',
     'sent' => 'Awaiting Client',
     'revision_requested' => 'Revision Requested',
     'accepted' => 'Accepted',
@@ -45,15 +55,18 @@ $selectedStatus = $quotation
     : 'draft';
 $quotationNumber = trim((string)($quotation['quotation_no'] ?? ''));
 $quotationNumberLabel = $quotationNumber === '' || inquiry_quote_is_system_placeholder_number($quotationNumber)
-    ? 'Number not assigned'
+    ? 'Quotation number not assigned'
     : $quotationNumber;
 
 $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-5',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-7',
 ];
-$adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261103-2',
+];
 
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -87,15 +100,27 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="admin-quotation-actions">
-                    <?php if ($selectedStatus === 'draft'): ?>
-                        <a class="button-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>">Edit Draft</a>
+                    <?php if (in_array($selectedStatus, ['draft', 'approved'], true)): ?>
+                        <a class="button-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>" data-quotation-edit-draft>Edit Quotation</a>
                     <?php endif; ?>
                     <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo $quotationId; ?>">Preview Quotation</a>
+                    <?php if (in_array($selectedStatus, ['draft', 'approved'], true) && $clientEmail !== ''): ?>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-send-form" data-quotation-send-form>
+                            <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
+                            <input type="hidden" name="action" value="send_quotation_to_client">
+                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
+                            <input type="hidden" name="draft_id" value="<?php echo $quotationId; ?>">
+                            <button type="submit" class="button-primary">Send to Client</button>
+                        </form>
+                    <?php endif; ?>
                     <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=inspection">Open Inquiry</a>
                 </div>
 
                 <div class="admin-quotation-section">
                     <h2>Quotation Items</h2>
+                    <?php if ($materialsNote !== ''): ?>
+                        <p class="admin-quotation-materials-note"><strong>Materials Note:</strong> <?php echo admin_quote_details_e($materialsNote); ?></p>
+                    <?php endif; ?>
                     <div class="admin-quotation-table-wrap">
                         <table>
                             <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Line Total</th></tr></thead>
@@ -106,7 +131,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <td data-label="Item">
                                         <strong><?php echo admin_quote_details_e($item['item_name'] ?? 'Item'); ?></strong>
                                         <small><?php echo admin_quote_details_e(inquiry_quote_item_type_label((string)($item['item_type'] ?? ''))); ?></small>
-                                        <?php if (trim((string)($item['notes'] ?? '')) !== ''): ?><small>Note: <?php echo admin_quote_details_e($item['notes']); ?></small><?php endif; ?>
+                                        <?php if (inquiry_quote_normalize_item_type((string)($item['item_type'] ?? '')) !== 'material' && trim((string)($item['notes'] ?? '')) !== ''): ?><small>Note: <?php echo admin_quote_details_e($item['notes']); ?></small><?php endif; ?>
                                     </td>
                                     <td data-label="Qty"><?php echo admin_quote_details_e($item['quantity'] ?? 0); ?></td>
                                     <td data-label="Unit"><?php echo admin_quote_details_e($item['unit'] ?? 'unit'); ?></td>
@@ -137,6 +162,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </div>
                 </div>
             </section>
+
+            <div class="admin-quotation-send-modal" data-quotation-send-modal hidden>
+                <div class="admin-quotation-send-modal__backdrop" data-quotation-send-cancel></div>
+                <section class="admin-quotation-send-modal__card" role="dialog" aria-modal="true" aria-labelledby="quotationSendTitle">
+                    <h2 id="quotationSendTitle">Send quotation to client?</h2>
+                    <p>Review the saved quotation before sending it by email.</p>
+                    <dl>
+                        <div><dt>Client</dt><dd><?php echo admin_quote_details_e($quotation['client_name'] ?? 'Client'); ?></dd></div>
+                        <div><dt>Email</dt><dd><?php echo admin_quote_details_e($clientEmail); ?></dd></div>
+                        <div><dt>Total</dt><dd><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></dd></div>
+                    </dl>
+                    <div class="admin-quotation-send-modal__actions">
+                        <button type="button" class="button-secondary" data-quotation-send-cancel>Cancel</button>
+                        <button type="button" class="button-primary" data-quotation-send-confirm>Send Quotation</button>
+                    </div>
+                </section>
+            </div>
         <?php endif; ?>
     </div>
 </main>

@@ -145,6 +145,46 @@ $postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : 
 $postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : array_column($defaultItems, 'unit');
 $postedUnitCosts = is_array($_POST['unit_cost'] ?? null) ? $_POST['unit_cost'] : array_column($defaultItems, 'unit_cost');
 $postedNotes = is_array($_POST['item_notes'] ?? null) ? $_POST['item_notes'] : array_column($defaultItems, 'notes');
+$savedMaterialNotes = [];
+foreach ($defaultItems as $defaultItem) {
+    if (inquiry_quote_normalize_item_type((string)($defaultItem['item_type'] ?? '')) === 'material') {
+        $savedNote = trim((string)($defaultItem['notes'] ?? ''));
+        if ($savedNote !== '' && !in_array($savedNote, $savedMaterialNotes, true)) {
+            $savedMaterialNotes[] = $savedNote;
+        }
+    }
+}
+$materialsNote = trim((string)($_POST['materials_note'] ?? implode('; ', $savedMaterialNotes)));
+$materialRowIndexes = [];
+$directCostValues = array_fill_keys(array_keys(inquiry_quote_item_type_options()), 0.0);
+foreach ($postedTypes as $postedIndex => $postedType) {
+    $normalizedType = inquiry_quote_normalize_item_type((string)$postedType);
+    if ($normalizedType === 'material') {
+        $materialRowIndexes[] = $postedIndex;
+        continue;
+    }
+    if ($normalizedType !== '' && array_key_exists($normalizedType, $directCostValues)) {
+        $directCostValues[$normalizedType] += (float)($postedQuantities[$postedIndex] ?? 0)
+            * (float)($postedUnitCosts[$postedIndex] ?? 0);
+    }
+}
+if ($materialRowIndexes === []) {
+    $blankMaterialIndex = count($postedNames);
+    $postedTypes[$blankMaterialIndex] = 'material';
+    $postedMaterialIds[$blankMaterialIndex] = '';
+    $postedNames[$blankMaterialIndex] = '';
+    $postedQuantities[$blankMaterialIndex] = '';
+    $postedUnits[$blankMaterialIndex] = '';
+    $postedUnitCosts[$blankMaterialIndex] = '';
+    $postedNotes[$blankMaterialIndex] = '';
+    $materialRowIndexes[] = $blankMaterialIndex;
+}
+$postedNotes = array_fill(0, count($postedNames), '');
+if ($materialRowIndexes !== []) {
+    $postedNotes[$materialRowIndexes[0]] = $materialsNote;
+}
+$directCostTypes = inquiry_quote_item_type_options();
+unset($directCostTypes['material']);
 $isQuotationPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 $marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
 $marginPercent = is_numeric($marginPercentRaw) ? (float)$marginPercentRaw : 0.0;
@@ -169,6 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($marginPercent > 100) {
         $markupError = 'Markup cannot be greater than 100%.';
         $error = $markupError;
+    } elseif (strlen($materialsNote) > 2000) {
+        $error = 'Materials note must be 2000 characters or less.';
     } elseif (count($postedNames) === 0 || count($postedNames) > 50) {
         $error = 'Add from 1 to 50 quotation items only.';
     } else {
@@ -184,6 +226,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quantity = is_numeric($quantityRaw) ? (float)$quantityRaw : 0.0;
             $unit = trim((string)($postedUnits[$index] ?? 'unit'));
             $unitCostRaw = trim((string)($postedUnitCosts[$index] ?? ''));
+            if ($itemType !== 'material' && $unitCostRaw === '') {
+                $unitCostRaw = '0';
+            }
             $unitCost = is_numeric($unitCostRaw) ? (float)$unitCostRaw : 0.0;
             $notes = trim((string)($postedNotes[$index] ?? ''));
             $materialReference = trim((string)($postedMaterialIds[$index] ?? ''));
@@ -371,9 +416,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'grand_total' => $grandTotal,
                 ]);
 
-                $_SESSION['inquiry_center_flash'] = $isEditMode
-                    ? $quotationDraftLabel . ' updated.'
-                    : 'Initial quotation draft created.';
+                $_SESSION['auth_flash'] = [
+                    'type' => 'success',
+                    'message' => $isEditMode
+                        ? 'Quotation draft updated successfully.'
+                        : 'Quotation draft created successfully.',
+                ];
                 header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $draftId);
                 exit();
             } catch (Throwable $throwable) {
@@ -389,12 +437,12 @@ $adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Ed
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261102-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-8',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-12',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -415,14 +463,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $editId : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary quotation-create-back">&larr; Back to <?php echo $isEditMode ? 'Quotations' : 'Inquiries'; ?></a>
 
             <div class="quotation-create-heading">
-                <div>
-                    <span class="reports-kicker">Draft</span>
+                <div class="quotation-create-title-row">
                     <h1><?php echo $isEditMode ? 'Edit Quotation' : 'Create Quotation'; ?></h1>
+                    <span class="quotation-create-status">Draft</span>
                 </div>
                 <div class="quotation-create-number">
                     <label for="quotationNumber">Quotation Number</label>
                     <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off" required<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
-                    <small><?php echo $isInitialQuotationDraft ? 'Follow the official Edge format. This locks after sending.' : 'Revision number is based on the original quotation.'; ?></small>
+                    <?php if (!$isInitialQuotationDraft): ?>
+                        <small>Revision number is based on the original quotation.</small>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -447,29 +497,30 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-section-head">
                     <div>
                         <h2>Cost Breakdown</h2>
-                        <p>Materials and other cost categories</p>
+                        <p>All materials and pre-charged project costs are included in the subtotal.</p>
                     </div>
                 </div>
 
                 <div class="quotation-create-items" data-quotation-items>
-                    <?php foreach ($postedNames as $index => $postedName): ?>
+                    <?php foreach ($materialRowIndexes as $index): ?>
                         <?php
-                        $rowType = inquiry_quote_normalize_item_type((string)($postedTypes[$index] ?? '')) ?: 'material';
+                        $postedName = (string)($postedNames[$index] ?? '');
+                        $rowType = 'material';
                         $rowMaterialId = (int)($postedMaterialIds[$index] ?? 0);
                         $rowUnit = (string)($postedUnits[$index] ?? '');
                         $rowUnitLocked = $rowType === 'material' && $rowMaterialId > 0;
                         $rowNameLocked = $rowUnitLocked;
                         ?>
                         <div class="quotation-create-item<?php echo $rowType === 'material' ? ' is-material-item' : ''; ?>" data-quotation-item>
-                            <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required><?php foreach (inquiry_quote_item_type_options() as $typeValue => $typeLabel): ?><option value="<?php echo htmlspecialchars($typeValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowType === $typeValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($typeLabel, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></label>
+                            <label class="quotation-create-item__type" hidden><span>Type</span><select name="item_type[]" required><option value="material" selected>Materials</option></select></label>
                             <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo $rowType !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><select name="material_id[]" required>
-                                    <option value="" disabled<?php echo $rowMaterialId <= 0 && (string)($postedMaterialIds[$index] ?? '') !== 'manual' ? ' selected' : ''; ?>>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowMaterialId === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual" <?php echo (string)($postedMaterialIds[$index] ?? '') === 'manual' ? ' selected' : ''; ?>>Manual / non-stock material</option>
+                                    <option value="" disabled hidden<?php echo $rowMaterialId <= 0 && (string)($postedMaterialIds[$index] ?? '') !== 'manual' ? ' selected' : ''; ?>>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowMaterialId === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual" <?php echo (string)($postedMaterialIds[$index] ?? '') === 'manual' ? ' selected' : ''; ?>>Manual / non-stock material</option>
                                 </select><span class="quotation-create-item__material-feedback" data-quotation-material-feedback aria-live="polite" hidden></span><span class="quotation-create-item__material-error" data-quotation-material-error aria-live="polite"></span></label>
-                            <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required<?php echo $rowNameLocked ? ' class="is-linked-material-name" readonly aria-readonly="true"' : ''; ?>></label>
+                            <label class="quotation-create-item__name"><span>Item</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required<?php echo $rowNameLocked ? ' class="is-linked-material-name" readonly aria-readonly="true"' : ''; ?>></label>
                             <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
                             <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
                             <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="<?php echo $rowType === 'material' ? '0.01' : '0'; ?>" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
-                            <details class="quotation-create-item__notes"><summary>Item Note (Optional)</summary><input type="text" name="item_notes[]" maxlength="2000" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Add a note or exclusion"></details>
+                            <input type="hidden" name="item_notes[]" value="">
                             <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                         </div>
@@ -477,20 +528,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-add-item-row">
-                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Cost Item</button>
+                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Material</button>
                 </div>
+
+                <label class="quotation-create-materials-note">
+                    <span>Materials Note (Optional)</span>
+                    <textarea name="materials_note" rows="2" maxlength="2000" placeholder="Add one note for all materials"><?php echo htmlspecialchars($materialsNote, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                </label>
 
                 <template data-quotation-item-template>
                     <div class="quotation-create-item is-material-item" data-quotation-item>
-                        <label class="quotation-create-item__type"><span>Type</span><select name="item_type[]" required>
-                                <?php foreach (inquiry_quote_item_type_options() as $typeValue => $typeLabel): ?>
-                                    <option value="<?php echo htmlspecialchars($typeValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($typeLabel, ENT_QUOTES, 'UTF-8'); ?></option>
-                                <?php endforeach; ?>
-                            </select></label>
+                        <label class="quotation-create-item__type" hidden><span>Type</span><select name="item_type[]" required><option value="material" selected>Materials</option></select></label>
                         <label class="quotation-create-item__material-reference" data-quotation-material-reference><span>Material Reference</span><select name="material_id[]" required>
-                                <option value="" selected disabled>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual">Manual / non-stock material</option>
+                                <option value="" selected disabled hidden>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual">Manual / non-stock material</option>
                             </select><span class="quotation-create-item__material-feedback" data-quotation-material-feedback aria-live="polite" hidden></span><span class="quotation-create-item__material-error" data-quotation-material-error aria-live="polite"></span></label>
-                        <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" required></label>
+                        <label class="quotation-create-item__name"><span>Item</span><input type="text" name="item_name[]" maxlength="180" required></label>
                         <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
                         <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit>
                                 <option value="" selected disabled>Select unit</option>
@@ -504,11 +556,35 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <option value="liter">liter</option>
                             </select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
                         <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
-                        <details class="quotation-create-item__notes"><summary>Item Note (Optional)</summary><input type="text" name="item_notes[]" maxlength="2000" placeholder="Add a note or exclusion"></details>
+                        <input type="hidden" name="item_notes[]" value="">
                         <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                         <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                     </div>
                 </template>
+
+                <section class="quotation-create-direct-costs" aria-labelledby="quotationDirectCostsTitle">
+                    <div class="quotation-create-direct-costs__heading">
+                        <strong id="quotationDirectCostsTitle">Other Cost Categories</strong>
+                        <small>Enter 0 when there is no cost.</small>
+                    </div>
+                    <div class="quotation-create-direct-costs__grid">
+                        <?php foreach ($directCostTypes as $directType => $directLabel): ?>
+                            <label class="quotation-create-direct-cost">
+                                <span><?php echo htmlspecialchars($directLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="quotation-create-direct-cost__input">
+                                    <b aria-hidden="true">PHP</b>
+                                    <input type="number" name="unit_cost[]" min="0" step="0.01" placeholder="0.00" value="<?php echo (float)($directCostValues[$directType] ?? 0) > 0 ? htmlspecialchars(number_format((float)$directCostValues[$directType], 2, '.', ''), ENT_QUOTES, 'UTF-8') : ''; ?>" data-quotation-direct-cost>
+                                </span>
+                                <input type="hidden" name="item_type[]" value="<?php echo htmlspecialchars($directType, ENT_QUOTES, 'UTF-8'); ?>">
+                                <input type="hidden" name="material_id[]" value="">
+                                <input type="hidden" name="item_name[]" value="<?php echo htmlspecialchars($directLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                                <input type="hidden" name="quantity[]" value="1">
+                                <input type="hidden" name="unit[]" value="lot">
+                                <input type="hidden" name="item_notes[]" value="">
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
 
                 <div class="quotation-create-summary">
                     <label><span>Markup (%)</span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($marginPercentRaw, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-summary__error" data-quotation-markup-error aria-live="polite"><?php echo htmlspecialchars($markupError, ENT_QUOTES, 'UTF-8'); ?></span></label>

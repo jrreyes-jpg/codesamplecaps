@@ -1612,6 +1612,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (savedBox && !savedBox.querySelector('figure')) savedBox.remove();
                     const uploadBox = photoInput?.closest('.inspection-evidence__upload');
                     if (uploadBox) uploadBox.hidden = false;
+                    if (photoInput) {
+                        photoInput.disabled = false;
+                        photoInput.value = '';
+                    }
                     if (feedback) {
                         feedback.className = 'inspection-evidence__feedback is-saved';
                         feedback.textContent = payload.message || 'Photo removed.';

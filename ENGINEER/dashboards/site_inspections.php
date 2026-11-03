@@ -2342,7 +2342,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261102-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261103-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

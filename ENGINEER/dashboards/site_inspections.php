@@ -1121,6 +1121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (!site_inspection_costing_versions_ready($conn)) {
                 $error = 'Costing version setup is not ready. Apply the required database migration.';
             } elseif ($currentReviewStatus === 'Returned'
+                && !$hasEvidenceChange
                 && engineer_inspection_matches_latest_submitted_version(
                     $conn,
                     $inspectionId,
@@ -1129,7 +1130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $riskNotes,
                     $clientRequests
                 )) {
-                $error = 'Change the returned report or costing before resubmitting to Admin.';
+                $error = 'Change the returned report, costing, or evidence before resubmitting to Admin.';
             }
         }
 
@@ -2342,7 +2343,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261103-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261103-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

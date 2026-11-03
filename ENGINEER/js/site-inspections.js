@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
             submitButton.classList.toggle('is-locked', !canSubmit || !hasRevisionChange);
             submitButton.setAttribute('aria-disabled', canSubmit && hasRevisionChange ? 'false' : 'true');
             submitButton.title = !hasRevisionChange
-                ? 'Change the returned report before resubmitting.'
+                ? 'Change the returned report, costing, or evidence before resubmitting.'
                 : (canSubmit ? '' : 'Click to see the missing or invalid fields.');
 
             const guidance = form.querySelector('[data-submit-guidance]');
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const missingItems = getCostingMissingItems(form);
                 guidance.classList.toggle('is-ready', canSubmit && hasRevisionChange);
                 guidance.textContent = !hasRevisionChange
-                    ? 'Make at least one valid change before resubmitting to Admin.'
+                    ? 'Change the report, costing, photo, or Drive link before resubmitting.'
                     : (canSubmit
                         ? 'Ready to submit to Admin.'
                         : `Cannot submit yet. Check: ${missingItems.join(', ')}.`);

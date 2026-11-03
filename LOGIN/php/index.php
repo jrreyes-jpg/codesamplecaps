@@ -29,6 +29,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="stylesheet" href="../css/loader.css?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../css/loader.css')); ?>">
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
     <link rel="stylesheet" href="../css/public-confirmation.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/css/action-loading.css') ?: 1)); ?>">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 
 </head>
@@ -703,11 +704,6 @@ if (empty($_SESSION['inquiry_form_token'])) {
 </div>
 <div class="inquiry-otp-modal" data-inquiry-otp-modal aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inquiryOtpTitle">
     <div class="inquiry-otp-modal__card">
-        <div class="inquiry-otp-modal__loading js-inquiry-otp-loading" aria-live="polite">
-            <span class="inquiry-otp-modal__spinner" aria-hidden="true"></span>
-            <h3>Sending code...</h3>
-            <p>Please wait. Do not close this page.</p>
-        </div>
         <div class="inquiry-otp-modal__content js-inquiry-otp-content">
             <button class="inquiry-otp-modal__close js-inquiry-otp-close" type="button" aria-label="Close email verification">&times;</button>
             <h3 id="inquiryOtpTitle">Verify Client Email</h3>
@@ -731,6 +727,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     </script>
     <script src="../js/loader.js?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../js/loader.js')); ?>" defer></script>
     <script src="../js/public-confirmation.js" defer></script>
+    <script src="/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/js/action-loading.js') ?: 1)); ?>" defer></script>
     <script src="../js/index.js?v=<?php echo rawurlencode($inquiryFormScriptVersion); ?>" defer></script>
 
 </body>

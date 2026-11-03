@@ -3,10 +3,9 @@
 
     var loader = document.getElementById("pageLoader");
     var shownAt = 0;
-    var showDelay = 350;
-    var minimumVisibleTime = 300;
+    var minimumVisibleTime = 2000;
     var maximumDisplayTime = 8000;
-    var fadeDuration = 180;
+    var fadeDuration = 420;
     var showTimer;
     var isHidden = false;
     var isVisible = false;
@@ -50,7 +49,7 @@
         window.setTimeout(hideLoader, remaining);
     }
 
-    showTimer = window.setTimeout(showLoader, showDelay);
+    showLoader();
     window.addEventListener("load", scheduleHide, { once: true });
 
     window.setTimeout(hideLoader, maximumDisplayTime);

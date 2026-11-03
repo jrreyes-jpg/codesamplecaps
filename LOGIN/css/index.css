@@ -893,41 +893,6 @@ h4 {
     box-shadow: 0 24px 55px rgba(15, 23, 42, 0.3);
 }
 
-.inquiry-otp-modal__loading {
-    display: none;
-    min-height: 210px;
-    place-items: center;
-    align-content: center;
-    text-align: center;
-}
-
-.inquiry-otp-modal.is-sending .inquiry-otp-modal__loading {
-    display: grid;
-}
-
-.inquiry-otp-modal.is-sending .inquiry-otp-modal__content {
-    display: none;
-}
-
-.inquiry-otp-modal__loading h3 {
-    margin: 16px 0 8px;
-    color: #172033;
-}
-
-.inquiry-otp-modal__loading p {
-    margin: 0;
-    color: #51627d;
-}
-
-.inquiry-otp-modal__spinner {
-    width: 44px;
-    height: 44px;
-    border: 5px solid #dcfce7;
-    border-top-color: #16a34a;
-    border-radius: 50%;
-    animation: inquiry-submit-spin 700ms linear infinite;
-}
-
 .inquiry-otp-modal__card h3 {
     margin: 0 40px 10px 0;
     color: #172033;
@@ -1169,21 +1134,6 @@ body.has-inquiry-otp-open {
     align-items: center;
     justify-content: center;
     gap: 8px;
-}
-
-.inquiry-submit__spinner {
-    width: 15px;
-    height: 15px;
-    border: 2px solid rgba(255, 255, 255, 0.45);
-    border-top-color: #ffffff;
-    border-radius: 50%;
-    animation: inquiry-submit-spin 700ms linear infinite;
-}
-
-@keyframes inquiry-submit-spin {
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 @media (max-width: 900px) {

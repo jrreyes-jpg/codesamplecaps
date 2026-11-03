@@ -731,7 +731,6 @@ const initInquiryForm = () => {
         const setOtpBusy = (busy, label = '') => {
             isOtpBusy = busy;
             otpModal?.classList.toggle('is-busy', busy);
-            otpModal?.classList.toggle('is-sending', busy);
             otpModal?.setAttribute('aria-busy', busy ? 'true' : 'false');
             [otpCodeInput, otpVerifyButton, otpResendButton].forEach((control) => {
                 if (control) control.disabled = busy;
@@ -739,6 +738,14 @@ const initInquiryForm = () => {
             if (busy && otpMessage) {
                 otpMessage.textContent = label;
                 otpMessage.classList.remove('is-error');
+            }
+            if (busy) {
+                window.edgeActionLoading?.show({
+                    title: label || 'Sending code...',
+                    message: 'Please wait. Do not close this page.',
+                });
+            } else {
+                window.edgeActionLoading?.hide();
             }
         };
 
@@ -748,12 +755,14 @@ const initInquiryForm = () => {
             otpCodeInput.value = '';
             otpMessage.textContent = '';
             otpMessage.classList.remove('is-error');
+            if (isSending) {
+                return;
+            }
             otpModal.classList.add('is-open');
             otpModal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('has-inquiry-otp-open');
-            otpModal.classList.toggle('is-sending', isSending);
-            otpModal.setAttribute('aria-busy', isSending ? 'true' : 'false');
-            if (!isSending) window.setTimeout(() => otpCodeInput.focus(), 80);
+            otpModal.setAttribute('aria-busy', 'false');
+            window.setTimeout(() => otpCodeInput.focus(), 80);
         };
 
         const closeOtpModal = (force = false) => {
@@ -773,7 +782,7 @@ const initInquiryForm = () => {
                 return;
             }
             otpModal.classList.remove('is-open');
-            otpModal.classList.remove('is-sending');
+            window.edgeActionLoading?.hide();
             otpModal.setAttribute('aria-hidden', 'true');
             otpModal.removeAttribute('aria-busy');
             document.body.classList.remove('has-inquiry-otp-open');
@@ -917,7 +926,7 @@ const initInquiryForm = () => {
             verifyEmailButton.disabled = true;
             verifyEmailButton.textContent = 'Sending...';
             openOtpModal(true);
-            setOtpBusy(true, 'Sending verification code...');
+            setOtpBusy(true, 'Sending code...');
             let resendAfter = 0;
             let expiresIn = 0;
             let existingCode = false;
@@ -958,6 +967,7 @@ const initInquiryForm = () => {
                 setOtpBusy(false);
                 if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
                 if (resendAfter > 0) {
+                    openOtpModal(false);
                     startOtpClock(expiresIn, resendAfter);
                     otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : successMessage;
                     otpMessage.classList.remove('is-error');
@@ -2029,8 +2039,12 @@ const restoreInquiryDraft = () => {
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.setAttribute('aria-busy', 'true');
-                submitButton.innerHTML = '<span class="inquiry-submit__spinner" aria-hidden="true"></span><span>Submitting Inquiry...</span>';
+                submitButton.textContent = 'Submitting Inquiry...';
             }
+            window.edgeActionLoading?.show({
+                title: 'Submitting inquiry...',
+                message: 'Please wait. Do not close this page.',
+            });
         });
 
         window.addEventListener('pageshow', () => {
@@ -2043,6 +2057,7 @@ const restoreInquiryDraft = () => {
             submitButton.disabled = false;
             submitButton.removeAttribute('aria-busy');
             submitButton.textContent = 'Submit Inquiry';
+            window.edgeActionLoading?.hide();
         });
     });
 };

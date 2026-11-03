@@ -120,6 +120,27 @@
 .admin-quotation-card h2 { margin: 7px 0 5px; font-size: 19px; overflow-wrap: anywhere; }
 .admin-quotation-card p { margin: 3px 0; color: #66758d; overflow-wrap: anywhere; }
 .admin-quotation-card strong { color: #126c37; }
+.admin-quotation-card-meta span { color: #66758d; font-size: 12px; overflow-wrap: anywhere; }
+
+.admin-quotation-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.admin-quotation-pagination a,
+.admin-quotation-pagination span {
+    padding: 8px 10px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-quotation-pagination a { background: #e7f7ee; color: #126c37; }
+.admin-quotation-pagination span { color: #66758d; text-align: center; }
 
 .quote-status {
     display: inline-flex;
@@ -164,12 +185,39 @@
 
 .admin-quotation-section { margin-top: 14px; }
 .admin-quotation-section h3 { margin: 0 0 10px; font-size: 19px; }
-.admin-quotation-table-wrap { overflow-x: auto; border: 1px solid #dce5ed; border-radius: 13px; }
-.admin-quotation-table-wrap table { width: 100%; min-width: 700px; border-collapse: collapse; }
+.admin-quotation-table-wrap { overflow: hidden; border: 1px solid #dce5ed; border-radius: 13px; }
+.admin-quotation-table-wrap table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
+.admin-quotation-table-wrap th:first-child { width: 32%; }
 .admin-quotation-table-wrap th,
 .admin-quotation-table-wrap td { padding: 12px; border-bottom: 1px solid #e2e8ef; text-align: left; overflow-wrap: anywhere; }
 .admin-quotation-table-wrap th { background: #dcf8e7; }
 .admin-quotation-table-wrap tr:last-child td { border-bottom: 0; }
+.admin-quotation-table-wrap td > strong,
+.admin-quotation-table-wrap td > small { display: block; }
+.admin-quotation-table-wrap td > small { margin-top: 3px; color: #66758d; }
+
+.admin-quotation-totals {
+    width: min(100%, 430px);
+    margin: 12px 0 0 auto;
+    padding: 12px;
+    border: 1px solid #dce5ed;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.admin-quotation-totals p {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 7px 0;
+}
+
+.admin-quotation-totals .is-total {
+    border-top: 1px solid #cbd7e5;
+    color: #126c37;
+    font-size: 17px;
+}
 
 .admin-quotation-history { display: grid; gap: 8px; }
 .admin-quotation-history article { padding: 12px; border: 1px solid #dce5ed; border-radius: 12px; }

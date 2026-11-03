@@ -93,7 +93,7 @@
     background: #edf8f2;
 }
 
-.quotation-create-number span,
+.quotation-create-number label,
 .quotation-create-client-grid span,
 .quotation-create-scope > span,
 .quotation-create-item label > span,
@@ -109,8 +109,28 @@
     text-transform: uppercase;
 }
 
-.quotation-create-number strong {
+.quotation-create-number input {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid #b8d7c7;
+    border-radius: 8px;
+    background: #ffffff;
     color: #0f6847;
+    font: inherit;
+    font-weight: 700;
+}
+
+.quotation-create-number input:focus {
+    border-color: #22a35a;
+    outline: 3px solid rgba(34, 163, 90, 0.15);
+}
+
+.quotation-create-number small {
+    display: block;
+    margin-top: 5px;
+    color: #617066;
+    font-size: 0.78rem;
 }
 
 .quotation-create-client-grid {
@@ -2001,8 +2021,13 @@
 }
 
 .inquiry-modal__close {
+    display: inline-flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
     width: 36px;
     height: 36px;
+    padding: 0;
     border: 0;
     border-radius: 999px;
     background: #f1f5f9;
@@ -2011,6 +2036,7 @@
     font-size: 1.4rem;
     font-weight: 800;
     line-height: 1;
+    text-decoration: none;
 }
 
 .inquiry-modal__tools {
@@ -2085,7 +2111,6 @@
     background: #f8fafc;
 }
 
-/* Dalawang tab lang para simple ang Admin inquiry view. */
 .inquiry-workflow--admin {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -2107,6 +2132,7 @@
     font-size: 0.78rem;
     font-weight: 900;
     text-align: left;
+    text-decoration: none;
 }
 
 .inquiry-modal-tab:hover,
@@ -3196,10 +3222,53 @@ body.inquiry-modal-open {
 
 .submitted-inspection-review-state.is-approved {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
     background: #f0fdf4;
     color: #166534;
+}
+
+.submitted-inspection-review-state__details {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.submitted-inspection-review-state__details span {
+    font-size: 0.82rem;
+}
+
+.submitted-inspection-review-state__quotation-link {
+    display: inline-flex;
+    min-height: 34px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 11px;
+    border: 1px solid #86efac;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #166534;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.submitted-inspection-review-state__quotation-link:hover {
+    background: #dcfce7;
+}
+
+@media (max-width: 560px) {
+    .submitted-inspection-review-state.is-approved.has-quotation {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .submitted-inspection-review-state__quotation-link {
+        width: 100%;
+    }
 }
 
 @media (max-width: 900px) {

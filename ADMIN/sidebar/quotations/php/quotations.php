@@ -19,7 +19,7 @@ function admin_quote_date($value): string
 function admin_quote_version(array $quotation): string
 {
     $revision = (int)($quotation['revision_no'] ?? 0);
-    return $revision > 0 ? 'V' . $revision : 'Initial';
+    return $revision > 0 ? 'V' . $revision : '';
 }
 
 function admin_quote_status_class(string $status): string
@@ -39,6 +39,7 @@ function admin_quote_page_url(array $changes = []): string
     $query = array_merge([
         'status' => $_GET['status'] ?? 'all',
         'q' => $_GET['q'] ?? '',
+        'page' => $_GET['page'] ?? 1,
     ], $changes);
     return '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?' . http_build_query(array_filter(
         $query,
@@ -62,6 +63,8 @@ if (!in_array($activeStatus, $allowedStatuses, true)) {
 }
 $search = trim((string)($_GET['q'] ?? ''));
 $requestedId = (int)($_GET['id'] ?? 0);
+$requestedPage = max(1, (int)($_GET['page'] ?? 1));
+$perPage = 10;
 $allQuotations = [];
 
 if ($tablesReady) {
@@ -72,6 +75,10 @@ if ($tablesReady) {
         }
     }
 }
+
+usort($allQuotations, static function (array $left, array $right): int {
+    return strtotime((string)($right['updated_at'] ?? '')) <=> strtotime((string)($left['updated_at'] ?? ''));
+});
 
 $counts = array_fill_keys($allowedStatuses, 0);
 $counts['all'] = count($allQuotations);
@@ -99,6 +106,19 @@ $quotations = array_values(array_filter($allQuotations, static function (array $
     return stripos($haystack, $search) !== false;
 }));
 
+$totalResults = count($quotations);
+$totalPages = max(1, (int)ceil($totalResults / $perPage));
+if ($requestedId > 0) {
+    foreach ($quotations as $quotationIndex => $quotation) {
+        if ((int)$quotation['id'] === $requestedId) {
+            $requestedPage = (int)floor($quotationIndex / $perPage) + 1;
+            break;
+        }
+    }
+}
+$currentPage = min($requestedPage, $totalPages);
+$quotations = array_slice($quotations, ($currentPage - 1) * $perPage, $perPage);
+
 $selectedQuotation = null;
 foreach ($quotations as $quotation) {
     if (($requestedId > 0 && (int)$quotation['id'] === $requestedId) || ($requestedId === 0 && $selectedQuotation === null)) {
@@ -125,7 +145,7 @@ $statusLabels = [
 $adminPageTitle = 'Quotations - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-1',
 ];
 $adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
 
@@ -157,7 +177,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php else: ?>
             <nav class="admin-quotation-filters" aria-label="Quotation status filters">
                 <?php foreach ($statusLabels as $value => $label): ?>
-                    <a class="<?php echo $activeStatus === $value ? 'is-selected' : ''; ?>" href="<?php echo admin_quote_e(admin_quote_page_url(['status' => $value, 'id' => null])); ?>">
+                    <a class="<?php echo $activeStatus === $value ? 'is-selected' : ''; ?>" href="<?php echo admin_quote_e(admin_quote_page_url(['status' => $value, 'page' => 1, 'id' => null])); ?>">
                         <?php echo admin_quote_e($label); ?> <span><?php echo (int)$counts[$value]; ?></span>
                     </a>
                 <?php endforeach; ?>
@@ -178,14 +198,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <span class="quote-status <?php echo admin_quote_status_class($status); ?>"><?php echo admin_quote_e($statusLabels[$status] ?? inquiry_quote_status_label($status)); ?></span>
                             </div>
                             <h2><?php echo admin_quote_e($quotation['client_name'] ?? 'Client'); ?></h2>
-                            <p><?php echo admin_quote_e($quotation['service_category'] ?? 'Service not provided'); ?></p>
                             <div class="admin-quotation-card-meta">
-                                <span><?php echo admin_quote_e(admin_quote_version($quotation)); ?></span>
+                                <span>Updated <?php echo admin_quote_e(admin_quote_date($quotation['updated_at'] ?? '')); ?></span>
                                 <strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong>
                             </div>
-                            <small>Updated <?php echo admin_quote_e(admin_quote_date($quotation['updated_at'] ?? '')); ?></small>
                         </a>
                     <?php endforeach; ?>
+                    <?php if ($totalPages > 1): ?>
+                        <nav class="admin-quotation-pagination" aria-label="Quotation pages">
+                            <?php if ($currentPage > 1): ?>
+                                <a href="<?php echo admin_quote_e(admin_quote_page_url(['page' => $currentPage - 1, 'id' => null])); ?>">Previous</a>
+                            <?php endif; ?>
+                            <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+                            <?php if ($currentPage < $totalPages): ?>
+                                <a href="<?php echo admin_quote_e(admin_quote_page_url(['page' => $currentPage + 1, 'id' => null])); ?>">Next</a>
+                            <?php endif; ?>
+                        </nav>
+                    <?php endif; ?>
                 </aside>
 
                 <section class="admin-quotation-detail">
@@ -196,7 +225,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     ?>
                         <div class="admin-quotation-detail-head">
                             <div>
-                                <p class="admin-quotation-kicker"><?php echo admin_quote_e($selectedQuotation['quotation_no'] ?? 'Quotation'); ?> · <?php echo admin_quote_e(admin_quote_version($selectedQuotation)); ?></p>
+                                <?php $selectedVersion = admin_quote_version($selectedQuotation); ?>
+                                <p class="admin-quotation-kicker"><?php echo admin_quote_e($selectedQuotation['quotation_no'] ?? 'Quotation'); ?><?php echo $selectedVersion !== '' ? ' · ' . admin_quote_e($selectedVersion) : ''; ?></p>
                                 <h2><?php echo admin_quote_e($selectedQuotation['client_name'] ?? 'Client'); ?></h2>
                                 <p><?php echo admin_quote_e($selectedQuotation['service_category'] ?? 'Service not provided'); ?></p>
                             </div>
@@ -213,6 +243,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <?php if ($selectedStatus === 'draft'): ?>
                                 <a class="button-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo (int)$selectedQuotation['id']; ?>">Edit Draft</a>
                             <?php endif; ?>
+                            <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo (int)$selectedQuotation['id']; ?>">Preview Quotation</a>
                             <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$selectedQuotation['inquiry_id']; ?>&tab=inspection">Open Inquiry</a>
                         </div>
 
@@ -225,7 +256,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php if (!$items): ?><tr><td colspan="5">No quotation items.</td></tr><?php endif; ?>
                                     <?php foreach ($items as $item): ?>
                                         <tr>
-                                            <td data-label="Item"><?php echo admin_quote_e($item['item_name'] ?? 'Item'); ?></td>
+                                            <td data-label="Item">
+                                                <strong><?php echo admin_quote_e($item['item_name'] ?? 'Item'); ?></strong>
+                                                <small><?php echo admin_quote_e(inquiry_quote_item_type_label((string)($item['item_type'] ?? ''))); ?></small>
+                                                <?php if (trim((string)($item['notes'] ?? '')) !== ''): ?><small>Note: <?php echo admin_quote_e($item['notes']); ?></small><?php endif; ?>
+                                            </td>
                                             <td data-label="Qty"><?php echo admin_quote_e($item['quantity'] ?? 0); ?></td>
                                             <td data-label="Unit"><?php echo admin_quote_e($item['unit'] ?? 'unit'); ?></td>
                                             <td data-label="Unit Cost"><?php echo admin_quote_e(inquiry_quote_format_money((float)($item['unit_cost'] ?? 0))); ?></td>
@@ -234,6 +269,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endforeach; ?>
                                     </tbody>
                                 </table>
+                            </div>
+                            <div class="admin-quotation-totals">
+                                <p><span>Subtotal</span><strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($selectedQuotation['subtotal'] ?? 0))); ?></strong></p>
+                                <p><span>Markup (<?php echo admin_quote_e(number_format((float)($selectedQuotation['profit_margin_percent'] ?? 0), 2)); ?>%)</span><strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($selectedQuotation['profit_amount'] ?? 0))); ?></strong></p>
+                                <p class="is-total"><span>Grand Total</span><strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($selectedQuotation['grand_total'] ?? 0))); ?></strong></p>
                             </div>
                         </div>
 

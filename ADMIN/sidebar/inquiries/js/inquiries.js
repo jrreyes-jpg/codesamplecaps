@@ -852,7 +852,9 @@ document.addEventListener('DOMContentLoaded', function () {
         tabs.forEach(function (tab) {
             const isSelected = tab === targetTab;
             tab.classList.toggle('is-active', isSelected);
+            tab.classList.toggle('is-current', isSelected);
             tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            tab.setAttribute('aria-current', isSelected ? 'step' : 'false');
         });
         panels.forEach(function (panel) {
             panel.hidden = panel.getAttribute('data-inquiry-panel') !== target;
@@ -919,6 +921,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        event.preventDefault();
         event.stopPropagation();
         const modalId = button.getAttribute('data-inquiry-modal-open');
         lastOpenButton = button;
@@ -964,6 +967,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', function (event) {
         const modal = event.target.closest('.inquiry-modal');
         if (modal && (event.target === modal || event.target.closest('[data-inquiry-modal-close]'))) {
+            if (event.target.closest('[data-inquiry-modal-close]')) {
+                event.preventDefault();
+            }
             requestCloseModal(modal);
         }
     });
@@ -1602,6 +1608,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        event.preventDefault();
         const target = tab.getAttribute('data-inquiry-tab');
         if (tab.classList.contains('chip-disabled')) {
             if (target === 'quotation') {
@@ -2561,6 +2568,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const subtotalOutput = quotationCreate.querySelector('[data-quotation-subtotal]');
         const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
         const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
+        const quotationNumberInput = quotationCreate.querySelector('input[name="quotation_no"]');
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
         const markupError = form?.querySelector('[data-quotation-markup-error]');
         const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
@@ -2668,6 +2676,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 version: 1,
                 inquiry_id: quotationInquiryId,
                 saved_at: Date.now(),
+                quotation_number: quotationNumberInput?.value || '',
                 markup_percent: marginInput?.value || '',
                 rows: Array.from(items?.querySelectorAll('[data-quotation-item]') || []).map(function (row) {
                     return {
@@ -2715,7 +2724,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const quantity = Number.parseFloat(item.querySelector('input[name="quantity[]"]')?.value || '0');
                 const unitCostInput = item.querySelector('input[name="unit_cost[]"]');
                 const unitCost = Number.parseFloat(unitCostInput?.value || '0');
-                const lineTotal = isValidEstimatedUnitCost(unitCostInput?.value || '')
+                const isMaterial = item.querySelector('select[name="item_type[]"]')?.value === 'material';
+                const lineTotal = isValidEstimatedUnitCost(unitCostInput?.value || '', !isMaterial)
                     ? Math.max(0, quantity) * unitCost
                     : 0;
                 const lineTotalOutput = item.querySelector('[data-quotation-line-total]');
@@ -2766,11 +2776,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        const isValidEstimatedUnitCost = function (rawValue) {
+        const isValidEstimatedUnitCost = function (rawValue, allowZero = false) {
             const value = Number.parseFloat(rawValue || '0');
             return /^\d+(?:\.\d{1,2})?$/.test((rawValue || '').trim())
                 && Number.isFinite(value)
-                && value > 0;
+                && (allowZero ? value >= 0 : value > 0);
         };
 
         const validateMarkup = function (showMessage, requireValue) {
@@ -2808,12 +2818,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const rawValue = unitCostInput.value.trim();
+            const isMaterial = row.querySelector('select[name="item_type[]"]')?.value === 'material';
             let message = '';
 
             if (rawValue === '') {
                 message = requireValue ? 'Enter cost.' : '';
-            } else if (!isValidEstimatedUnitCost(rawValue)) {
-                message = 'Use amount above 0.';
+            } else if (!isValidEstimatedUnitCost(rawValue, !isMaterial)) {
+                message = isMaterial ? 'Use material amount above 0.' : 'Use an amount of 0 or higher.';
             }
 
             unitCostInput.setCustomValidity(message);
@@ -3069,6 +3080,10 @@ document.addEventListener('DOMContentLoaded', function () {
             row.classList.toggle('is-material-item', isMaterial);
             row.classList.toggle('has-linked-material', isLinkedMaterial);
 
+            if (unitCostInput) {
+                unitCostInput.min = isMaterial ? '0.01' : '0';
+            }
+
             if (materialReference) {
                 materialReference.hidden = !isMaterial;
             }
@@ -3167,6 +3182,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (marginInput) {
                 marginInput.value = String(draft.markup_percent || '');
+            }
+            if (quotationNumberInput && draft.quotation_number) {
+                quotationNumberInput.value = String(draft.quotation_number);
             }
             return true;
         };
@@ -3439,6 +3457,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 validateEstimatedUnitCost(row, true, false);
             }
             updateQuotationPreview();
+            updateEditSubmitState();
+            scheduleLocalQuotationDraftSave();
+        });
+
+        quotationNumberInput?.addEventListener('input', function () {
             updateEditSubmitState();
             scheduleLocalQuotationDraftSave();
         });

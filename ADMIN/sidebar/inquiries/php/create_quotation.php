@@ -41,7 +41,6 @@ $isInitialQuotationDraft = !$isEditMode
     || (empty($quotationDraft['parent_draft_id']) && (int)($quotationDraft['revision_no'] ?? 0) === 0);
 $quotationVersion = $isInitialQuotationDraft ? 0 : ((int)($quotationDraft['revision_no'] ?? 0) + 1);
 $quotationDraftLabel = $isInitialQuotationDraft ? 'Admin quotation draft' : 'Quotation V' . $quotationVersion . ' draft';
-$quotationDisplayLabel = $isInitialQuotationDraft ? 'Admin Quotation Draft' : 'Quotation V' . $quotationVersion . ' Draft';
 
 if ($inquiryId <= 0) {
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php');
@@ -121,9 +120,9 @@ function inquiry_quote_render_unit_options(array $unitOptionsByType, array $mate
     }
 }
 
-$quotationNo = $isEditMode
+$quotationNo = trim((string)($_POST['quotation_no'] ?? ($isEditMode
     ? (string)$quotationDraft['quotation_no']
-    : inquiry_quote_generate_number();
+    : inquiry_quote_generate_number())));
 $error = '';
 $defaultItems = $savedItems ?: [[
     'item_type' => 'material',
@@ -149,6 +148,10 @@ $markupError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'admin_create_inquiry_quotation')) {
         $error = 'Your form expired. Please refresh and try again.';
+    } elseif ($quotationNo === '') {
+        $error = 'Enter the Edge quotation number.';
+    } elseif (strlen($quotationNo) < 3 || strlen($quotationNo) > 80 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $quotationNo)) {
+        $error = 'Use only letters, numbers, dash, slash, underscore, or period for the quotation number.';
     } elseif ($marginPercentRaw === '') {
         $markupError = 'Markup is required.';
         $error = $markupError;
@@ -219,8 +222,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Enter cost.';
                 break;
             }
-            if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $unitCostRaw) || !is_finite($unitCost) || $unitCost <= 0 || $unitCost > 999999999) {
-                $error = 'Use amount above 0.';
+            $minimumUnitCost = $itemType === 'material' ? 0.01 : 0.0;
+            if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $unitCostRaw) || !is_finite($unitCost) || $unitCost < $minimumUnitCost || $unitCost > 999999999) {
+                $error = $itemType === 'material' ? 'Use material amount above 0.' : 'Use an amount of 0 or higher.';
                 break;
             }
             if ($unit === '' || strlen($unit) > 30 || strlen($notes) > 2000) {
@@ -261,6 +265,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '') {
+            $numberStmt = $conn->prepare(
+                'SELECT id FROM inquiry_quotation_drafts WHERE quotation_no = ? AND id <> ? LIMIT 1'
+            );
+            if (!$numberStmt) {
+                $error = 'Unable to check the quotation number.';
+            } else {
+                $numberStmt->bind_param('si', $quotationNo, $editId);
+                $numberStmt->execute();
+                if ($numberStmt->get_result()->fetch_assoc()) {
+                    $error = 'Quotation number already exists.';
+                }
+            }
+        }
+
+        if ($error === '') {
             $profitAmount = round($subtotal * ($marginPercent / 100), 2);
             $grandTotal = round($subtotal + $profitAmount, 2);
             $status = 'Draft';
@@ -282,13 +301,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $stmt = $conn->prepare(
                         'UPDATE inquiry_quotation_drafts
-                         SET subtotal = ?, profit_margin_percent = ?, profit_amount = ?, grand_total = ?
+                         SET quotation_no = ?, subtotal = ?, profit_margin_percent = ?, profit_amount = ?, grand_total = ?
                          WHERE id = ?'
                     );
                     if (!$stmt) {
                         throw new RuntimeException('Unable to prepare quotation update.');
                     }
-                    $stmt->bind_param('ddddi', $subtotal, $marginPercent, $profitAmount, $grandTotal, $editId);
+                    $stmt->bind_param('sddddi', $quotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $editId);
                     $stmt->execute();
                     $draftId = $editId;
 
@@ -350,13 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['inquiry_center_flash'] = $isEditMode
                     ? $quotationDraftLabel . ' updated.'
                     : 'Initial quotation draft created.';
-                header(
-                    'Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
-                        . $inquiryId
-                        . '&status=' . rawurlencode((string)$inquiry['status'])
-                        . '&tab=quotation'
-                        . ($isInitialQuotationDraft ? '&clear_initial_quotation_draft=' . $inquiryId : '')
-                );
+                header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $draftId);
                 exit();
             } catch (Throwable $throwable) {
                 $conn->rollback();
@@ -367,18 +380,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$adminPageTitle = ($isEditMode
-    ? ($isInitialQuotationDraft ? 'Edit Admin Quotation Draft' : 'Edit Quotation V' . $quotationVersion)
-    : 'Create Admin Quotation Draft') . ' - Edge Automation';
+$adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261023-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261102-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261023-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-6',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -396,21 +407,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
         <section class="quotation-create-card">
-            <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>&amp;tab=quotation" class="btn-secondary quotation-create-back">&larr; Back to Inquiries</a>
+            <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $editId : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary quotation-create-back">&larr; Back to <?php echo $isEditMode ? 'Quotations' : 'Inquiries'; ?></a>
 
             <div class="quotation-create-heading">
                 <div>
-                    <?php if ($isEditMode): ?>
-                        <span class="reports-kicker"><?php echo $quotationDisplayLabel; ?></span>
-                    <?php endif; ?>
-                    <h1><?php echo $isEditMode ? ($isInitialQuotationDraft ? 'Edit Admin Quotation Draft' : 'Edit Quotation V' . $quotationVersion) : 'Create Admin Quotation Draft'; ?></h1>
-                    <?php if ($isEditMode): ?>
-                        <p>Update the draft scope costs before approval and sending.</p>
-                    <?php endif; ?>
+                    <span class="reports-kicker">Draft</span>
+                    <h1><?php echo $isEditMode ? 'Edit Quotation' : 'Create Quotation'; ?></h1>
                 </div>
                 <div class="quotation-create-number">
-                    <span>Quotation No.</span>
-                    <strong><?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <label for="quotationNumber">Quotation Number</label>
+                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off" required>
+                    <small>Follow the official Edge format.</small>
                 </div>
             </div>
 
@@ -425,7 +432,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
             </div>
 
-            <form method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>">
+            <form id="quotationCreateForm" method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
                 <?php if ($isEditMode): ?>
@@ -435,6 +442,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-section-head">
                     <div>
                         <h2>Cost Breakdown</h2>
+                        <p>Materials and other cost categories</p>
                     </div>
                 </div>
 
@@ -455,7 +463,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <label class="quotation-create-item__name"><span>Item / Work</span><input type="text" name="item_name[]" maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required<?php echo $rowNameLocked ? ' class="is-linked-material-name" readonly aria-readonly="true"' : ''; ?>></label>
                             <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedQuantities[$index] ?? '1'), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
                             <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
-                            <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
+                            <label class="quotation-create-item__cost"><span>Estimated Unit Cost</span><input type="number" name="unit_cost[]" min="<?php echo $rowType === 'material' ? '0.01' : '0'; ?>" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
                             <details class="quotation-create-item__notes"><summary>Item Note (Optional)</summary><input type="text" name="item_notes[]" maxlength="2000" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Add a note or exclusion"></details>
                             <div class="quotation-create-item__line-total"><span>Line Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
@@ -464,7 +472,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-add-item-row">
-                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Another Item</button>
+                    <button type="button" class="btn-secondary quotation-create-add-item" data-quotation-add-item>+ Add Cost Item</button>
                 </div>
 
                 <template data-quotation-item-template>
@@ -504,8 +512,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>><?php echo $isEditMode ? 'Save Quotation Changes' : 'Create Initial Quotation Draft'; ?></button>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=<?php echo $inquiryId; ?>&amp;tab=quotation" class="btn-secondary" data-quotation-cancel>Cancel</a>
+                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>>Save Draft</button>
+                    <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $editId : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>
         </section>

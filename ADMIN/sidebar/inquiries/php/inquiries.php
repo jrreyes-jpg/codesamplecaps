@@ -2337,7 +2337,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261102-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
@@ -2345,7 +2345,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261102-5',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261028-5',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2613,17 +2613,31 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 Open Project
                             </a>
                         <?php else: ?>
-                            <button
-                                type="button"
+                            <a
+                                href="?open=inquiryModal<?php echo (int)$inquiry['id']; ?>&amp;tab=<?php echo rawurlencode($nextActionTab); ?>"
                                 class="inquiry-open-modal inquiry-next-action<?php echo $nextActionClass; ?>"
                                 data-inquiry-modal-open="inquiryModal<?php echo (int)$inquiry['id']; ?>"
                                 data-inquiry-open-tab="<?php echo htmlspecialchars($nextActionTab, ENT_QUOTES, 'UTF-8'); ?>"
                             >
                                 <?php echo htmlspecialchars($nextActionLabel, ENT_QUOTES, 'UTF-8'); ?>
-                            </button>
+                            </a>
                         <?php endif; ?>
 
-                        <div class="inquiry-modal" id="inquiryModal<?php echo (int)$inquiry['id']; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-inspection-status="<?php echo htmlspecialchars((string)($latestInspection['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-submitted-at="<?php echo htmlspecialchars((string)($latestInspection['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>" hidden>
+                        <?php
+                        $inquiryModalId = 'inquiryModal' . (int)$inquiry['id'];
+                        $isServerOpenedModal = (string)($_GET['open'] ?? '') === $inquiryModalId;
+                        $serverOpenTab = $isServerOpenedModal ? (string)($_GET['tab'] ?? 'client') : 'client';
+                        if ($serverOpenTab === 'inspection' && !$showInspection) {
+                            $serverOpenTab = 'client';
+                        }
+                        if ($serverOpenTab === 'quotation') {
+                            $serverOpenTab = $showInspection ? 'inspection' : 'client';
+                        }
+                        if (!in_array($serverOpenTab, ['client', 'inspection'], true)) {
+                            $serverOpenTab = 'client';
+                        }
+                        ?>
+                        <div class="inquiry-modal" id="<?php echo $inquiryModalId; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-inspection-status="<?php echo htmlspecialchars((string)($latestInspection['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-submitted-at="<?php echo htmlspecialchars((string)($latestInspection['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $isServerOpenedModal ? '' : ' hidden'; ?>>
                             <div class="inquiry-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <div class="inquiry-modal__head">
                                     <div>
@@ -2666,30 +2680,24 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </button>
                                             </form>
                                         <?php endif; ?>
-                                        <button type="button" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry details">&times;</button>
+                                        <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry details">&times;</a>
                                     </div>
                                 </div>
                                 <?php $showInspectionTab = (bool)$showInspection; ?>
                                 <div class="inquiry-modal-tabs inquiry-workflow inquiry-workflow--admin" role="tablist" aria-label="Inquiry details tabs">
-                                    <button type="button" class="inquiry-modal-tab inquiry-workflow__step is-active is-current" data-inquiry-tab="client" aria-selected="true" aria-current="step">
+                                    <a href="?open=<?php echo rawurlencode($inquiryModalId); ?>&amp;tab=client" class="inquiry-modal-tab inquiry-workflow__step<?php echo $serverOpenTab === 'client' ? ' is-active is-current' : ''; ?>" data-inquiry-tab="client" aria-selected="<?php echo $serverOpenTab === 'client' ? 'true' : 'false'; ?>" aria-current="<?php echo $serverOpenTab === 'client' ? 'step' : 'false'; ?>">
                                         <span class="inquiry-workflow__marker" aria-hidden="true"><span>1</span><b>&#10003;</b></span>
                                         <span class="inquiry-workflow__label">Contact &amp; Request</span>
-                                    </button>
+                                    </a>
                                     <?php if ($showInspectionTab): ?>
-                                        <button type="button" class="inquiry-modal-tab inquiry-workflow__step" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-selected="false" aria-current="false">
+                                        <a href="?open=<?php echo rawurlencode($inquiryModalId); ?>&amp;tab=inspection" class="inquiry-modal-tab inquiry-workflow__step<?php echo $serverOpenTab === 'inspection' ? ' is-active is-current' : ''; ?>" data-inquiry-tab="inspection" data-inquiry-stage="inspection" aria-selected="<?php echo $serverOpenTab === 'inspection' ? 'true' : 'false'; ?>" aria-current="<?php echo $serverOpenTab === 'inspection' ? 'step' : 'false'; ?>">
                                             <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
                                             <span class="inquiry-workflow__label">Inspection</span>
-                                        </button>
-                                    <?php endif; ?>
-                                    <?php if ($showQuotation): ?>
-                                        <button type="button" class="inquiry-modal-tab inquiry-workflow__step" data-inquiry-tab="quotation" data-inquiry-stage="quotation" aria-selected="false" aria-current="false">
-                                            <span class="inquiry-workflow__marker" aria-hidden="true"><span>3</span><b>&#10003;</b></span>
-                                            <span class="inquiry-workflow__label">Quotation</span>
-                                        </button>
+                                        </a>
                                     <?php endif; ?>
                                 </div>
                             <div class="inquiry-modal-panels" <?php echo !empty($inquiry['archived_at']) ? 'data-archived-readonly="true"' : ''; ?>>
-                                <section class="inquiry-tab-panel is-active" data-inquiry-panel="client">
+                                <section class="inquiry-tab-panel<?php echo $serverOpenTab === 'client' ? ' is-active' : ''; ?>" data-inquiry-panel="client"<?php echo $serverOpenTab === 'client' ? '' : ' hidden'; ?>>
                                     <div class="inquiry-section-title">Contact and Request Details</div>
                                     <div class="inquiry-details-grid">
                                         <?php if (trim((string)$inquiry['email']) !== ''): ?>
@@ -2717,7 +2725,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <?php endif; ?>
                                 </section>
 
-                                <section class="inquiry-tab-panel" data-inquiry-panel="inspection" hidden>
+                                <section class="inquiry-tab-panel<?php echo $serverOpenTab === 'inspection' ? ' is-active' : ''; ?>" data-inquiry-panel="inspection"<?php echo $serverOpenTab === 'inspection' ? '' : ' hidden'; ?>>
                                     <?php
                                     $canRescheduleInspection = $latestInspection
                                         && empty($inquiry['archived_at'])
@@ -2910,9 +2918,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         <p><?php echo nl2br(htmlspecialchars((string)$latestInspection['admin_remarks'], ENT_QUOTES, 'UTF-8')); ?></p>
                                                     </div>
                                                 <?php elseif ($inspectionReviewStatus === 'Approved'): ?>
-                                                    <div class="submitted-inspection-review-state is-approved">
-                                                        <strong><?php echo $quotationDraft ? 'Used for Admin Quotation Draft' : 'Inspection Report Approved'; ?></strong>
-                                                        <span><?php echo htmlspecialchars(site_inspection_format_datetime($latestInspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    <div class="submitted-inspection-review-state is-approved<?php echo $quotationDraft ? ' has-quotation' : ''; ?>">
+                                                        <div class="submitted-inspection-review-state__details">
+                                                            <strong><?php echo $quotationDraft ? 'Quotation Draft Created' : 'Inspection Report Approved'; ?></strong>
+                                                            <span><?php echo htmlspecialchars(site_inspection_format_datetime($quotationDraft['updated_at'] ?? $latestInspection['admin_reviewed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        </div>
+                                                        <?php if ($quotationDraft): ?>
+                                                            <a class="submitted-inspection-review-state__quotation-link" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?id=<?php echo (int)$quotationDraft['id']; ?>">View Quotation</a>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>
 
@@ -3049,7 +3062,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                                 <?php $showAdminQuotationWorkspace = $showQuotation; ?>
                                 <?php if ($showAdminQuotationWorkspace): ?>
-                                <section class="inquiry-tab-panel" data-inquiry-panel="quotation" hidden>
+                                <section class="inquiry-tab-panel<?php echo $serverOpenTab === 'quotation' ? ' is-active' : ''; ?>" data-inquiry-panel="quotation"<?php echo $serverOpenTab === 'quotation' ? '' : ' hidden'; ?>>
                                     <div class="inquiry-quotation-layout">
                                     <?php if ($quotationPrerequisiteMessage !== ''): ?>
                                         <div

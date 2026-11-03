@@ -7,7 +7,7 @@ $adminJsFiles = $adminJsFiles ?? [
 
 $sharedAdminJsFiles = [
     '/codesamplecaps/assets/js/app-window-guard.js',
-    '/codesamplecaps/SHARED/header/core/operations-header.js',
+    '/codesamplecaps/SHARED/header/core/operations-header.js?v=20261103-2',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/auth/js/session-timeout.js',
     '/codesamplecaps/SHARED/auth/js/logout-confirm.js',

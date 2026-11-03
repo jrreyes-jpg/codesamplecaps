@@ -9,7 +9,7 @@ if (!is_array($adminCssFiles)) {
 // Shared styles muna bago page-specific styles para puwedeng
 // mag-override ang individual Admin pages kapag kailangan.
 $sharedCssFiles = [
-    '/codesamplecaps/SHARED/header/core/header.css',
+    '/codesamplecaps/SHARED/header/core/header.css?v=20261103-1',
     '/codesamplecaps/SHARED/sidebar/css/sidebar.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];

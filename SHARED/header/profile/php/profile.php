@@ -48,6 +48,7 @@ $headerProfileLinks = is_array($headerProfileLinks ?? null) ? $headerProfileLink
 
     <div id="<?php echo htmlspecialchars($headerProfileDropdownId, ENT_QUOTES, 'UTF-8'); ?>" class="topbar-profile__dropdown" hidden>
         <div class="topbar-profile__panel-head">
+            <button type="button" class="topbar-profile__preview-button" data-profile-preview aria-label="Preview profile picture">
             <span class="topbar-profile__avatar-shell topbar-profile__avatar-shell--panel" aria-hidden="true">
                 <?php if ($headerProfilePhotoUrl !== ''): ?>
                     <img src="<?php echo htmlspecialchars($headerProfilePhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($headerProfileAlt, ENT_QUOTES, 'UTF-8'); ?>" class="topbar-profile__avatar-image topbar-profile__avatar-image--panel">
@@ -55,6 +56,7 @@ $headerProfileLinks = is_array($headerProfileLinks ?? null) ? $headerProfileLink
                     <span class="topbar-profile__avatar-fallback topbar-profile__avatar-fallback--panel"><?php echo htmlspecialchars($headerProfileInitials, ENT_QUOTES, 'UTF-8'); ?></span>
                 <?php endif; ?>
             </span>
+            </button>
             <div>
                 <strong><?php echo htmlspecialchars($headerProfileName, ENT_QUOTES, 'UTF-8'); ?></strong>
                 <?php if ($headerProfileRole !== ''): ?>
@@ -75,4 +77,13 @@ $headerProfileLinks = is_array($headerProfileLinks ?? null) ? $headerProfileLink
             <?php endforeach; ?>
         </div>
     </div>
+
+    <?php if ($headerProfilePhotoUrl !== ''): ?>
+        <div class="topbar-profile__lightbox" data-profile-lightbox hidden role="dialog" aria-modal="true" aria-label="Profile picture preview">
+            <div class="topbar-profile__lightbox-card">
+                <button type="button" class="topbar-profile__lightbox-close" data-profile-preview-close aria-label="Close profile picture preview">&times;</button>
+                <img src="<?php echo htmlspecialchars($headerProfilePhotoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($headerProfileAlt, ENT_QUOTES, 'UTF-8'); ?>" class="topbar-profile__lightbox-image">
+            </div>
+        </div>
+    <?php endif; ?>
 </div>

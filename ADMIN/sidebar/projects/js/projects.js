@@ -1911,11 +1911,20 @@ function initWalkInInquiryPanel() {
         const now = Date.now();
         const expiresIn = Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
         const resendIn = Math.max(0, Math.ceil((otpResendAt - now) / 1000));
+        const isExpired = expiresIn === 0;
 
         if (otpTimer) {
             otpTimer.textContent = expiresIn > 0 ? `Code expires in ${formatOtpTime(expiresIn)}` : 'Code expired. Resend a new code.';
             otpTimer.classList.toggle('is-warning', expiresIn > 0 && expiresIn <= 60);
-            otpTimer.classList.toggle('is-expired', expiresIn === 0);
+            otpTimer.classList.toggle('is-expired', isExpired);
+        }
+        if (isExpired && Date.now() >= otpLockedUntil) {
+            if (otpCode) {
+                otpCode.value = '';
+                otpCode.disabled = true;
+                otpCode.classList.remove('is-invalid');
+            }
+            if (otpVerifyButton) otpVerifyButton.disabled = true;
         }
         if (otpResendButton) {
             otpResendButton.textContent = resendIn > 0 ? `Resend Code (${formatOtpTime(resendIn)})` : 'Resend Code';
@@ -1925,7 +1934,15 @@ function initWalkInInquiryPanel() {
 
     function startOtpClock(expiresIn = 180, resendIn = 60) {
         otpLockedUntil = 0;
-        if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code';
+        if (otpCode) {
+            otpCode.value = '';
+            otpCode.disabled = false;
+            otpCode.classList.remove('is-invalid');
+        }
+        if (otpVerifyButton) {
+            otpVerifyButton.textContent = 'Verify Code';
+            otpVerifyButton.disabled = false;
+        }
         otpExpiresAt = Date.now() + (Number(expiresIn) || 180) * 1000;
         otpResendAt = Date.now() + resendIn * 1000;
         window.clearInterval(otpClock);
@@ -1995,7 +2012,7 @@ function initWalkInInquiryPanel() {
         window.edgeActionLoading?.hide();
         otpModal?.classList.add('is-open');
         otpModal?.setAttribute('aria-hidden', 'false');
-        if (Date.now() >= otpLockedUntil) {
+        if (Date.now() >= otpLockedUntil && Date.now() < otpExpiresAt) {
             if (otpCode) otpCode.disabled = false;
             if (otpVerifyButton) otpVerifyButton.disabled = false;
         }
@@ -2099,6 +2116,10 @@ function initWalkInInquiryPanel() {
     }
 
     async function verifyEmailOtp() {
+        if (Date.now() >= otpExpiresAt) {
+            updateOtpClock();
+            return;
+        }
         const code = String(otpCode?.value || '').replace(/\D/g, '').slice(0, 6);
         if (otpCode) otpCode.value = code;
         if (!/^\d{6}$/.test(code)) {
@@ -2138,7 +2159,7 @@ function initWalkInInquiryPanel() {
             otpCode?.classList.add('is-invalid');
             otpCode?.focus({ preventScroll: true });
         } finally {
-            otpVerifyButton?.removeAttribute('disabled');
+            if (Date.now() < otpExpiresAt) otpVerifyButton?.removeAttribute('disabled');
             if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
         }
     }

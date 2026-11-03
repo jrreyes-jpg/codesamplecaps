@@ -14,6 +14,6 @@
     };
 
     loadScriptOnce('/codesamplecaps/SHARED/header/time/js/time.js');
-    loadScriptOnce('/codesamplecaps/SHARED/header/profile/js/profile.js');
+    loadScriptOnce('/codesamplecaps/SHARED/header/profile/js/profile.js?v=20261103-2');
     loadScriptOnce('/codesamplecaps/SHARED/header/notifications/js/notifications.js');
 })();

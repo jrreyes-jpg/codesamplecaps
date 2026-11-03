@@ -2341,7 +2341,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-1',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
@@ -2352,7 +2352,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261103-1',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261103-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

@@ -148,6 +148,76 @@
     border-bottom: 1px solid #e2e8f0;
 }
 
+.topbar-profile__preview-button {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: zoom-in;
+}
+
+.topbar-profile__preview-button:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, 0.25);
+    outline-offset: 3px;
+}
+
+.topbar-profile__lightbox {
+    position: fixed;
+    z-index: 13000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.78);
+    backdrop-filter: blur(4px);
+}
+
+.topbar-profile__lightbox[hidden] {
+    display: none;
+}
+
+.topbar-profile__lightbox-card {
+    position: relative;
+    width: min(88vw, 520px);
+    padding: 16px;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.38);
+}
+
+.topbar-profile__lightbox-image {
+    display: block;
+    width: 100%;
+    max-height: 72vh;
+    border-radius: 14px;
+    object-fit: contain;
+}
+
+.topbar-profile__lightbox-close {
+    position: absolute;
+    z-index: 1;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
+}
+
+body.topbar-profile-preview-open {
+    overflow: hidden;
+}
+
 /* Maliit lang ito: ayusin ang text sa profile dropdown. */
 .topbar-profile__panel-head div {
     display: grid;

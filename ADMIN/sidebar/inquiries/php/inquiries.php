@@ -2562,7 +2562,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $showInspection = $latestInspection || $canScheduleInspection;
                         $showQuotation = (bool)$quotationDraft;
                         $nextActionLabel = 'View Details';
-                        $nextActionTab = $latestInspection ? 'inspection' : 'client';
+                        // View Details muna sa request. Admin na ang pipili sa Inspection tab.
+                        $nextActionTab = 'client';
                         $nextActionClass = '';
                         $currentScheduleHash = $latestInspection
                             ? inquiry_center_schedule_notification_hash(

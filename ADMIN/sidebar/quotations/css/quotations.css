@@ -47,9 +47,15 @@
 .admin-quotation-search > label { font-weight: 700; }
 .admin-quotation-search > div { display: flex; gap: 10px; min-width: 0; }
 
+.admin-quotation-search__field {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+
 .admin-quotation-search input[type="search"],
 .admin-quotation-search button,
-.admin-quotation-search__clear,
 .button-primary,
 .button-secondary {
     min-height: 48px;
@@ -61,13 +67,14 @@
 .admin-quotation-search input[type="search"] {
     min-width: 0;
     flex: 1;
-    padding: 0 16px;
+    padding: 0 46px 0 16px;
     border: 1px solid #cbd7e5;
     background: #fff;
 }
 
+.admin-quotation-search input[type="search"]::-webkit-search-cancel-button { display: none; }
+
 .admin-quotation-search button,
-.admin-quotation-search__clear,
 .button-primary,
 .button-secondary {
     border: 0;
@@ -81,18 +88,24 @@
     justify-content: center;
 }
 
-.admin-quotation-search__clear {
-    border: 1px solid #cbd7e5;
-    background: #ffffff;
+.admin-quotation-search .admin-quotation-search__x {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 30px;
+    min-height: 30px;
+    padding: 0;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: #e2e8f0;
     color: #475569;
+    font-size: 20px;
+    line-height: 1;
 }
 
-.admin-quotation-search__clear:hover,
-.admin-quotation-search__clear:focus-visible {
-    border-color: #94a3b8;
-    background: #f1f5f9;
-    outline: none;
-}
+.admin-quotation-search .admin-quotation-search__x[hidden] { display: none; }
+.admin-quotation-search .admin-quotation-search__x:hover,
+.admin-quotation-search .admin-quotation-search__x:focus-visible { background: #cbd5e1; outline: none; }
 
 .button-secondary { background: #e7edf5; color: #344258; }
 
@@ -388,8 +401,7 @@
 
 @media (max-width: 600px) {
     .admin-quotation-search > div { flex-direction: column; }
-    .admin-quotation-search button,
-    .admin-quotation-search__clear { width: 100%; }
+    .admin-quotation-search > div > button[type="submit"] { width: 100%; }
     .admin-quotation-list,
     .admin-quotation-detail { padding: 14px; border-radius: 16px; }
     .admin-quotation-table-wrap { overflow: visible; border: 0; }

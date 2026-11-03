@@ -136,9 +136,12 @@ $statusLabels = [
 $adminPageTitle = 'Quotations - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-8',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-9',
 ];
-$adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
+$adminJsFiles = [
+    '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261103-1',
+];
 
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -152,11 +155,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <form class="admin-quotation-search" method="get">
                 <input type="hidden" name="status" value="<?php echo admin_quote_e($activeStatus); ?>">
                 <div>
-                    <input id="quotationSearch" name="q" type="search" value="<?php echo admin_quote_e($search); ?>" placeholder="Search client or quotation number" aria-label="Search client or quotation number">
+                    <div class="admin-quotation-search__field" data-search-field>
+                        <input id="quotationSearch" name="q" type="search" value="<?php echo admin_quote_e($search); ?>" placeholder="Search client or quotation number" aria-label="Search client or quotation number">
+                        <button type="button" class="admin-quotation-search__x" data-search-clear aria-label="Clear quotation search"<?php echo $search === '' ? ' hidden' : ''; ?>>&times;</button>
+                    </div>
                     <button type="submit">Search</button>
-                    <?php if ($search !== ''): ?>
-                        <a class="admin-quotation-search__clear" href="<?php echo admin_quote_e(admin_quote_page_url(['q' => null, 'page' => 1, 'id' => null])); ?>" aria-label="Clear quotation search">&times; Clear</a>
-                    <?php endif; ?>
                 </div>
             </form>
         </header>

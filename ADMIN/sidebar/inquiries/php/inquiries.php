@@ -2342,11 +2342,12 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261028-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
+    '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261103-1',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261102-1',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
@@ -2386,7 +2387,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <div class="inquiry-page-header">
             <h1>Inquiry Center</h1>
             <form class="inquiry-header-search" method="GET" role="search">
-                <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries..." aria-label="Search inquiries">
+                <div class="inquiry-search-field" data-search-field>
+                    <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries..." aria-label="Search inquiries">
+                    <button type="button" class="inquiry-search-clear" data-search-clear aria-label="Clear inquiry search"<?php echo $search === '' ? ' hidden' : ''; ?>>&times;</button>
+                </div>
                 <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
                 <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
                 <?php if ($quotationFilter !== ''): ?><input type="hidden" name="quotation_filter" value="<?php echo htmlspecialchars($quotationFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>

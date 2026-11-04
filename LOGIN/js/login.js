@@ -161,6 +161,7 @@ const initStaleLoginWindowGuard = () => {
     const defaultSubmitText = submitButton?.textContent || 'Login';
     const loginError = form?.querySelector('.error-box');
     const savedEmailKey = 'edge_login_email';
+    const serverEmail = form?.dataset.loginEmail?.trim() || '';
 
     const removeSavedEmail = () => {
         try {
@@ -243,9 +244,9 @@ const initStaleLoginWindowGuard = () => {
         }
 
         try {
-            email.value = sessionStorage.getItem(savedEmailKey) || '';
+            email.value = sessionStorage.getItem(savedEmailKey) || serverEmail;
         } catch (error) {
-            // Okay lang kapag blocked ang browser storage.
+            email.value = serverEmail;
         }
     };
 
@@ -303,7 +304,12 @@ const initStaleLoginWindowGuard = () => {
     };
 
     const navigationEntry = window.performance?.getEntriesByType?.('navigation')?.[0];
-    if (navigationEntry?.type === 'reload') {
+    if (loginError) {
+        // Ibalik ang email kapag mali ang login. Password ay laging blank.
+        restoreEmail();
+        clearPasswordField();
+        window.setTimeout(restoreEmail, 100);
+    } else if (navigationEntry?.type === 'reload') {
         restoreEmail();
         clearRefreshState();
         window.requestAnimationFrame(clearPasswordField);

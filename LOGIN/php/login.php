@@ -524,7 +524,11 @@ $email_input_value = !$is_device_locked && $flash_email !== ''
 
         <div class="right-panel">
             <div class="form active" id="loginForm">
-                <form method="POST" autocomplete="off">
+                <form
+                    method="POST"
+                    autocomplete="on"
+                    data-login-email="<?php echo htmlspecialchars($email_input_value, ENT_QUOTES, 'UTF-8'); ?>"
+                >
                     <?php if ((string)($_GET['return_to'] ?? '') === 'engineer_inspection' && filter_var($_GET['inspection_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false): ?>
                         <input type="hidden" name="return_to" value="engineer_inspection">
                         <input type="hidden" name="inspection_id" value="<?php echo (int)$_GET['inspection_id']; ?>">
@@ -612,7 +616,7 @@ window.lockoutConfig = {
 };
 </script>
     <script src="../js/public-confirmation.js"></script>
-    <script src="../js/login.js"></script>
+    <script src="../js/login.js?v=<?php echo (int)filemtime(__DIR__ . '/../js/login.js'); ?>"></script>
     <script src="../common/js/particles.js"></script>
 </body>
 </html>

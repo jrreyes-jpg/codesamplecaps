@@ -19,7 +19,9 @@
 - Keep mobile modals easy to scroll and fit inside the screen.
 - Put status beside or below its related details.
 - Do not repeat the same status or notification in many cards.
-- Reuse working backend actions. Do not create duplicate logic.
+- Reuse working backend actions, helpers, and services. Do not create duplicate logic.
+- If feature-only logic is needed by another feature, move it to the correct shared file and update all users of that logic.
+- Remove an old or duplicate logic copy only after checking that no active file or workflow still uses it.
 - Reuse existing database tables, columns, relations, and services before creating new ones.
 - Keep one clear source of truth. Do not save the same data in different tables without a real need.
 - Do not delete or merge a table only because it is empty. First check all PHP and SQL references, foreign keys, and workflow use.

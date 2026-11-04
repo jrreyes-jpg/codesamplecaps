@@ -24,6 +24,62 @@
         });
     }
 
+    const materialToast = document.querySelector('[data-material-toast]');
+    const materialToastClose = materialToast ? materialToast.querySelector('[data-material-toast-close]') : null;
+
+    function closeMaterialToast() {
+        if (!materialToast) return;
+        materialToast.classList.add('is-hiding');
+        window.setTimeout(function () { materialToast.remove(); }, 180);
+    }
+
+    materialToastClose?.addEventListener('click', closeMaterialToast);
+    if (materialToast?.dataset.autoHide === 'true') {
+        window.setTimeout(closeMaterialToast, 4500);
+    }
+
+    const descriptionModal = document.querySelector('[data-material-description-modal]');
+    const descriptionPanel = descriptionModal ? descriptionModal.querySelector('[role="dialog"]') : null;
+    const descriptionTitle = descriptionModal ? descriptionModal.querySelector('[data-material-description-title]') : null;
+    const descriptionText = descriptionModal ? descriptionModal.querySelector('[data-material-description-text]') : null;
+    const descriptionCloseButtons = descriptionModal ? Array.from(descriptionModal.querySelectorAll('[data-material-description-close]')) : [];
+    let descriptionReturnFocus = null;
+
+    function closeDescriptionModal() {
+        if (!descriptionModal) return;
+        descriptionModal.hidden = true;
+        document.body.classList.remove('material-create-modal-open');
+        descriptionReturnFocus?.focus();
+    }
+
+    document.querySelectorAll('[data-material-description-open]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (!descriptionModal || !descriptionTitle || !descriptionText) return;
+            descriptionReturnFocus = button;
+            descriptionTitle.textContent = button.dataset.materialName || 'Material Description';
+            descriptionText.textContent = button.dataset.materialDescription || 'No description.';
+            descriptionModal.hidden = false;
+            document.body.classList.add('material-create-modal-open');
+            window.requestAnimationFrame(function () { descriptionPanel?.focus(); });
+        });
+    });
+    descriptionCloseButtons.forEach(function (button) {
+        button.addEventListener('click', closeDescriptionModal);
+    });
+    descriptionModal?.addEventListener('click', function (event) {
+        if (event.target === descriptionModal) closeDescriptionModal();
+    });
+    descriptionModal?.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeDescriptionModal();
+        }
+        if (event.key === 'Tab' && descriptionCloseButtons.length > 0) {
+            event.preventDefault();
+            descriptionCloseButtons[event.shiftKey ? descriptionCloseButtons.length - 1 : 0].focus();
+        }
+    });
+
     const selectAllMaterials = document.querySelector('[data-material-select-all]');
     const materialSelections = Array.from(document.querySelectorAll('[data-material-select]'));
     const bulkArchiveForm = document.querySelector('[data-material-bulk-archive-form]');

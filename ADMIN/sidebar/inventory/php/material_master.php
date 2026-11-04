@@ -305,15 +305,24 @@ $materialFormUnitEditable = $materialFormMode !== 'edit' || isset($deletableMate
 $displayMaterialQuantity = static function (float $quantity): string {
     return rtrim(rtrim(number_format($quantity, 2, '.', ','), '0'), '.');
 };
+$materialTextPreview = static function (string $text, int $limit = 60): array {
+    $text = trim($text);
+    $length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+    if ($length <= $limit) {
+        return ['text' => $text, 'long' => false];
+    }
+    $preview = function_exists('mb_substr') ? mb_substr($text, 0, $limit, 'UTF-8') : substr($text, 0, $limit);
+    return ['text' => rtrim($preview) . '...', 'long' => true];
+};
 
 $adminPageTitle = 'Consumable Material Master - Admin';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261103-5',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261103-6',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261103-5',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261103-6',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -321,8 +330,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
 <main class="main-content inventory-main-content">
     <div class="page-stack inventory-page-stack material-master-page">
         <?php if ($materialFlash): ?>
-            <div class="alert <?php echo $materialFlash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>">
-                <?php echo htmlspecialchars((string)$materialFlash['message']); ?>
+            <div class="material-toast material-toast--<?php echo $materialFlash['type'] === 'success' ? 'success' : 'error'; ?>" role="<?php echo $materialFlash['type'] === 'success' ? 'status' : 'alert'; ?>" data-material-toast data-auto-hide="<?php echo $materialFlash['type'] === 'success' ? 'true' : 'false'; ?>">
+                <span aria-hidden="true"><?php echo $materialFlash['type'] === 'success' ? '&#10003;' : '!'; ?></span>
+                <p><?php echo htmlspecialchars((string)$materialFlash['message']); ?></p>
+                <button type="button" data-material-toast-close aria-label="Close notification">&times;</button>
             </div>
         <?php endif; ?>
 
@@ -377,6 +388,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $archiveBlockReason = $archiveBlockReasons[(int)$material['id']] ?? '';
                         $canArchive = $archiveBlockReason === '';
                         $stockStatus = material_stock_alert_status($material);
+                        $description = trim((string)$material['description']);
+                        $descriptionPreview = $materialTextPreview($description);
                         ?>
                         <tr class="<?php echo $isShortage ? 'material-master-row--shortage' : ''; ?>" data-inventory-report-row>
                             <?php if ($materialFilter === 'active'): ?>
@@ -388,7 +401,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 </td>
                             <?php endif; ?>
                             <td data-label="Item" class="material-item-cell"><strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$material['material_code']); ?></small></td>
-                            <td data-label="Description" class="material-report-description"><?php echo htmlspecialchars(trim((string)$material['description']) ?: '—'); ?></td>
+                            <td data-label="Description" class="material-report-description">
+                                <?php if ($description === ''): ?>
+                                    &mdash;
+                                <?php else: ?>
+                                    <span><?php echo htmlspecialchars($descriptionPreview['text']); ?></span>
+                                    <?php if ($descriptionPreview['long']): ?>
+                                        <button type="button" class="material-description-view" data-material-description-open data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-description="<?php echo htmlspecialchars($description, ENT_QUOTES, 'UTF-8'); ?>">View Description</button>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
                             <td data-label="System Stock" class="material-master-number material-stock-cell">
                                 <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong>
@@ -480,6 +502,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </table>
             </div>
         </section>
+
+        <div class="material-description-modal" data-material-description-modal hidden>
+            <section class="material-description-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialDescriptionModalTitle" aria-describedby="materialDescriptionModalText" tabindex="-1">
+                <div class="material-description-modal__header">
+                    <h2 id="materialDescriptionModalTitle" data-material-description-title>Material Description</h2>
+                    <button type="button" data-material-description-close aria-label="Close description">&times;</button>
+                </div>
+                <p id="materialDescriptionModalText" data-material-description-text></p>
+                <div class="material-description-modal__actions">
+                    <button type="button" class="btn-secondary" data-material-description-close>Close</button>
+                </div>
+            </section>
+        </div>
 
         <div class="material-create-modal" data-material-modal data-draft-scope="<?php echo (int)$_SESSION['user_id'] . ':' . (int)($_SESSION['logged_in_at'] ?? 0); ?>" data-create-token="<?php echo htmlspecialchars($materialCreateRequestToken); ?>" data-update-token="<?php echo htmlspecialchars($materialUpdateRequestToken); ?>" data-auto-mode="<?php echo htmlspecialchars($materialFormMode); ?>" data-auto-material-id="<?php echo $materialFormMaterialId; ?>" data-create-succeeded="<?php echo $materialCreateSucceeded ? 'true' : 'false'; ?>" <?php echo $materialFormState ? 'data-auto-open="true"' : ''; ?> hidden>
             <section class="material-create-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialCreateModalTitle" tabindex="-1">

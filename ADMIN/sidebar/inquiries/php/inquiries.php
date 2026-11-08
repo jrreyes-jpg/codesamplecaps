@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../../config/user_notifications.php';
 require_once __DIR__ . '/../../../../config/walk_in_inquiry_schedule.php';
 require_once __DIR__ . '/../../../../config/inquiry_budget.php';
 require_once __DIR__ . '/../../../../config/inspection_evidence.php';
+require_once __DIR__ . '/../../../../config/inquiry_reference.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
 
 $message = '';
@@ -2184,14 +2185,23 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 
     if ($search !== '') {
         // Smart search: hanapin sa important fields para mas mabilis ang lead filtering.
-        $searchCondition = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ? OR status LIKE ? OR description LIKE ? OR admin_notes LIKE ? OR archive_reason LIKE ?)';
+        $referenceId = inquiry_reference_id($search);
+        $searchCondition = '(client_name LIKE ? OR company_name LIKE ? OR email LIKE ? OR contact_no LIKE ? OR province LIKE ? OR city_municipality LIKE ? OR barangay LIKE ? OR site_address LIKE ? OR service_category LIKE ? OR status LIKE ? OR description LIKE ? OR admin_notes LIKE ? OR archive_reason LIKE ?'
+            . ($referenceId !== null ? ' OR id = ?' : '') . ')';
         $where[] = $searchCondition;
         $keyword = '%' . $search . '%';
         $types .= 'sssssssssssss';
         array_push($params, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword, $keyword);
+        if ($referenceId !== null) {
+            $types .= 'i';
+            $params[] = $referenceId;
+        }
         $lifecycleSearchWhere[] = $searchCondition;
-        $lifecycleSearchTypes = 'sssssssssssss';
+        $lifecycleSearchTypes = 'sssssssssssss' . ($referenceId !== null ? 'i' : '');
         $lifecycleSearchParams = array_fill(0, 13, $keyword);
+        if ($referenceId !== null) {
+            $lifecycleSearchParams[] = $referenceId;
+        }
     }
 
     $quotationFilterScopeWhere = $where;
@@ -2758,6 +2768,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <?php endif; ?>
                                 <span class="inquiry-card__eyebrow"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry' : 'Online Inquiry'; ?></span>
                                 <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                                <span class="inquiry-card__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
@@ -2824,6 +2835,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <span class="reports-kicker"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry Details' : 'Online Inquiry Details'; ?></span>
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
+                                            <span class="inquiry-modal__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>

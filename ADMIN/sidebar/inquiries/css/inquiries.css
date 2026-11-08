@@ -1008,6 +1008,13 @@
     text-transform: uppercase;
 }
 
+.inquiry-card__reference {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
 .inquiry-card h2 {
     margin: 0;
     color: #0f172a;
@@ -2354,6 +2361,12 @@
     color: #475569;
     font-size: 0.84rem;
     font-weight: 700;
+}
+
+.inquiry-modal__meta .inquiry-modal__reference {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
 }
 
 .inquiry-modal__meta .inquiry-status--modal {

@@ -13,6 +13,7 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/Config.php';
+require_once __DIR__ . '/../config/inquiry_reference.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -237,13 +238,26 @@ class EmailService {
         }
     }
 
-    public function sendInquiryReceivedConfirmation(string $recipientEmail, string $recipientName): bool {
+    public function sendInquiryReceivedConfirmation(
+        string $recipientEmail,
+        string $recipientName,
+        int $inquiryId,
+        string $serviceRequested,
+        ?string $tentativeInspectionDate
+    ): bool {
         try {
             if ($this->error !== '') {
                 return false;
             }
 
             $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $safeReference = htmlspecialchars(inquiry_reference_number($inquiryId), ENT_QUOTES, 'UTF-8');
+            $safeService = htmlspecialchars($serviceRequested, ENT_QUOTES, 'UTF-8');
+            $dateTimestamp = $tentativeInspectionDate ? strtotime($tentativeInspectionDate) : false;
+            $formattedDate = $dateTimestamp !== false ? date('M j, Y', $dateTimestamp) : 'Not provided';
+            $safeDate = htmlspecialchars($formattedDate, ENT_QUOTES, 'UTF-8');
+            $safeContactNumber = htmlspecialchars(self::COMPANY_CONTACT_NUMBER, ENT_QUOTES, 'UTF-8');
+            $safeContactEmail = htmlspecialchars(self::COMPANY_CONTACT_EMAIL, ENT_QUOTES, 'UTF-8');
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
             $this->mailer->addAddress($recipientEmail);
@@ -264,11 +278,24 @@ class EmailService {
                     <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px;color:#0f172a;line-height:1.55'>
                         <p>Hello {$safeName},</p>
                         <p>We received your inquiry. Edge Automation Technology Services, Co. is checking Engineer availability. We will contact you to confirm the inspection schedule.</p>
+                        <div style='margin:18px 0;padding:16px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc'>
+                            <p style='margin:0 0 8px'><strong>Reference Number:</strong> {$safeReference}</p>
+                            <p style='margin:0 0 8px'><strong>Service Requested:</strong> {$safeService}</p>
+                            <p style='margin:0 0 8px'><strong>Tentative Inspection Date:</strong> {$safeDate}</p>
+                            <p style='margin:0'><strong>Status:</strong> Pending Confirmation</p>
+                        </div>
+                        <p>For questions, contact us at {$safeContactNumber} or {$safeContactEmail}.</p>
                         <p>Thank you,<br>Edge Automation Technology Services, Co.</p>
                     </div>
                 </div>";
             $this->mailer->AltBody = 'Hello ' . ($recipientName !== '' ? $recipientName : 'Client')
-                . ".\n\nWe received your inquiry. Edge Automation Technology Services, Co. is checking Engineer availability. We will contact you to confirm the inspection schedule.\n\nThank you,\nEdge Automation Technology Services, Co.";
+                . ".\n\nWe received your inquiry. Edge Automation Technology Services, Co. is checking Engineer availability. We will contact you to confirm the inspection schedule."
+                . "\n\nReference Number: " . inquiry_reference_number($inquiryId)
+                . "\nService Requested: {$serviceRequested}"
+                . "\nTentative Inspection Date: {$formattedDate}"
+                . "\nStatus: Pending Confirmation"
+                . "\n\nFor questions, contact us at " . self::COMPANY_CONTACT_NUMBER . ' or ' . self::COMPANY_CONTACT_EMAIL . '.'
+                . "\n\nThank you,\nEdge Automation Technology Services, Co.";
             $this->mailer->send();
             return true;
         } catch (Exception $exception) {

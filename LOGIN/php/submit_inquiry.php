@@ -243,11 +243,18 @@ if ($hasEstimatedBudget) {
 if (!$stmt->execute()) {
     redirect_to_form('server_error');
 }
+$inquiryId = (int)$stmt->insert_id;
 
 // Natanggap na ang inquiry. Hindi ito final schedule email.
 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $mailer = new EmailService();
-    if (!$mailer->sendInquiryReceivedConfirmation($email, $clientName)) {
+    if (!$mailer->sendInquiryReceivedConfirmation(
+        $email,
+        $clientName,
+        $inquiryId,
+        $serviceCategory,
+        $preferredInspectionDate
+    )) {
         error_log('Inquiry received email failed: ' . $mailer->getError());
     }
 }

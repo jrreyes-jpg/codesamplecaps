@@ -26,6 +26,20 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingQuotationItemRemoval = null;
     let inquiryModalIsScrolling = false;
     let inquiryModalScrollTimer = null;
+    const backToTopButton = document.querySelector('[data-inquiry-back-to-top]');
+
+    function updateBackToTopButton() {
+        if (!backToTopButton) {
+            return;
+        }
+        backToTopButton.hidden = window.scrollY < 480;
+    }
+
+    updateBackToTopButton();
+    window.addEventListener('scroll', updateBackToTopButton, { passive: true });
+    backToTopButton?.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
     document.addEventListener('scroll', function (event) {
         if (!(event.target instanceof Element) || !event.target.matches('.inquiry-modal-panels')) {
@@ -104,29 +118,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const showLiveInquiryToast = function (message, inquiryId, targetTab, type, fallbackStatus) {
         const openToastInquiry = function () {
-            const modal = document.getElementById('inquiryModal' + String(inquiryId || ''));
-            if (!modal) {
-                if (!fallbackStatus) {
-                    return;
-                }
-                const targetUrl = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', window.location.origin);
-                targetUrl.searchParams.set('status', fallbackStatus);
-                targetUrl.searchParams.set('open', 'inquiryModal' + String(inquiryId || ''));
-                targetUrl.searchParams.set('tab', targetTab || 'client');
-                window.location.assign(targetUrl.toString());
+            const targetId = Number.parseInt(inquiryId || '0', 10);
+            if (targetId <= 0) {
                 return;
             }
-
-            document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(function (openInquiryModal) {
-                if (openInquiryModal !== modal) {
-                    closeModal(openInquiryModal);
-                }
-            });
-
-            openModal(modal);
-            const requestedTab = targetTab || 'client';
-            const activeTab = activateModalTab(modal, requestedTab) ? requestedTab : 'client';
-            pushModalHistory(modal, activeTab);
+            const targetUrl = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php', window.location.origin);
+            targetUrl.searchParams.set('details', String(targetId));
+            targetUrl.searchParams.set('tab', targetTab || 'client');
+            if (fallbackStatus) {
+                targetUrl.searchParams.set('status', fallbackStatus);
+            }
+            window.location.assign(targetUrl.toString());
         };
 
         if (typeof window.showToast === 'function') {
@@ -666,6 +668,83 @@ document.addEventListener('DOMContentLoaded', function () {
         prerequisiteNotice.querySelector('[data-prerequisite-notice-ok]')?.focus();
     };
 
+    const inquiryDetailsEditForm = document.querySelector('.inquiry-details-edit-form');
+    const inquiryDetailsSaveButton = inquiryDetailsEditForm?.querySelector('[data-inquiry-details-save]');
+    const inquiryScreeningForm = document.querySelector('.inquiry-screening-form');
+    const screeningNoteInput = inquiryScreeningForm?.querySelector('textarea[name="admin_notes"]');
+    const needsInformationButton = inquiryScreeningForm?.querySelector('[data-needs-information-submit]');
+
+    const editableFormValue = function (form) {
+        return Array.from(new FormData(form).entries())
+            .filter(function (entry) {
+                return !['csrf_token', 'action', 'inquiry_id'].includes(entry[0]);
+            })
+            .map(function (entry) {
+                return entry[0] + '=' + String(entry[1]).trim();
+            })
+            .join('&');
+    };
+
+    if (inquiryDetailsEditForm && inquiryDetailsSaveButton) {
+        const initialDetailsValue = editableFormValue(inquiryDetailsEditForm);
+        const updateDetailsSaveState = function () {
+            const hasChanges = editableFormValue(inquiryDetailsEditForm) !== initialDetailsValue;
+            const isValid = inquiryDetailsEditForm.checkValidity();
+            inquiryDetailsEditForm.dataset.dirty = hasChanges ? '1' : '0';
+            inquiryDetailsSaveButton.disabled = !hasChanges || !isValid;
+        };
+
+        inquiryDetailsEditForm.addEventListener('input', updateDetailsSaveState);
+        inquiryDetailsEditForm.addEventListener('change', updateDetailsSaveState);
+        inquiryDetailsEditForm.addEventListener('submit', function (event) {
+            if (inquiryDetailsEditForm.dataset.dirty !== '1') {
+                event.preventDefault();
+            }
+        });
+        updateDetailsSaveState();
+    }
+
+    if (screeningNoteInput && needsInformationButton) {
+        const updateNeedsInformationButton = function () {
+            const hasValidNote = screeningNoteInput.value.replace(/\s/g, '').length >= 5;
+            needsInformationButton.disabled = !hasValidNote;
+            needsInformationButton.classList.toggle('btn-primary', hasValidNote);
+            needsInformationButton.classList.toggle('btn-secondary', !hasValidNote);
+        };
+
+        screeningNoteInput.addEventListener('input', updateNeedsInformationButton);
+        updateNeedsInformationButton();
+    }
+
+    inquiryScreeningForm?.addEventListener('submit', function (event) {
+        if (!event.submitter?.hasAttribute('data-information-complete')) {
+            return;
+        }
+
+        if (inquiryDetailsEditForm?.dataset.dirty === '1') {
+            event.preventDefault();
+            showPrerequisiteNotice('Save the updated inquiry details first.');
+            return;
+        }
+
+        if (inquiryScreeningForm.dataset.confirmed === '1') {
+            delete inquiryScreeningForm.dataset.confirmed;
+            return;
+        }
+
+        event.preventDefault();
+        showConfirm(
+            inquiryScreeningForm,
+            'Have all missing details been confirmed with the client, including details that did not require changes?',
+            null,
+            {
+                title: 'Complete this inquiry information?',
+                cancel: 'Review Again',
+                confirm: 'Yes, Complete',
+            }
+        );
+    });
+
     const closeModal = function (modal) {
         if (!modal || modal.dataset.quotationSending === '1' || modal.dataset.reviewSaving === '1') {
             return;
@@ -886,7 +965,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentDepth = window.history.state?.inquiryModalId === modal.id
             ? Number.parseInt(window.history.state.inquiryDepth || '0', 10)
             : 0;
-        url.searchParams.set('open', modal.id);
+        if (modal.classList.contains('inquiry-modal--page')) {
+            url.searchParams.delete('open');
+            url.searchParams.set('details', modal.dataset.inquiryId || '');
+        } else {
+            url.searchParams.set('open', modal.id);
+        }
         url.searchParams.set('tab', target);
         window.history.pushState({
             inquiryModalId: modal.id,
@@ -984,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('click', function (event) {
         const modal = event.target.closest('.inquiry-modal');
-        if (modal && (event.target === modal || event.target.closest('[data-inquiry-modal-close]'))) {
+        if (modal && !modal.classList.contains('inquiry-modal--page') && (event.target === modal || event.target.closest('[data-inquiry-modal-close]'))) {
             if (event.target.closest('[data-inquiry-modal-close]')) {
                 event.preventDefault();
             }
@@ -1587,7 +1671,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            showConfirm(form, 'Archive this inquiry? It will move to Archive list.');
+            showConfirm(form, 'Close this inquiry? It will move to the Archived list.');
         });
     };
 
@@ -3814,7 +3898,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         document.querySelectorAll('.inquiry-archive-modal:not([hidden])').forEach(closeArchiveModal);
-        document.querySelectorAll('.inquiry-modal:not([hidden])').forEach(requestCloseModal);
+        document.querySelectorAll('.inquiry-modal:not(.inquiry-modal--page):not([hidden])').forEach(requestCloseModal);
     });
 
     window.addEventListener('beforeunload', function (event) {

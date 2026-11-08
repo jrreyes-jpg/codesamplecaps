@@ -2335,8 +2335,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const nextAction = modal.closest('.inquiry-card')?.querySelector('.inquiry-open-modal');
                     if (nextAction) {
-                        nextAction.textContent = 'Schedule Inspection';
-                        nextAction.setAttribute('data-inquiry-open-tab', 'inspection');
+                        nextAction.textContent = 'View Details';
+                        nextAction.setAttribute('data-inquiry-open-tab', 'client');
                     }
 
                     if (!modal.hidden) {

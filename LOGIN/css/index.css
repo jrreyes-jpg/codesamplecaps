@@ -930,6 +930,23 @@ h4 {
     outline: 3px solid rgba(220, 38, 38, 0.12);
 }
 
+.inquiry-otp-modal__input:disabled,
+.inquiry-otp-modal__input.is-expired {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.inquiry-otp-modal__actions .js-inquiry-otp-confirm:disabled {
+    border-color: #cbd5e1;
+    background: #cbd5e1;
+    color: #64748b;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
 .inquiry-otp-modal__message {
     min-height: 20px;
     margin: 9px 0 0;

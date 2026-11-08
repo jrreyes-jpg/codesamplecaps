@@ -79,9 +79,27 @@ $userCheck->bind_param('s', $email);
 $userCheck->execute();
 $existingUser = $userCheck->get_result()->fetch_assoc();
 $lastSentAt = (int)($_SESSION['public_inquiry_otp_sent_at'] ?? 0);
+$expiresAt = (int)($_SESSION['public_inquiry_otp_expires_at'] ?? 0);
+$pendingEmail = strtolower((string)($_SESSION['public_inquiry_otp_email'] ?? ''));
+$hasPendingCode = !empty($_SESSION['public_inquiry_otp_token']) && $pendingEmail === $email;
 $cooldown = inquiry_otp_resend_cooldown_seconds();
+
+// Kapag binuksan ulit, gamitin pa rin ang dating OTP state.
+// Resend lang ang puwedeng gumawa ng bagong code.
+if (!$isResend && $hasPendingCode) {
+    inquiry_otp_json([
+        'success' => true,
+        'message' => $expiresAt > time()
+            ? 'A code was already sent. Enter it below.'
+            : 'Code expired. Resend a new code.',
+        'existing_code' => true,
+        'expired' => $expiresAt <= time(),
+        'expires_in' => max(0, $expiresAt - time()),
+        'resend_after' => max(0, $cooldown - (time() - $lastSentAt)),
+    ]);
+}
+
 if ($lastSentAt > 0 && (time() - $lastSentAt) < $cooldown) {
-    $expiresAt = (int)($_SESSION['public_inquiry_otp_expires_at'] ?? 0);
     inquiry_otp_json([
         'success' => false,
         'message' => 'Please wait before sending another code.',
@@ -130,6 +148,7 @@ $genericMessage = 'If the email is valid, a verification code was sent.';
 if ($existingUser && strtolower((string)($existingUser['role'] ?? '')) !== 'client') {
     $_SESSION['public_inquiry_otp_sent_at'] = time();
     $_SESSION['public_inquiry_otp_expires_at'] = time() + inquiry_otp_validity_seconds();
+    $_SESSION['public_inquiry_otp_email'] = $email;
     unset($_SESSION['public_inquiry_otp_token'], $_SESSION['public_inquiry_email_verified']);
     inquiry_otp_json([
         'success' => true,
@@ -168,6 +187,7 @@ if (!(new EmailService())->sendInquiryOtp($email, 'Client', $otp, $expiresAt)) {
 $_SESSION['public_inquiry_otp_token'] = $pendingToken;
 $_SESSION['public_inquiry_otp_sent_at'] = time();
 $_SESSION['public_inquiry_otp_expires_at'] = time() + $validity;
+$_SESSION['public_inquiry_otp_email'] = $email;
 $_SESSION['public_inquiry_otp_resend_count'] = $isResend ? $resendCount + 1 : 0;
 unset($_SESSION['public_inquiry_email_verified']);
 

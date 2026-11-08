@@ -141,7 +141,7 @@ const initInquiryStatusToast = () => {
             form.reset();
             const contactInput = form.querySelector('.js-inquiry-contact');
             if (contactInput) {
-                contactInput.value = '09';
+                contactInput.value = '';
             }
             form.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
             form.querySelectorAll('.field-error').forEach((fieldError) => {
@@ -278,6 +278,14 @@ const initConsultationModal = () => {
 
         inquiryModal.classList.add('is-open');
         inquiryModal.setAttribute('aria-hidden', 'false');
+        inquiryModal.querySelectorAll('.is-invalid').forEach((field) => {
+            field.classList.remove('is-invalid');
+            field.removeAttribute('aria-invalid');
+        });
+        inquiryModal.querySelectorAll('.field-error.is-visible').forEach((error) => {
+            error.textContent = '';
+            error.classList.remove('is-visible', 'is-warning');
+        });
         try {
             window.sessionStorage.setItem(inquiryModalStateKey, '1');
         } catch (error) {
@@ -607,6 +615,7 @@ const initInquiryForm = () => {
         let otpExpiresAt = 0;
         let otpResendAt = 0;
         let otpLockedUntil = 0;
+        let otpIsExpired = false;
         let contactCheckTimer = 0;
         let contactCheckId = 0;
         let contactCanVerifyEmail = false;
@@ -728,13 +737,35 @@ const initInquiryForm = () => {
             contactCheckTimer = window.setTimeout(checkContactDetails, 450);
         };
 
+        const syncOtpEntryState = () => {
+            const isLocked = Date.now() < otpLockedUntil;
+            const codeIsComplete = /^\d{6}$/.test(otpCodeInput?.value.trim() || '');
+            const entryUnavailable = isOtpBusy || otpIsExpired || isLocked;
+
+            if (otpCodeInput) {
+                otpCodeInput.disabled = entryUnavailable;
+                otpCodeInput.classList.toggle('is-expired', otpIsExpired);
+                if (entryUnavailable) {
+                    otpCodeInput.setAttribute('aria-disabled', 'true');
+                } else {
+                    otpCodeInput.removeAttribute('aria-disabled');
+                }
+            }
+            if (otpVerifyButton) {
+                otpVerifyButton.disabled = entryUnavailable || !codeIsComplete;
+            }
+        };
+
         const setOtpBusy = (busy, label = '') => {
             isOtpBusy = busy;
             otpModal?.classList.toggle('is-busy', busy);
             otpModal?.setAttribute('aria-busy', busy ? 'true' : 'false');
-            [otpCodeInput, otpVerifyButton, otpResendButton].forEach((control) => {
-                if (control) control.disabled = busy;
-            });
+            if (otpResendButton) {
+                otpResendButton.disabled = busy
+                    || Date.now() < otpResendAt
+                    || Date.now() < otpLockedUntil;
+            }
+            syncOtpEntryState();
             if (busy && otpMessage) {
                 otpMessage.textContent = label;
                 otpMessage.classList.remove('is-error');
@@ -762,7 +793,9 @@ const initInquiryForm = () => {
             otpModal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('has-inquiry-otp-open');
             otpModal.setAttribute('aria-busy', 'false');
-            window.setTimeout(() => otpCodeInput.focus(), 80);
+            window.setTimeout(() => {
+                if (!otpIsExpired && Date.now() >= otpLockedUntil) otpCodeInput.focus();
+            }, 80);
         };
 
         const closeOtpModal = (force = false) => {
@@ -812,6 +845,8 @@ const initInquiryForm = () => {
         const startOtpClock = (expiresIn, resendIn) => {
             window.clearInterval(otpClock);
             otpLockedUntil = 0;
+            otpIsExpired = false;
+            if (otpCodeInput) otpCodeInput.value = '';
             if (otpVerifyButton) otpVerifyButton.textContent = 'Verify Code';
             otpExpiresAt = Date.now() + Math.max(0, Number(expiresIn) || 0) * 1000;
             otpResendAt = Date.now() + Math.max(0, Number(resendIn) || 0) * 1000;
@@ -819,14 +854,24 @@ const initInquiryForm = () => {
             const render = () => {
                 const expiresInSeconds = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
                 const resendInSeconds = Math.max(0, Math.ceil((otpResendAt - Date.now()) / 1000));
+                const expired = expiresInSeconds === 0;
                 const format = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
                 if (otpTimer) {
                     otpTimer.textContent = expiresInSeconds > 0 ? `Code expires in ${format(expiresInSeconds)}` : 'Code expired. Resend a new code.';
                     otpTimer.classList.toggle('is-warning', expiresInSeconds > 0 && expiresInSeconds <= 60);
                     otpTimer.classList.toggle('is-expired', expiresInSeconds === 0);
                 }
+                if (expired && !otpIsExpired) {
+                    otpIsExpired = true;
+                    if (otpCodeInput) {
+                        otpCodeInput.value = '';
+                        otpCodeInput.blur();
+                        otpCodeInput.classList.remove('is-invalid');
+                    }
+                }
+                syncOtpEntryState();
                 if (!otpResendButton) return;
-                otpResendButton.disabled = resendInSeconds > 0;
+                otpResendButton.disabled = isOtpBusy || resendInSeconds > 0;
                 otpResendButton.textContent = resendInSeconds > 0
                     ? `Resend Code (${format(resendInSeconds)})`
                     : 'Resend Code';
@@ -844,6 +889,7 @@ const initInquiryForm = () => {
             window.clearInterval(otpClock);
             window.clearInterval(otpLockClock);
             otpLockedUntil = Date.now() + Math.max(1, Number(retryAfter) || 900) * 1000;
+            otpIsExpired = true;
             if (otpCodeInput) {
                 otpCodeInput.value = '';
                 otpCodeInput.disabled = true;
@@ -929,7 +975,7 @@ const initInquiryForm = () => {
             setOtpBusy(true, 'Sending code...');
             let resendAfter = 0;
             let expiresIn = 0;
-            let existingCode = false;
+            let requestCompleted = false;
             let successMessage = '';
             let lockRetryAfter = 0;
             try {
@@ -941,7 +987,8 @@ const initInquiryForm = () => {
                     resend: isResend ? '1' : '0',
                 });
                 resendAfter = Number(result.resend_after) || 0;
-                expiresIn = Number(result.expires_in) || 180;
+                expiresIn = Math.max(0, Number(result.expires_in) || 0);
+                requestCompleted = true;
                 successMessage = result.message || 'If the email is valid, a verification code was sent.';
             } catch (error) {
                 if (error.locked) {
@@ -950,7 +997,7 @@ const initInquiryForm = () => {
                 } else if (error.retryAfter > 0) {
                     resendAfter = error.retryAfter;
                     expiresIn = error.expiresIn || 180;
-                    existingCode = true;
+                    requestCompleted = true;
                 } else {
                     const errorField = error.field === 'name'
                         ? clientNameInput
@@ -966,10 +1013,10 @@ const initInquiryForm = () => {
             } finally {
                 setOtpBusy(false);
                 if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
-                if (resendAfter > 0) {
+                if (requestCompleted) {
                     openOtpModal(false);
                     startOtpClock(expiresIn, resendAfter);
-                    otpMessage.textContent = existingCode ? 'A code was already sent. Enter it below.' : successMessage;
+                    otpMessage.textContent = successMessage;
                     otpMessage.classList.remove('is-error');
                     window.requestAnimationFrame(() => {
                         otpCodeInput?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1018,9 +1065,14 @@ const initInquiryForm = () => {
                 otpMessage.textContent = '';
                 otpMessage.classList.remove('is-error');
             }
+            syncOtpEntryState();
         });
         otpResendButton?.addEventListener('click', () => sendInquiryOtp(true));
         const verifyInquiryOtp = async () => {
+            if (otpIsExpired || Date.now() < otpLockedUntil) {
+                otpCodeInput?.blur();
+                return;
+            }
             const otp = otpCodeInput?.value.trim() || '';
             if (!/^\d{6}$/.test(otp)) {
                 otpMessage.textContent = 'Enter the complete 6-digit code.';
@@ -1848,7 +1900,7 @@ const restoreInquiryDraft = () => {
         const clearInquiryForm = () => {
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
-            contactInput.value = '09';
+            contactInput.value = '';
             clearContactMismatchFeedback();
             syncAreaOptions();
             syncOtherServiceField();

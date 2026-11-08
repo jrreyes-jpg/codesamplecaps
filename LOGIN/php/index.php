@@ -541,7 +541,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
                 <label>
                     <span>Contact Number <b class="required-mark">*</b></span>
                     <span class="inquiry-validation-control">
-                        <input type="tel" class="js-inquiry-contact" name="contact_no" data-label="Contact Number" data-persistent-valid-check required value="09" maxlength="11" inputmode="numeric" autocomplete="tel">
+                        <input type="tel" class="js-inquiry-contact" name="contact_no" data-label="Contact Number" data-persistent-valid-check required maxlength="11" inputmode="numeric" autocomplete="tel" placeholder="09XXXXXXXXX">
                         <span class="inquiry-validation-check" aria-hidden="true"></span>
                     </span>
                     <small class="field-error"></small>

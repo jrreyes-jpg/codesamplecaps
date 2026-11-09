@@ -446,7 +446,10 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
                 $clientMailer = new EmailService();
                 $notificationResult['client_sent'] = $clientMailer->sendInquiryReceivedConfirmation(
                     $email,
-                    $clientName
+                    $clientName,
+                    $inquiryId,
+                    $serviceCategory,
+                    $preferredDate
                 );
             } catch (Throwable $notificationException) {
                 error_log('Walk-in inquiry receipt email failed: ' . $notificationException->getMessage());

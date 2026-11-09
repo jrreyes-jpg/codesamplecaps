@@ -237,12 +237,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         );
 
         if ($insert->execute()) {
+            $inquiryId = (int)$conn->insert_id;
             $pendingId = (int)$pending['id'];
             $done = $conn->prepare('UPDATE pending_service_inquiries SET verified_at = NOW() WHERE id = ?');
             $done->bind_param('i', $pendingId);
             $done->execute();
             $mailer = new EmailService();
-            if (!$mailer->sendInquiryReceivedConfirmation($email, $clientName)) {
+            if (!$mailer->sendInquiryReceivedConfirmation(
+                $email,
+                $clientName,
+                $inquiryId,
+                $serviceCategory,
+                $preferredInspectionDate
+            )) {
                 error_log('Inquiry received email failed: ' . $mailer->getError());
             }
             verify_inquiry_redirect_home('success');

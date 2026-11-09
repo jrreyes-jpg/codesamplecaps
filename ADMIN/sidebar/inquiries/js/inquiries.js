@@ -861,27 +861,39 @@ document.addEventListener('DOMContentLoaded', function () {
         const card = document.createElement('div');
         card.className = 'inspection-schedule-loader__card';
 
+        const logoWrap = document.createElement('div');
+        logoWrap.className = 'inspection-schedule-loader__logo-wrap';
+
         const logo = document.createElement('img');
         logo.className = 'inspection-schedule-loader__logo';
         logo.src = '/codesamplecaps/IMAGES/edge.jpg';
         logo.alt = '';
+        logoWrap.appendChild(logo);
 
-        const text = document.createElement('span');
+        const text = document.createElement('strong');
         text.className = 'inspection-schedule-loader__text';
         text.textContent = 'Saving inspection schedule...';
 
-        card.append(logo, text);
+        const helpText = document.createElement('span');
+        helpText.className = 'inspection-schedule-loader__help';
+        helpText.textContent = 'Please wait. Do not close this page.';
+
+        card.append(logoWrap, text, helpText);
         loader.appendChild(card);
         document.body.appendChild(loader);
         return loader;
     };
 
-    const setInspectionSchedulingState = function (modal, isScheduling) {
+    const setInspectionSchedulingState = function (modal, isScheduling, loadingText) {
         if (!modal) {
             return;
         }
 
         const scheduleLoader = getInspectionScheduleLoader();
+        const scheduleLoaderText = scheduleLoader.querySelector('.inspection-schedule-loader__text');
+        if (isScheduling && scheduleLoaderText) {
+            scheduleLoaderText.textContent = loadingText || 'Saving inspection schedule...';
+        }
         scheduleLoader.hidden = !isScheduling;
 
         if (isScheduling) {
@@ -1562,7 +1574,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     submitButton.classList.add('inquiry-send-button--loading');
                     submitButton.replaceChildren(spinner, label);
                 }
-                setInspectionSchedulingState(modal, true);
+                setInspectionSchedulingState(
+                    modal,
+                    true,
+                    hasExistingSchedule ? 'Updating inspection schedule...' : 'Saving inspection schedule...'
+                );
                 delete form.dataset.confirmed;
                 event.preventDefault();
 

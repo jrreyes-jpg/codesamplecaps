@@ -1580,7 +1580,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261109-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261109-7',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -1588,7 +1588,7 @@ $engineerCssFiles = [
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
-<main class="main-content">
+<main class="main-content<?php echo $hasRequestedInspection ? ' inspection-details-main' : ''; ?>">
     <?php
     include __DIR__ . '/../includes/header.php';
     ?>
@@ -1819,15 +1819,18 @@ require __DIR__ . '/../layout/header.php';
 
                         <div class="inspection-modal<?php echo $isInspectionDetailsPage ? ' inspection-modal--page' : ''; ?>" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' hidden'; ?>>
                             <div class="inspection-modal__panel" role="<?php echo $isInspectionDetailsPage ? 'region' : 'dialog'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' aria-modal="true"'; ?> aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
+                                <?php if ($isInspectionDetailsPage): ?>
+                                    <div class="inspection-details-navigation">
+                                        <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="inspection-details-back">&larr; Back to Site Inspections</a>
+                                    </div>
+                                <?php endif; ?>
                                 <div class="inspection-modal__head">
                                     <div>
                                         <span class="inspection-modal__eyebrow">Site Inspection</span>
                                         <h2 id="inspectionModalTitle<?php echo $inspectionId; ?>"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <p><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></p>
                                     </div>
-                                    <?php if ($isInspectionDetailsPage): ?>
-                                        <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="inspection-details-back">&larr; Back to Site Inspections</a>
-                                    <?php else: ?>
+                                    <?php if (!$isInspectionDetailsPage): ?>
                                         <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
                                     <?php endif; ?>
                                 </div>

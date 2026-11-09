@@ -237,6 +237,12 @@
 .inspection-view-button {
     justify-self: start;
     white-space: nowrap;
+    text-decoration: none;
+}
+
+.inspection-view-button:hover,
+.inspection-view-button:focus-visible {
+    text-decoration: none;
 }
 
 .inspection-status {
@@ -2238,6 +2244,10 @@ body.inspection-is-submitting {
 }
 
 /* Full page inspection details habang visible pa rin ang shared header at sidebar. */
+.main-content.inspection-details-main {
+    overflow-x: clip;
+}
+
 .inspection-shell.has-inspection-details .inspection-toolbar {
     display: none;
 }
@@ -2270,6 +2280,9 @@ body.inspection-is-submitting {
 }
 
 .inspection-modal--page .inspection-modal__panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     width: 100%;
     height: auto;
     max-height: none;
@@ -2290,27 +2303,42 @@ body.inspection-is-submitting {
     grid-auto-rows: auto;
 }
 
+.inspection-details-navigation {
+    position: sticky;
+    top: 112px;
+    z-index: 40;
+    width: fit-content;
+    align-self: flex-start;
+    margin: 0 0 8px;
+    border-radius: 10px;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
+}
+
 .inspection-details-back {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 42px;
-    padding: 9px 13px;
-    border: 1px solid #bbf7d0;
+    min-height: 40px;
+    padding: 8px 13px;
+    border: 0;
     border-radius: 10px;
-    background: #f0fdf4;
-    color: #166534;
-    font-size: 0.86rem;
-    font-weight: 800;
+    background: #064e3b;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
     line-height: 1.3;
     text-decoration: none;
 }
 
 .inspection-details-back:hover,
 .inspection-details-back:focus-visible {
-    border-color: #166534;
-    background: #166534;
+    background: #047857;
     color: #ffffff;
+}
+
+.inspection-modal--page .inspection-modal__head {
+    align-items: flex-start;
+    flex-direction: column;
 }
 
 @media (max-width: 700px) {
@@ -2322,6 +2350,12 @@ body.inspection-is-submitting {
     .inspection-modal--page .inspection-modal__head {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .inspection-details-navigation {
+        top: 88px;
+        width: 100%;
+        margin: 0 0 6px;
     }
 
     .inspection-details-back {

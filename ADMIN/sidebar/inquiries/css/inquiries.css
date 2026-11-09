@@ -4764,6 +4764,18 @@ body.inquiry-modal-open {
     overflow: auto;
 }
 
+.inquiry-archive-guidance {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
 .inquiry-archive-form label {
     display: grid;
     gap: 7px;
@@ -4774,6 +4786,34 @@ body.inquiry-modal-open {
     width: 100%;
     min-height: 88px;
     resize: vertical;
+}
+
+.inquiry-archive-form .inquiry-close-confirmation {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    cursor: pointer;
+}
+
+.inquiry-close-confirmation input {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    accent-color: #b91c1c;
+}
+
+.inquiry-close-confirmation span {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
 }
 
 .inquiry-archive-form .inquiry-review-actions {
@@ -4787,7 +4827,16 @@ body.inquiry-modal-open {
 }
 
 .inquiry-archive-button {
-    color: #9a3412;
+    border-color: #fecaca;
+    background: #fff1f2;
+    color: #b91c1c;
+}
+
+.inquiry-archive-button:hover,
+.inquiry-archive-button:focus-visible {
+    border-color: #b91c1c;
+    background: #b91c1c;
+    color: #ffffff;
 }
 
 .inquiry-archive-output {

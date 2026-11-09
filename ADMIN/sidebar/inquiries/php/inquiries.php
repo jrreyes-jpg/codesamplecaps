@@ -3643,6 +3643,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <input type="hidden" name="action" value="archive_inquiry">
                                         <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                         <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php'), ENT_QUOTES, 'UTF-8'); ?>">
+                                        <p class="inquiry-archive-guidance">This inquiry will move to the Archived list.</p>
                                         <label>
                                             <span>Close Reason</span>
                                             <select name="archive_reason" required>
@@ -3663,7 +3664,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </label>
                                         <label class="inquiry-close-confirmation">
                                             <input type="checkbox" name="contact_recorded" value="1" required>
-                                            <span>Client contact or contact attempt was recorded.</span>
+                                            <span>I confirm that the Client was contacted or a contact attempt was recorded.</span>
                                         </label>
                                         <div class="inquiry-review-actions">
                                             <button type="button" class="btn-secondary" data-archive-modal-close>Cancel</button>

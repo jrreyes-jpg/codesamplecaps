@@ -2772,7 +2772,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const inspectionRefreshUrl = new URL(window.location.href);
-    inspectionRefreshUrl.searchParams.delete('inspection_id');
+    if (!document.querySelector('.inspection-modal--page')) {
+        inspectionRefreshUrl.searchParams.delete('inspection_id');
+    }
     let inspectionRefreshInProgress = false;
     let inspectionRefreshDeferred = false;
     let inspectionSchedulePollInProgress = false;
@@ -2780,6 +2782,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const replaceInspectionCardSnapshot = function (currentCard, nextCard, keepModalOpen) {
         const currentModal = currentCard?.querySelector('.inspection-modal');
+        const isDetailsPage = currentModal?.classList.contains('inspection-modal--page') === true;
         const keepOpen = Boolean(keepModalOpen && currentModal && !currentModal.hidden);
         const savedScrollTop = currentModal?.querySelector('.inspection-modal__panel')?.scrollTop || 0;
         const savedTab = currentModal?.querySelector('[data-inspection-tab].is-active')?.getAttribute('data-inspection-tab') || 'details';
@@ -2793,11 +2796,19 @@ document.addEventListener('DOMContentLoaded', function () {
             const nextPanel = nextModal?.querySelector('.inspection-modal__panel');
             if (nextModal) {
                 nextModal.hidden = false;
-                document.body.classList.add('inspection-modal-open');
-                window.localStorage.setItem(activeModalKey, nextModal.id);
+                if (isDetailsPage) {
+                    nextModal.classList.add('inspection-modal--page');
+                    nextPanel?.setAttribute('role', 'region');
+                    nextPanel?.removeAttribute('aria-modal');
+                    document.body.classList.remove('inspection-modal-open');
+                    window.localStorage.removeItem(activeModalKey);
+                } else {
+                    document.body.classList.add('inspection-modal-open');
+                    window.localStorage.setItem(activeModalKey, nextModal.id);
+                }
                 activateInspectionTab(nextModal, savedTab);
             }
-            if (nextPanel) nextPanel.scrollTop = savedScrollTop;
+            if (nextPanel && !isDetailsPage) nextPanel.scrollTop = savedScrollTop;
         }
 
         return importedCard;
@@ -2911,6 +2922,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const mergeAssignedInspectionCards = function (nextDocument) {
         const result = { success: false, insertedIds: [], missingIds: [] };
         if (!inspectionPanel) return result;
+        if (inspectionPanel.classList.contains('has-details-page')) return result;
 
         const nextPanel = nextDocument.querySelector('.inspection-panel');
         if (!nextPanel) return result;
@@ -3034,7 +3046,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const requestedInspectionId = Number.parseInt(new URLSearchParams(window.location.search).get('inspection_id') || '0', 10);
     const requestedModal = requestedInspectionId > 0 ? document.getElementById('inspectionModal' + requestedInspectionId) : null;
     if (requestedModal) {
-        openInspectionModal(requestedModal);
+        if (requestedModal.classList.contains('inspection-modal--page')) {
+            const savedTab = window.localStorage.getItem(`${activeTabKey}.${requestedModal.id}`);
+            if (requestedModal.dataset.reportSubmitted === 'true') {
+                activateInspectionTab(requestedModal, 'report');
+            } else if (savedTab === 'details' || savedTab === 'report') {
+                activateInspectionTab(requestedModal, savedTab);
+            }
+            window.localStorage.removeItem(activeModalKey);
+            document.body.classList.remove('inspection-modal-open');
+        } else {
+            openInspectionModal(requestedModal);
+        }
         const requestedCard = requestedModal.closest('[data-inspection-card-id]');
         const requestedButton = requestedCard?.querySelector('[data-engineer-notification-id]');
         const notificationId = Number.parseInt(requestedButton?.dataset.engineerNotificationId || '0', 10);
@@ -3051,21 +3074,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Mananatiling New kapag hindi naisave ang read state.
                 });
         }
-        const url = new URL(window.location.href);
-        url.searchParams.delete('inspection_id');
-        window.history.replaceState({}, document.title, url);
-    } else {
-        const activeModalId = window.localStorage.getItem(activeModalKey);
-        const modal = activeModalId ? document.getElementById(activeModalId) : null;
-        const panel = modal?.querySelector('.inspection-modal__panel');
-        if (modal) {
-            openInspectionModal(modal);
-            window.setTimeout(function () {
-                if (panel) {
-                    panel.scrollTop = Number(window.localStorage.getItem(modalScrollKey) || 0);
-                }
-            }, 0);
+        if (!requestedModal.classList.contains('inspection-modal--page')) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('inspection_id');
+            window.history.replaceState({}, document.title, url);
         }
+    } else {
+        window.localStorage.removeItem(activeModalKey);
     }
 
 });

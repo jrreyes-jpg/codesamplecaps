@@ -844,57 +844,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
-    const getInspectionScheduleLoader = function () {
-        let loader = document.querySelector('[data-inspection-schedule-loader]');
-        if (loader) {
-            return loader;
-        }
-
-        loader = document.createElement('div');
-        loader.className = 'inspection-schedule-loader';
-        loader.dataset.inspectionScheduleLoader = '';
-        loader.hidden = true;
-        loader.setAttribute('role', 'status');
-        loader.setAttribute('aria-live', 'polite');
-        loader.setAttribute('aria-label', 'Saving inspection schedule');
-
-        const card = document.createElement('div');
-        card.className = 'inspection-schedule-loader__card';
-
-        const logoWrap = document.createElement('div');
-        logoWrap.className = 'inspection-schedule-loader__logo-wrap';
-
-        const logo = document.createElement('img');
-        logo.className = 'inspection-schedule-loader__logo';
-        logo.src = '/codesamplecaps/IMAGES/edge.jpg';
-        logo.alt = '';
-        logoWrap.appendChild(logo);
-
-        const text = document.createElement('strong');
-        text.className = 'inspection-schedule-loader__text';
-        text.textContent = 'Saving inspection schedule...';
-
-        const helpText = document.createElement('span');
-        helpText.className = 'inspection-schedule-loader__help';
-        helpText.textContent = 'Please wait. Do not close this page.';
-
-        card.append(logoWrap, text, helpText);
-        loader.appendChild(card);
-        document.body.appendChild(loader);
-        return loader;
-    };
-
     const setInspectionSchedulingState = function (modal, isScheduling, loadingText) {
         if (!modal) {
             return;
         }
 
-        const scheduleLoader = getInspectionScheduleLoader();
-        const scheduleLoaderText = scheduleLoader.querySelector('.inspection-schedule-loader__text');
-        if (isScheduling && scheduleLoaderText) {
-            scheduleLoaderText.textContent = loadingText || 'Saving inspection schedule...';
+        if (isScheduling) {
+            window.edgeActionLoading?.show({
+                title: loadingText || 'Saving inspection schedule...',
+                message: 'Please wait. Do not close this page.',
+            });
+        } else {
+            window.edgeActionLoading?.hide();
         }
-        scheduleLoader.hidden = !isScheduling;
 
         if (isScheduling) {
             modal.dataset.inspectionScheduling = '1';

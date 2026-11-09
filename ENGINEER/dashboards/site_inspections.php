@@ -1573,9 +1573,14 @@ foreach ($inspections as $filterInspection) {
         $inspectionFilterCounts['submitted']++;
     }
 }
+$requestedInspectionId = max(0, (int)($_GET['inspection_id'] ?? 0));
+$hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
+    $inspections,
+    static fn(array $inspection): bool => (int)($inspection['id'] ?? 0) === $requestedInspectionId
+) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261102-2',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261109-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -1588,7 +1593,7 @@ require __DIR__ . '/../layout/header.php';
     include __DIR__ . '/../includes/header.php';
     ?>
 
-    <div class="inspection-shell">
+    <div class="inspection-shell<?php echo $hasRequestedInspection ? ' has-inspection-details' : ''; ?>">
         <div class="inspection-toolbar">
             <h1 id="inspectionPageTitle">Site Inspections</h1>
             <div class="inspection-filters" role="group" aria-label="Filter inspections">
@@ -1610,13 +1615,17 @@ require __DIR__ . '/../layout/header.php';
             <div class="inspection-flash success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
         <?php if ($error): ?><div class="inspection-flash error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-        <section class="inspection-panel" id="engineerInspectionList" aria-labelledby="inspectionPageTitle">
+        <section class="inspection-panel<?php echo $hasRequestedInspection ? ' has-details-page' : ''; ?>" id="engineerInspectionList" aria-labelledby="inspectionPageTitle">
             <?php if (empty($inspections)): ?>
                 <p class="inspection-meta" data-inspection-empty>No site inspections yet.</p>
             <?php else: ?>
                 <?php foreach ($inspections as $inspection): ?>
                     <?php
                     $inspectionId = (int)$inspection['id'];
+                    $isInspectionDetailsPage = $hasRequestedInspection && $requestedInspectionId === $inspectionId;
+                    if ($hasRequestedInspection && !$isInspectionDetailsPage) {
+                        continue;
+                    }
                     $unreadInspectionNotificationId = (int)($unreadInspectionNotificationIds[$inspectionId] ?? 0);
                     $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
                     $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
@@ -1800,24 +1809,27 @@ require __DIR__ . '/../layout/header.php';
                             </div>
                         </div>
 
-                        <button
-                            type="button"
+                        <a
+                            href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=<?php echo $inspectionId; ?>"
                             class="btn-primary inspection-view-button"
-                            data-inspection-modal-open="inspectionModal<?php echo $inspectionId; ?>"
                             <?php echo $unreadInspectionNotificationId > 0 ? 'data-engineer-notification-id="' . $unreadInspectionNotificationId . '"' : ''; ?>
                         >
                             View Details
-                        </button>
+                        </a>
 
-                        <div class="inspection-modal" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>" hidden>
-                            <div class="inspection-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
+                        <div class="inspection-modal<?php echo $isInspectionDetailsPage ? ' inspection-modal--page' : ''; ?>" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' hidden'; ?>>
+                            <div class="inspection-modal__panel" role="<?php echo $isInspectionDetailsPage ? 'region' : 'dialog'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' aria-modal="true"'; ?> aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
                                 <div class="inspection-modal__head">
                                     <div>
                                         <span class="inspection-modal__eyebrow">Site Inspection</span>
                                         <h2 id="inspectionModalTitle<?php echo $inspectionId; ?>"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <p><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></p>
                                     </div>
-                                    <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
+                                    <?php if ($isInspectionDetailsPage): ?>
+                                        <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="inspection-details-back">&larr; Back to Site Inspections</a>
+                                    <?php else: ?>
+                                        <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="inspection-workflow" aria-label="Inspection progress">
@@ -2343,7 +2355,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261103-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261109-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

@@ -2236,3 +2236,96 @@ body.inspection-is-submitting {
         min-height: 44px;
     }
 }
+
+/* Full page inspection details habang visible pa rin ang shared header at sidebar. */
+.inspection-shell.has-inspection-details .inspection-toolbar {
+    display: none;
+}
+
+.inspection-panel.has-details-page {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.inspection-panel.has-details-page .inspection-card {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.inspection-panel.has-details-page .inspection-card > :not(.inspection-modal--page) {
+    display: none;
+}
+
+.inspection-modal.inspection-modal--page {
+    position: static;
+    display: block;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+}
+
+.inspection-modal--page .inspection-modal__panel {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    padding: 22px;
+    overflow: visible;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 22px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.inspection-modal--page .inspection-tab-panel {
+    overflow: visible;
+    overscroll-behavior: auto;
+}
+
+.inspection-modal--page .inspection-tab-panel[data-inspection-tab-panel="details"] .inspection-grid {
+    min-height: 0;
+    grid-auto-rows: auto;
+}
+
+.inspection-details-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 9px 13px;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    background: #f0fdf4;
+    color: #166534;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-decoration: none;
+}
+
+.inspection-details-back:hover,
+.inspection-details-back:focus-visible {
+    border-color: #166534;
+    background: #166534;
+    color: #ffffff;
+}
+
+@media (max-width: 700px) {
+    .inspection-modal--page .inspection-modal__panel {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .inspection-modal--page .inspection-modal__head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .inspection-details-back {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}

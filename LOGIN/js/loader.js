@@ -3,7 +3,7 @@
 
     var loader = document.getElementById("pageLoader");
     var shownAt = 0;
-    var minimumVisibleTime = 600;
+    var minimumVisibleTime = 3000;
     var maximumDisplayTime = 8000;
     var fadeDuration = 420;
     var showTimer;

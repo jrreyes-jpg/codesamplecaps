@@ -1732,17 +1732,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     bindInquiryArchiveForms(document);
 
-    document.querySelectorAll('.inquiry-delete-form').forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            if (form.dataset.confirmed === '1') {
-                return;
-            }
-
-            event.preventDefault();
-            showConfirm(form, 'Permanently delete this archived inquiry? This cannot be undone.');
-        });
-    });
-
     document.querySelectorAll('.inquiry-restore-form').forEach(function (form) {
         form.addEventListener('submit', function (event) {
             if (form.dataset.confirmed === '1') {

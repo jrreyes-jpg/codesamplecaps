@@ -821,44 +821,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!inquiry_center_is_valid_csrf($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request. Please try again.';
     } elseif (
-        !in_array((string)($_POST['action'] ?? ''), ['delete_inquiry', 'restore_inquiry', 'archive_inquiry'], true)
+        !in_array((string)($_POST['action'] ?? ''), ['restore_inquiry', 'archive_inquiry'], true)
         && inquiry_center_is_archived($conn, (int)($_POST['inquiry_id'] ?? 0))
     ) {
         $error = 'This inquiry is archived. Restore it before making changes.';
-    } elseif (($_POST['action'] ?? '') === 'delete_inquiry') {
-        $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
-
-        if ($inquiryId <= 0) {
-            $error = 'Invalid delete request.';
-        } else {
-            $inspectionDeleteStmt = $conn->prepare('DELETE FROM site_inspections WHERE inquiry_id = ?');
-            if ($inspectionDeleteStmt) {
-                $inspectionDeleteStmt->bind_param('i', $inquiryId);
-                $inspectionDeleteStmt->execute();
-            }
-
-            $deleteStmt = $conn->prepare('DELETE FROM service_inquiries WHERE id = ? AND archived_at IS NOT NULL');
-
-            if (!$deleteStmt) {
-                $error = 'Failed to prepare delete request.';
-            } else {
-                $deleteStmt->bind_param('i', $inquiryId);
-                if ($deleteStmt->execute() && $deleteStmt->affected_rows > 0) {
-                    audit_log_event(
-                        $conn,
-                        (int)($_SESSION['user_id'] ?? 0),
-                        'delete_archived_inquiry',
-                        'service_inquiry',
-                        $inquiryId,
-                        null,
-                        ['deleted_from' => 'archive']
-                    );
-                    inquiry_center_redirect('archive', 'Archived inquiry permanently deleted.');
-                } else {
-                    $error = 'Only archived inquiries can be permanently deleted.';
-                }
-            }
-        }
     } elseif (($_POST['action'] ?? '') === 'restore_inquiry') {
         $inquiryId = (int)($_POST['inquiry_id'] ?? 0);
 
@@ -2923,14 +2889,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span aria-hidden="true">&#8634;</span>
                                                 </button>
                                             </form>
-                                            <form method="POST" class="inquiry-delete-form">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="action" value="delete_inquiry">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                                <button type="submit" class="inquiry-icon-button inquiry-icon-button--delete" data-tooltip="Delete permanently" aria-label="Delete permanently">
-                                                    <span aria-hidden="true">&#128465;</span>
-                                                </button>
-                                            </form>
                                         <?php endif; ?>
                                         <?php if (!$isDetailsPage): ?>
                                             <a href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="inquiry-modal__close" data-inquiry-modal-close aria-label="Close inquiry details">&times;</a>
@@ -3664,7 +3622,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         </label>
                                         <label class="inquiry-close-confirmation">
                                             <input type="checkbox" name="contact_recorded" value="1" required>
-                                            <span>I confirm that the Client was contacted or a contact attempt was recorded.</span>
+                                            <span>I confirm that the Client was contacted or a contact attempt was made.</span>
                                         </label>
                                         <div class="inquiry-review-actions">
                                             <button type="button" class="btn-secondary" data-archive-modal-close>Cancel</button>

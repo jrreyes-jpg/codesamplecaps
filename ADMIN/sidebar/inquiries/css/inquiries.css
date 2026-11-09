@@ -4621,10 +4621,6 @@ body.inquiry-modal-open {
     cursor: text;
 }
 
-.inquiry-delete-form {
-    margin-top: 4px;
-}
-
 .inquiry-review-form textarea,
 .inquiry-schedule-form textarea,
 .inquiry-archive-form textarea {

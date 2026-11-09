@@ -773,6 +773,17 @@ if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_i
     exit();
 }
 
+// Kapag binuksan ang details, hindi na ito New sa susunod na list view.
+$openedInquiryId = max(0, (int)($_GET['details'] ?? 0));
+if ($openedInquiryId > 0 && inquiry_center_has_table($conn, 'service_inquiries')) {
+    $viewStmt = $conn->prepare('UPDATE service_inquiries SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = ? AND archived_at IS NULL');
+    if ($viewStmt) {
+        $viewStmt->bind_param('i', $openedInquiryId);
+        $viewStmt->execute();
+    }
+    unset($_SESSION['super_admin_sidebar_notification_data']);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!inquiry_center_is_valid_csrf($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request. Please try again.';
@@ -2531,7 +2542,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content">
+<main class="main-content admin-dashboard-content<?php echo $detailsInquiryId > 0 ? ' inquiry-details-main' : ''; ?>">
     <div
         class="inquiries-shell<?php echo $detailsInquiryId > 0 ? ' is-details-page' : ''; ?>"
         data-latest-revision-id="<?php echo $latestRevisionId; ?>"
@@ -2889,7 +2900,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
                                             <span class="inquiry-workflow__label">
                                                 Inspection Schedule
-                                                <small>Next: Assign engineer and confirm date.</small>
+                                                <small>Next: Assign an engineer and confirm the date.</small>
                                             </span>
                                         </a>
                                     <?php endif; ?>
@@ -3290,7 +3301,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <span><b>Client Tentative Date:</b> <?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                 <?php endif; ?>
                                                 <?php if (!$latestInspection): ?>
-                                                    <span>Set only after the Client and Engineer agree.</span>
+                                                    <span>Confirm with the Client and Engineer before saving.</span>
                                                 <?php endif; ?>
                                             </div>
                                             <?php if ($latestInspection): ?>
@@ -3317,7 +3328,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <small class="inquiry-schedule-field-feedback" data-admin-schedule-conflict-feedback hidden aria-live="polite"></small>
                                                     <small class="inquiry-schedule-date-notice" data-admin-date-cutoff-feedback hidden aria-live="polite"></small>
                                                     <small id="adminInspectionDateHelp<?php echo (int)$inquiry['id']; ?>" class="inquiry-schedule-window-note">
-                                                        Before 5:00 PM, today is allowed. From 5:00 PM, choose tomorrow onward. Select a date within 30 days.
+                                                        Choose today before 5:00 PM, or tomorrow onward. Maximum: 30 days.
                                                     </small>
                                                 </label>
                                             </div>

@@ -10,6 +10,17 @@
     --loader-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Loader muna ang unang makikita bago ang landing page. */
+.page-is-loading body > :not(.page-loader) {
+    visibility: hidden;
+}
+
+.page-is-loading .page-loader {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
 .page-loader {
     position: fixed;
     inset: 0;

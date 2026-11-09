@@ -1957,33 +1957,16 @@
     display: flex;
     width: 100%;
     align-items: flex-start;
-    gap: 7px;
-    margin-top: 7px;
-    padding: 8px 10px;
-    border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    background: #eff6ff;
-    color: #475569;
+    gap: 0;
+    margin-top: 6px;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: #64748b;
     font-size: 0.78rem;
     font-weight: 600;
     line-height: 1.35;
     overflow-wrap: anywhere;
-}
-
-.inquiry-schedule-window-note::before {
-    content: "i";
-    display: inline-flex;
-    flex: 0 0 18px;
-    width: 18px;
-    height: 18px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: #dbeafe;
-    color: #1d4ed8;
-    font-size: 0.72rem;
-    font-weight: 800;
-    line-height: 1;
 }
 
 .inquiry-schedule-form > .inquiry-review-actions {
@@ -2793,16 +2776,25 @@
 }
 
 @media (max-width: 640px) {
+    .main-content.admin-dashboard-content.inquiry-details-main {
+        padding: 88px 10px 16px;
+    }
+
+    .inquiries-shell.is-details-page {
+        gap: 8px;
+        padding-top: 6px;
+    }
+
     .inquiry-details-page__navigation {
         top: 88px;
-        margin-left: 10px;
+        margin: 0 0 6px 8px;
         border-radius: 10px;
     }
 
     .inquiry-modal--page .inquiry-modal__head {
         display: grid;
-        gap: 12px;
-        padding: 14px 12px;
+        gap: 9px;
+        padding: 12px 10px;
     }
 
     .inquiry-modal--page .inquiry-modal__head > div:first-child {

@@ -3,7 +3,7 @@
 
     var loader = document.getElementById("pageLoader");
     var shownAt = 0;
-    var minimumVisibleTime = 2000;
+    var minimumVisibleTime = 600;
     var maximumDisplayTime = 8000;
     var fadeDuration = 420;
     var showTimer;
@@ -34,6 +34,7 @@
         window.clearTimeout(showTimer);
         loader.classList.remove("is-visible");
         loader.classList.add("is-hidden");
+        document.documentElement.classList.remove("page-is-loading");
         document.body.classList.remove("loader-lock");
 
         window.setTimeout(function () {
@@ -50,7 +51,11 @@
     }
 
     showLoader();
-    window.addEventListener("load", scheduleHide, { once: true });
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", scheduleHide, { once: true });
+    } else {
+        scheduleHide();
+    }
 
     window.setTimeout(hideLoader, maximumDisplayTime);
 })();

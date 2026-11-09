@@ -20,12 +20,13 @@ if (empty($_SESSION['inquiry_form_token'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="page-is-loading">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Edge Automation Technology Services, Co. - Professional engineering automation and technology solutions">
     <title>Edge Automation Technology Services, Co.</title>
+    <link rel="preload" href="../../IMAGES/edge.jpg" as="image">
     <link rel="stylesheet" href="../css/loader.css?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../css/loader.css')); ?>">
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
     <link rel="stylesheet" href="../css/public-confirmation.css">

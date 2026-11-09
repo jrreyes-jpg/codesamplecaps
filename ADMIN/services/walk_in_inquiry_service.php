@@ -281,13 +281,8 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
 
     $isConfirmed = $nextAction === 'confirmed';
     $status = $isConfirmed ? 'For Inspection' : 'Pending Review';
-    $adminNotes = '[Walk-in email verified]';
-    if ($preferredEngineerId > 0) {
-        $engineerLabel = $isConfirmed ? 'Confirmed Engineer' : 'Preferred Engineer';
-        $adminNotes .= "\n[{$engineerLabel}: {$preferredEngineerName} (#{$preferredEngineerId})]";
-    } else {
-        $adminNotes .= "\n[Preferred Engineer: Unassigned]";
-    }
+    // Blank ito kapag walang tunay na note si Admin.
+    $adminNotes = '';
     $conn->begin_transaction();
     try {
     $hasEstimatedBudget = walk_in_inquiry_has_column($conn, 'estimated_budget');
@@ -331,7 +326,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
         );
     } else {
         // Fallback habang hindi pa nalalagay ang migration.
-        $sourceNote = '[Walk-in inquiry]' . "\n" . $adminNotes;
+        $sourceNote = '[Walk-in inquiry]';
         $stmt = $conn->prepare(
             'INSERT INTO service_inquiries
                 (client_name, company_name, email, contact_no, province, city_municipality, barangay,

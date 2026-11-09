@@ -844,10 +844,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const getInspectionScheduleLoader = function () {
+        let loader = document.querySelector('[data-inspection-schedule-loader]');
+        if (loader) {
+            return loader;
+        }
+
+        loader = document.createElement('div');
+        loader.className = 'inspection-schedule-loader';
+        loader.dataset.inspectionScheduleLoader = '';
+        loader.hidden = true;
+        loader.setAttribute('role', 'status');
+        loader.setAttribute('aria-live', 'polite');
+        loader.setAttribute('aria-label', 'Saving inspection schedule');
+
+        const card = document.createElement('div');
+        card.className = 'inspection-schedule-loader__card';
+
+        const logo = document.createElement('img');
+        logo.className = 'inspection-schedule-loader__logo';
+        logo.src = '/codesamplecaps/IMAGES/edge.jpg';
+        logo.alt = '';
+
+        const text = document.createElement('span');
+        text.className = 'inspection-schedule-loader__text';
+        text.textContent = 'Saving inspection schedule...';
+
+        card.append(logo, text);
+        loader.appendChild(card);
+        document.body.appendChild(loader);
+        return loader;
+    };
+
     const setInspectionSchedulingState = function (modal, isScheduling) {
         if (!modal) {
             return;
         }
+
+        const scheduleLoader = getInspectionScheduleLoader();
+        scheduleLoader.hidden = !isScheduling;
 
         if (isScheduling) {
             modal.dataset.inspectionScheduling = '1';

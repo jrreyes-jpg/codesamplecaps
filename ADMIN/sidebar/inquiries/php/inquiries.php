@@ -83,6 +83,39 @@ function inquiry_center_format_money(float $amount): string
     return 'PHP ' . number_format($amount, 2);
 }
 
+function inquiry_center_visible_admin_notes(?string $notes): string
+{
+    $visibleLines = array_filter(
+        preg_split('/\R/u', (string)$notes) ?: [],
+        static function (string $line): bool {
+            $line = trim($line);
+            if ($line === '') {
+                return false;
+            }
+
+            return !preg_match(
+                '/^\[(?:Walk-in inquiry|Walk-in email verified|Preferred Engineer:.*|Confirmed Engineer:.*)\]$/i',
+                $line
+            );
+        }
+    );
+
+    return trim(implode("\n", $visibleLines));
+}
+
+function inquiry_center_admin_notes_for_storage(?string $currentNotes, string $visibleNotes): string
+{
+    $parts = [];
+    if (preg_match('/^\[Walk-in inquiry\]$/im', (string)$currentNotes)) {
+        $parts[] = '[Walk-in inquiry]';
+    }
+    if (trim($visibleNotes) !== '') {
+        $parts[] = trim($visibleNotes);
+    }
+
+    return implode("\n", $parts);
+}
+
 function inquiry_center_status_label(string $status): string
 {
     // Hinihintay muna ang final na Engineer at schedule.
@@ -1043,6 +1076,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (mb_strlen($adminNotes, 'UTF-8') > 2000) {
             $error = 'Admin notes must not exceed 2000 characters.';
         } else {
+            $currentNotesStmt = $conn->prepare('SELECT admin_notes FROM service_inquiries WHERE id = ? LIMIT 1');
+            if ($currentNotesStmt) {
+                $currentNotesStmt->bind_param('i', $inquiryId);
+                $currentNotesStmt->execute();
+                $currentNotes = $currentNotesStmt->get_result()->fetch_assoc();
+                $adminNotes = inquiry_center_admin_notes_for_storage(
+                    (string)($currentNotes['admin_notes'] ?? ''),
+                    $adminNotes
+                );
+            }
+
             $statusStmt = $conn->prepare(
                 'UPDATE service_inquiries
                  SET status = ?, admin_notes = ?, reviewed_at = NOW()
@@ -2018,6 +2062,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($error === '') {
+                    $adminNotes = inquiry_center_admin_notes_for_storage(
+                        (string)($current['admin_notes'] ?? ''),
+                        $adminNotes
+                    );
                     $updateStmt = $conn->prepare(
                         'UPDATE service_inquiries
                          SET admin_notes = ?, reviewed_at = NOW()
@@ -2991,7 +3039,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                             <label>
                                                 <span>Admin Screening Note <small>(Required for Needs Information)</small></span>
-                                                <textarea name="admin_notes" rows="3" maxlength="2000" placeholder="Add missing details or contact result"><?php echo htmlspecialchars((string)($inquiry['admin_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                                <textarea name="admin_notes" rows="3" maxlength="2000" placeholder="Add missing details or contact result"><?php echo htmlspecialchars(inquiry_center_visible_admin_notes((string)($inquiry['admin_notes'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                             </label>
                                             <div class="inquiry-review-actions">
                                                 <?php if ($currentStatus === 'Needs Information'): ?>

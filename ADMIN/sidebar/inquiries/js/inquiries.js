@@ -2680,6 +2680,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
         const isInitialQuotation = form?.dataset.initialQuotation === 'true';
+        const canUseLocalDraft = isInitialQuotation && !isEditMode;
         const quotationInquiryId = Number.parseInt(form?.dataset.quotationInquiryId || '0', 10);
         const localDraftKey = quotationInquiryId > 0
             ? 'initial_quotation_draft:' + String(quotationInquiryId)
@@ -2739,8 +2740,11 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const isQuotationDirty = function () {
-            return quotationDirty
-                && (quotationSavedState === '' || getQuotationFormState() !== quotationSavedState);
+            if (quotationSavedState === '') {
+                return quotationDirty;
+            }
+
+            return getQuotationFormState() !== quotationSavedState;
         };
 
         const updateEditSubmitState = function () {
@@ -2757,7 +2761,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const readLocalQuotationDraft = function () {
-            if (!isInitialQuotation || localDraftKey === '') {
+            if (!canUseLocalDraft || localDraftKey === '') {
                 return null;
             }
 
@@ -2792,7 +2796,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.clearTimeout(localDraftTimer);
                 localDraftTimer = null;
             }
-            if (!isInitialQuotation || localDraftKey === '') {
+            if (!canUseLocalDraft || localDraftKey === '') {
                 return;
             }
 
@@ -2832,7 +2836,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const saveLocalQuotationDraft = function (force = false) {
-            if (!isInitialQuotation || localDraftKey === '' || (!force && !isQuotationDirty())) {
+            if (!canUseLocalDraft || localDraftKey === '' || (!force && !isQuotationDirty())) {
                 return;
             }
 
@@ -2844,7 +2848,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const scheduleLocalQuotationDraftSave = function () {
-            if (!isInitialQuotation) {
+            if (!canUseLocalDraft) {
                 return;
             }
 
@@ -3461,8 +3465,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (isSendAction && quotationNumberInput && quotationNumberInput.value.trim() === '') {
                 event.preventDefault();
                 quotationNumberInput.setCustomValidity('Enter the official Edge quotation number before sending.');
-                quotationNumberInput.reportValidity();
-                quotationNumberInput.focus();
+                quotationNumberInput.closest('.quotation-create-number')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                });
+                quotationNumberInput.focus({ preventScroll: true });
+                window.setTimeout(function () {
+                    quotationNumberInput.reportValidity();
+                }, 250);
                 return;
             }
             quotationNumberInput?.setCustomValidity('');
@@ -3569,7 +3579,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const leaveQuotationWithoutSaving = function (destination) {
             showQuotationDraftDiscardConfirm(function () {
                 quotationLeaveAccepted = true;
-                if (isInitialQuotation) {
+                if (canUseLocalDraft) {
                     clearLocalQuotationDraft();
                 }
                 window.location.assign(destination);
@@ -3597,7 +3607,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (isInitialQuotation) {
+            if (canUseLocalDraft) {
                 if (!quotationLeaveAccepted) {
                     saveLocalQuotationDraft();
                 }
@@ -3608,7 +3618,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         window.addEventListener('pagehide', function () {
-            if (isInitialQuotation && !quotationSubmitAccepted && !quotationLeaveAccepted) {
+            if (canUseLocalDraft && !quotationSubmitAccepted && !quotationLeaveAccepted) {
                 saveLocalQuotationDraft();
             }
         });

@@ -472,7 +472,7 @@ $adminCssFiles = [
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-3',
 ];
 
 include __DIR__ . '/../../../layout/header.php';

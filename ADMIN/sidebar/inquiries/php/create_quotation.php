@@ -474,7 +474,7 @@ $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-6',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-7',
 ];
 
 include __DIR__ . '/../../../layout/header.php';

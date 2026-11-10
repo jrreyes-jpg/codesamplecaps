@@ -2552,7 +2552,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261109-7',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-7',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261103-2',
 ];
 include __DIR__ . '/../../../layout/header.php';

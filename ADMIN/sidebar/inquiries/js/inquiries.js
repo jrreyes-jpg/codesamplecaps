@@ -923,7 +923,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         applyArchivedReadOnly(modal.querySelector('[data-archived-readonly="true"]'));
         modal.hidden = false;
-        document.body.classList.add('inquiry-modal-open');
+        if (modal.classList.contains('inquiry-modal--page')) {
+            document.body.classList.remove('inquiry-modal-open');
+        } else {
+            document.body.classList.add('inquiry-modal-open');
+        }
         sessionStorage.setItem('edgeLastInquiryModal', modal.id);
 
         const inquiryId = Number.parseInt(modal.dataset.inquiryId || '0', 10);

@@ -1392,7 +1392,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log('Unable to update Engineer Costing review history: ' . $versionError->getMessage());
                 }
 
-                $_SESSION['inquiry_center_flash'] = 'Quotation draft created from Engineer Costing.';
+                $_SESSION['auth_flash'] = [
+                    'type' => 'success',
+                    'message' => 'Quotation draft created successfully. You can now review and edit it.',
+                ];
                 header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $draftId);
                 exit();
             } catch (Throwable $throwable) {

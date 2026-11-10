@@ -65,7 +65,7 @@ function inquiry_quote_status_label(?string $status): string
     $labels = [
         'draft' => 'Draft',
         'approved' => 'Approved',
-        'sent' => 'Sent',
+        'sent' => 'Awaiting Client',
         'accepted' => 'Accepted',
         'revision_requested' => 'Revision Requested',
         'rejected' => 'Rejected',
@@ -371,7 +371,8 @@ function inquiry_quote_fetch_history(mysqli $conn, int $draftId): array
     }
 
     $stmt = $conn->prepare(
-        "SELECT h.*, u.full_name
+        "SELECT h.*,
+                COALESCE(u.full_name, CASE WHEN h.actor_role = 'prospect' THEN 'Client' ELSE 'System' END) AS full_name
          FROM inquiry_quotation_status_history h
          LEFT JOIN users u ON u.id = h.actor_id
          WHERE h.draft_id = ?
@@ -1029,12 +1030,12 @@ function inquiry_quote_public_respond(mysqli $conn, string $token, string $decis
                 }
 
                 $titleMap = [
-                    'accepted' => 'Quotation Approved by Client',
+                    'accepted' => 'Quotation Accepted by Client',
                     'revision_requested' => 'Quotation Revision Requested',
                     'rejected' => 'Quotation Rejected by Client',
                 ];
                 $responseMap = [
-                    'accepted' => 'approved the quotation.',
+                    'accepted' => 'accepted the quotation.',
                     'revision_requested' => 'requested a quotation revision.',
                     'rejected' => 'rejected the quotation.',
                 ];

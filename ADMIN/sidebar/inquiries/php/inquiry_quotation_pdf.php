@@ -29,7 +29,7 @@ $quotationStageLabel = $isFinalClientAccepted
     : ($isInitialQuotation ? 'Initial Quotation' : 'Revised Quotation');
 $statusLabel = match ($quoteStatus) {
     'draft' => 'Draft',
-    'sent' => 'Awaiting Client Approval',
+    'sent' => 'Awaiting Client',
     'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
     default => inquiry_quote_status_label($quoteStatus),
 };
@@ -67,7 +67,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
 </head>
 <body>
     <div class="quote-actions">
-        <a href="<?php echo htmlspecialchars($backToInquiriesUrl, ENT_QUOTES, 'UTF-8'); ?>">Back to Inquiries</a>
+        <a href="<?php echo htmlspecialchars($backToInquiriesUrl, ENT_QUOTES, 'UTF-8'); ?>" data-quotation-back>Back</a>
         <?php if ($quoteStatus === 'draft' && empty($quotation['inquiry_archived_at'])): ?>
             <a class="quote-edit-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $draftId; ?>">Edit Details</a>
         <?php endif; ?>
@@ -231,8 +231,6 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             </div>
         </footer>
     </main>
-    <?php if ($isFinalClientAccepted): ?>
-        <script src="/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiry-quotation-pdf.js"></script>
-    <?php endif; ?>
+    <script src="/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiry-quotation-pdf.js?v=20261110-2"></script>
 </body>
 </html>

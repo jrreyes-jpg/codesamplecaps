@@ -197,7 +197,7 @@ require_once __DIR__ . '/../layout/header.php';
 
                         <div class="quotation-guidance-grid">
                             <article class="quotation-guidance-card quotation-guidance-card--ok">
-                                <h3>Accept</h3>
+                                <h3>Accept Quotation</h3>
                                 <p>Use this when scope, price, and delivery expectations are already aligned.</p>
                             </article>
                             <article class="quotation-guidance-card quotation-guidance-card--warn">
@@ -223,7 +223,7 @@ require_once __DIR__ . '/../layout/header.php';
                                     Best workflow if the price feels high: request a revision with a clear note. Reject only if you do not want to continue.
                                 </div>
                                 <div class="quotation-response-row">
-                                    <button class="btn-primary" type="submit" name="action" value="client_accept">Accept</button>
+                                    <button class="btn-primary" type="submit" name="action" value="client_accept">Accept Quotation</button>
                                     <?php if ($selectedQuotationSource === 'inquiry'): ?>
                                         <button class="btn-danger" type="submit" name="action" value="client_revision">Request Revision</button>
                                     <?php endif; ?>

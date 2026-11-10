@@ -2356,7 +2356,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     showLiveInquiryToast(
-                        'Client approved the quotation. Set the inspection schedule next.',
+                        'Client accepted the quotation. Set the inspection schedule next.',
                         quotation.inquiry_id,
                         'inspection'
                     );

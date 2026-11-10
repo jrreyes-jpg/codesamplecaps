@@ -10,6 +10,8 @@ require_once __DIR__ . '/../../../sidebar/projects/php/project_search_support.ph
 
 require_role('admin');
 
+$isCreateProjectPage = defined('ADMIN_PROJECT_CREATE_PAGE') && ADMIN_PROJECT_CREATE_PAGE === true;
+
 
 function fetch_user_for_trash(mysqli $conn, int $userId): ?array {
     $stmt = $conn->prepare(
@@ -464,7 +466,9 @@ function get_projects_redirect_target(): string {
         return $redirectTo;
     }
 
-    return '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php';
+    return defined('ADMIN_PROJECT_CREATE_PAGE') && ADMIN_PROJECT_CREATE_PAGE === true
+        ? '/codesamplecaps/ADMIN/sidebar/projects/php/create_project.php'
+        : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php';
 }
 
 function redirect_projects_page(): void {
@@ -1211,6 +1215,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($projectSource, $allowedProjectSources, true)) {
             $projectSource = 'walk_in';
         }
+        if ($projectSource === 'inquiry_quotation') {
+            // Accepted quotation project ay Pending muna habang hindi pa nagsisimula ang work.
+            $_POST['status'] = 'pending';
+        }
         $quotationDraftId = (int)($_POST['quotation_draft_id'] ?? 0);
         $sourceInquiryId = (int)($_POST['source_inquiry_id'] ?? 0);
         if ($hasProjectCodeColumn && $projectCode === null) {
@@ -1221,7 +1229,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $poNumber = $hasPoNumberColumn ? normalize_text_or_null($_POST['po_number'] ?? null) : null;
         $clientId = (int)($_POST['client_id'] ?? 0);
         $engineerIds = normalize_engineer_ids($_POST['engineer_ids'] ?? []);
-        $status = normalize_text($_POST['status'] ?? 'pending');
+        $status = $projectSource === 'inquiry_quotation'
+            ? 'pending'
+            : normalize_text($_POST['status'] ?? 'pending');
         $poDate = $hasPoDateColumn ? normalize_date_or_null($_POST['po_date'] ?? null) : null;
         $projectStartDate = $hasProjectStartDateColumn ? normalize_date_or_null($_POST['project_start_date'] ?? null) : null;
         $estimatedCompletionDate = $hasEstimatedCompletionDateColumn ? normalize_date_or_null($_POST['estimated_completion_date'] ?? null) : null;
@@ -1254,6 +1264,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'budget_amount' => $_POST['budget_amount'] ?? '',
             'budget_notes' => $_POST['budget_notes'] ?? '',
         ];
+
+        if ($projectSource !== 'inquiry_quotation' || $quotationDraftId <= 0 || $sourceInquiryId <= 0) {
+            // Project ay galing lang sa accepted quotation para tama ang client at budget.
+            clear_projects_old_input();
+            set_projects_flash('warning', 'Create a project from an accepted quotation.');
+            header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php');
+            exit;
+        }
 
         if ($projectName === '') {
             set_projects_old_input($createProjectInput, 'project_name');
@@ -1294,26 +1312,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect_projects_page();
             }
 
-            $decisionStmt = $conn->prepare(
-                "SELECT d.id, d.inspection_id
-                 FROM inspection_quotation_decisions d
-                 INNER JOIN site_inspections si ON si.id = d.inspection_id
-                 WHERE d.inquiry_id = ?
-                 AND d.final_quotation_draft_id = ?
-                 AND si.admin_review_status = 'Approved'
-                 LIMIT 1"
-            );
-            if (!$decisionStmt) {
+            $approvedInspection = inquiry_quote_fetch_approved_inspection_for_project($conn, $sourceInquiryId, $quotationDraftId);
+            if (!$approvedInspection) {
                 set_projects_old_input($createProjectInput);
-                set_projects_flash('error', 'Unable to verify the post-inspection quotation decision.');
-                redirect_projects_page();
-            }
-            $decisionStmt->bind_param('ii', $sourceInquiryId, $quotationDraftId);
-            $decisionStmt->execute();
-            $postInspectionDecision = $decisionStmt->get_result()->fetch_assoc();
-            if (!$postInspectionDecision) {
-                set_projects_old_input($createProjectInput);
-                set_projects_flash('error', 'Choose the post-inspection quotation decision before creating this project.');
+                set_projects_flash('error', 'The inspection costing must be approved before creating this project.');
                 redirect_projects_page();
             }
 
@@ -1355,6 +1357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Accepted quotation total ang official starting budget ng Project.
             $budgetAmount = (float)($sourceQuotation['grand_total'] ?? 0);
             $budgetNotes = null;
+            $projectName = inquiry_quote_unique_project_title($conn, $sourceQuotation);
             $contactPerson = normalize_text_or_null($sourceQuotation['client_name'] ?? null);
             $contactNumber = normalize_text_or_null($sourceQuotation['contact_no'] ?? null);
             $projectEmail = normalize_text_or_null($sourceQuotation['email'] ?? null);
@@ -1559,7 +1562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'engineer_ids' => $engineerIds,
                 'quotation_draft_id' => $projectSource === 'inquiry_quotation' ? $quotationDraftId : 0,
                 'material_reservation_inspection_id' => $projectSource === 'inquiry_quotation'
-                    ? (int)($postInspectionDecision['inspection_id'] ?? 0)
+                    ? (int)($approvedInspection['id'] ?? 0)
                     : 0,
                 'budget_amount' => $budgetAmount,
                 'budget_notes' => $budgetNotes,
@@ -1598,6 +1601,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             clear_projects_old_input();
             if ($projectSource === 'inquiry_quotation') {
                 set_projects_flash('success', 'Project created and linked to the accepted quotation.');
+                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=' . $projectId);
+                exit;
             } elseif ($status === 'ongoing' && ($budgetAmount ?? 0) <= 0) {
                 set_projects_flash('warning', 'Project created and moved to Ongoing without a budget. Actual expenses can still be tracked.');
             } else {
@@ -2877,6 +2882,13 @@ if ($createProjectValues['project_source'] === 'inquiry_quotation' && (int)$crea
 }
 $isInquiryProjectSetup = $projectSourceReference !== null;
 
+if ($isCreateProjectPage && !$isInquiryProjectSetup) {
+    clear_projects_old_input();
+    set_projects_flash('warning', 'Create a project from an accepted quotation.');
+    header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php');
+    exit;
+}
+
 $clients = [];
 $engineers = [];
 
@@ -3134,15 +3146,15 @@ $budgetCoverageRate = $budgetEligibleProjects > 0 ? round(($projectsWithBudget /
 $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
 ?>
 <?php
-$adminPageTitle = 'Project Management - Admin';
+$adminPageTitle = $isCreateProjectPage ? 'Create Project - Admin' : 'Project Management - Admin';
 
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css', 
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261110-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261110-4',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -3150,14 +3162,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
     <main class="main-content projects-content">
-        <div class="page-stack">
+        <div class="page-stack<?php echo $isCreateProjectPage ? ' page-stack--project-create' : ''; ?>">
             <?php if ($flash): ?>
-                <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : (($flash['type'] ?? '') === 'warning' ? 'alert-warning' : 'alert-error'); ?>">
-                    <?php echo htmlspecialchars($flash['message']); ?>
+                <?php $flashType = in_array((string)($flash['type'] ?? ''), ['success', 'warning', 'error'], true) ? (string)$flash['type'] : 'success'; ?>
+                <div class="shared-toast shared-toast--<?php echo htmlspecialchars($flashType, ENT_QUOTES); ?>" data-shared-toast role="<?php echo $flashType === 'error' ? 'alert' : 'status'; ?>">
+                    <span><?php echo htmlspecialchars($flash['message']); ?></span>
+                    <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+                    <span class="shared-toast__progress" aria-hidden="true"></span>
                 </div>
             <?php endif; ?>
 
-            <?php if (!$isTrashView): ?>
+            <?php if ($isCreateProjectPage): ?>
+                <div class="project-create-page-navigation">
+                    <a class="project-create-page-back" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">&larr; Back to Quotation</a>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!$isTrashView && !$isCreateProjectPage): ?>
             <section class="metrics-grid">
                 <article class="metric-card">
                     <span>Active Projects</span>
@@ -3178,22 +3199,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </section>
             <?php endif; ?>
 
-            <?php if (!$isTrashView): ?>
-            <section class="project-create-modal<?php echo $hasCreateProjectServerInput ? ' is-open' : ''; ?>" id="create-project" data-create-project-panel aria-hidden="<?php echo $hasCreateProjectServerInput ? 'false' : 'true'; ?>">
-                <div class="form-panel project-create-panel" role="dialog" aria-modal="true" aria-labelledby="create-project-title">
+            <?php if ($isCreateProjectPage): ?>
+            <section class="project-create-page" id="create-project" data-create-project-panel data-create-project-page aria-hidden="false">
+                <div class="form-panel project-create-panel" aria-labelledby="create-project-title">
                 <div class="project-create-header">
                     <div>
                         <h6 class="section-title-inline project-create-title" id="create-project-title">Create Project</h6>
                     </div>
                     <div class="project-create-header-actions">
                         <button type="button" class="btn-secondary" id="create-project-clear-details">Clear Details</button>
-                        <button type="button" class="project-modal-close" data-create-project-close aria-label="Close create project">&times;</button>
                     </div>
                 </div>
                 <form
                     method="POST"
+                    action="/codesamplecaps/ADMIN/sidebar/projects/php/create_project.php"
                     id="create-project-form"
-                    class="project-create-form"
+                    class="project-create-form<?php echo $isInquiryProjectSetup ? ' is-inquiry-project-setup' : ''; ?>"
                     data-focus-field="<?php echo htmlspecialchars($createProjectFocusField, ENT_QUOTES); ?>"
                     data-has-server-draft="<?php echo $hasCreateProjectServerInput ? 'true' : 'false'; ?>"
                     data-should-clear-stored-draft="<?php echo $shouldClearCreateProjectDraft ? 'true' : 'false'; ?>"
@@ -3208,7 +3229,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <input type="hidden" name="source_inquiry_id" value="<?php echo (int)$createProjectValues['source_inquiry_id']; ?>">
                     <?php if ($isInquiryProjectSetup): ?>
                         <input type="hidden" name="client_id" value="<?php echo (int)$createProjectValues['client_id']; ?>">
-                        <input type="hidden" name="status" value="<?php echo htmlspecialchars($createProjectValues['status']); ?>">
+                        <input type="hidden" name="status" value="pending">
                     <?php endif; ?>
 
                     <div class="project-create-card-grid">
@@ -3260,29 +3281,41 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
 
                         <div class="project-create-card project-create-card--project">
+                        <?php if (!$isInquiryProjectSetup): ?>
                             <div class="project-create-section-heading">
                                 <span>Project Details</span>
                             </div>
+                        <?php endif; ?>
                         <?php if ($projectSourceReference): ?>
                             <div class="project-create-section-heading">
-                                <span>Project Source / Reference</span>
+                                <span><?php echo $isInquiryProjectSetup ? 'Accepted Quotation' : 'Project Source / Reference'; ?></span>
                             </div>
-                            <div class="form-grid">
+                            <div class="form-grid project-source-reference-grid<?php echo $isInquiryProjectSetup ? ' project-source-reference-grid--compact' : ''; ?>">
                                 <div class="input-group"><label>Client</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['client_name'] ?? 'Not set')); ?></div></div>
-                                <div class="input-group"><label>Service Category</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['service_category'] ?? 'Not set')); ?></div></div>
-                                <div class="input-group"><label>Final Quotation Reference</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['quotation_no'] ?? 'Not set')); ?></div></div>
-                                <div class="input-group"><label>Final Accepted Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars('PHP ' . number_format((float)($projectSourceReference['grand_total'] ?? 0), 2)); ?></div></div>
-                                <div class="input-group input-group-wide"><label>Approved Inspection Findings / Final Project Scope</label><div class="project-form-static-field"><?php echo nl2br(htmlspecialchars(trim((string)($projectSourceReference['engineer_findings'] ?? $projectSourceReference['description'] ?? 'Not set')))); ?></div></div>
-                                <div class="input-group"><label>Inspection Engineer</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['engineer_name'] ?? 'Not assigned')); ?></div></div>
+                                <?php if ($isInquiryProjectSetup): ?>
+                                    <div class="input-group"><label>Quotation No.</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['quotation_no'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group"><label>Accepted Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars('PHP ' . number_format((float)($projectSourceReference['grand_total'] ?? 0), 2)); ?></div></div>
+                                    <div class="input-group"><label>Site Location</label><div class="project-form-static-field"><?php echo htmlspecialchars(implode(' / ', array_filter([(string)($projectSourceReference['city_municipality'] ?? ''), (string)($projectSourceReference['barangay'] ?? '')])) ?: 'Not set'); ?></div></div>
+                                <?php else: ?>
+                                    <div class="input-group"><label>Project Title</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)$createProjectValues['project_name']); ?></div></div>
+                                    <div class="input-group"><label>Service Category</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['service_category'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group"><label>Final Quotation Reference</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['quotation_no'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group"><label>Final Accepted Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars('PHP ' . number_format((float)($projectSourceReference['grand_total'] ?? 0), 2)); ?></div></div>
+                                    <div class="input-group"><label>Project Location</label><div class="project-form-static-field"><?php echo htmlspecialchars(implode(' / ', array_filter([(string)($projectSourceReference['province'] ?? ''), (string)($projectSourceReference['city_municipality'] ?? ''), (string)($projectSourceReference['barangay'] ?? '')])) ?: 'Not set'); ?></div></div>
+                                    <div class="input-group"><label>Initial Status</label><div class="project-form-static-field">Pending</div></div>
+                                    <div class="input-group input-group-wide"><label>Exact Site Address</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['site_address'] ?? 'Not set')); ?></div></div>
+                                    <div class="input-group input-group-wide"><label>Approved Inspection Findings / Final Project Scope</label><div class="project-form-static-field"><?php echo nl2br(htmlspecialchars(trim((string)($projectSourceReference['engineer_findings'] ?? $projectSourceReference['description'] ?? 'Not set')))); ?></div></div>
+                                    <div class="input-group"><label>Inspection Engineer</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['engineer_name'] ?? 'Not assigned')); ?></div></div>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
-                        <div class="input-group">
+                        <div class="input-group project-setup-locked-field">
                             <label for="project_name">Project Title <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input type="text" id="project_name" name="project_name" value="<?php echo htmlspecialchars($createProjectValues['project_name']); ?>" required<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>>
                         </div>
 
                         <?php if ($hasProjectCodeColumn): ?>
-                            <div class="input-group">
+                            <div class="input-group project-setup-locked-field">
                                 <div class="field-label-row">
                                     <label for="project_code">Project Code <span class="required-indicator" aria-hidden="true">*</span></label>
                                     <button type="button" class="field-tip" aria-label="Project code help">
@@ -3295,7 +3328,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php endif; ?>
 
                         <?php if ($hasProjectSiteColumn): ?>
-                            <div class="input-group">
+                            <div class="input-group project-setup-locked-field">
                                 <div class="field-label-row">
                                     <label for="project_site">Location Area <span class="required-indicator" aria-hidden="true">*</span></label>
                                     <button type="button" class="field-tip" aria-label="Project site help">
@@ -3310,32 +3343,32 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <?php if ($hasPoNumberColumn): ?>
                             <div class="input-group">
                                 <div class="field-label-row">
-                                    <label for="po_number">P.O Number</label>
+                                    <label for="po_number">P.O Number<?php if ($isInquiryProjectSetup): ?> <span class="required-indicator" aria-hidden="true">*</span><?php endif; ?></label>
                                     <button type="button" class="field-tip" aria-label="P.O number help">
                                         <span class="field-tip__icon" aria-hidden="true">i</span>
                                         <span class="field-tip__bubble">Enter the purchase order reference number. Required when the project status is Pending or Ongoing.</span>
                                     </button>
                                 </div>
-                                <input type="text" id="po_number" name="po_number" value="<?php echo htmlspecialchars($createProjectValues['po_number']); ?>" placeholder="Enter P.O number">
+                                <input type="text" id="po_number" name="po_number" value="<?php echo htmlspecialchars($createProjectValues['po_number']); ?>" placeholder="Enter P.O number"<?php echo $isInquiryProjectSetup ? ' required' : ''; ?>>
                             </div>
                         <?php endif; ?>
 
                         <div class="input-group">
                             <div class="field-label-row">
-                                <label for="po_date">P.O Date</label>
+                                <label for="po_date">P.O Date<?php if ($isInquiryProjectSetup): ?> <span class="required-indicator" aria-hidden="true">*</span><?php endif; ?></label>
                                 <button type="button" class="field-tip" aria-label="P.O date reminder">
                                     <span class="field-tip__icon" aria-hidden="true">i</span>
                                     <span class="field-tip__bubble">Use the purchase order date here. This stays editable while the project is not yet completed.</span>
                                 </button>
                             </div>
-                            <input type="date" id="po_date" name="po_date" value="<?php echo htmlspecialchars($createProjectValues['po_date']); ?>" max="<?php echo htmlspecialchars($todayDate); ?>">
+                            <input type="date" id="po_date" name="po_date" value="<?php echo htmlspecialchars($createProjectValues['po_date']); ?>" max="<?php echo htmlspecialchars($todayDate); ?>"<?php echo $isInquiryProjectSetup ? ' required' : ''; ?>>
                         </div>
 
                     
 
                        
 
-                        <div class="input-group">
+                        <div class="input-group project-setup-locked-field">
                             <label for="budget_amount">Project Budget</label>
                             <div class="currency-input-shell">
                                 <span class="currency-input-prefix">PHP</span>
@@ -3391,11 +3424,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <span class="field-tip__bubble">Set the expected completion date. This cannot be earlier than the Project Start Date.</span>
                                 </button>
                             </div>
-                            <input type="date" id="estimated_completion_date" name="estimated_completion_date" value="<?php echo htmlspecialchars($createProjectValues['estimated_completion_date']); ?>" required>
+                            <input type="date" id="estimated_completion_date" name="estimated_completion_date" value="<?php echo htmlspecialchars($createProjectValues['estimated_completion_date']); ?>" required<?php echo $isInquiryProjectSetup ? ' readonly aria-readonly="true"' : ''; ?>>
                         </div>
 
 
-                         <div class="input-group project-create-status-group">
+                         <div class="input-group project-create-status-group project-setup-locked-field">
                             <div class="field-label-row">
                                 <label for="status">Initial Status <span class="required-indicator" aria-hidden="true">*</span></label>
                                 <button type="button" class="field-tip" aria-label="Project status reminder">
@@ -3466,7 +3499,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
 
-                    <div class="form-grid form-grid--project-create">
+                    <div class="form-grid form-grid--project-create project-setup-extra-fields">
                         <?php if ($hasProjectAddressColumn): ?>
                             <div class="input-group input-group-wide">
                                 <div class="field-label-row">
@@ -3486,12 +3519,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
 
-                        <div class="input-group input-group-spaced">
+                        <div class="input-group input-group-spaced project-setup-extra-fields">
                             <label for="description">Final Project Scope <span class="optional-indicator">(Optional)</span></label>
                             <textarea id="description" name="description" placeholder="Approved scope or project notes"<?php echo $isInquiryProjectSetup ? ' readonly' : ''; ?>><?php echo htmlspecialchars($createProjectValues['description']); ?></textarea>
                         </div>
 
-                        <div class="input-group input-group-spaced input-group-wide additional-info-section" data-additional-info-section>
+                        <div class="input-group input-group-spaced input-group-wide additional-info-section project-setup-extra-fields" data-additional-info-section>
                             <div class="field-label-row">
                                 <label for="additional_info_rows">Additional Info <span class="optional-indicator">(Optional)</span></label>
                                 <button type="button" class="field-tip" aria-label="Additional info help">
@@ -3548,7 +3581,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </template>
                         </div>
 
-                        <div class="form-actions">
+                        <div class="form-actions project-create-page-actions">
+                            <a class="btn-secondary" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">Cancel</a>
                             <button type="submit" class="btn-primary" <?php echo (count($clients) === 0 || count($engineers) === 0) ? 'disabled' : ''; ?>>Create Project</button>
                         </div>
                     </form>
@@ -3556,6 +3590,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </section>
             <?php endif; ?>
 
+            <?php if (!$isCreateProjectPage): ?>
             <section
                 class="page-stack"
                 id="projects-list-section"
@@ -4198,6 +4233,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <?php endif; ?>
                 <?php endif; ?>
             </section>
+            <?php endif; ?>
         </div>
     </main>
 

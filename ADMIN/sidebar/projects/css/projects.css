@@ -85,6 +85,21 @@
     grid-column: span 3;
 }
 
+.project-create-form.is-inquiry-project-setup .project-create-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.project-create-form.is-inquiry-project-setup .project-create-card--client,
+.project-create-form.is-inquiry-project-setup .project-setup-locked-field,
+.project-create-form.is-inquiry-project-setup .project-setup-extra-fields {
+    display: none;
+}
+
+.project-source-reference-grid--compact {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
 @media (max-width: 1200px) {
     .project-create-top-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2865,6 +2880,82 @@ input[data-inline-editable]:disabled {
 
 .project-create-modal.is-open {
     display: flex;
+}
+
+.project-create-page {
+    display: block;
+}
+
+.page-stack--project-create {
+    gap: 16px;
+}
+
+.project-create-page .project-create-panel {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    border-radius: 20px;
+    box-shadow: 0 16px 42px rgba(15, 23, 42, 0.08);
+}
+
+.project-create-page .project-create-header {
+    margin-bottom: 12px;
+}
+
+.project-create-page .project-create-card {
+    gap: 12px 16px;
+    padding: 16px;
+}
+
+.project-create-page-navigation {
+    position: sticky;
+    top: 112px;
+    z-index: 40;
+    width: fit-content;
+    margin: 0 0 8px 14px;
+    border-radius: 10px;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
+}
+
+.project-create-page-back {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 13px;
+    border-radius: 10px;
+    background: #064e3b;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.project-create-page-back:hover,
+.project-create-page-back:focus-visible {
+    background: #047857;
+    color: #ffffff;
+}
+
+.project-create-page-actions {
+    justify-content: flex-end;
+}
+
+@media (max-width: 980px) {
+    .project-source-reference-grid--compact {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .project-create-page-navigation {
+        top: 88px;
+        margin: 0 0 6px 8px;
+    }
+
+    .project-source-reference-grid--compact {
+        grid-template-columns: 1fr;
+    }
 }
 
 .project-create-panel {

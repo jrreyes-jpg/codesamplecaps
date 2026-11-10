@@ -452,6 +452,7 @@ const estimatedCompletionDateField = createProjectForm.elements.namedItem('estim
 const projectDurationField = createProjectForm.elements.namedItem('estimated_duration_days');
 const poDateField = createProjectForm.elements.namedItem('po_date');
 const statusField = createProjectForm.elements.namedItem('status');
+const isInquiryProjectSetup = createProjectForm.classList.contains('is-inquiry-project-setup');
 const startDateHelp = document.getElementById('start-date-help');
 const initialStatusHelp = document.getElementById('initial-status-help');
     const requiredWhenActiveFields = [
@@ -540,7 +541,7 @@ const initialStatusHelp = document.getElementById('initial-status-help');
         }
         estimatedCompletionDateField.min = projectStartDate;
 
-        if (source === 'duration' && projectDurationField) {
+        if ((source === 'duration' || (isInquiryProjectSetup && ['start', 'init'].includes(source))) && projectDurationField) {
             const nextCompletionDate = calculateEstimatedCompletionDate(projectStartDate, String(projectDurationField.value || ''));
             if (nextCompletionDate !== '') {
                 estimatedCompletionDateField.value = nextCompletionDate;
@@ -1368,6 +1369,12 @@ function initCreateProjectPanel() {
         return;
     }
 
+    if (panel.hasAttribute('data-create-project-page')) {
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.classList.remove('project-modal-open');
+        return;
+    }
+
     function openPanel(mode) {
         if (title) {
             if (mode === 'walk-in') {
@@ -1431,6 +1438,31 @@ function initCreateProjectPanel() {
         panel.setAttribute('aria-hidden', 'false');
         document.body.classList.add('project-modal-open');
     }
+}
+
+function initCreateProjectPageBack() {
+    document.querySelectorAll('[data-project-create-back]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            if (!document.referrer) {
+                return;
+            }
+
+            var previousUrl;
+            try {
+                previousUrl = new URL(document.referrer);
+            } catch (error) {
+                return;
+            }
+
+            if (previousUrl.origin !== window.location.origin
+                || previousUrl.pathname.endsWith('/ADMIN/sidebar/projects/php/create_project.php')) {
+                return;
+            }
+
+            event.preventDefault();
+            window.history.back();
+        });
+    });
 }
 
 function initWalkInInquiryPanel() {
@@ -3132,5 +3164,6 @@ document.addEventListener('DOMContentLoaded', initProjectsScrollRestore);
 document.addEventListener('DOMContentLoaded', initProjectConfirmForms);
 document.addEventListener('DOMContentLoaded', initProjectCreateMenu);
 document.addEventListener('DOMContentLoaded', initCreateProjectPanel);
+document.addEventListener('DOMContentLoaded', initCreateProjectPageBack);
 document.addEventListener('DOMContentLoaded', initWalkInInquiryPanel);
 document.addEventListener('DOMContentLoaded', initCreateProjectTextValidation);

@@ -252,6 +252,29 @@ public function setResetToken($userId, $token, $expiryMinutes = 60) {
         return user_phone_normalized_exists($this->conn, $phone, $excludeUserId ?? 0);
     }
 
+    public function findByPhoneIncludingDeleted(string $phone): ?array {
+        $phone = normalize_ph_mobile($phone);
+        if ($phone === '') {
+            return null;
+        }
+
+        $stmt = $this->conn->prepare(
+            'SELECT id, role, status, deleted_at
+             FROM users
+             WHERE phone_normalized = ?
+             LIMIT 1'
+        );
+        if (!$stmt) {
+            return null;
+        }
+
+        $stmt->bind_param('s', $phone);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+
+        return $user ?: null;
+    }
+
     /**
      * Save a one-time activation token. Raw token stays in email only.
      */

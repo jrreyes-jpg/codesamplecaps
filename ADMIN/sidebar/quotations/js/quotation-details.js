@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const historyModal = document.querySelector('[data-quotation-history-modal]');
     const historyOpen = document.querySelector('[data-quotation-history-open]');
     const historyCloseButtons = historyModal?.querySelectorAll('[data-quotation-history-close]') || [];
+    const projectForm = document.querySelector('[data-quotation-create-project]');
+    const projectModal = document.querySelector('[data-quotation-project-modal]');
+    const projectConfirmButton = projectModal?.querySelector('[data-quotation-project-confirm]');
+    const projectCancelButtons = projectModal?.querySelectorAll('[data-quotation-project-cancel]') || [];
 
     const renderHistory = function (history) {
         if (!historyList || !Array.isArray(history)) return;
@@ -128,6 +132,43 @@ document.addEventListener('DOMContentLoaded', function () {
     editDraftLink?.addEventListener('click', function (event) {
         event.preventDefault();
         window.location.replace(this.href);
+    });
+
+    const closeProjectModal = function () {
+        if (!projectModal || projectConfirmButton?.disabled) return;
+        projectModal.hidden = true;
+        document.body.classList.remove('admin-quotation-send-open');
+        projectForm?.querySelector('button[type="submit"]')?.focus();
+    };
+
+    projectForm?.addEventListener('submit', function (event) {
+        if (!projectModal || !projectConfirmButton) return;
+        event.preventDefault();
+        projectModal.hidden = false;
+        document.body.classList.add('admin-quotation-send-open');
+        projectConfirmButton.focus();
+    });
+
+    projectCancelButtons.forEach(function (button) {
+        button.addEventListener('click', closeProjectModal);
+    });
+
+    projectConfirmButton?.addEventListener('click', function () {
+        if (!projectForm) return;
+        projectConfirmButton.disabled = true;
+        projectConfirmButton.textContent = 'Opening...';
+        projectForm.setAttribute('aria-busy', 'true');
+        window.edgeActionLoading?.show({
+            title: 'Opening Project Setup...',
+            message: 'Please wait. Do not close this page.',
+        });
+        projectForm.submit();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && projectModal && !projectModal.hidden) {
+            closeProjectModal();
+        }
     });
 
     if (!form || !modal || !confirmButton) {

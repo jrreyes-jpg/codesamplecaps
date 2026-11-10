@@ -487,6 +487,47 @@ function inquiry_quote_fetch_post_inspection_decision(mysqli $conn, int $inspect
     return $stmt->get_result()->fetch_assoc() ?: null;
 }
 
+function inquiry_quote_fetch_approved_inspection_for_project(mysqli $conn, int $inquiryId, int $draftId): ?array
+{
+    if ($inquiryId <= 0 || $draftId <= 0) {
+        return null;
+    }
+
+    $quotation = inquiry_quote_fetch_full($conn, $draftId);
+    if (!$quotation || (int)($quotation['inquiry_id'] ?? 0) !== $inquiryId) {
+        return null;
+    }
+
+    $inspectionId = (int)($quotation['inspection_id'] ?? 0);
+    if ($inspectionId > 0) {
+        $stmt = $conn->prepare(
+            "SELECT id, inquiry_id, admin_review_status
+             FROM site_inspections
+             WHERE id = ? AND inquiry_id = ? AND admin_review_status = 'Approved'
+             LIMIT 1"
+        );
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param('ii', $inspectionId, $inquiryId);
+    } else {
+        $stmt = $conn->prepare(
+            "SELECT id, inquiry_id, admin_review_status
+             FROM site_inspections
+             WHERE inquiry_id = ? AND admin_review_status = 'Approved'
+             ORDER BY COALESCE(admin_reviewed_at, submitted_at, created_at) DESC, id DESC
+             LIMIT 1"
+        );
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param('i', $inquiryId);
+    }
+
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
 function inquiry_quote_is_final_client_accepted(mysqli $conn, int $draftId): bool
 {
     if ($draftId <= 0 || !inquiry_quote_table_exists($conn, 'inspection_quotation_decisions')) {

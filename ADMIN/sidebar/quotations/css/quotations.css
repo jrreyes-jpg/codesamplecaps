@@ -369,6 +369,10 @@ body.admin-quotation-send-open { overflow: hidden; }
     background: rgba(15, 23, 42, .58);
 }
 
+.admin-quotation-project-modal .admin-quotation-send-modal__backdrop {
+    background: transparent;
+}
+
 .admin-quotation-send-modal__card {
     position: relative;
     box-sizing: border-box;

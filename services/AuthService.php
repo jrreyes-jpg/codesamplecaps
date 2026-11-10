@@ -416,7 +416,12 @@ class AuthService {
                 return ['success' => false, 'error' => 'The inquiry contact number is invalid. Use a PH mobile number.'];
             }
             if ($this->userRepo->phoneExists($phone)) {
-                return ['success' => false, 'error' => 'This contact number is already used by another account. Review it in User Management before project setup.'];
+                $phoneOwner = $this->userRepo->findByPhoneIncludingDeleted($phone);
+                if (!empty($phoneOwner['deleted_at'])) {
+                    return ['success' => false, 'error' => 'This contact number belongs to a Client account in Trash. Ask the Super Admin to restore or permanently delete that account first.'];
+                }
+
+                return ['success' => false, 'error' => 'This contact number belongs to another active account. Use the account email linked to this number.'];
             }
             $clientId = $this->userRepo->createPendingClient($fullName, $email, $phone, $createdBy);
             if (!$clientId) {

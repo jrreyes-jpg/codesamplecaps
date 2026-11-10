@@ -1201,22 +1201,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Client must accept the quotation before project setup.');
                 }
 
-                $decisionStmt = $conn->prepare(
-                    "SELECT d.decision
-                     FROM inspection_quotation_decisions d
-                     INNER JOIN site_inspections si ON si.id = d.inspection_id
-                     WHERE d.inquiry_id = ?
-                     AND d.final_quotation_draft_id = ?
-                     AND si.admin_review_status = 'Approved'
-                     LIMIT 1"
-                );
-                if (!$decisionStmt) {
-                    throw new RuntimeException('Unable to check the post-inspection quotation decision.');
-                }
-                $decisionStmt->bind_param('ii', $inquiryId, $draftId);
-                $decisionStmt->execute();
-                if (!$decisionStmt->get_result()->fetch_assoc()) {
-                    throw new RuntimeException('Choose the post-inspection quotation decision before project setup.');
+                $approvedInspection = inquiry_quote_fetch_approved_inspection_for_project($conn, $inquiryId, $draftId);
+                if (!$approvedInspection) {
+                    throw new RuntimeException('The inspection costing must be approved before project setup.');
                 }
 
                 if (!empty($quotation['project_id'])) {
@@ -1267,7 +1254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             : 'Client account was linked and the activation email was sent. Review the project team.')
                         : 'Client account was linked. Review the accepted quotation details and project team.',
                 ];
-                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/projects.php#create-project');
+                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/create_project.php');
                 exit;
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();

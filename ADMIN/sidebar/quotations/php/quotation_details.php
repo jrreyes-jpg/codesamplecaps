@@ -56,13 +56,7 @@ $statusLabels = [
 $selectedStatus = $quotation
     ? inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'))
     : 'draft';
-$inspectionId = (int)($quotation['inspection_id'] ?? 0);
 $projectId = (int)($quotation['project_id'] ?? 0);
-$postInspectionDecision = $inspectionId > 0
-    ? inquiry_quote_fetch_post_inspection_decision($conn, $inspectionId)
-    : null;
-$hasFinalProjectBasis = $postInspectionDecision
-    && (int)($postInspectionDecision['final_quotation_draft_id'] ?? 0) === $quotationId;
 $lastHistoryStatus = $history
     ? inquiry_quote_normalize_status((string)($history[count($history) - 1]['to_status'] ?? 'draft'))
     : '';
@@ -85,12 +79,12 @@ $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-7',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-8',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261110-4',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261110-5',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -182,17 +176,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </form>
                     <?php endif; ?>
                     <?php if ($projectId <= 0): ?>
-                        <?php if ($hasFinalProjectBasis): ?>
-                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-project-form" data-quotation-create-project <?php echo $selectedStatus === 'accepted' ? '' : 'hidden'; ?>>
-                                <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
-                                <input type="hidden" name="action" value="prepare_project_from_quote">
-                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
-                                <input type="hidden" name="draft_id" value="<?php echo $quotationId; ?>">
-                                <button type="submit" class="button-primary">Create Project</button>
-                            </form>
-                        <?php else: ?>
-                            <a class="button-primary" data-quotation-create-project href="<?php echo admin_quote_details_e($openInquiryUrl); ?>" <?php echo $selectedStatus === 'accepted' ? '' : 'hidden'; ?>>Create Project</a>
-                        <?php endif; ?>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-project-form" data-quotation-create-project <?php echo $selectedStatus === 'accepted' ? '' : 'hidden'; ?>>
+                            <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
+                            <input type="hidden" name="action" value="prepare_project_from_quote">
+                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
+                            <input type="hidden" name="draft_id" value="<?php echo $quotationId; ?>">
+                            <button type="submit" class="button-primary">Create Project</button>
+                        </form>
                     <?php elseif ($projectId > 0): ?>
                         <a class="button-primary admin-quotation-project-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo $projectId; ?>">View Project</a>
                     <?php endif; ?>
@@ -238,6 +228,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <div class="admin-quotation-send-modal__actions">
                         <button type="button" class="button-secondary" data-quotation-send-cancel>Cancel</button>
                         <button type="button" class="button-primary" data-quotation-send-confirm>Send Quotation</button>
+                    </div>
+                </section>
+            </div>
+
+            <div class="admin-quotation-send-modal admin-quotation-project-modal" data-quotation-project-modal hidden>
+                <div class="admin-quotation-send-modal__backdrop" data-quotation-project-cancel></div>
+                <section class="admin-quotation-send-modal__card" role="dialog" aria-modal="true" aria-labelledby="quotationProjectTitle">
+                    <h2 id="quotationProjectTitle">Continue to Project Setup?</h2>
+                    <p>Create a project from this accepted quotation. Prepare the P.O details, schedule, and assigned team.</p>
+                    <div class="admin-quotation-send-modal__actions">
+                        <button type="button" class="button-secondary" data-quotation-project-cancel>Not Now</button>
+                        <button type="button" class="button-primary" data-quotation-project-confirm>Continue to Project Setup</button>
                     </div>
                 </section>
             </div>

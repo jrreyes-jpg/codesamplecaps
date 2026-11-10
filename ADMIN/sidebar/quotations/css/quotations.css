@@ -317,8 +317,19 @@
 
 .admin-quotation-summary span { display: block; margin-bottom: 4px; color: #66758d; font-size: 13px; font-weight: 700; }
 .admin-quotation-summary strong { display: block; overflow-wrap: anywhere; }
-.admin-quotation-actions { justify-content: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
-.admin-quotation-send-form { margin: 0; }
+.admin-quotation-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+.admin-quotation-send-form,
+.admin-quotation-project-form { margin: 0; }
+
+.admin-quotation-project-form,
+[data-quotation-create-project],
+.admin-quotation-project-action { margin-left: auto; }
 
 .admin-quotation-revision-note {
     margin-bottom: 16px;
@@ -539,7 +550,11 @@ body.admin-quotation-history-open { overflow: hidden; }
     .admin-quotation-summary { grid-template-columns: 1fr; }
     .button-primary,
     .button-secondary { width: 100%; }
-    .admin-quotation-send-form { width: 100%; }
+    .admin-quotation-send-form,
+    .admin-quotation-project-form { width: 100%; }
+    .admin-quotation-project-form,
+    [data-quotation-create-project],
+    .admin-quotation-project-action { margin-left: 0; }
     .admin-quotation-send-modal__actions { flex-direction: column-reverse; }
     .admin-quotation-card { grid-template-columns: 1fr; }
     .admin-quotation-card__main,

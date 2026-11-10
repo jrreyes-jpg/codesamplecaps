@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const revisionNote = liveSection?.querySelector('[data-quotation-revision-note]');
     const revisionNoteText = liveSection?.querySelector('[data-quotation-revision-note-text]');
     const reviseAction = liveSection?.querySelector('[data-quotation-revise-action]');
+    const createProjectAction = liveSection?.querySelector('[data-quotation-create-project]');
     const historyModal = document.querySelector('[data-quotation-history-modal]');
     const historyOpen = document.querySelector('[data-quotation-history-open]');
     const historyCloseButtons = historyModal?.querySelectorAll('[data-quotation-history-close]') || [];
@@ -49,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (revisionNote) revisionNote.hidden = !showRevision || !data.client_note;
         if (revisionNoteText) revisionNoteText.textContent = String(data.client_note || '');
         if (reviseAction) reviseAction.hidden = !showRevision;
+        if (createProjectAction) createProjectAction.hidden = data.status !== 'accepted';
         renderHistory(data.history);
     };
 

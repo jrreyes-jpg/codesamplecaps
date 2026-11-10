@@ -56,6 +56,13 @@ $statusLabels = [
 $selectedStatus = $quotation
     ? inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'))
     : 'draft';
+$inspectionId = (int)($quotation['inspection_id'] ?? 0);
+$projectId = (int)($quotation['project_id'] ?? 0);
+$postInspectionDecision = $inspectionId > 0
+    ? inquiry_quote_fetch_post_inspection_decision($conn, $inspectionId)
+    : null;
+$hasFinalProjectBasis = $postInspectionDecision
+    && (int)($postInspectionDecision['final_quotation_draft_id'] ?? 0) === $quotationId;
 $lastHistoryStatus = $history
     ? inquiry_quote_normalize_status((string)($history[count($history) - 1]['to_status'] ?? 'draft'))
     : '';
@@ -67,17 +74,23 @@ $hasOfficialQuotationNumber = $quotationNumber !== '' && !inquiry_quote_is_syste
 $canSendQuotation = in_array($selectedStatus, ['draft', 'approved'], true)
     && $clientEmail !== ''
     && $hasOfficialQuotationNumber;
+$quotationReturnUrl = '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . $quotationId;
+$openInquiryUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
+    'details' => (int)($quotation['inquiry_id'] ?? 0),
+    'tab' => 'inspection',
+    'return_url' => $quotationReturnUrl,
+]);
 
 $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-5',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261110-3',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261110-4',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -118,33 +131,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <p data-quotation-revision-note-text><?php echo admin_quote_details_e($quotation['client_decision_note'] ?? ''); ?></p>
                 </div>
 
-                <div class="admin-quotation-actions">
-                    <?php if (in_array($selectedStatus, ['draft', 'approved'], true)): ?>
-                        <a class="<?php echo $canSendQuotation ? 'button-secondary' : 'button-primary'; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>" data-quotation-edit-draft>Edit Quotation</a>
-                    <?php endif; ?>
-                    <a class="button-primary" data-quotation-revise-action href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation" <?php echo $selectedStatus === 'revision_requested' ? '' : 'hidden'; ?>>Revise Quotation</a>
-                    <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo $quotationId; ?>">Preview Quotation</a>
-                    <button type="button" class="button-secondary" data-quotation-history-open>View Status History</button>
-                    <?php if ($canSendQuotation): ?>
-                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-send-form" data-quotation-send-form>
-                            <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
-                            <input type="hidden" name="action" value="send_quotation_to_client">
-                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
-                            <input type="hidden" name="draft_id" value="<?php echo $quotationId; ?>">
-                            <button type="submit" class="button-primary">Send to Client</button>
-                        </form>
-                    <?php endif; ?>
-                    <?php
-                    $quotationReturnUrl = '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . $quotationId;
-                    $openInquiryUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
-                        'details' => (int)$quotation['inquiry_id'],
-                        'tab' => 'inspection',
-                        'return_url' => $quotationReturnUrl,
-                    ]);
-                    ?>
-                    <a class="button-secondary" href="<?php echo admin_quote_details_e($openInquiryUrl); ?>">Open Inquiry</a>
-                </div>
-
                 <div class="admin-quotation-section">
                     <h2>Quotation Items</h2>
                     <?php if ($materialsNote !== ''): ?>
@@ -176,6 +162,40 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <p><span>Markup (<?php echo admin_quote_details_e(number_format((float)($quotation['profit_margin_percent'] ?? 0), 2)); ?>%)</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['profit_amount'] ?? 0))); ?></strong></p>
                         <p class="is-total"><span>Grand Total</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></p>
                     </div>
+                </div>
+
+                <div class="admin-quotation-actions">
+                    <?php if (in_array($selectedStatus, ['draft', 'approved'], true)): ?>
+                        <a class="<?php echo $canSendQuotation ? 'button-secondary' : 'button-primary'; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>" data-quotation-edit-draft>Edit Quotation</a>
+                    <?php endif; ?>
+                    <a class="button-primary" data-quotation-revise-action href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation" <?php echo $selectedStatus === 'revision_requested' ? '' : 'hidden'; ?>>Revise Quotation</a>
+                    <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo $quotationId; ?>">Preview Quotation</a>
+                    <button type="button" class="button-secondary" data-quotation-history-open>View History</button>
+                    <a class="button-secondary" href="<?php echo admin_quote_details_e($openInquiryUrl); ?>">Open Inquiry</a>
+                    <?php if ($canSendQuotation): ?>
+                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-send-form" data-quotation-send-form>
+                            <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
+                            <input type="hidden" name="action" value="send_quotation_to_client">
+                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
+                            <input type="hidden" name="draft_id" value="<?php echo $quotationId; ?>">
+                            <button type="submit" class="button-primary">Send to Client</button>
+                        </form>
+                    <?php endif; ?>
+                    <?php if ($projectId <= 0): ?>
+                        <?php if ($hasFinalProjectBasis): ?>
+                            <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-project-form" data-quotation-create-project <?php echo $selectedStatus === 'accepted' ? '' : 'hidden'; ?>>
+                                <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
+                                <input type="hidden" name="action" value="prepare_project_from_quote">
+                                <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
+                                <input type="hidden" name="draft_id" value="<?php echo $quotationId; ?>">
+                                <button type="submit" class="button-primary">Create Project</button>
+                            </form>
+                        <?php else: ?>
+                            <a class="button-primary" data-quotation-create-project href="<?php echo admin_quote_details_e($openInquiryUrl); ?>" <?php echo $selectedStatus === 'accepted' ? '' : 'hidden'; ?>>Create Project</a>
+                        <?php endif; ?>
+                    <?php elseif ($projectId > 0): ?>
+                        <a class="button-primary admin-quotation-project-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo $projectId; ?>">View Project</a>
+                    <?php endif; ?>
                 </div>
 
                 <div class="admin-quotation-history-modal" data-quotation-history-modal hidden>

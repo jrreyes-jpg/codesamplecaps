@@ -282,11 +282,11 @@ document.addEventListener('DOMContentLoaded', function () {
     quotationDraftDiscardBox.hidden = true;
     quotationDraftDiscardBox.innerHTML = [
         '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="quotationDraftDiscardTitle">',
-        '<h3 id="quotationDraftDiscardTitle">Unsaved quotation changes</h3>',
-        '<p>You have changes that haven\'t been saved to this quotation. Leaving now will keep the saved quotation and totals unchanged.</p>',
+        '<h3 id="quotationDraftDiscardTitle">Leave without saving?</h3>',
+        '<p>Your latest changes are not saved. Do you want to continue editing or leave this page?</p>',
         '<div class="inquiry-confirm__actions">',
-        '<button type="button" class="btn-secondary" data-quotation-draft-discard-keep>Keep Editing</button>',
-        '<button type="button" class="btn-primary" data-quotation-draft-discard-yes>Leave Without Saving</button>',
+        '<button type="button" class="btn-secondary" data-quotation-draft-discard-keep>Continue Editing</button>',
+        '<button type="button" class="btn-danger" data-quotation-draft-discard-yes>Discard Changes &amp; Leave</button>',
         '</div>',
         '</div>',
     ].join('');
@@ -3451,6 +3451,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const submitActionInput = form.querySelector('[data-quotation-submit-action]');
+            const quotationNumberInput = document.querySelector('#quotationNumber');
+            const isSendAction = event.submitter?.hasAttribute('data-confirm-quotation-send')
+                || form.dataset.quotationSendConfirmed === '1';
+            if (submitActionInput) {
+                submitActionInput.value = isSendAction ? 'send_to_client' : 'save_draft';
+            }
+            if (isSendAction && quotationNumberInput && quotationNumberInput.value.trim() === '') {
+                event.preventDefault();
+                quotationNumberInput.setCustomValidity('Enter the official Edge quotation number before sending.');
+                quotationNumberInput.reportValidity();
+                quotationNumberInput.focus();
+                return;
+            }
+            quotationNumberInput?.setCustomValidity('');
+
             if (!validateMarkup(true, true)) {
                 event.preventDefault();
                 marginInput?.focus();
@@ -3502,6 +3518,27 @@ document.addEventListener('DOMContentLoaded', function () {
                         cancel: 'Cancel',
                         confirm: 'Create Draft',
                         mode: 'quotation-draft-create',
+                    }
+                );
+                return;
+            }
+
+            if (form.dataset.quotationSendConfirmed === '1') {
+                delete form.dataset.quotationSendConfirmed;
+            } else if (event.submitter?.hasAttribute('data-confirm-quotation-send')) {
+                event.preventDefault();
+                showConfirm(
+                    form,
+                    'The latest quotation details will be saved first, then emailed to the client.',
+                    [
+                        { label: 'Quotation Number', value: quotationNumberInput?.value.trim() || '' },
+                        { label: 'Client Email', value: form.dataset.quotationClientEmail || '' },
+                    ],
+                    {
+                        title: 'Send quotation to client?',
+                        cancel: 'Cancel',
+                        confirm: 'Send Quotation',
+                        mode: 'quotation-send-direct',
                     }
                 );
                 return;
@@ -3830,6 +3867,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (confirmationMode === 'quotation-update') {
             closeConfirm();
             form.dataset.quotationUpdateConfirmed = '1';
+            form.requestSubmit();
+            return;
+        }
+
+        if (confirmationMode === 'quotation-send-direct') {
+            closeConfirm();
+            form.dataset.quotationSendConfirmed = '1';
+            form.querySelector('[data-quotation-submit-action]').value = 'send_to_client';
             form.requestSubmit();
             return;
         }

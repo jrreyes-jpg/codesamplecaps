@@ -186,6 +186,8 @@ if ($materialRowIndexes !== []) {
 $directCostTypes = inquiry_quote_item_type_options();
 unset($directCostTypes['material']);
 $isQuotationPost = $_SERVER['REQUEST_METHOD'] === 'POST';
+$quotationSubmitAction = (string)($_POST['quotation_submit_action'] ?? 'save_draft');
+$shouldSendToClient = $quotationSubmitAction === 'send_to_client';
 $marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
 $marginPercent = is_numeric($marginPercentRaw) ? (float)$marginPercentRaw : 0.0;
 $markupError = '';
@@ -193,9 +195,9 @@ $markupError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'admin_create_inquiry_quotation')) {
         $error = 'Your form expired. Please refresh and try again.';
-    } elseif ($quotationNo === '') {
-        $error = 'Enter the Edge quotation number.';
-    } elseif (strlen($quotationNo) < 3 || strlen($quotationNo) > 80 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $quotationNo)) {
+    } elseif ($shouldSendToClient && $quotationNo === '') {
+        $error = 'Enter the official Edge quotation number before sending.';
+    } elseif ($quotationNo !== '' && (strlen($quotationNo) < 3 || strlen($quotationNo) > 80 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $quotationNo))) {
         $error = 'Use only letters, numbers, dash, slash, underscore, or period for the quotation number.';
     } elseif ($marginPercentRaw === '') {
         $markupError = 'Markup is required.';
@@ -314,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Quotation total must be greater than zero.';
         }
 
-        if ($error === '') {
+        if ($error === '' && $quotationNo !== '') {
             $numberStmt = $conn->prepare(
                 'SELECT id FROM inquiry_quotation_drafts WHERE quotation_no = ? AND id <> ? LIMIT 1'
             );
@@ -330,10 +332,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '') {
+            $storedQuotationNo = $quotationNo;
+            if ($storedQuotationNo === '') {
+                $storedQuotationNo = $isEditMode && inquiry_quote_is_system_placeholder_number((string)($quotationDraft['quotation_no'] ?? ''))
+                    ? (string)$quotationDraft['quotation_no']
+                    : inquiry_quote_generate_number();
+            }
             $profitAmount = round($subtotal * ($marginPercent / 100), 2);
             $grandTotal = round($subtotal + $profitAmount, 2);
             $status = 'Draft';
             $adminId = (int)($_SESSION['user_id'] ?? 0);
+            $draftWasSaved = false;
 
             $conn->begin_transaction();
             try {
@@ -357,7 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!$stmt) {
                         throw new RuntimeException('Unable to prepare quotation update.');
                     }
-                    $stmt->bind_param('sddddi', $quotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $editId);
+                    $stmt->bind_param('sddddi', $storedQuotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $editId);
                     $stmt->execute();
                     $draftId = $editId;
 
@@ -378,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new RuntimeException('Unable to prepare quotation.');
                     }
 
-                    $stmt->bind_param('isddddsi', $inquiryId, $quotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $status, $adminId);
+                    $stmt->bind_param('isddddsi', $inquiryId, $storedQuotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $status, $adminId);
                     $stmt->execute();
                     $draftId = (int)$conn->insert_id;
                 }
@@ -401,6 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     inquiry_quote_add_history($conn, $draftId, null, 'draft', 'Admin created quotation from verified inquiry.', $adminId, 'admin');
                 }
                 $conn->commit();
+                $draftWasSaved = true;
 
                 $oldAuditData = $isEditMode ? [
                     'subtotal' => (float)$quotationDraft['subtotal'],
@@ -410,24 +420,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ] : null;
                 audit_log_event($conn, $adminId, $isEditMode ? 'update_inquiry_quotation_draft' : 'create_inquiry_quotation_direct', 'quotation', $draftId, $oldAuditData, [
                     'inquiry_id' => $inquiryId,
-                    'quotation_no' => $quotationNo,
+                    'quotation_no' => $storedQuotationNo,
                     'subtotal' => $subtotal,
                     'profit_margin_percent' => $marginPercent,
                     'grand_total' => $grandTotal,
                 ]);
 
+                if ($shouldSendToClient) {
+                    inquiry_quote_send_to_client($conn, $draftId, $adminId);
+                    audit_log_event($conn, $adminId, 'send_inquiry_quotation_to_client', 'quotation', $draftId, ['status' => 'draft'], ['status' => 'sent']);
+                }
+
                 $_SESSION['auth_flash'] = [
                     'type' => 'success',
-                    'message' => $isEditMode
-                        ? 'Quotation draft updated successfully.'
-                        : 'Quotation draft created successfully.',
+                    'message' => $shouldSendToClient
+                        ? 'Quotation saved and sent to the client.'
+                        : ($isEditMode
+                            ? 'Quotation draft updated successfully.'
+                            : 'Quotation draft created successfully.'),
                 ];
-                header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $draftId);
+                $redirectStatus = $shouldSendToClient ? 'sent' : 'draft';
+                header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=' . $redirectStatus . '&id=' . $draftId);
                 exit();
             } catch (Throwable $throwable) {
-                $conn->rollback();
+                if (!$draftWasSaved) {
+                    $conn->rollback();
+                }
                 error_log('Inquiry quotation save failed: ' . $throwable->getMessage());
-                $error = $isEditMode ? 'Unable to update quotation draft.' : 'Unable to create quotation. Please check the quotation database setup.';
+                if ($shouldSendToClient && $draftWasSaved) {
+                    $_SESSION['auth_flash'] = [
+                        'type' => 'warning',
+                        'message' => 'Quotation was saved as Draft, but the email was not sent. Please try again.',
+                    ];
+                    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . $draftId);
+                    exit();
+                }
+                $error = $shouldSendToClient
+                    ? 'Unable to save and send the quotation.'
+                    : ($isEditMode ? 'Unable to update quotation draft.' : 'Unable to create quotation. Please check the quotation database setup.');
             }
         }
     }
@@ -437,12 +467,12 @@ $adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Ed
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261103-8',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261103-12',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -468,10 +498,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <span class="quotation-create-status">Draft</span>
                 </div>
                 <div class="quotation-create-number">
-                    <label for="quotationNumber">Quotation Number</label>
-                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off" required<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
+                    <label for="quotationNumber">Quotation Number <span class="quotation-required-note">Required before sending</span></label>
+                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter official Edge number" autocomplete="off"<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
                     <?php if (!$isInitialQuotationDraft): ?>
                         <small>Revision number is based on the original quotation.</small>
+                    <?php else: ?>
+                        <small>Follow the official Edge format. You may leave this blank when saving a draft.</small>
                     <?php endif; ?>
                 </div>
             </div>
@@ -487,9 +519,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
             </div>
 
-            <form id="quotationCreateForm" method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>">
+            <form id="quotationCreateForm" method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>" data-quotation-client-email="<?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
+                <input type="hidden" name="quotation_submit_action" value="save_draft" data-quotation-submit-action>
                 <?php if ($isEditMode): ?>
                     <input type="hidden" name="edit_id" value="<?php echo $editId; ?>">
                 <?php endif; ?>
@@ -593,7 +626,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <div class="quotation-create-actions">
-                    <button type="submit" class="btn-primary" <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>>Save Draft</button>
+                    <div class="quotation-create-actions__primary">
+                        <button type="submit" class="btn-secondary" data-quotation-save-draft <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>>Save Draft</button>
+                        <button type="submit" class="btn-primary" data-confirm-quotation-send>Send to Client</button>
+                    </div>
                     <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $editId : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>

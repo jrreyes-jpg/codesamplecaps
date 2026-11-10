@@ -146,6 +146,23 @@
     font-size: 0.78rem;
 }
 
+.quotation-required-note {
+    display: inline;
+    margin-left: 4px;
+    color: #b45309;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.quotation-create-actions__primary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .quotation-create-client-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -2124,6 +2124,17 @@ $search = trim((string)($_GET['search'] ?? ''));
 $view = trim((string)($_GET['view'] ?? 'active'));
 $sortOrder = trim((string)($_GET['sort'] ?? 'oldest'));
 $detailsInquiryId = max(0, (int)($_GET['details'] ?? 0));
+$detailsReturnUrl = '';
+if ($detailsInquiryId > 0) {
+    $returnCandidate = trim((string)($_GET['return_url'] ?? ''));
+    $returnParts = $returnCandidate !== '' ? parse_url($returnCandidate) : false;
+    if (is_array($returnParts)
+        && empty($returnParts['scheme'])
+        && empty($returnParts['host'])
+        && (string)($returnParts['path'] ?? '') === '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php') {
+        $detailsReturnUrl = $returnCandidate;
+    }
+}
 if (!in_array($view, ['active', 'archive'], true)) {
     $view = 'active';
 }
@@ -2852,13 +2863,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             $serverOpenTab = 'client';
                         }
                         $showInspectionTab = (bool)$showInspection;
-                        $inquiryListUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . (!empty($inquiry['archived_at']) ? '?view=archive' : '');
+                        $inquiryListUrl = $detailsReturnUrl !== ''
+                            ? $detailsReturnUrl
+                            : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . (!empty($inquiry['archived_at']) ? '?view=archive' : '');
                         ?>
                         <div class="inquiry-modal<?php echo $isDetailsPage ? ' inquiry-modal--page' : ''; ?>" id="<?php echo $inquiryModalId; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-inspection-status="<?php echo htmlspecialchars((string)($latestInspection['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-submitted-at="<?php echo htmlspecialchars((string)($latestInspection['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $isServerOpenedModal ? '' : ' hidden'; ?>>
                             <div class="inquiry-modal__panel" id="inquiryDetailsTop<?php echo (int)$inquiry['id']; ?>" role="<?php echo $isDetailsPage ? 'region' : 'dialog'; ?>" <?php echo $isDetailsPage ? '' : 'aria-modal="true"'; ?> aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <?php if ($isDetailsPage): ?>
                                     <div class="inquiry-details-page__navigation">
-                                        <a href="<?php echo htmlspecialchars($inquiryListUrl, ENT_QUOTES, 'UTF-8'); ?>" class="inquiry-modal__back" aria-label="Back to inquiries">&larr; Back to Inquiries</a>
+                                        <a href="<?php echo htmlspecialchars($inquiryListUrl, ENT_QUOTES, 'UTF-8'); ?>" class="inquiry-modal__back" aria-label="Go back">&larr; <?php echo $detailsReturnUrl !== '' ? 'Back to Quotation' : 'Back to Inquiries'; ?></a>
                                     </div>
                                 <?php endif; ?>
                                 <div class="inquiry-modal__head<?php echo $isDetailsPage && !empty($inquiry['archived_at']) ? ' has-page-archive-actions' : ''; ?>">

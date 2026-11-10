@@ -487,6 +487,8 @@ body.admin-quotation-history-open { overflow: hidden; }
 
 .admin-quotation-details-page {
     width: 100%;
+    min-height: 0;
+    padding-bottom: 18px;
 }
 
 .admin-quotation-details-page > * {

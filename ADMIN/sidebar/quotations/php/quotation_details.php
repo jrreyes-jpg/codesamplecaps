@@ -72,7 +72,7 @@ $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-4',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-5',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -134,7 +134,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <button type="submit" class="button-primary">Send to Client</button>
                         </form>
                     <?php endif; ?>
-                    <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=inspection">Open Inquiry</a>
+                    <?php
+                    $quotationReturnUrl = '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . $quotationId;
+                    $openInquiryUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query([
+                        'details' => (int)$quotation['inquiry_id'],
+                        'tab' => 'inspection',
+                        'return_url' => $quotationReturnUrl,
+                    ]);
+                    ?>
+                    <a class="button-secondary" href="<?php echo admin_quote_details_e($openInquiryUrl); ?>">Open Inquiry</a>
                 </div>
 
                 <div class="admin-quotation-section">

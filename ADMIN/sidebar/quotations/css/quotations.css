@@ -224,6 +224,23 @@
 
 .admin-quotation-card__view:hover { background: #0e572d; }
 
+.admin-quotation-card__actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-quotation-card__view.is-secondary {
+    border: 1px solid #b8d7c7;
+    background: #ffffff;
+    color: #126c37;
+}
+
+.admin-quotation-card__view.is-secondary:hover {
+    background: #edf8f2;
+}
+
 .admin-quotation-card__view.is-complete-draft { background: #b45309; }
 .admin-quotation-card__view.is-complete-draft:hover { background: #92400e; }
 
@@ -448,6 +465,10 @@ body.admin-quotation-send-open { overflow: hidden; }
     .admin-quotation-card__total { justify-content: space-between; }
     .admin-quotation-card__view {
         width: 100%;
+    }
+    .admin-quotation-card__actions {
+        width: 100%;
+        flex-direction: column;
     }
 }
 

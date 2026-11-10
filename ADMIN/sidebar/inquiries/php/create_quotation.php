@@ -467,12 +467,12 @@ $adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Ed
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-5',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -490,7 +490,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
 
         <section class="quotation-create-card">
-            <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $editId : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary quotation-create-back">&larr; Back to <?php echo $isEditMode ? 'Quotations' : 'Inquiries'; ?></a>
+            <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft' : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary quotation-create-back">&larr; Back to <?php echo $isEditMode ? 'Quotations' : 'Inquiries'; ?></a>
 
             <div class="quotation-create-heading">
                 <div class="quotation-create-title-row">
@@ -498,12 +498,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <span class="quotation-create-status">Draft</span>
                 </div>
                 <div class="quotation-create-number">
-                    <label for="quotationNumber">Quotation Number <span class="quotation-required-note">Required before sending</span></label>
-                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\/-]*" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter official Edge number" autocomplete="off"<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
+                    <label for="quotationNumber">Quotation Number <span class="quotation-required-mark" aria-hidden="true">*</span></label>
+                    <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" maxlength="80" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter official Edge number" autocomplete="off" aria-describedby="quotationNumberError"<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
+                    <span id="quotationNumberError" class="quotation-number-error" data-quotation-number-error aria-live="polite"></span>
                     <?php if (!$isInitialQuotationDraft): ?>
                         <small>Revision number is based on the original quotation.</small>
-                    <?php else: ?>
-                        <small>Follow the official Edge format. You may leave this blank when saving a draft.</small>
                     <?php endif; ?>
                 </div>
             </div>
@@ -630,7 +629,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <button type="submit" class="btn-secondary" data-quotation-save-draft <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>>Save Draft</button>
                         <button type="submit" class="btn-primary" data-confirm-quotation-send>Send to Client</button>
                     </div>
-                    <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft&id=' . $editId : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
+                    <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft' : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>
         </section>

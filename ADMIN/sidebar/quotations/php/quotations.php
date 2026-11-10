@@ -140,7 +140,7 @@ $statusLabels = [
 $adminPageTitle = 'Quotations - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-9',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -195,17 +195,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $quotationNumberLabel = $isNumberMissing
                             ? 'Quotation number not assigned'
                             : $quotationNumber;
-                        $buttonLabel = match ($displayStatus) {
-                            'draft' => 'Edit Quotation',
-                            'revision_requested' => 'Revise Quotation',
-                            'accepted' => 'View Accepted Quotation',
-                            default => 'View Details',
-                        };
-                        $buttonUrl = match ($displayStatus) {
-                            'draft' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=' . (int)$quotation['id'],
-                            'revision_requested' => '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal' . (int)$quotation['inquiry_id'] . '&tab=quotation',
-                            default => '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$quotation['id'],
-                        };
+                        $detailsUrl = '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$quotation['id'];
                     ?>
                         <article class="admin-quotation-card">
                             <div class="admin-quotation-card__main">
@@ -216,7 +206,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <div class="admin-quotation-card__side">
                                 <span class="quote-status <?php echo admin_quote_status_class($displayStatus); ?>"><?php echo admin_quote_e($statusLabels[$displayStatus] ?? inquiry_quote_status_label($displayStatus)); ?></span>
                                 <span class="admin-quotation-card__total"><small>Total</small><strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></span>
-                                <a class="admin-quotation-card__view<?php echo $displayStatus === 'revision_requested' ? ' is-complete-draft' : ''; ?>" href="<?php echo admin_quote_e($buttonUrl); ?>"><?php echo admin_quote_e($buttonLabel); ?></a>
+                                <div class="admin-quotation-card__actions">
+                                    <a class="admin-quotation-card__view is-secondary" href="<?php echo admin_quote_e($detailsUrl); ?>">View Details</a>
+                                    <?php if ($displayStatus === 'draft'): ?>
+                                        <a class="admin-quotation-card__view" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo (int)$quotation['id']; ?>">Edit Quotation</a>
+                                    <?php elseif ($displayStatus === 'revision_requested'): ?>
+                                        <a class="admin-quotation-card__view is-complete-draft" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation">Revise Quotation</a>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </article>
                     <?php endforeach; ?>

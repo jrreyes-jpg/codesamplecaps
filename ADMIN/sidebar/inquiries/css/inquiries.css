@@ -146,14 +146,27 @@
     font-size: 0.78rem;
 }
 
-.quotation-required-note {
-    display: inline;
-    margin-left: 4px;
-    color: #b45309;
-    font-size: 0.72rem;
+.quotation-required-mark {
+    color: #dc2626;
+}
+
+.quotation-create-number input.is-invalid {
+    border-color: #dc2626;
+    outline: 3px solid rgba(220, 38, 38, 0.1);
+}
+
+.quotation-number-error {
+    display: block;
+    margin-top: 5px;
+    color: #dc2626;
+    font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0;
     text-transform: none;
+}
+
+.quotation-number-error:empty {
+    display: none;
 }
 
 .quotation-create-actions__primary {

@@ -2674,6 +2674,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
         const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
         const quotationNumberInput = quotationCreate.querySelector('input[name="quotation_no"]');
+        const quotationNumberError = quotationCreate.querySelector('[data-quotation-number-error]');
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
         const materialsNoteInput = form?.querySelector('textarea[name="materials_note"]');
         const markupError = form?.querySelector('[data-quotation-markup-error]');
@@ -2713,6 +2714,34 @@ document.addEventListener('DOMContentLoaded', function () {
         let quotationSubmitAccepted = false;
         let quotationLeaveAccepted = false;
         let localDraftTimer = null;
+
+        const clearQuotationNumberError = function () {
+            quotationNumberInput?.classList.remove('is-invalid');
+            quotationNumberInput?.removeAttribute('aria-invalid');
+            if (quotationNumberError) quotationNumberError.textContent = '';
+        };
+
+        const validateQuotationNumber = function (requiredForSend = false) {
+            if (!quotationNumberInput || quotationNumberInput.readOnly) return true;
+
+            const value = quotationNumberInput.value.trim();
+            let message = '';
+            if (requiredForSend && value === '') {
+                message = 'Quotation number is required before sending.';
+            } else if (value !== '' && value.length < 3) {
+                message = 'Enter at least 3 characters.';
+            } else if (value !== '' && !/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/.test(value)) {
+                message = 'Use letters, numbers, dash, slash, underscore, or period only.';
+            }
+
+            clearQuotationNumberError();
+            if (message === '') return true;
+
+            quotationNumberInput.classList.add('is-invalid');
+            quotationNumberInput.setAttribute('aria-invalid', 'true');
+            if (quotationNumberError) quotationNumberError.textContent = message;
+            return false;
+        };
 
         const getQuotationFormState = function () {
             if (!form) {
@@ -3462,20 +3491,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (submitActionInput) {
                 submitActionInput.value = isSendAction ? 'send_to_client' : 'save_draft';
             }
-            if (isSendAction && quotationNumberInput && quotationNumberInput.value.trim() === '') {
+            if (!validateQuotationNumber(isSendAction)) {
                 event.preventDefault();
-                quotationNumberInput.setCustomValidity('Enter the official Edge quotation number before sending.');
                 quotationNumberInput.closest('.quotation-create-number')?.scrollIntoView({
                     behavior: 'smooth',
                     block: 'center',
                 });
                 quotationNumberInput.focus({ preventScroll: true });
-                window.setTimeout(function () {
-                    quotationNumberInput.reportValidity();
-                }, 250);
                 return;
             }
-            quotationNumberInput?.setCustomValidity('');
 
             if (!validateMarkup(true, true)) {
                 event.preventDefault();
@@ -3655,8 +3679,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         quotationNumberInput?.addEventListener('input', function () {
+            clearQuotationNumberError();
             markQuotationDirty();
             scheduleLocalQuotationDraftSave();
+        });
+        quotationNumberInput?.addEventListener('blur', function () {
+            validateQuotationNumber(false);
         });
         form?.addEventListener('keydown', function (event) {
             if (!event.target.matches('input[name="quantity[]"], input[name="unit_cost[]"], input[name="profit_margin_percent"]')) {

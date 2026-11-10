@@ -1709,6 +1709,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($error === '' && $existingInspectionId > 0 && !$hasAssignmentChanges) {
                 // Notes lang ay hindi reschedule. Gamitin ang hiwalay na retry kung email lang ang kulang.
                 $error = 'Change the Engineer or inspection date before updating the schedule.';
+            } elseif ($error === '' && $existingInspectionId > 0 && $hasAssignmentChanges
+                && mb_strlen($rescheduleReason, 'UTF-8') < 5) {
+                $error = 'Enter a short reason for rescheduling.';
             } elseif ($error === '' && mb_strlen($rescheduleReason, 'UTF-8') > 1000) {
                 $error = 'Reschedule note must not exceed 1000 characters.';
             }
@@ -2543,7 +2546,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261109-12',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-13',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
@@ -2552,8 +2555,8 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-7',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261103-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-9',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261110-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -3341,18 +3344,25 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </small>
                                                 </label>
                                             </div>
+                                            <?php if ($latestInspection): ?>
+                                                <label class="inquiry-engineer-site-note" data-admin-reschedule-reason hidden>
+                                                    <span>Reason for Reschedule <small class="required-indicator">*</small></span>
+                                                    <textarea name="reschedule_reason" rows="3" minlength="5" maxlength="1000" placeholder="Enter a short reason" disabled></textarea>
+                                                    <small class="inquiry-schedule-field-feedback" data-admin-reschedule-reason-feedback hidden aria-live="polite"></small>
+                                                </label>
+                                            <?php endif; ?>
                                             <label class="inquiry-engineer-site-note">
                                                 <span>Engineer Site Note <small>(Optional)</small></span>
                                                 <textarea name="site_notes" rows="3" maxlength="2000" placeholder="Add access instructions or important details for the Engineer"><?php echo htmlspecialchars((string)($latestInspection['site_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                                 <small>This note is shared with the assigned Engineer.</small>
                                             </label>
+                                            <small class="inquiry-schedule-field-feedback inquiry-schedule-submit-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>
                                             <div class="inquiry-review-actions">
                                                 <?php if ($showScheduleEditor): ?>
                                                     <button type="button" class="btn-secondary" data-reschedule-inspection-close>Cancel</button>
                                                 <?php endif; ?>
                                                 <button type="submit" class="btn-primary" data-schedule-submit disabled><?php echo $scheduleSubmitLabel; ?></button>
                                             </div>
-                                            <small class="inquiry-schedule-field-feedback inquiry-schedule-submit-feedback" data-admin-schedule-feedback hidden aria-live="polite"></small>
                                         </form>
                                         <?php if ($showScheduleEditor): ?>
                                                 </div>

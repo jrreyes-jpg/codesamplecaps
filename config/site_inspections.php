@@ -128,7 +128,6 @@ function site_inspection_engineer_has_schedule_on_date(
     $sql = "SELECT id FROM site_inspections
             WHERE engineer_id = ? AND id <> ?
               AND DATE(scheduled_at) = ?
-              AND status IN ('Assigned', 'Acknowledged', 'Ongoing')
             LIMIT 1" . ($lockRows ? ' FOR UPDATE' : '');
     $stmt = $conn->prepare($sql);
     if (!$stmt) {

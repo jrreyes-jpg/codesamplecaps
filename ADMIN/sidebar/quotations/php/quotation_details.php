@@ -63,12 +63,16 @@ $quotationNumber = trim((string)($quotation['quotation_no'] ?? ''));
 $quotationNumberLabel = $quotationNumber === '' || inquiry_quote_is_system_placeholder_number($quotationNumber)
     ? 'Quotation number not assigned'
     : $quotationNumber;
+$hasOfficialQuotationNumber = $quotationNumber !== '' && !inquiry_quote_is_system_placeholder_number($quotationNumber);
+$canSendQuotation = in_array($selectedStatus, ['draft', 'approved'], true)
+    && $clientEmail !== ''
+    && $hasOfficialQuotationNumber;
 
 $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-7',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -107,12 +111,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <article><span>Prepared By</span><strong><?php echo admin_quote_details_e($quotation['preparer_name'] ?? 'Admin'); ?></strong></article>
                 </div>
 
+                <?php if ($selectedStatus === 'revision_requested' && trim((string)($quotation['client_decision_note'] ?? '')) !== ''): ?>
+                    <div class="admin-quotation-revision-note">
+                        <strong>Client revision request</strong>
+                        <p><?php echo admin_quote_details_e($quotation['client_decision_note']); ?></p>
+                    </div>
+                <?php endif; ?>
+
                 <div class="admin-quotation-actions">
                     <?php if (in_array($selectedStatus, ['draft', 'approved'], true)): ?>
-                        <a class="button-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>" data-quotation-edit-draft>Edit Quotation</a>
+                        <a class="<?php echo $canSendQuotation ? 'button-secondary' : 'button-primary'; ?>" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo $quotationId; ?>" data-quotation-edit-draft>Edit Quotation</a>
+                    <?php elseif ($selectedStatus === 'revision_requested'): ?>
+                        <a class="button-primary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation">Revise Quotation</a>
                     <?php endif; ?>
                     <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo $quotationId; ?>">Preview Quotation</a>
-                    <?php if (in_array($selectedStatus, ['draft', 'approved'], true) && $clientEmail !== ''): ?>
+                    <?php if ($canSendQuotation): ?>
                         <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-send-form" data-quotation-send-form>
                             <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">
                             <input type="hidden" name="action" value="send_quotation_to_client">
@@ -121,7 +134,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <button type="submit" class="button-primary">Send to Client</button>
                         </form>
                     <?php endif; ?>
-                    <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=inspection">Open Inquiry</a>
+                    <a class="admin-quotation-text-link" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=inspection">Open Inquiry</a>
                 </div>
 
                 <div class="admin-quotation-section">

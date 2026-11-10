@@ -1338,7 +1338,10 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const validRescheduleReason = function () {
-            const value = reasonInput?.value || '';
+            const value = (reasonInput?.value || '').trim();
+            if (value.length < 5) {
+                return 'Enter a short reason for rescheduling.';
+            }
             if (value.length > 1000) {
                 return 'Reschedule note must not exceed 1000 characters.';
             }
@@ -1387,17 +1390,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const conflictMessage = changed && engineerBusyOnDate ? scheduleConflictMessage() : '';
             syncScheduleConflictUi(conflictMessage !== '');
             setFeedback(scheduleConflictFeedback, conflictMessage);
-            // Huwag magpakita ng red error pag kabukas lang ng reschedule popup.
-            const showScheduleMessage = changed && scheduleMessage !== ''
-                && conflictMessage === ''
-                && forceFeedback
-                && form.dataset.submitAttempted === '1';
-            setScheduleFeedback(showScheduleMessage ? scheduleMessage : '', 'error');
-
             if (reasonWrap && reasonInput) {
                 reasonWrap.hidden = !hasValidScheduleChange;
                 reasonInput.disabled = !hasValidScheduleChange;
-                reasonInput.required = false;
+                reasonInput.required = hasValidScheduleChange;
 
                 if (!hasValidScheduleChange) {
                     reasonInput.setCustomValidity('');
@@ -1418,10 +1414,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!changed) {
                 setRescheduleGuidance('Change the assigned Engineer or date to reschedule.', 'neutral');
-            } else if (!hasValidScheduleChange && form.dataset.submitAttempted === '1') {
-                setRescheduleGuidance(scheduleMessage, 'error');
+                setScheduleFeedback('', 'neutral');
+            } else if (!hasValidScheduleChange) {
+                setRescheduleGuidance('', 'neutral');
+                setScheduleFeedback(
+                    engineerAvailabilityPending ? 'Checking Engineer availability.' : scheduleMessage,
+                    engineerAvailabilityPending ? 'neutral' : 'error'
+                );
+            } else if (reasonMessage !== '') {
+                setRescheduleGuidance('', 'neutral');
+                setScheduleFeedback('Enter a reason to enable Update Schedule.', 'neutral');
             } else {
-                setRescheduleGuidance(hasValidScheduleChange ? 'Ready to update the schedule and email the Client and Engineer.' : '', hasValidScheduleChange ? 'ready' : 'neutral');
+                setRescheduleGuidance('', 'neutral');
+                setScheduleFeedback('Ready to update the schedule.', 'ready');
             }
         };
 

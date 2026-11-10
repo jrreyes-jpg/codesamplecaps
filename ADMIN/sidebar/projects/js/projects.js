@@ -1472,6 +1472,7 @@ function initWalkInInquiryPanel() {
     const barangayError = panel?.querySelector('[data-walk-in-barangay-error]');
     const siteAddressError = panel?.querySelector('[data-walk-in-site-address-error]');
     const dateError = panel?.querySelector('[data-walk-in-date-error]');
+    const availabilityFeedback = panel?.querySelector('[data-walk-in-availability]');
     const confirmModal = document.querySelector('[data-walk-in-confirm-modal]');
     const confirmTitle = confirmModal?.querySelector('[data-walk-in-confirm-title]');
     const confirmMessage = confirmModal?.querySelector('[data-walk-in-confirm-message]');
@@ -1493,6 +1494,11 @@ function initWalkInInquiryPanel() {
     let saveConfirmed = false;
     let contactCheckId = 0;
     let contactCheckTimer = null;
+    let availabilityRequestId = 0;
+    let engineerBusyOnDate = false;
+    let engineerAvailabilityPending = false;
+    let engineerAvailabilityFailed = false;
+    let engineerAvailabilityChecked = false;
     let emailEdited = false;
     let contactEdited = false;
     let emailIsVerified = false;
@@ -2297,11 +2303,37 @@ function initWalkInInquiryPanel() {
             submitActionButton.textContent = hasConfirmedEngineer
                 ? 'Save Confirmed Inspection'
                 : 'Save as Pending';
+            submitActionButton.disabled = hasConfirmedEngineer
+                && (engineerAvailabilityPending || engineerBusyOnDate || engineerAvailabilityFailed);
         }
         if (engineerHelp) {
             engineerHelp.textContent = hasConfirmedEngineer
                 ? 'Use this only after the Engineer confirms the date.'
                 : 'Leave Unassigned while waiting for Engineer confirmation.';
+        }
+
+        if (availabilityFeedback) {
+            let message = '';
+            let state = '';
+            if (hasConfirmedEngineer && dateInput?.value) {
+                if (engineerAvailabilityPending) {
+                    message = 'Checking Engineer availability...';
+                } else if (engineerBusyOnDate) {
+                    const engineerName = engineerSelect.selectedOptions[0]?.textContent?.trim() || 'This Engineer';
+                    message = engineerName + ' already has an inspection on ' + formatWalkInDate(dateInput.value) + '. Choose another Engineer or date.';
+                    state = 'error';
+                } else if (engineerAvailabilityFailed) {
+                    message = 'Unable to check the Engineer schedule. Try again.';
+                    state = 'error';
+                } else if (engineerAvailabilityChecked) {
+                    message = 'Engineer is available on this date.';
+                    state = 'info';
+                }
+            }
+            availabilityFeedback.textContent = message;
+            availabilityFeedback.hidden = message === '';
+            availabilityFeedback.classList.toggle('is-info', state === 'info');
+            engineerSelect?.classList.toggle('is-invalid-live', state === 'error');
         }
     }
 
@@ -2310,6 +2342,49 @@ function initWalkInInquiryPanel() {
         if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return value;
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return `${months[parts[1] - 1] || ''} ${parts[2]} ${parts[0]}`.trim();
+    }
+
+    function loadWalkInEngineerAvailability() {
+        const engineerId = Number(engineerSelect?.value || 0);
+        const selectedDate = String(dateInput?.value || '');
+        const requestId = ++availabilityRequestId;
+
+        engineerBusyOnDate = false;
+        engineerAvailabilityFailed = false;
+        engineerAvailabilityChecked = false;
+        if (engineerId <= 0 || selectedDate === '') {
+            engineerAvailabilityPending = false;
+            syncWalkInSaveAction();
+            return;
+        }
+
+        engineerAvailabilityPending = true;
+        syncWalkInSaveAction();
+        const url = new URL('/codesamplecaps/ADMIN/sidebar/inquiries/php/engineer_schedule_availability.php', window.location.origin);
+        url.searchParams.set('engineer_id', String(engineerId));
+        url.searchParams.set('date', selectedDate);
+
+        fetch(url.toString(), { headers: { Accept: 'application/json' }, cache: 'no-store' })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Schedule check failed.');
+                return response.json();
+            })
+            .then(function (data) {
+                if (requestId !== availabilityRequestId) return;
+                engineerAvailabilityPending = false;
+                engineerAvailabilityFailed = data.success !== true;
+                engineerAvailabilityChecked = data.success === true;
+                engineerBusyOnDate = data.success === true && data.engineer_busy === true;
+                syncWalkInSaveAction();
+            })
+            .catch(function () {
+                if (requestId !== availabilityRequestId) return;
+                engineerAvailabilityPending = false;
+                engineerAvailabilityFailed = true;
+                engineerAvailabilityChecked = false;
+                engineerBusyOnDate = false;
+                syncWalkInSaveAction();
+            });
     }
 
     function guideToEmailVerification() {
@@ -2728,10 +2803,16 @@ function initWalkInInquiryPanel() {
         validateService();
     });
     budgetSelect?.addEventListener('change', validateBudget);
-    dateInput?.addEventListener('input', validateDate);
-    dateInput?.addEventListener('change', validateDate);
+    dateInput?.addEventListener('input', function () {
+        validateDate();
+        loadWalkInEngineerAvailability();
+    });
+    dateInput?.addEventListener('change', function () {
+        validateDate();
+        loadWalkInEngineerAvailability();
+    });
     dateInput?.addEventListener('blur', validateDate);
-    engineerSelect?.addEventListener('change', syncWalkInSaveAction);
+    engineerSelect?.addEventListener('change', loadWalkInEngineerAvailability);
     bindLocationCombobox(regionSelect, getRegionOptions, function () { syncAreas(false); }, regionError, 'region');
     bindLocationCombobox(areaSelect, getAreaOptions, function () { syncCities(false); }, areaError, 'province or area');
     bindLocationCombobox(citySelect, getCityOptions, function () { syncBarangays(false); }, cityError, 'city or municipality');
@@ -2759,6 +2840,11 @@ function initWalkInInquiryPanel() {
         event.preventDefault();
         const nextAction = Number(engineerSelect?.value || 0) > 0 ? 'confirmed' : 'pending';
         if (nextActionInput) nextActionInput.value = nextAction;
+        if (nextAction === 'confirmed' && (engineerAvailabilityPending || engineerBusyOnDate || engineerAvailabilityFailed)) {
+            syncWalkInSaveAction();
+            engineerSelect?.focus();
+            return;
+        }
         const nameIsValid = validateName();
         const companyIsValid = validateCompany();
         const emailIsValid = validateEmail();
@@ -2837,6 +2923,7 @@ function initWalkInInquiryPanel() {
     if (clientName?.value) validateName();
     syncWalkInDateWindow();
     if (dateInput?.value) validateDate();
+    loadWalkInEngineerAvailability();
 
     if (panel.classList.contains('is-open')) {
         panel.setAttribute('aria-hidden', 'false');

@@ -149,6 +149,7 @@
                         <?php endforeach; ?>
                     </select>
                     <small class="walk-in-field-help" data-walk-in-engineer-help>Leave Unassigned while waiting for Engineer confirmation.</small>
+                    <small class="walk-in-field-error" data-walk-in-availability hidden aria-live="polite"></small>
                 </div>
             </div>
 

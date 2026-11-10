@@ -4605,6 +4605,11 @@ body.inquiry-modal-open {
     line-height: 1.4;
 }
 
+.inquiry-schedule-form .required-indicator {
+    color: #dc2626;
+    font-weight: 900;
+}
+
 .inquiry-schedule-date-notice {
     display: block;
     color: #b45309;
@@ -4619,7 +4624,7 @@ body.inquiry-modal-open {
 
 .inquiry-schedule-submit-feedback {
     display: block;
-    margin-top: 6px;
+    margin: 6px 0;
     text-align: right;
 }
 

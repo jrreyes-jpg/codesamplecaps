@@ -140,7 +140,7 @@ $statusLabels = [
 $adminPageTitle = 'Quotations - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-1',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',

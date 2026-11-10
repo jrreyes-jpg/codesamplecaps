@@ -18,26 +18,14 @@ if ($engineerId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
 
 try {
     $start = new DateTimeImmutable($date . ' 00:00:00', site_inspection_timezone());
-    $end = $start->modify('+1 day');
-    $stmt = $conn->prepare(
-        "SELECT id
-         FROM site_inspections
-         WHERE engineer_id = ?
-           AND id <> ?
-           AND scheduled_at >= ?
-           AND scheduled_at < ?
-           AND status IN ('Assigned', 'Acknowledged', 'Ongoing')"
+    // Isang shared check lang para pareho ang UI at server rule.
+    $isBusy = site_inspection_engineer_has_schedule_on_date(
+        $conn,
+        $engineerId,
+        $start,
+        $excludeInspectionId,
+        false
     );
-    if (!$stmt) {
-        throw new RuntimeException('Unable to check the Engineer schedule.');
-    }
-
-    $startValue = $start->format('Y-m-d H:i:s');
-    $endValue = $end->format('Y-m-d H:i:s');
-    $stmt->bind_param('iiss', $engineerId, $excludeInspectionId, $startValue, $endValue);
-    $stmt->execute();
-
-    $isBusy = (bool)$stmt->get_result()->fetch_assoc();
     echo json_encode(['success' => true, 'engineer_busy' => $isBusy]);
 } catch (Throwable $exception) {
     http_response_code(500);

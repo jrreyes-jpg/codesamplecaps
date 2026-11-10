@@ -467,12 +467,14 @@ $adminPageTitle = ($isEditMode ? 'Edit Quotation' : 'Create Quotation') . ' - Ed
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-2',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-5',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-6',
 ];
 
 include __DIR__ . '/../../../layout/header.php';

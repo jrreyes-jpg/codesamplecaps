@@ -34,6 +34,14 @@ document.addEventListener('DOMContentLoaded', function () {
     confirmButton.addEventListener('click', function () {
         confirmButton.disabled = true;
         confirmButton.textContent = 'Sending...';
+        form.setAttribute('aria-busy', 'true');
+        form.querySelectorAll('button').forEach(function (control) {
+            control.disabled = true;
+        });
+        window.edgeActionLoading?.show({
+            title: 'Sending quotation...',
+            message: 'Please wait. Do not close this page.',
+        });
         form.submit();
     });
 

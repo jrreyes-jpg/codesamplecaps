@@ -3598,6 +3598,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             saveLocalQuotationDraft(true);
             quotationSubmitAccepted = true;
+            if (isSendAction) {
+                form.setAttribute('aria-busy', 'true');
+                form.querySelectorAll('button').forEach(function (control) {
+                    control.disabled = true;
+                });
+                window.edgeActionLoading?.show({
+                    title: 'Sending quotation...',
+                    message: 'Please wait. Do not close this page.',
+                });
+            }
         });
 
         const leaveQuotationWithoutSaving = function (destination) {

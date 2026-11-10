@@ -32,6 +32,9 @@ $quotationId = (int)($_GET['id'] ?? 0);
 $quotation = $quotationId > 0 ? inquiry_quote_fetch_full($conn, $quotationId) : null;
 $items = $quotation ? inquiry_quote_fetch_items($conn, $quotationId) : [];
 $history = $quotation ? inquiry_quote_fetch_history($conn, $quotationId) : [];
+$visibleItems = array_values(array_filter($items, static function (array $item): bool {
+    return (float)($item['line_total'] ?? 0) > 0;
+}));
 $materialsNote = '';
 foreach ($items as $quotationItem) {
     if (inquiry_quote_normalize_item_type((string)($quotationItem['item_type'] ?? '')) === 'material'
@@ -53,6 +56,9 @@ $statusLabels = [
 $selectedStatus = $quotation
     ? inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'))
     : 'draft';
+$lastHistoryStatus = $history
+    ? inquiry_quote_normalize_status((string)($history[count($history) - 1]['to_status'] ?? 'draft'))
+    : '';
 $quotationNumber = trim((string)($quotation['quotation_no'] ?? ''));
 $quotationNumberLabel = $quotationNumber === '' || inquiry_quote_is_system_placeholder_number($quotationNumber)
     ? 'Quotation number not assigned'
@@ -61,11 +67,13 @@ $quotationNumberLabel = $quotationNumber === '' || inquiry_quote_is_system_place
 $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261103-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261103-2',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261110-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -125,8 +133,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <table>
                             <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Line Total</th></tr></thead>
                             <tbody>
-                            <?php if (!$items): ?><tr><td colspan="5">No quotation items.</td></tr><?php endif; ?>
-                            <?php foreach ($items as $item): ?>
+                            <?php if (!$visibleItems): ?><tr><td colspan="5">No charged quotation items.</td></tr><?php endif; ?>
+                            <?php foreach ($visibleItems as $item): ?>
                                 <tr>
                                     <td data-label="Item">
                                         <strong><?php echo admin_quote_details_e($item['item_name'] ?? 'Item'); ?></strong>
@@ -152,13 +160,20 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="admin-quotation-section">
                     <h2>Status History</h2>
                     <div class="admin-quotation-history">
-                        <?php if (!$history): ?><p>No status history yet.</p><?php endif; ?>
+                        <?php if (!$history && $selectedStatus === 'draft'): ?><p>No status history yet.</p><?php endif; ?>
                         <?php foreach ($history as $entry): ?>
+                            <?php $entry['status'] = $entry['to_status'] ?? 'draft'; ?>
                             <article>
                                 <span class="history-dot" aria-hidden="true"></span>
                                 <div><strong><?php echo admin_quote_details_e(inquiry_quote_status_label((string)($entry['status'] ?? 'draft'))); ?></strong><p><?php echo admin_quote_details_e($entry['full_name'] ?? 'System'); ?> · <?php echo admin_quote_details_e(admin_quote_details_date($entry['created_at'] ?? '')); ?></p></div>
                             </article>
                         <?php endforeach; ?>
+                        <?php if ($selectedStatus !== 'draft' && $lastHistoryStatus !== $selectedStatus): ?>
+                            <article>
+                                <span class="history-dot" aria-hidden="true"></span>
+                                <div><strong><?php echo admin_quote_details_e($statusLabels[$selectedStatus] ?? inquiry_quote_status_label($selectedStatus)); ?></strong><p>Current quotation status</p></div>
+                            </article>
+                        <?php endif; ?>
                     </div>
                 </div>
             </section>

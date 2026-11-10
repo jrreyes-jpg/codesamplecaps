@@ -32,3 +32,4 @@
 - Keep status colors consistent: green for success or completed, blue for active or in progress, yellow or orange for pending or warning, red for error or destructive action, and gray for neutral or inactive.
 - Use simple colored text for a small secondary status. Avoid a large colored badge when it is not needed.
 - Do not use color alone. Add clear text or an icon for success, warning, and error status.
+- Keep the system lightweight for capstone defense. Reuse shared loaders, avoid heavy blur, large shadows, long animations, duplicate scripts, and forced loading delays. Show loaders only during real server work.

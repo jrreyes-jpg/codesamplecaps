@@ -90,22 +90,26 @@ if ($assetId > 0) {
 $stmt->execute();
 $result = $stmt->get_result();
 $assets = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-$assetUnitCounters = [];
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print QR Codes - Edge Automation</title>
+    <title>Asset QR Codes - Edge Automation</title>
+    <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
     <link rel="stylesheet" href="/codesamplecaps/ADMIN/sidebar/assets/css/assets.css">
 </head>
 <body class="asset-print-body">
 <div class="asset-print-page">
     <div class="asset-print-header">
-        <h1>Print QR Codes</h1>
-        <button type="button" class="asset-print-button" data-print-asset-qrs>Print / Save as PDF</button>
+        <div class="asset-print-heading">
+            <a class="asset-print-back" href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">&larr; Back to Assets</a>
+            <h1>Asset QR Codes</h1>
+        </div>
+        <div class="asset-print-actions">
+            <button type="button" class="asset-print-button" data-print-asset-qrs>Print / Save as PDF</button>
+        </div>
     </div>
     <?php if (!$qrLibraryReady): ?>
         <div class="asset-print-warning">
@@ -120,16 +124,17 @@ $assetUnitCounters = [];
 
         <?php foreach ($assets as $asset): ?>
             <?php
-                $assetKey = (int)($asset['id'] ?? 0);
-                $assetUnitCounters[$assetKey] = ($assetUnitCounters[$assetKey] ?? 0) + 1;
-                $labelNumber = $assetUnitCounters[$assetKey];
-                $qrValue = !empty($asset['unit_qr_code_value'])
-                    ? (string)$asset['unit_qr_code_value']
-                    : (($asset['qr_code_value'] ?: buildAssetQrValue((int)$asset['id'], (string)($asset['serial_number'] ?? ''))));
+                $storedUnitQr = trim((string)($asset['unit_qr_code_value'] ?? ''));
+                if (!empty($asset['asset_unit_id']) && !empty($asset['unit_code'])) {
+                    $qrValue = $storedUnitQr !== '' && !str_starts_with($storedUnitQr, 'pending:')
+                        ? $storedUnitQr
+                        : build_asset_unit_qr_value((int)$asset['id'], (int)$asset['asset_unit_id'], (string)$asset['unit_code']);
+                } else {
+                    $qrValue = (string)($asset['qr_code_value'] ?: buildAssetQrValue((int)$asset['id'], (string)($asset['serial_number'] ?? '')));
+                }
                 $qrDataUri = $qrLibraryReady ? generateQRDataUri($qrValue) : '';
             ?>
             <div class="asset-print-card">
-                <span class="asset-print-label-number">Label #<?php echo $labelNumber; ?></span>
                 <div class="asset-print-qr">
                     <?php if ($qrLibraryReady): ?>
                         <img src="<?php echo $qrDataUri; ?>" alt="QR code" class="asset-print-qr__image">
@@ -137,12 +142,11 @@ $assetUnitCounters = [];
                         <div class="asset-print-qr__empty">QR unavailable</div>
                     <?php endif; ?>
                 </div>
-                <h3><?php echo htmlspecialchars($asset['asset_name']); ?> (ID <?php echo $asset['id']; ?>)</h3>
-                <p>Unit: <?php echo htmlspecialchars((string)($asset['unit_code'] ?? 'General asset QR')); ?></p>
-                <p>Type: <?php echo htmlspecialchars($asset['asset_type'] ?: 'Type not set'); ?></p>
-                <p>Serial: <?php echo htmlspecialchars($asset['serial_number'] ?: '-'); ?></p>
-                <p>Status: <?php echo htmlspecialchars((string)($asset['unit_status'] ?? $asset['asset_status'])); ?></p>
-                <p class="asset-print-scan-value">Scan value: <code><?php echo htmlspecialchars($qrValue); ?></code></p>
+                <h3><?php echo htmlspecialchars($asset['asset_name']); ?></h3>
+                <p class="asset-print-unit-code"><?php echo htmlspecialchars((string)($asset['unit_code'] ?? $asset['serial_number'] ?? 'Asset QR')); ?></p>
+                <?php if ($qrDataUri !== ''): ?>
+                    <a class="asset-qr-download" href="<?php echo htmlspecialchars($qrDataUri); ?>" download="<?php echo htmlspecialchars((string)($asset['unit_code'] ?? $asset['serial_number'] ?? ('asset-' . $asset['id']))); ?>.png">Download QR</a>
+                <?php endif; ?>
             </div>
         <?php endforeach; ?>
     </div>

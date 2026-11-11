@@ -20,69 +20,6 @@
         }
     };
 
-    var computeSmartMaxStock = function (quantityValue, minStockValue, categoryDefaultMax) {
-        var quantity = Math.max(0, Number(quantityValue || 0));
-        var minStock = Math.max(0, Number(minStockValue || 0));
-        var defaultMax = Number(categoryDefaultMax || 0);
-
-        if (defaultMax > 0) {
-            return Math.max(defaultMax, quantity, minStock);
-        }
-
-        var baseline = Math.max(quantity, minStock);
-        var buffer = Math.max(2, Math.ceil(baseline * 0.5));
-        return Math.max(1, baseline + buffer, minStock * 2);
-    };
-
-    var setupStockDefaults = function () {
-        var categoryField = document.getElementById('asset_category');
-        var minStockField = document.getElementById('min_stock');
-        var maxStockField = document.getElementById('max_stock');
-        var quantityField = document.getElementById('quantity');
-
-        if (!categoryField || !minStockField || !maxStockField || !quantityField) {
-            return;
-        }
-
-        var syncMaxStock = function () {
-            if (maxStockField.dataset.userEdited === 'true') {
-                return;
-            }
-
-            var selectedOption = categoryField.options[categoryField.selectedIndex];
-            maxStockField.value = String(
-                computeSmartMaxStock(
-                    quantityField.value,
-                    minStockField.value,
-                    selectedOption?.getAttribute('data-default-max-stock')
-                )
-            );
-        };
-
-        var syncThresholdsFromCategory = function () {
-            var selectedOption = categoryField.options[categoryField.selectedIndex];
-            if (!selectedOption) {
-                return;
-            }
-
-            var recommendedMinStock = selectedOption.getAttribute('data-default-min-stock');
-            if (recommendedMinStock !== null) {
-                minStockField.value = recommendedMinStock;
-            }
-
-            syncMaxStock();
-        };
-
-        categoryField.addEventListener('change', syncThresholdsFromCategory);
-        minStockField.addEventListener('input', syncMaxStock);
-        quantityField.addEventListener('input', syncMaxStock);
-        maxStockField.addEventListener('input', function () {
-            maxStockField.dataset.userEdited = 'true';
-        });
-
-        syncThresholdsFromCategory();
-    };
-
     var setupAssetFilters = function () {
         var filterTabs = Array.from(document.querySelectorAll('.asset-filter-tab'));
         var assetRows = Array.from(document.querySelectorAll('.asset-table-row'));
@@ -100,9 +37,9 @@
         var applyAssetFilter = function () {
             var query = String(searchInput?.value || '').trim().toLowerCase();
             var matchingRows = assetRows.filter(function (row) {
-                var rowStatus = row.getAttribute('data-asset-status') || 'available';
+                var rowStatuses = (row.getAttribute('data-asset-status') || '').split(/\s+/).filter(Boolean);
                 var searchText = row.getAttribute('data-asset-search-text') || '';
-                return (activeFilter === 'all' || rowStatus === activeFilter) && (query === '' || searchText.indexOf(query) !== -1);
+                return (activeFilter === 'all' || rowStatuses.indexOf(activeFilter) !== -1) && (query === '' || searchText.indexOf(query) !== -1);
             });
             var totalPages = Math.max(1, Math.ceil(matchingRows.length / pageSize));
             activePage = Math.min(activePage, totalPages);
@@ -183,8 +120,6 @@
         if (!form) return;
 
         var nameField = form.querySelector('#asset_name');
-        var minStockField = form.querySelector('#min_stock');
-        var maxStockField = form.querySelector('#max_stock');
         var quantityField = form.querySelector('#quantity');
         var submitButton = form.querySelector('[data-add-asset-submit]');
         var submitting = false;
@@ -213,33 +148,21 @@
             return showError(nameField, hasLetter ? '' : 'Enter a valid asset name.');
         };
 
-        var validateStocks = function () {
-            var minValue = String(minStockField?.value || '').trim();
-            var maxValue = String(maxStockField?.value || '').trim();
-            var quantity = Number(quantityField?.value || 1);
-            var minValid = minValue === '' || /^\d+$/.test(minValue);
-            var maxValid = /^\d+$/.test(maxValue) && Number(maxValue) >= 1;
-
-            showError(minStockField, minValid ? '' : 'Enter a whole number of 0 or more.');
-            if (!maxValid) {
-                return showError(maxStockField, 'Enter a whole number of 1 or more.');
+        var validateQuantity = function () {
+            var value = String(quantityField?.value || '').trim();
+            if (!/^\d+$/.test(value)) {
+                return showError(quantityField, 'Enter a whole number from 1 to 100.');
             }
-            if (minValue !== '' && Number(maxValue) < Number(minValue)) {
-                return showError(maxStockField, 'Max stock must not be lower than min stock.');
-            }
-            if (Number(maxValue) < quantity) {
-                return showError(maxStockField, 'Max stock must cover the starting quantity.');
-            }
-            return minValid && showError(maxStockField, '');
+            var quantity = Number(value);
+            return showError(quantityField, quantity >= 1 && quantity <= 100 ? '' : 'Quantity must be from 1 to 100.');
         };
 
         nameField?.addEventListener('blur', validateName);
-        minStockField?.addEventListener('blur', validateStocks);
-        maxStockField?.addEventListener('blur', validateStocks);
-        [nameField, minStockField, maxStockField].forEach(function (field) {
+        quantityField?.addEventListener('blur', validateQuantity);
+        [nameField, quantityField].forEach(function (field) {
             field?.addEventListener('input', function () {
                 if (field.classList.contains('is-invalid')) {
-                    field === nameField ? validateName() : validateStocks();
+                    field === nameField ? validateName() : validateQuantity();
                 }
             });
         });
@@ -251,8 +174,8 @@
             }
 
             var nameValid = validateName();
-            var stocksValid = validateStocks();
-            if (!nameValid || !stocksValid) {
+            var quantityValid = validateQuantity();
+            if (!nameValid || !quantityValid) {
                 event.preventDefault();
                 form.querySelector('.is-invalid')?.focus();
                 return;
@@ -263,8 +186,51 @@
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.classList.add('is-loading');
-                submitButton.textContent = 'Creating Asset & QR...';
+                submitButton.textContent = 'Saving Asset...';
             }
+        });
+    };
+
+    var setupAssetDetailsModal = function () {
+        var modal = document.querySelector('[data-asset-details-modal]');
+        if (!modal) return;
+        var previousFocus = null;
+
+        var setText = function (selector, value, fallback) {
+            var target = modal.querySelector(selector);
+            if (target) target.textContent = String(value || fallback);
+        };
+        var closeModal = function () {
+            modal.hidden = true;
+            document.body.classList.remove('asset-modal-open');
+            previousFocus?.focus();
+        };
+
+        document.querySelectorAll('[data-asset-details-open]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                previousFocus = button;
+                setText('[data-asset-details-name]', button.dataset.assetName, 'Asset Details');
+                setText('[data-asset-details-code]', button.dataset.assetCode, 'Not set');
+                setText('[data-asset-details-category]', button.dataset.assetCategory, 'Uncategorized');
+                setText('[data-asset-details-type]', button.dataset.assetType, 'Not provided');
+                setText('[data-asset-details-description]', button.dataset.assetDescription, 'Not provided');
+                setText('[data-asset-details-unit-codes]', button.dataset.assetUnitCodes, 'None');
+                var qrLink = modal.querySelector('[data-asset-details-qr]');
+                if (qrLink) qrLink.href = button.dataset.assetQrUrl || '#';
+                modal.hidden = false;
+                document.body.classList.add('asset-modal-open');
+                modal.querySelector('[data-asset-details-close]')?.focus();
+            });
+        });
+
+        modal.querySelectorAll('[data-asset-details-close]').forEach(function (button) {
+            button.addEventListener('click', closeModal);
+        });
+        modal.querySelector('.asset-create-modal__panel')?.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) closeModal();
         });
     };
 
@@ -466,9 +432,9 @@
     };
 
     document.addEventListener('DOMContentLoaded', function () {
-        setupStockDefaults();
         setupAddAssetForm();
         setupAddAssetModal();
+        setupAssetDetailsModal();
         setupAssetStockModal();
         setupAssetFilters();
         setupAssetActions();

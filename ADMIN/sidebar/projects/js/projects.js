@@ -1534,6 +1534,7 @@ function initWalkInInquiryPanel() {
     let emailEdited = false;
     let contactEdited = false;
     let emailIsVerified = false;
+    let emailOtpWasSent = false;
     let contactCanVerifyEmail = false;
     let historyGuardReady = false;
     let ignoreNextPopstate = false;
@@ -1887,6 +1888,9 @@ function initWalkInInquiryPanel() {
         if (!sendOtpButton) return;
         const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailAddress?.value || '').trim());
         sendOtpButton.disabled = Date.now() < otpLockedUntil || (!emailIsVerified && !hasValidEmail);
+        sendOtpButton.textContent = emailIsVerified
+            ? 'Change Email'
+            : (emailOtpWasSent ? 'Enter Verification Code' : 'Send Verification Code');
     }
 
     function setEmailVerified(verified, statusMessage = '') {
@@ -1898,11 +1902,10 @@ function initWalkInInquiryPanel() {
             else emailAddress.classList.remove('is-valid-live');
         }
         if (emailStatus) {
-            emailStatus.textContent = statusMessage || (verified ? 'Email verified' : 'Email not verified');
+            emailStatus.textContent = statusMessage || (verified ? '✓ Email Verified' : 'Email not verified');
             emailStatus.classList.toggle('is-verified', verified);
         }
         if (sendOtpButton) {
-            sendOtpButton.textContent = verified ? 'Change Email' : 'Verify Email';
             syncVerifyEmailButton();
         }
     }
@@ -1918,6 +1921,7 @@ function initWalkInInquiryPanel() {
             // Lilinisin din ito kapag nag-expire ang session.
         });
         contactCanVerifyEmail = false;
+        emailOtpWasSent = false;
         setEmailVerified(false);
         resetValidation(emailAddress, emailError);
         emailAddress?.focus({ preventScroll: true });
@@ -2018,7 +2022,7 @@ function initWalkInInquiryPanel() {
             }
             window.clearInterval(otpLockClock);
             validateEmail();
-            if (sendOtpButton) sendOtpButton.textContent = 'Verify Email';
+            emailOtpWasSent = false;
             syncVerifyEmailButton();
             if (otpResendButton) {
                 otpResendButton.disabled = false;
@@ -2101,6 +2105,7 @@ function initWalkInInquiryPanel() {
                 return;
             }
             if (otpEmail) otpEmail.textContent = emailAddress.value.trim();
+            emailOtpWasSent = true;
             startOtpClock(result.expires_in, Number(result.resend_after) || 60);
             showOtpEntry();
         } catch (error) {
@@ -2143,6 +2148,7 @@ function initWalkInInquiryPanel() {
                 otpError.classList.add('is-success');
             }
             if (otpCode) otpCode.value = '';
+            emailOtpWasSent = true;
             startOtpClock(result.expires_in, Number(result.resend_after) || 60);
         } catch (error) {
             showOtpEntry();
@@ -2617,6 +2623,11 @@ function initWalkInInquiryPanel() {
         emailEdited = false;
         contactEdited = false;
         contactCanVerifyEmail = false;
+        emailOtpWasSent = false;
+        otpExpiresAt = 0;
+        otpResendAt = 0;
+        window.clearInterval(otpClock);
+        otpClock = null;
         setEmailVerified(false);
         clientName?.focus({ preventScroll: true });
     }
@@ -2746,6 +2757,9 @@ function initWalkInInquiryPanel() {
     emailAddress?.addEventListener('input', function () {
         emailEdited = true;
         contactCanVerifyEmail = false;
+        emailOtpWasSent = false;
+        otpExpiresAt = 0;
+        otpResendAt = 0;
         setEmailVerified(false);
         resetValidation(emailAddress, emailError);
         syncVerifyEmailButton();
@@ -2754,6 +2768,13 @@ function initWalkInInquiryPanel() {
     sendOtpButton?.addEventListener('click', function () {
         if (emailIsVerified) {
             unlockVerifiedEmail();
+            return;
+        }
+
+        if (emailOtpWasSent) {
+            openOtpModal(false);
+            updateOtpClock();
+            showOtpEntry();
             return;
         }
 

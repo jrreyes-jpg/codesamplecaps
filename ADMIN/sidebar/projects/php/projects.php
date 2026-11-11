@@ -1600,7 +1600,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             clear_projects_old_input();
             if ($projectSource === 'inquiry_quotation') {
-                set_projects_flash('success', 'Project created and linked to the accepted quotation.');
+                $clientNotificationSent = false;
+                $activationEmailSent = null;
+                try {
+                    $clientAccount = inquiry_quote_prepare_client_account($conn, $quotationDraftId, $createdBy, true);
+                    $activationEmailSent = $clientAccount['activation_email_sent'] ?? null;
+                    $emailService = new EmailService();
+                    $clientNotificationSent = $emailService->sendProjectCreatedClientNotification(
+                        (string)$projectEmail,
+                        (string)$contactPerson,
+                        (string)$projectCode,
+                        (string)$projectName,
+                        (string)$poNumber,
+                        (string)$projectStartDate
+                    );
+                } catch (Throwable $emailException) {
+                    error_log('Project client notification failed: ' . $emailException->getMessage());
+                }
+
+                if ($activationEmailSent === true) {
+                    project_history_add($conn, $projectId, $createdBy, 'Client Account Invited', 'Client activation email was sent after project creation.', null, null, 'inquiry_quotation', $quotationDraftId);
+                }
+                if ($clientNotificationSent) {
+                    project_history_add($conn, $projectId, $createdBy, 'Client Notified', 'Project details email was sent to the Client.', null, null, 'inquiry_quotation', $quotationDraftId);
+                }
+
+                set_projects_flash(
+                    $clientNotificationSent || $activationEmailSent === true ? 'success' : 'warning',
+                    $clientNotificationSent || $activationEmailSent === true
+                        ? 'Project created. Client notification was sent.'
+                        : 'Project created, but the Client email was not sent. Check SMTP settings.'
+                );
                 header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=' . $projectId);
                 exit;
             } elseif ($status === 'ongoing' && ($budgetAmount ?? 0) <= 0) {

@@ -1391,7 +1391,7 @@ function inquiry_quote_link_client_account(mysqli $conn, int $draftId, int $clie
     }
 }
 
-function inquiry_quote_prepare_client_account(mysqli $conn, int $draftId, int $adminId): array
+function inquiry_quote_prepare_client_account(mysqli $conn, int $draftId, int $adminId, bool $sendActivationEmail = true): array
 {
     $quotation = inquiry_quote_fetch_full($conn, $draftId);
     if (!$quotation) {
@@ -1403,7 +1403,8 @@ function inquiry_quote_prepare_client_account(mysqli $conn, int $draftId, int $a
         trim((string)($quotation['client_name'] ?? '')),
         trim((string)($quotation['email'] ?? '')),
         trim((string)($quotation['contact_no'] ?? '')),
-        $adminId
+        $adminId,
+        $sendActivationEmail
     );
     if (empty($result['success'])) {
         throw new RuntimeException((string)($result['error'] ?? 'Unable to prepare the Client account.'));

@@ -384,7 +384,7 @@ class AuthService {
     /**
      * Link an existing Client or create one pending password activation.
      */
-    public function linkOrInviteClient(string $fullName, string $email, string $phone, int $createdBy): array {
+    public function linkOrInviteClient(string $fullName, string $email, string $phone, int $createdBy, bool $sendActivationEmail = true): array {
         $fullName = trim($fullName);
         $email = strtolower(trim($email));
         $phone = trim($phone);
@@ -436,9 +436,12 @@ class AuthService {
             return ['success' => false, 'error' => 'Unable to prepare the Client activation link.'];
         }
 
-        $emailSent = $this->emailService->sendAccountActivation($email, $fullName, $token, $expiryMinutes);
-        if (!$emailSent) {
-            error_log('Client activation email failed: ' . $this->emailService->getError());
+        $emailSent = null;
+        if ($sendActivationEmail) {
+            $emailSent = $this->emailService->sendAccountActivation($email, $fullName, $token, $expiryMinutes);
+            if (!$emailSent) {
+                error_log('Client activation email failed: ' . $this->emailService->getError());
+            }
         }
 
         return [

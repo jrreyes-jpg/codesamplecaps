@@ -191,6 +191,58 @@ class EmailService {
         }
     }
 
+    /**
+     * Send the final project notice after Admin saves the project.
+     */
+    public function sendProjectCreatedClientNotification(
+        string $recipientEmail,
+        string $recipientName,
+        string $projectCode,
+        string $projectName,
+        string $poNumber,
+        string $startDate
+    ): bool {
+        try {
+            if ($this->error !== '') {
+                return false;
+            }
+
+            $safeName = htmlspecialchars($recipientName !== '' ? $recipientName : 'Client', ENT_QUOTES, 'UTF-8');
+            $safeCode = htmlspecialchars($projectCode, ENT_QUOTES, 'UTF-8');
+            $safeProject = htmlspecialchars($projectName, ENT_QUOTES, 'UTF-8');
+            $safePo = htmlspecialchars($poNumber, ENT_QUOTES, 'UTF-8');
+            $safeStart = htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8');
+
+            $this->mailer->clearAddresses();
+            $this->mailer->clearAttachments();
+            $this->mailer->addAddress($recipientEmail);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Project Created - ' . $this->config->get('APP_NAME');
+            $this->mailer->Body = "
+                <div style='font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8fafc'>
+                    <div style='background:#166534;color:#fff;padding:18px;border-radius:12px 12px 0 0'>
+                        <h2 style='margin:0'>Project Created</h2>
+                    </div>
+                    <div style='background:#fff;padding:24px;border-radius:0 0 12px 12px'>
+                        <p>Hello {$safeName},</p>
+                        <p>Your accepted quotation is now a project.</p>
+                        <p><strong>Project:</strong> {$safeProject}</p>
+                        <p><strong>Project Code:</strong> {$safeCode}</p>
+                        <p><strong>P.O. Number:</strong> {$safePo}</p>
+                        <p><strong>Planned Start:</strong> {$safeStart}</p>
+                        <p>We will share updates as the work moves forward.</p>
+                    </div>
+                </div>";
+            $this->mailer->AltBody = "Hello {$recipientName},\n\nYour accepted quotation is now a project.\nProject: {$projectName}\nProject Code: {$projectCode}\nP.O. Number: {$poNumber}\nPlanned Start: {$startDate}";
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Project created client notification failed: ' . $e->getMessage());
+            $this->error = 'Email service cannot send right now. Check SMTP username and Gmail app password.';
+            return false;
+        }
+    }
+
     public function sendInquiryOtp(string $recipientEmail, string $recipientName, string $otp, DateTimeInterface $expiresAt): bool {
         try {
             if ($this->error !== '') {

@@ -15,7 +15,7 @@ $message = '';
 $error = '';
 $ajaxErrorStatus = 422;
 $allowedStatuses = ['Pending Review', 'Needs Information', 'For Inspection', 'Verified Lead', 'Not Qualified'];
-$inquiryFilterStatuses = ['Pending Review', 'Needs Information', 'For Inspection', 'Rejected', 'Converted to Project'];
+$inquiryFilterStatuses = ['Pending Review', 'Needs Information', 'For Inspection', 'Inspection Submitted', 'Rejected', 'Converted to Project'];
 
 function inquiry_center_csrf_token(): string
 {
@@ -130,6 +130,15 @@ function inquiry_center_filter_url(array $params = []): string
 {
     $query = http_build_query(array_filter($params, static fn($value): bool => $value !== '' && $value !== null));
     return '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . ($query !== '' ? '?' . $query : '');
+}
+
+function inquiry_center_latest_inspection_status_sql(): string
+{
+    return "(SELECT latest_inspection.status
+             FROM site_inspections latest_inspection
+             WHERE latest_inspection.inquiry_id = service_inquiries.id
+             ORDER BY latest_inspection.scheduled_at DESC, latest_inspection.id DESC
+             LIMIT 1)";
 }
 
 function inquiry_center_allowed_next_statuses(string $currentStatus): array
@@ -484,16 +493,18 @@ function inquiry_center_quotation_filter_counts(mysqli $conn, array $scopeWhere,
 
 function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere, string $searchTypes, array $searchParams): array
 {
-    $counts = array_fill_keys(['all', 'pending_review', 'needs_information', 'qualified', 'for_inspection', 'not_qualified', 'archived'], 0);
-    $sql = 'SELECT
+    $counts = array_fill_keys(['all', 'pending_review', 'needs_information', 'qualified', 'for_inspection', 'inspection_submitted', 'not_qualified', 'archived'], 0);
+    $latestInspectionStatus = inquiry_center_latest_inspection_status_sql();
+    $sql = "SELECT
                 COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS all_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status IN (\'Pending Review\', \'Verified Lead\', \'Not Qualified\') THEN 1 END) AS pending_review_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status = \'Needs Information\' THEN 1 END) AS needs_information_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status = \'Verified Lead\' THEN 1 END) AS qualified_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status = \'For Inspection\' THEN 1 END) AS for_inspection_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status = \'Not Qualified\' THEN 1 END) AS not_qualified_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status IN ('Pending Review', 'Verified Lead', 'Not Qualified') THEN 1 END) AS pending_review_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = 'Needs Information' THEN 1 END) AS needs_information_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = 'Verified Lead' THEN 1 END) AS qualified_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = 'For Inspection' AND COALESCE({$latestInspectionStatus}, '') <> 'Submitted' THEN 1 END) AS for_inspection_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = 'For Inspection' AND {$latestInspectionStatus} = 'Submitted' THEN 1 END) AS inspection_submitted_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = 'Not Qualified' THEN 1 END) AS not_qualified_count,
                 COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS archived_count
-            FROM service_inquiries';
+            FROM service_inquiries";
 
     if ($searchWhere !== []) {
         $sql .= ' WHERE ' . implode(' AND ', $searchWhere);
@@ -517,6 +528,7 @@ function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere
         'needs_information' => (int)($row['needs_information_count'] ?? 0),
         'qualified' => (int)($row['qualified_count'] ?? 0),
         'for_inspection' => (int)($row['for_inspection_count'] ?? 0),
+        'inspection_submitted' => (int)($row['inspection_submitted_count'] ?? 0),
         'not_qualified' => (int)($row['not_qualified_count'] ?? 0),
         'archived' => (int)($row['archived_count'] ?? 0),
     ];
@@ -1213,11 +1225,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $clientAccount = inquiry_quote_prepare_client_account(
                     $conn,
                     $draftId,
-                    (int)($_SESSION['user_id'] ?? 0)
+                    (int)($_SESSION['user_id'] ?? 0),
+                    false
                 );
                 $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
-                $clientWasInvited = in_array((string)($clientAccount['state'] ?? ''), ['pending_created', 'pending_resend'], true);
-                $activationEmailSent = $clientAccount['activation_email_sent'] ?? null;
                 $engineerId = (int)($quotation['engineer_id'] ?? 0);
                 $locationArea = implode(' / ', array_filter([
                     trim((string)($quotation['province'] ?? '')),
@@ -1247,12 +1258,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'focus_field' => 'engineer_ids',
                 ];
                 $_SESSION['projects_flash'] = [
-                    'type' => $clientWasInvited && $activationEmailSent === false ? 'warning' : 'success',
-                    'message' => $clientWasInvited
-                        ? ($activationEmailSent === false
-                            ? 'Client account was linked, but the activation email was not sent. Open Project Setup again to resend it.'
-                            : 'Client account was linked and the activation email was sent. Review the project team.')
-                        : 'Client account was linked. Review the accepted quotation details and project team.',
+                    'type' => 'success',
+                    'message' => 'Review the P.O. details, schedule, and project team. The Client will be notified after the project is created.',
                 ];
                 header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/create_project.php');
                 exit;
@@ -2149,7 +2156,7 @@ $hasInquirySource = inquiry_quote_column_exists($conn, 'service_inquiries', 'inq
 $hasEstimatedBudget = inquiry_budget_column_exists($conn);
 $inquiryRows = [];
 $quotationFilterCounts = array_fill_keys($quotationFilterOptions, 0);
-$lifecycleFilterCounts = array_fill_keys(['all', 'pending_review', 'qualified', 'for_inspection', 'not_qualified', 'archived'], 0);
+$lifecycleFilterCounts = array_fill_keys(['all', 'pending_review', 'needs_information', 'qualified', 'for_inspection', 'inspection_submitted', 'not_qualified', 'archived'], 0);
 if (inquiry_center_has_table($conn, 'service_inquiries')) {
     $where = [];
     $types = '';
@@ -2194,9 +2201,22 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
             WHERE quote_filter.inquiry_id = service_inquiries.id
             AND quote_filter.project_id IS NOT NULL
         )';
+    } elseif ($statusFilter === 'Inspection Submitted') {
+        $where[] = "status = 'For Inspection'";
+        $where[] = inquiry_center_latest_inspection_status_sql() . " = 'Submitted'";
+        if ($hasQuotationProjectLink) {
+            $where[] = 'NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts quote_filter
+                WHERE quote_filter.inquiry_id = service_inquiries.id
+                AND quote_filter.project_id IS NOT NULL
+            )';
+        }
     } elseif ($statusFilter !== '') {
         if ($statusFilter === 'Pending Review') {
             $where[] = "status IN ('Pending Review', 'Verified Lead', 'Not Qualified')";
+        } elseif ($statusFilter === 'For Inspection') {
+            $where[] = "status = 'For Inspection'";
+            $where[] = 'COALESCE(' . inquiry_center_latest_inspection_status_sql() . ", '') <> 'Submitted'";
         } else {
             $where[] = 'status = ?';
             $types .= 's';
@@ -2619,8 +2639,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <span>All</span>
                 <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:all"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
             </a>
-            <?php foreach (['Pending Review', 'Needs Information', 'For Inspection'] as $status): ?>
-                <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Needs Information' => 'needs_information', 'For Inspection' => 'for_inspection' }; ?>
+            <?php foreach (['Pending Review', 'Needs Information', 'For Inspection', 'Inspection Submitted'] as $status): ?>
+                <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Needs Information' => 'needs_information', 'For Inspection' => 'for_inspection', 'Inspection Submitted' => 'inspection_submitted' }; ?>
                 <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
                     <span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span>
                     <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:<?php echo htmlspecialchars($lifecycleCountKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>

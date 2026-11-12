@@ -434,6 +434,10 @@ function initCreateProjectForm() {
     }
 
     createProjectForm.addEventListener('submit', function (event) {
+        if (event.submitter?.value === 'draft') {
+            return;
+        }
+
         const firstInvalidField = createProjectForm.querySelector(':invalid');
 
         if (firstInvalidField && typeof firstInvalidField.focus === 'function') {
@@ -845,6 +849,11 @@ function initProjectAdditionalInfoRows() {
 function initCreateProjectDraft() {
     const createProjectForm = document.getElementById('create-project-form');
     const clearButton = document.getElementById('create-project-clear-details');
+    const confirmModal = document.querySelector('[data-project-draft-confirm]');
+    const confirmTitle = confirmModal?.querySelector('[data-project-draft-confirm-title]');
+    const confirmMessage = confirmModal?.querySelector('[data-project-draft-confirm-message]');
+    const confirmAccept = confirmModal?.querySelector('[data-project-draft-confirm-accept]');
+    const confirmCancel = confirmModal?.querySelector('[data-project-draft-confirm-cancel]');
     const hasServerDraft = createProjectForm?.dataset.hasServerDraft === 'true';
     const shouldClearStoredDraft = createProjectForm?.dataset.shouldClearStoredDraft === 'true';
     const blankAdditionalInfo = JSON.parse(createProjectForm?.dataset.blankAdditionalInfo || '{}');
@@ -867,10 +876,20 @@ function initCreateProjectDraft() {
         project_address: '',
         additional_info: [blankAdditionalInfo],
     };
-    const draftStorageKey = 'codesamplecaps.superadmin.projects.createProjectDraft.v1';
 
     if (!createProjectForm) {
         return;
+    }
+
+    const quotationId = String(createProjectForm.elements.namedItem('quotation_draft_id')?.value || 'new');
+    const sourceInquiryId = String(createProjectForm.elements.namedItem('source_inquiry_id')?.value || 'none');
+    const draftStorageKey = 'codesamplecaps.admin.projects.createProjectDraft.v2.' + quotationId + '.' + sourceInquiryId;
+    let pendingConfirmAction = null;
+    let isSubmitting = false;
+    let pauseDraftSave = false;
+
+    if (confirmModal && confirmModal.parentElement !== document.body) {
+        document.body.appendChild(confirmModal);
     }
 
     function buildEngineerChip(engineerId, engineerName) {
@@ -966,7 +985,14 @@ function initCreateProjectDraft() {
         };
     }
 
+    const initialDraft = collectDraft();
+
+    function hasDraftChanges() {
+        return JSON.stringify(collectDraft()) !== JSON.stringify(initialDraft);
+    }
+
     function saveDraft() {
+        if (pauseDraftSave) return;
         try {
             window.localStorage.setItem(draftStorageKey, JSON.stringify(collectDraft()));
         } catch (error) {
@@ -1020,6 +1046,27 @@ function initCreateProjectDraft() {
         }
     }
 
+    function hideConfirm() {
+        confirmModal?.classList.remove('is-open');
+        confirmModal?.setAttribute('aria-hidden', 'true');
+        pendingConfirmAction = null;
+    }
+
+    function showConfirm(options, action) {
+        if (!confirmModal) {
+            action();
+            return;
+        }
+        pendingConfirmAction = action;
+        if (confirmTitle) confirmTitle.textContent = options.title;
+        if (confirmMessage) confirmMessage.textContent = options.message;
+        if (confirmAccept) confirmAccept.textContent = options.accept;
+        if (confirmCancel) confirmCancel.textContent = options.cancel;
+        confirmModal.classList.add('is-open');
+        confirmModal.setAttribute('aria-hidden', 'false');
+        confirmCancel?.focus({ preventScroll: true });
+    }
+
     if (shouldClearStoredDraft) {
         clearStoredDraft();
     } else if (!hasServerDraft) {
@@ -1037,24 +1084,64 @@ function initCreateProjectDraft() {
 
     if (clearButton) {
         clearButton.addEventListener('click', function () {
-            if (!window.confirm('Clear all saved project details?')) {
-                return;
-            }
-
-            applyDraft(defaultDraft);
-            createProjectForm.querySelectorAll('.is-invalid-live').forEach(function (field) {
-                field.classList.remove('is-invalid-live');
-                field.setCustomValidity('');
+            if (!hasDraftChanges()) return;
+            showConfirm({
+                title: 'Clear entered details?',
+                message: 'Your changes will be removed. Quotation details will stay.',
+                accept: 'Clear Details',
+                cancel: 'Keep Editing',
+            }, function () {
+                pauseDraftSave = true;
+                applyDraft(initialDraft);
+                createProjectForm.querySelectorAll('.is-invalid-live').forEach(function (field) {
+                    field.classList.remove('is-invalid-live');
+                    field.setCustomValidity('');
+                });
+                clearStoredDraft();
+                window.setTimeout(function () {
+                    pauseDraftSave = false;
+                }, 0);
             });
-
-            const currencyInput = createProjectForm.querySelector('[data-currency-input="php"]');
-            if (currencyInput) {
-                currencyInput.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-
-            clearStoredDraft();
         });
     }
+
+    confirmCancel?.addEventListener('click', hideConfirm);
+    confirmAccept?.addEventListener('click', function () {
+        const action = pendingConfirmAction;
+        hideConfirm();
+        if (typeof action === 'function') action();
+    });
+
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest('a[href]');
+        if (!link || isSubmitting || !hasDraftChanges()) return;
+        if (link.target === '_blank' || link.hasAttribute('download')) return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        saveDraft();
+        showConfirm({
+            title: 'Leave and keep draft?',
+            message: 'Your entries will stay in this browser until you create or clear the project.',
+            accept: 'Leave & Keep Draft',
+            cancel: 'Continue Editing',
+        }, function () {
+            isSubmitting = true;
+            window.location.href = link.href;
+        });
+    }, true);
+
+    createProjectForm.addEventListener('formdata', function () {
+        isSubmitting = true;
+        clearStoredDraft();
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+        if (isSubmitting || !hasDraftChanges()) return;
+        saveDraft();
+        event.preventDefault();
+        event.returnValue = '';
+    });
 }
 
 function initCurrencyInputs() {
@@ -1265,6 +1352,11 @@ function initEngineerAssignmentPicker() {
     });
 
     createProjectForm.addEventListener('submit', function (event) {
+        if (event.submitter?.value === 'draft') {
+            engineerSelect.setCustomValidity('');
+            return;
+        }
+
         syncValidation();
 
         if (getSelectedEngineerIds().length === 0) {
@@ -1441,28 +1533,7 @@ function initCreateProjectPanel() {
 }
 
 function initCreateProjectPageBack() {
-    document.querySelectorAll('[data-project-create-back]').forEach(function (link) {
-        link.addEventListener('click', function (event) {
-            if (!document.referrer) {
-                return;
-            }
-
-            var previousUrl;
-            try {
-                previousUrl = new URL(document.referrer);
-            } catch (error) {
-                return;
-            }
-
-            if (previousUrl.origin !== window.location.origin
-                || previousUrl.pathname.endsWith('/ADMIN/sidebar/projects/php/create_project.php')) {
-                return;
-            }
-
-            event.preventDefault();
-            window.history.back();
-        });
-    });
+    // Gamitin ang safe na page link para hindi mapunta sa login ang Back.
 }
 
 function initWalkInInquiryPanel() {

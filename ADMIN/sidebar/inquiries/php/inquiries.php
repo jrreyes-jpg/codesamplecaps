@@ -1226,46 +1226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     inquiry_center_redirect_with_project((int)$quotation['project_id'], 'Project was already created from this quotation.');
                 }
 
-                $clientAccount = inquiry_quote_prepare_client_account(
-                    $conn,
-                    $draftId,
-                    (int)($_SESSION['user_id'] ?? 0),
-                    false
-                );
-                $recipient = inquiry_quote_resolve_recipient($conn, $draftId);
-                $engineerId = (int)($quotation['engineer_id'] ?? 0);
-                $locationArea = implode(' / ', array_filter([
-                    trim((string)($quotation['province'] ?? '')),
-                    trim((string)($quotation['city_municipality'] ?? '')),
-                    trim((string)($quotation['barangay'] ?? '')),
-                ], static fn(string $value): bool => $value !== ''));
-                $_SESSION['projects_old_input'] = [
-                    'project_name' => inquiry_quote_unique_project_title($conn, $quotation),
-                    'description' => trim((string)($quotation['engineer_findings'] ?: $quotation['description'] ?? '')),
-                    'contact_person' => trim((string)($quotation['client_name'] ?? '')),
-                    'contact_number' => trim((string)($quotation['contact_no'] ?? '')),
-                    'project_site' => $locationArea,
-                    'project_address' => trim((string)($quotation['site_address'] ?? '')),
-                    'project_email' => trim((string)($quotation['email'] ?? '')),
-                    'project_source' => 'inquiry_quotation',
-                    'quotation_draft_id' => (string)$draftId,
-                    'source_inquiry_id' => (string)$inquiryId,
-                    'client_id' => !empty($recipient['client_id']) ? (string)$recipient['client_id'] : '',
-                    'engineer_ids' => $engineerId > 0 ? [(string)$engineerId] : [],
-                    'status' => 'pending',
-                    'po_date' => '',
-                    'project_start_date' => date('Y-m-d'),
-                    'estimated_completion_date' => date('Y-m-d', strtotime('+7 days')),
-                    'estimated_duration_days' => '7',
-                    'budget_amount' => number_format((float)($quotation['grand_total'] ?? 0), 2, '.', ''),
-                    'budget_notes' => '',
-                    'focus_field' => 'engineer_ids',
-                ];
-                $_SESSION['projects_flash'] = [
-                    'type' => 'success',
-                    'message' => 'Review the P.O. details, schedule, and project team. The Client will be notified after the project is created.',
-                ];
-                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/create_project.php');
+                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/create_project.php?quotation_id=' . $draftId);
                 exit;
             } catch (Throwable $throwable) {
                 $error = $throwable->getMessage();
@@ -2581,7 +2542,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-5',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];

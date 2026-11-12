@@ -2,6 +2,7 @@
 // Centralized header ng lahat ng Admin pages.
 $adminPageTitle = $adminPageTitle ?? 'Admin Dashboard - Edge Automation';
 $adminCssFiles = $adminCssFiles ?? [];
+$adminBodyClass = trim((string)($adminBodyClass ?? ''));
 
 if (!is_array($adminCssFiles)) {
     $adminCssFiles = [];
@@ -57,6 +58,6 @@ $allAdminCssFiles = array_values(
     >
 </head>
 
-<body>
+<body<?php echo $adminBodyClass !== '' ? ' class="' . htmlspecialchars($adminBodyClass, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
     <?php auth_render_flash_toast(); ?>
     <div class="container">

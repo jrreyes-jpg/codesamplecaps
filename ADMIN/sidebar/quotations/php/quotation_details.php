@@ -57,6 +57,15 @@ $selectedStatus = $quotation
     ? inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'))
     : 'draft';
 $projectId = (int)($quotation['project_id'] ?? 0);
+$projectStatus = '';
+if ($projectId > 0) {
+    $projectStatusStmt = $conn->prepare('SELECT status FROM projects WHERE id = ? AND deleted_at IS NULL LIMIT 1');
+    if ($projectStatusStmt) {
+        $projectStatusStmt->bind_param('i', $projectId);
+        $projectStatusStmt->execute();
+        $projectStatus = strtolower(trim((string)(($projectStatusStmt->get_result()->fetch_assoc() ?: [])['status'] ?? '')));
+    }
+}
 $lastHistoryStatus = $history
     ? inquiry_quote_normalize_status((string)($history[count($history) - 1]['to_status'] ?? 'draft'))
     : '';
@@ -196,7 +205,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <button type="submit" class="button-primary">Create Project</button>
                         </form>
                     <?php elseif ($projectId > 0): ?>
-                        <a class="button-primary admin-quotation-project-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo $projectId; ?>">View Project</a>
+                        <a class="button-primary admin-quotation-project-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo $projectId; ?>"><?php echo $projectStatus === 'draft' ? 'Continue Project Draft' : 'View Project'; ?></a>
                     <?php endif; ?>
                 </div>
 

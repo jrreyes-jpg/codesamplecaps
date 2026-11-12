@@ -1410,9 +1410,10 @@ foreach ($assets as $assetIndex => $assetRow) {
 }
 
 $adminPageTitle = 'Asset Report - Admin';
+$adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/assets/css/assets.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
+    '/codesamplecaps/ADMIN/sidebar/assets/css/assets.css?v=20261112-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -1425,7 +1426,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
     <main class="main-content assets-content">
         <section class="asset-report-panel" aria-labelledby="assetReportTitle">
             <div class="asset-report-heading">
-                <h1 id="assetReportTitle">Asset Report</h1>
+                <h1 id="assetReportTitle">Assets</h1>
+                <?php if (count($assets) > 0): ?>
+                    <div class="asset-report-controls">
+                        <label class="sr-only" for="assetReportSearch">Search assets</label>
+                        <input id="assetReportSearch" type="search" placeholder="Search assets..." data-asset-search>
+                    </div>
+                <?php endif; ?>
                 <?php if (!$isTrashView): ?>
                     <div class="asset-report-heading__actions">
                         <?php if ($assets !== [] && $qrLibraryReady): ?>
@@ -1440,25 +1447,23 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <?php if ($error): ?><div class="alert alert-error asset-report-alert"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
             <?php if (count($assets) > 0): ?>
-                <div class="asset-report-controls">
-                    <label class="sr-only" for="assetReportSearch">Search assets</label>
-                    <input id="assetReportSearch" type="search" placeholder="Search asset..." data-asset-search>
-                </div>
-                <p class="asset-filter-label">Filter by asset status</p>
-                <div class="asset-filter-tabs" role="tablist" aria-label="Filter report by asset status">
-                    <?php foreach (['all' => 'All', 'available' => 'Available', 'in_use' => 'In Use', 'maintenance' => 'Maintenance', 'lost' => 'Lost'] as $filterKey => $filterLabel): ?>
-                        <button type="button" class="asset-filter-tab<?php echo $filterKey === 'all' ? ' is-active' : ''; ?>" data-filter="<?php echo htmlspecialchars($filterKey); ?>">
-                            <span><?php echo htmlspecialchars($filterLabel); ?></span>
-                            <strong><?php echo (int)($assetFilterCounts[$filterKey] ?? 0); ?></strong>
-                        </button>
-                    <?php endforeach; ?>
+                <div class="asset-filter-row">
+                    <p class="asset-filter-label">Status</p>
+                    <div class="asset-filter-tabs" role="tablist" aria-label="Filter report by asset status">
+                        <?php foreach (['all' => 'All', 'available' => 'Available', 'in_use' => 'In Use', 'maintenance' => 'Maintenance', 'lost' => 'Lost'] as $filterKey => $filterLabel): ?>
+                            <button type="button" class="asset-filter-tab<?php echo $filterKey === 'all' ? ' is-active' : ''; ?>" data-filter="<?php echo htmlspecialchars($filterKey); ?>">
+                                <span><?php echo htmlspecialchars($filterLabel); ?></span>
+                                <strong><?php echo (int)($assetFilterCounts[$filterKey] ?? 0); ?></strong>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             <?php endif; ?>
 
             <div class="asset-report-table-wrap">
                 <table class="asset-report-table">
                     <thead>
-                        <tr><th>Asset</th><th>Asset Code</th><th>Total</th><th>Available</th><th>In Use</th><th>Maintenance</th><th>Lost</th><th>QR</th></tr>
+                        <tr><th>Asset</th><th>Asset Code</th><th>Total</th><th>Available</th><th>In Use</th><th>Maintenance</th><th>Lost</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                         <?php if ($assets === []): ?>
@@ -1474,18 +1479,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <tr class="asset-table-row" data-asset-status="<?php echo htmlspecialchars(implode(' ', (array)($asset['filter_statuses'] ?? []))); ?>" data-asset-search-text="<?php echo htmlspecialchars(strtolower($assetSearchText), ENT_QUOTES, 'UTF-8'); ?>">
                                     <td data-label="Asset">
                                         <strong class="asset-report-name"><?php echo htmlspecialchars((string)$asset['asset_name']); ?></strong>
-                                        <button
-                                            type="button"
-                                            class="asset-name-button"
-                                            data-asset-details-open
-                                            data-asset-name="<?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-asset-category="<?php echo htmlspecialchars(asset_category_label($asset['asset_category'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-asset-type="<?php echo htmlspecialchars(trim((string)($asset['asset_type'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-asset-description="<?php echo htmlspecialchars(trim((string)($asset['description'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-asset-code="<?php echo htmlspecialchars($serialNumber, ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-asset-unit-codes="<?php echo htmlspecialchars(implode(', ', array_filter($assetUnitCodeMap[$assetId] ?? [])), ENT_QUOTES, 'UTF-8'); ?>"
-                                            data-asset-qr-url="<?php echo htmlspecialchars($assetQrUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                                        >View Details</button>
                                     </td>
                                     <td data-label="Asset Code"><?php echo htmlspecialchars($serialNumber !== '' ? $serialNumber : '—'); ?></td>
                                     <td data-label="Total"><?php echo (int)($asset['total_units'] ?? 0); ?></td>
@@ -1493,12 +1486,26 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <td data-label="In Use"><span class="asset-count asset-count--in-use"><?php echo (int)($asset['deployed_units'] ?? 0); ?></span></td>
                                     <td data-label="Maintenance"><span class="asset-count asset-count--maintenance"><?php echo (int)($asset['maintenance_units'] ?? 0); ?></span></td>
                                     <td data-label="Lost"><span class="asset-count asset-count--lost"><?php echo (int)($asset['lost_units'] ?? 0); ?></span></td>
-                                    <td data-label="QR">
-                                        <?php if ($qrLibraryReady): ?>
-                                            <a href="/codesamplecaps/ADMIN/sidebar/assets/php/print_qr_codes.php?asset_id=<?php echo (int)$asset['id']; ?>" class="asset-report-qr-link">View QR</a>
-                                        <?php else: ?>
-                                            <span class="asset-qr-unavailable">Unavailable</span>
-                                        <?php endif; ?>
+                                    <td data-label="Actions">
+                                        <div class="asset-report-row-actions">
+                                            <button
+                                                type="button"
+                                                class="asset-name-button"
+                                                data-asset-details-open
+                                                data-asset-name="<?php echo htmlspecialchars((string)$asset['asset_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-asset-category="<?php echo htmlspecialchars(asset_category_label($asset['asset_category'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-asset-type="<?php echo htmlspecialchars(trim((string)($asset['asset_type'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-asset-description="<?php echo htmlspecialchars(trim((string)($asset['description'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-asset-code="<?php echo htmlspecialchars($serialNumber, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-asset-unit-codes="<?php echo htmlspecialchars(implode(', ', array_filter($assetUnitCodeMap[$assetId] ?? [])), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-asset-qr-url="<?php echo htmlspecialchars($assetQrUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                            >Details</button>
+                                            <?php if ($qrLibraryReady): ?>
+                                                <a href="/codesamplecaps/ADMIN/sidebar/assets/php/print_qr_codes.php?asset_id=<?php echo (int)$asset['id']; ?>" class="asset-report-qr-link">QR</a>
+                                            <?php else: ?>
+                                                <span class="asset-qr-unavailable">QR unavailable</span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

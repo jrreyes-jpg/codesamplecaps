@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/asset_unit_helpers.php';
-require_once __DIR__ . '/../../../../config/project_progress.php';
 require_once __DIR__ . '/../../../../config/project_history.php';
 
 require_role('admin');
@@ -700,9 +699,10 @@ if ($projectId > 0) {
 ?>
 <?php
 $adminPageTitle = 'Project Details - Admin';
+$adminBodyClass = 'admin-light-page';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -713,7 +713,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-    <main class="main-content">
+    <main class="main-content project-details-main">
         <div class="page-stack">
             <?php if ($flash): ?>
                 <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : (($flash['type'] ?? '') === 'warning' ? 'alert-warning' : 'alert-error'); ?>">
@@ -730,10 +730,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 $assignedEngineerIds = array_values(array_filter(array_map('intval', explode(',', (string)($project['engineer_ids_csv'] ?? '')))));
                 $assignedEngineerNames = trim((string)($project['engineer_names'] ?? ''));
                 $defaultTaskEngineerId = $assignedEngineerIds[0] ?? 0;
-                $projectProgress = build_role_project_progress($project, 'super_admin');
-                $completionRate = (int)$projectProgress['percent'];
-                $progressSummary = (string)$projectProgress['summary'];
-                $progressStatSummary = (string)$projectProgress['hint'];
                 $budgetAmount = (float)($projectFinancials['budget_amount'] ?? 0);
                 $budgetNotes = trim((string)($projectFinancials['budget_notes'] ?? ''));
                 $totalCost = (float)($projectFinancials['total_cost'] ?? 0);
@@ -747,244 +743,41 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 $remainingBalance = max(0, $totalCost - $amountPaid);
                 $paymentUsage = $totalCost > 0 ? min(100, round(($amountPaid / $totalCost) * 100)) : 0;
                 $paymentStatus = pm_determine_payment_status($totalCost, $amountPaid);
-                if ($totalCost <= 0) {
-                    $paymentStatusDetail = 'No project cost logged yet';
-                } elseif ($paymentStatus['status'] === 'paid') {
-                    $paymentStatusDetail = 'Client is fully paid';
-                } elseif ($paymentStatus['status'] === 'partial') {
-                    $paymentStatusDetail = 'Remaining: ' . pm_format_money($remainingBalance);
-                } else {
-                    $paymentStatusDetail = 'No payment recorded yet';
-                }
-                $delayedTaskCount = 0;
-                $ongoingTaskCount = 0;
-                $pendingTaskCount = 0;
-                foreach ($tasks as $taskItem) {
-                    $taskStatus = strtolower(trim((string)($taskItem['status'] ?? 'pending')));
-                    if ($taskStatus === 'delayed') {
-                        $delayedTaskCount++;
-                    } elseif ($taskStatus === 'ongoing') {
-                        $ongoingTaskCount++;
-                    } elseif ($taskStatus === 'pending') {
-                        $pendingTaskCount++;
-                    }
-                }
-                $pulseSignal = max(0, min(100, (int)$completionRate));
-                $projectCreatedAt = trim((string)($project['created_at'] ?? ''));
-                $latestTrackedEventAt = $projectCreatedAt;
-                $paymentLatestAt = trim((string)($projectPaymentEntries[0]['payment_date'] ?? ''));
-                $costLatestAt = trim((string)($projectCostEntries[0]['cost_date'] ?? ''));
-                $deploymentLatestAt = trim((string)($deploymentHistory[0]['deployed_at'] ?? ''));
-                foreach ([$paymentLatestAt, $costLatestAt, $deploymentLatestAt] as $candidateDate) {
-                    if ($candidateDate !== '' && ($latestTrackedEventAt === '' || strtotime($candidateDate) > strtotime($latestTrackedEventAt))) {
-                        $latestTrackedEventAt = $candidateDate;
-                    }
-                }
-                $projectCode = trim((string)($project['project_code'] ?? ''));
-                $projectPoNumber = trim((string)($project['po_number'] ?? ''));
                 $hasInquiryReference = trim((string)($project['quotation_no'] ?? '')) !== '';
-                $locationArea = implode(' / ', array_filter([
-                    trim((string)($project['inquiry_province'] ?? '')),
-                    trim((string)($project['inquiry_city_municipality'] ?? '')),
-                    trim((string)($project['inquiry_barangay'] ?? '')),
-                ], static fn(string $value): bool => $value !== ''));
-                $projectContactPerson = trim((string)($project['contact_person'] ?? ''));
-                $projectContactNumber = trim((string)($project['contact_number'] ?? ''));
-                $projectEmail = trim((string)($project['project_email'] ?? ''));
-                $planningStageClass = $projectCreatedAt !== '' ? 'done' : 'pending';
-                $quotationStageClass = ($projectPoNumber !== '' || trim((string)($project['po_date'] ?? '')) !== '') ? 'done' : 'pending';
-                // Ensure $completedTasks is defined before use
-                $completedTasks = isset($project['completed_tasks']) ? (int)$project['completed_tasks'] : 0;
-                if (($project['status'] ?? '') === 'completed') {
-                    $executionStageClass = 'done';
-                } elseif ($delayedTaskCount > 0) {
-                    $executionStageClass = 'issue';
-                } elseif ($ongoingTaskCount > 0 || $pendingTaskCount > 0) {
-                    $executionStageClass = 'ongoing';
-                } else {
-                    $executionStageClass = 'pending';
+                $projectSummarySite = $hasInquiryReference
+                    ? trim((string)($project['inquiry_site_address'] ?? ''))
+                    : trim((string)($project['project_address'] ?? $project['project_site'] ?? ''));
+                if ($projectSummarySite === '') {
+                    $projectSummarySite = trim((string)($project['project_site'] ?? ''));
                 }
-                if (($project['status'] ?? '') === 'completed') {
-                    $inspectionStageClass = 'done';
-                } elseif ($completionRate >= 80 || ($completedTasks > 0 && $ongoingTaskCount === 0 && $pendingTaskCount === 0)) {
-                    $inspectionStageClass = 'ongoing';
-                } else {
-                    $inspectionStageClass = 'pending';
-                }
-                $completedStageClass = ($project['status'] ?? '') === 'completed' ? 'done' : 'pending';
-                $taskPreview = array_slice($tasks, 0, 4);
-                $activityFeed = [];
-                if (!empty($taskPreview)) {
-                    $latestTaskPreview = $taskPreview[0];
-                    $activityFeed[] = [
-                        'actor' => 'Engineer',
-                        'text' => 'Task status tracked: ' . (string)($latestTaskPreview['task_name'] ?? 'Task'),
-                        'state' => (string)($latestTaskPreview['status'] ?? 'pending'),
-                    ];
-                }
-                if (!empty($projectCostEntries)) {
-                    $activityFeed[] = [
-                        'actor' => 'Admin',
-                        'text' => 'Cost entry logged for ' . (string)($projectCostEntries[0]['cost_category'] ?? 'project cost'),
-                        'state' => 'completed',
-                    ];
-                }
-                if (!empty($deploymentHistory)) {
-                    $activityFeed[] = [
-                        'actor' => 'Foreman',
-                        'text' => 'Deployment history updated for ' . (string)($deploymentHistory[0]['asset_name'] ?? 'site asset'),
-                        'state' => ((int)($deploymentHistory[0]['remaining_quantity'] ?? 0) > 0) ? 'ongoing' : 'completed',
-                    ];
-                }
-                if (empty($activityFeed)) {
-                    $activityFeed[] = [
-                        'actor' => 'System',
-                        'text' => 'No recent tracked activity yet',
-                        'state' => 'pending',
-                    ];
-                }
-                if ($delayedTaskCount > 0) {
-                    $pulseAlertTitle = 'Execution delay detected';
-                    $pulseAlertCopy = $delayedTaskCount . ' delayed task(s) need recovery planning.';
-                    $pulseAlertNote = 'Review assignees, blockers, and deadline slippage now.';
-                } elseif ($budgetHealth['status'] === 'over' || $budgetHealth['status'] === 'warning') {
-                    $pulseAlertTitle = $budgetHealth['status'] === 'over' ? 'Budget pressure is high' : 'Budget needs attention';
-                    $pulseAlertCopy = $budgetHealth['label'] . ' | Total cost: ' . pm_format_money($totalCost);
-                    $pulseAlertNote = $budgetAmount > 0 ? 'Budget set at ' . pm_format_money($budgetAmount) : 'Add a budget profile to improve control.';
-                } elseif ($paymentStatus['status'] !== 'paid') {
-                    $pulseAlertTitle = 'Payment follow-up pending';
-                    $pulseAlertCopy = $paymentStatusDetail;
-                    $pulseAlertNote = 'Track customer collection together with delivery progress.';
-                } else {
-                    $pulseAlertTitle = 'Project pulse is stable';
-                    $pulseAlertCopy = 'No active budget, payment, or execution red flag right now.';
-                    $pulseAlertNote = 'Keep monitoring tasks and deployment history for changes.';
-                }
+                $projectStatus = strtolower(trim((string)($project['status'] ?? 'draft')));
+                $projectWorkStatus = match ($projectStatus) {
+                    'ongoing' => 'Work in progress',
+                    'on-hold' => 'Work paused',
+                    'completed' => 'Work completed',
+                    'pending' => 'Ready to schedule',
+                    default => 'Complete project details',
+                };
                 ?>
 
-                <section class="form-panel project-details-shell">
-                    <div class="project-details-hero">
-                        <div class="project-details-hero__main">
-                            <div class="project-details-hero__headline">
-                                <div class="project-details-hero__eyebrow-row">
-                                    <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="btn-secondary btn-back-projects" aria-label="Back to Projects" title="Back to Projects">&#8592;</a>
-
-                                    <span class="project-details-hero__eyebrow">Project Overview</span>
-                                    <?php if ($projectCode !== ''): ?>
-                                        <span class="project-details-hero__reference"><?php echo htmlspecialchars($projectCode); ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <h1 class="project-details-hero__title"><?php echo htmlspecialchars($project['project_name']); ?></h1>
-                                <div class="status-pill-wrap">
-                                    <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
-                                        <?php echo htmlspecialchars(ucfirst($project['status'])); ?>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <?php if (!empty($project['description'])): ?>
-                                <div class="empty-state empty-state-solid project-details-hero__description"><?php echo nl2br(htmlspecialchars($project['description'])); ?></div>
-                            <?php endif; ?>
-
-                            <section class="project-pulse-panel" aria-label="Project pulse timeline">
-                                <div class="project-pulse-box">
-                                    <div class="project-pulse-box__copy">
-                                        <span class="project-pulse-box__eyebrow">Project Pulse</span>
-                                        <strong><?php echo htmlspecialchars((string)$projectProgress['label']); ?> | <?php echo $completionRate; ?>%</strong>
-                                        <small><?php echo htmlspecialchars($progressSummary); ?></small>
-                                    </div>
-                                    <div class="project-pulse-bar" data-progress-width="<?php echo $pulseSignal; ?>">
-                                        <span class="project-pulse-bar__fill"></span>
-                                    </div>
-                                    <p class="project-pulse-box__time">Last tracked update: <?php echo htmlspecialchars(pm_relative_time_label($latestTrackedEventAt)); ?></p>
-                                </div>
-
-                                <div class="project-pulse-timeline">
-                                    <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($planningStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $planningStageClass === 'done' ? '&#10003;' : '&bull;'; ?></div>
-                                        <p>Planning</p>
-                                    </div>
-                                    <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($quotationStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $quotationStageClass === 'done' ? '&#10003;' : '&bull;'; ?></div>
-                                        <p>Quotation</p>
-                                    </div>
-                                    <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($executionStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $executionStageClass === 'done' ? '&#10003;' : ($executionStageClass === 'ongoing' ? '&bull;' : ($executionStageClass === 'issue' ? '!' : '&bull;')); ?></div>
-                                        <p>Execution</p>
-                                    </div>
-                                    <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($inspectionStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $inspectionStageClass === 'done' ? '&#10003;' : ($inspectionStageClass === 'ongoing' ? '&bull;' : '&bull;'); ?></div>
-                                        <p>Inspection</p>
-                                    </div>
-                                    <div class="project-pulse-stage project-pulse-stage--<?php echo htmlspecialchars($completedStageClass); ?>">
-                                        <div class="project-pulse-stage__circle"><?php echo $completedStageClass === 'done' ? '&#10003;' : '&bull;'; ?></div>
-                                        <p>Completed</p>
-                                    </div>
-                                </div>
-
-                               
-
-                                <div class="project-pulse-alert">
-                                    <strong><?php echo htmlspecialchars($pulseAlertTitle); ?></strong>
-                                    <p><?php echo htmlspecialchars($pulseAlertCopy); ?></p>
-                                    <p><?php echo htmlspecialchars($pulseAlertNote); ?></p>
-                                </div>
-                            </section>
-
-                            <!-- Progress Insight card removed as requested -->
-                        </div>
-
-                        <div class="project-details-stats">
-                            <div class="project-details-stat">
-                                <span>Progress</span>
-                                <strong><?php echo $completionRate; ?>%</strong>
-                                <small><?php echo htmlspecialchars($progressStatSummary); ?></small>
-                            </div>
-                            <div class="project-details-stat">
-                                <span>Client</span>
-                                <strong><?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></strong>
-                                <small>Assigned client</small>
-                            </div>
-                            <div class="project-details-stat">
-                                <span>Assigned Team</span>
-                                <strong><?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?></strong>
-                                <small>Current assigned team</small>
-                            </div>
-                            <div class="project-details-stat">
-                                <span>Project Start Date</span>
-                                <strong><?php echo htmlspecialchars(pm_format_date($project['project_start_date'] ?? null)); ?></strong>
-                                <small>Planned work commencement</small>
-                            </div>
-                            <div class="project-details-stat project-details-stat--payment">
-                                <span>Customer Payment</span>
-                                <strong><?php echo htmlspecialchars($paymentStatus['label']); ?></strong>
-                                <small><?php echo htmlspecialchars($paymentStatusDetail); ?></small>
-                            </div>
-                            <div class="project-details-stat project-details-stat--payment">
-                                <span>Balance To Collect</span>
-                                <strong><?php echo htmlspecialchars(pm_format_money($remainingBalance)); ?></strong>
-                                <small><?php echo $paymentEntryCount > 0 ? htmlspecialchars($paymentEntryCount . ' payment record' . ($paymentEntryCount > 1 ? 's' : '')) : 'No payment entries yet'; ?></small>
-                            </div>
+                <section class="project-details-summary" aria-label="Project summary">
+                    <div class="project-details-summary__headline">
+                        <a href="/codesamplecaps/ADMIN/sidebar/projects/php/projects.php" class="btn-secondary project-details-summary__back">&larr; Back</a>
+                        <div>
+                            <h1><?php echo htmlspecialchars($project['project_name']); ?></h1>
+                            <span class="status-pill status-<?php echo htmlspecialchars($project['status']); ?>">
+                                <?php echo htmlspecialchars(ucfirst($project['status'])); ?>
+                            </span>
                         </div>
                     </div>
 
-                    <div class="project-details-glance">
-                        <div><strong>Project Code:</strong> <?php echo htmlspecialchars($projectCode !== '' ? $projectCode : 'Not set'); ?></div>
-                        <div><strong>Client Contact Person:</strong> <?php echo htmlspecialchars($projectContactPerson !== '' ? $projectContactPerson : 'Not set'); ?></div>
-                        <div><strong>Client Contact Number:</strong> <?php echo htmlspecialchars($projectContactNumber !== '' ? $projectContactNumber : 'Not set'); ?></div>
-                        <div><strong>P.O Number:</strong> <?php echo htmlspecialchars($projectPoNumber !== '' ? $projectPoNumber : 'Not set'); ?></div>
-                        <div><strong>P.O Date:</strong> <?php echo htmlspecialchars(pm_format_date($project['po_date'] ?? null)); ?></div>
-                        <div><strong>Completed:</strong> <?php echo htmlspecialchars(pm_format_date($project['end_date'] ?? null)); ?></div>
-                        <div><strong>Created:</strong> <?php echo htmlspecialchars($project['created_at'] ?? 'N/A'); ?></div>
-                        <?php if ($projectEmail !== ''): ?>
-                            <div><strong>Email Address:</strong> <?php echo htmlspecialchars($projectEmail); ?></div>
-                        <?php endif; ?>
-                        <?php if ($hasProjectAddressColumn): ?>
-                            <?php if ($hasProjectSiteColumn): ?>
-                                <div><strong>Location Area:</strong> <?php echo htmlspecialchars($locationArea !== '' ? $locationArea : ($project['project_site'] ?? 'Not set')); ?></div>
-                            <?php endif; ?>
-                            <div><strong>Exact Site Address:</strong> <?php echo htmlspecialchars($hasInquiryReference ? ($project['inquiry_site_address'] ?? 'Not set') : ($project['project_address'] ?? 'Not set')); ?></div>
-                        <?php endif; ?>
+                    <div class="project-details-summary__grid">
+                        <article><span>Client</span><strong><?php echo htmlspecialchars($project['client_name'] ?? 'N/A'); ?></strong></article>
+                        <article><span>Site</span><strong><?php echo htmlspecialchars($projectSummarySite !== '' ? $projectSummarySite : 'Not set'); ?></strong></article>
+                        <article><span>Team</span><strong><?php echo htmlspecialchars($assignedEngineerNames !== '' ? $assignedEngineerNames : 'Not assigned'); ?></strong></article>
+                        <article><span>Schedule</span><strong><?php echo htmlspecialchars(pm_format_date($project['project_start_date'] ?? null)); ?> - <?php echo htmlspecialchars(pm_format_date($project['estimated_completion_date'] ?? null)); ?></strong></article>
+                        <article><span>Budget</span><strong><?php echo htmlspecialchars(pm_format_money($budgetAmount)); ?></strong></article>
+                        <article><span>Work Status</span><strong><?php echo htmlspecialchars($projectWorkStatus); ?></strong></article>
                     </div>
                 </section>
 

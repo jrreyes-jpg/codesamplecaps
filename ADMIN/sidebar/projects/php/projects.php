@@ -1215,9 +1215,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($projectSource, $allowedProjectSources, true)) {
             $projectSource = 'walk_in';
         }
+        $saveMode = normalize_text($_POST['save_mode'] ?? 'create');
+        $saveAsDraft = $saveMode === 'draft';
         if ($projectSource === 'inquiry_quotation') {
-            // Accepted quotation project ay Pending muna habang hindi pa nagsisimula ang work.
-            $_POST['status'] = 'pending';
+            // Draft muna kung may kulang pa si Admin. Pending lang kapag final create na.
+            $_POST['status'] = $saveAsDraft ? 'draft' : 'pending';
         }
         $quotationDraftId = (int)($_POST['quotation_draft_id'] ?? 0);
         $sourceInquiryId = (int)($_POST['source_inquiry_id'] ?? 0);
@@ -1230,7 +1232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientId = (int)($_POST['client_id'] ?? 0);
         $engineerIds = normalize_engineer_ids($_POST['engineer_ids'] ?? []);
         $status = $projectSource === 'inquiry_quotation'
-            ? 'pending'
+            ? ($saveAsDraft ? 'draft' : 'pending')
             : normalize_text($_POST['status'] ?? 'pending');
         $poDate = $hasPoDateColumn ? normalize_date_or_null($_POST['po_date'] ?? null) : null;
         $projectStartDate = $hasProjectStartDateColumn ? normalize_date_or_null($_POST['project_start_date'] ?? null) : null;
@@ -1257,7 +1259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'po_date' => $_POST['po_date'] ?? '',
             'client_id' => $_POST['client_id'] ?? '',
             'engineer_ids' => $_POST['engineer_ids'] ?? [],
-            'status' => $_POST['status'] ?? 'pending',
+            'status' => $status,
             'project_start_date' => $_POST['project_start_date'] ?? '',
             'estimated_completion_date' => $_POST['estimated_completion_date'] ?? '',
             'estimated_duration_days' => $_POST['estimated_duration_days'] ?? '',
@@ -1291,7 +1293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if ($engineerIds === []) {
+        if ($status !== 'draft' && $engineerIds === []) {
             set_projects_old_input($createProjectInput, 'engineer_ids');
             set_projects_flash('error', 'Project title, client, and assigned team member/s are required.');
             redirect_projects_page();
@@ -1339,19 +1341,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect_projects_page();
             }
 
-            $teamIdsSql = implode(',', array_map('intval', $engineerIds));
-            $teamResult = $conn->query(
-                "SELECT COUNT(*) AS total
-                 FROM users
-                 WHERE id IN ({$teamIdsSql})
-                 AND role IN ('engineer', 'foreman')
-                 AND status = 'active'"
-            );
-            $validTeamCount = (int)(($teamResult ? $teamResult->fetch_assoc() : [])['total'] ?? 0);
-            if ($validTeamCount !== count($engineerIds)) {
-                set_projects_old_input($createProjectInput, 'engineer_ids');
-                set_projects_flash('error', 'Select active Engineer or Foreman accounts only.');
-                redirect_projects_page();
+            if ($engineerIds !== []) {
+                $teamIdsSql = implode(',', array_map('intval', $engineerIds));
+                $teamResult = $conn->query(
+                    "SELECT COUNT(*) AS total
+                     FROM users
+                     WHERE id IN ({$teamIdsSql})
+                     AND role IN ('engineer', 'foreman')
+                     AND status = 'active'"
+                );
+                $validTeamCount = (int)(($teamResult ? $teamResult->fetch_assoc() : [])['total'] ?? 0);
+                if ($validTeamCount !== count($engineerIds)) {
+                    set_projects_old_input($createProjectInput, 'engineer_ids');
+                    set_projects_flash('error', 'Select active Engineer or Foreman accounts only.');
+                    redirect_projects_page();
+                }
             }
 
             // Accepted quotation total ang official starting budget ng Project.
@@ -1488,7 +1492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect_projects_page();
         }
 
-        if ($hasProjectStartDateColumn && $projectStartDate === null) {
+        if ($hasProjectStartDateColumn && $status !== 'draft' && $projectStartDate === null) {
             set_projects_old_input($createProjectInput, 'project_start_date');
             set_projects_flash('error', 'Project Start Date is required.');
             redirect_projects_page();
@@ -1510,7 +1514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estimatedCompletionDate = calculate_estimated_completion_date($projectStartDate, $estimatedDurationDays);
         }
 
-        if ($hasEstimatedCompletionDateColumn && $estimatedCompletionDate === null) {
+        if ($hasEstimatedCompletionDateColumn && $status !== 'draft' && $estimatedCompletionDate === null) {
             set_projects_old_input($createProjectInput, 'estimated_completion_date');
             set_projects_flash('error', 'Estimated Completion Date is required.');
             redirect_projects_page();
@@ -1561,7 +1565,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_by' => $createdBy,
                 'engineer_ids' => $engineerIds,
                 'quotation_draft_id' => $projectSource === 'inquiry_quotation' ? $quotationDraftId : 0,
-                'material_reservation_inspection_id' => $projectSource === 'inquiry_quotation'
+                'material_reservation_inspection_id' => $projectSource === 'inquiry_quotation' && $status !== 'draft'
                     ? (int)($approvedInspection['id'] ?? 0)
                     : 0,
                 'budget_amount' => $budgetAmount,
@@ -1599,6 +1603,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]
             );
             clear_projects_old_input();
+            if ($projectSource === 'inquiry_quotation' && $status === 'draft') {
+                set_projects_flash('success', 'Project draft saved. Complete it later from Project Drafts.');
+                header('Location: /codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=' . $projectId);
+                exit;
+            }
+
             if ($projectSource === 'inquiry_quotation') {
                 $clientNotificationSent = false;
                 $activationEmailSent = null;
@@ -2866,6 +2876,48 @@ $flash = $_SESSION['projects_flash'] ?? null;
 unset($_SESSION['projects_flash']);
 $createProjectOldInput = $_SESSION['projects_old_input'] ?? [];
 unset($_SESSION['projects_old_input']);
+$requestedQuotationId = $isCreateProjectPage ? max(0, (int)($_GET['quotation_id'] ?? 0)) : 0;
+
+if ($createProjectOldInput === [] && $requestedQuotationId > 0) {
+    $requestedQuotation = inquiry_quote_fetch_full($conn, $requestedQuotationId);
+    $requestedInquiryId = (int)($requestedQuotation['inquiry_id'] ?? 0);
+    $requestedStatus = inquiry_quote_normalize_status($requestedQuotation['status'] ?? '');
+    $requestedInspection = $requestedInquiryId > 0
+        ? inquiry_quote_fetch_approved_inspection_for_project($conn, $requestedInquiryId, $requestedQuotationId)
+        : null;
+
+    if ($requestedQuotation && $requestedStatus === 'accepted' && $requestedInspection && empty($requestedQuotation['project_id'])) {
+        $recipient = inquiry_quote_resolve_recipient($conn, $requestedQuotationId);
+        $engineerId = (int)($requestedQuotation['engineer_id'] ?? 0);
+        $locationArea = implode(' / ', array_filter([
+            trim((string)($requestedQuotation['province'] ?? '')),
+            trim((string)($requestedQuotation['city_municipality'] ?? '')),
+            trim((string)($requestedQuotation['barangay'] ?? '')),
+        ], static fn(string $value): bool => $value !== ''));
+        $createProjectOldInput = [
+            'project_name' => inquiry_quote_unique_project_title($conn, $requestedQuotation),
+            'description' => trim((string)(($requestedQuotation['engineer_findings'] ?? '') ?: ($requestedQuotation['description'] ?? ''))),
+            'contact_person' => trim((string)($requestedQuotation['client_name'] ?? '')),
+            'contact_number' => trim((string)($requestedQuotation['contact_no'] ?? '')),
+            'project_site' => $locationArea,
+            'project_address' => trim((string)($requestedQuotation['site_address'] ?? '')),
+            'project_email' => trim((string)($requestedQuotation['email'] ?? '')),
+            'project_source' => 'inquiry_quotation',
+            'quotation_draft_id' => (string)$requestedQuotationId,
+            'source_inquiry_id' => (string)$requestedInquiryId,
+            'client_id' => !empty($recipient['client_id']) ? (string)$recipient['client_id'] : '',
+            'engineer_ids' => $engineerId > 0 ? [(string)$engineerId] : [],
+            'status' => 'pending',
+            'po_date' => '',
+            'project_start_date' => date('Y-m-d'),
+            'estimated_completion_date' => date('Y-m-d', strtotime('+7 days')),
+            'estimated_duration_days' => '7',
+            'budget_amount' => number_format((float)($requestedQuotation['grand_total'] ?? 0), 2, '.', ''),
+            'budget_notes' => '',
+            'focus_field' => 'engineer_ids',
+        ];
+    }
+}
 $createProjectFocusField = trim((string)($createProjectOldInput['focus_field'] ?? ''));
 $hasCreateProjectServerInput = !empty($createProjectOldInput);
 $shouldClearCreateProjectDraft = is_array($flash)
@@ -3180,11 +3232,11 @@ $adminPageTitle = $isCreateProjectPage ? 'Create Project - Admin' : 'Project Man
 
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261110-4',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261112-6',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261110-4',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261112-6',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -3204,7 +3256,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
             <?php if ($isCreateProjectPage): ?>
                 <div class="project-create-page-navigation">
-                    <a class="project-create-page-back" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">&larr; Back to Quotation</a>
+                    <a class="project-create-page-back" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">&larr; Back</a>
                 </div>
             <?php endif; ?>
 
@@ -3242,7 +3294,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
                 <form
                     method="POST"
-                    action="/codesamplecaps/ADMIN/sidebar/projects/php/create_project.php"
+                    action="/codesamplecaps/ADMIN/sidebar/projects/php/create_project.php<?php echo $isInquiryProjectSetup ? '?quotation_id=' . (int)$createProjectValues['quotation_draft_id'] : ''; ?>"
                     id="create-project-form"
                     class="project-create-form<?php echo $isInquiryProjectSetup ? ' is-inquiry-project-setup' : ''; ?>"
                     data-focus-field="<?php echo htmlspecialchars($createProjectFocusField, ENT_QUOTES); ?>"
@@ -3254,6 +3306,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 >
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                     <input type="hidden" name="action" value="create_project">
+                    <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/create_project.php<?php echo $isInquiryProjectSetup ? '?quotation_id=' . (int)$createProjectValues['quotation_draft_id'] : ''; ?>">
                     <input type="hidden" name="project_source" value="<?php echo htmlspecialchars((string)($createProjectValues['project_source'] ?? 'walk_in'), ENT_QUOTES); ?>" data-project-source-input>
                     <input type="hidden" name="quotation_draft_id" value="<?php echo (int)$createProjectValues['quotation_draft_id']; ?>">
                     <input type="hidden" name="source_inquiry_id" value="<?php echo (int)$createProjectValues['source_inquiry_id']; ?>">
@@ -3613,9 +3666,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                         <div class="form-actions project-create-page-actions">
                             <a class="btn-secondary" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">Cancel</a>
-                            <button type="submit" class="btn-primary" <?php echo (count($clients) === 0 || count($engineers) === 0) ? 'disabled' : ''; ?>>Create Project</button>
+                            <?php if ($isInquiryProjectSetup): ?>
+                                <button type="submit" name="save_mode" value="draft" class="btn-secondary" formnovalidate>Save Draft</button>
+                            <?php endif; ?>
+                            <button type="submit" name="save_mode" value="create" class="btn-primary" <?php echo (count($clients) === 0 || count($engineers) === 0) ? 'disabled' : ''; ?>>Create Project</button>
                         </div>
                     </form>
+                    <section class="walk-in-confirm-modal admin-modal-backdrop" data-project-draft-confirm aria-hidden="true">
+                        <div class="walk-in-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="project-draft-confirm-title" aria-describedby="project-draft-confirm-message">
+                            <h3 id="project-draft-confirm-title" data-project-draft-confirm-title>Leave and keep draft?</h3>
+                            <p id="project-draft-confirm-message" data-project-draft-confirm-message>Your entries will stay in this browser.</p>
+                            <div class="walk-in-confirm-actions">
+                                <button type="button" class="btn-secondary" data-project-draft-confirm-cancel>Continue Editing</button>
+                                <button type="button" class="btn-primary" data-project-draft-confirm-accept>Leave &amp; Keep Draft</button>
+                            </div>
+                        </div>
+                    </section>
                 </div>
                 </section>
             <?php endif; ?>

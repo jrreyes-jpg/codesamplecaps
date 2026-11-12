@@ -11,6 +11,11 @@
     padding-top: 20px;
 }
 
+/* White page para mas clean at madaling basahin ang inquiry details. */
+.main-content.admin-dashboard-content.inquiry-details-main {
+    background: #f8fafc;
+}
+
 /* Direct quotation page para quotation muna bago inspection. */
 .main-content.initial-quotation-editor {
     background: #f1faf5;

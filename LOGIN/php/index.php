@@ -30,6 +30,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="stylesheet" href="../css/loader.css?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../css/loader.css')); ?>">
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
     <link rel="stylesheet" href="../css/public-confirmation.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/css/action-loading.css') ?: 1)); ?>">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 
@@ -703,19 +704,19 @@ if (empty($_SESSION['inquiry_form_token'])) {
         </form>
     </div>
 </div>
-<div class="inquiry-otp-modal" data-inquiry-otp-modal aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inquiryOtpTitle">
-    <div class="inquiry-otp-modal__card">
-        <div class="inquiry-otp-modal__content js-inquiry-otp-content">
-            <button class="inquiry-otp-modal__close js-inquiry-otp-close" type="button" aria-label="Close email verification">&times;</button>
-            <h3 id="inquiryOtpTitle">Verify Client Email</h3>
-            <p class="inquiry-otp-modal__text">Enter the 6-digit code sent to <strong class="js-inquiry-otp-email"></strong>.</p>
-            <label class="inquiry-otp-modal__label" for="inquiryOtpCode">Verification Code</label>
-            <input id="inquiryOtpCode" class="inquiry-otp-modal__input js-inquiry-otp-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
-            <p class="inquiry-otp-modal__message js-inquiry-otp-message" aria-live="polite"></p>
-            <p class="inquiry-otp-modal__timer js-inquiry-otp-timer">Code expires in 03:00</p>
-            <p class="inquiry-otp-modal__help">Check Spam or Junk if you did not get the code.</p>
-            <div class="inquiry-otp-modal__actions">
-                <button class="inquiry-otp-modal__resend js-inquiry-otp-resend" type="button">Resend Code</button>
+<div class="email-otp-modal" data-inquiry-otp-modal aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inquiryOtpTitle">
+    <div class="email-otp-dialog">
+        <div class="js-inquiry-otp-content">
+            <button class="email-otp-close js-inquiry-otp-close" type="button" aria-label="Close email verification">&times;</button>
+            <h3 class="email-otp-title" id="inquiryOtpTitle">Verify Client Email</h3>
+            <p class="email-otp-text">Enter the 6-digit code sent to <strong class="email-otp-email js-inquiry-otp-email"></strong>.</p>
+            <label class="email-otp-label" for="inquiryOtpCode">Verification Code</label>
+            <input id="inquiryOtpCode" class="email-otp-input js-inquiry-otp-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+            <p class="email-otp-message js-inquiry-otp-message" aria-live="polite"></p>
+            <p class="email-otp-timer js-inquiry-otp-timer">Code expires in 03:00</p>
+            <p class="email-otp-help">Check Spam or Junk if you did not get the code.</p>
+            <div class="email-otp-actions">
+                <button class="email-otp-resend js-inquiry-otp-resend" type="button">Resend Code</button>
                 <button class="btn btn-primary js-inquiry-otp-confirm" type="button">Verify Code</button>
             </div>
         </div>

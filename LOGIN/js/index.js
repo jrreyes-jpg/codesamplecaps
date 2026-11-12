@@ -616,6 +616,7 @@ const initInquiryForm = () => {
         let otpResendAt = 0;
         let otpLockedUntil = 0;
         let otpIsExpired = false;
+        let otpWasSent = false;
         let contactCheckTimer = 0;
         let contactCheckId = 0;
         let contactCanVerifyEmail = false;
@@ -638,7 +639,9 @@ const initInquiryForm = () => {
             emailInput.readOnly = isVerified;
             emailInput.classList.toggle('is-email-locked', isVerified);
             if (Date.now() >= otpLockedUntil) {
-                verifyEmailButton.textContent = isVerified ? 'Change Email' : 'Verify Email';
+                verifyEmailButton.textContent = isVerified
+                    ? 'Change Email'
+                    : (otpWasSent ? 'Enter Verification Code' : 'Send Verification Code');
                 verifyEmailButton.disabled = !isVerified && !emailPattern.test(currentEmail);
             }
             if (isVerified) {
@@ -650,6 +653,7 @@ const initInquiryForm = () => {
 
         const unlockVerifiedEmail = () => {
             verifiedEmail = '';
+            otpWasSent = false;
             inquiryForm.dataset.verifiedEmail = '';
             contactNote = '';
             updateEmailVerification();
@@ -780,12 +784,14 @@ const initInquiryForm = () => {
             }
         };
 
-        const openOtpModal = (isSending = false) => {
+        const openOtpModal = (isSending = false, preserveEntry = false) => {
             if (!otpModal || !emailInput) return;
             otpEmail.textContent = emailInput.value.trim();
-            otpCodeInput.value = '';
-            otpMessage.textContent = '';
-            otpMessage.classList.remove('is-error');
+            if (!preserveEntry) {
+                otpCodeInput.value = '';
+                otpMessage.textContent = '';
+                otpMessage.classList.remove('is-error');
+            }
             if (isSending) {
                 return;
             }
@@ -800,27 +806,11 @@ const initInquiryForm = () => {
 
         const closeOtpModal = (force = false) => {
             if (!otpModal || (isOtpBusy && !force)) return;
-            if (!force && otpCodeInput?.value.trim()) {
-                window.EdgePublicConfirmation?.open({
-                    title: 'Close email verification?',
-                    message: 'Your code will not be saved.',
-                    cancelLabel: 'Keep Verifying',
-                    confirmLabel: 'Close',
-                    tone: 'danger',
-                    onConfirm: (controls) => {
-                        controls.close();
-                        closeOtpModal(true);
-                    },
-                });
-                return;
-            }
             otpModal.classList.remove('is-open');
             window.edgeActionLoading?.hide();
             otpModal.setAttribute('aria-hidden', 'true');
             otpModal.removeAttribute('aria-busy');
             document.body.classList.remove('has-inquiry-otp-open');
-            window.clearInterval(otpClock);
-            otpClock = 0;
         };
 
         const otpRequest = async (endpoint, body) => {
@@ -1014,6 +1004,7 @@ const initInquiryForm = () => {
                 setOtpBusy(false);
                 if (lockRetryAfter > 0) startOtpLockClock(lockRetryAfter);
                 if (requestCompleted) {
+                    otpWasSent = true;
                     openOtpModal(false);
                     startOtpClock(expiresIn, resendAfter);
                     otpMessage.textContent = successMessage;
@@ -1031,6 +1022,11 @@ const initInquiryForm = () => {
             const currentEmail = (emailInput?.value || '').trim().toLowerCase();
             if (currentEmail !== '' && currentEmail === verifiedEmail) {
                 unlockVerifiedEmail();
+                return;
+            }
+
+            if (otpWasSent) {
+                openOtpModal(false, true);
                 return;
             }
 
@@ -1057,6 +1053,12 @@ const initInquiryForm = () => {
         });
         otpModal?.addEventListener('click', (event) => {
             if (event.target === otpModal) closeOtpModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && otpModal?.classList.contains('is-open')) {
+                event.preventDefault();
+                closeOtpModal();
+            }
         });
         otpCodeInput?.addEventListener('input', () => {
             otpCodeInput.value = otpCodeInput.value.replace(/\D/g, '').slice(0, 6);
@@ -1822,6 +1824,7 @@ const restoreInquiryDraft = () => {
             clearContactMismatchFeedback(event.currentTarget);
             if (event.currentTarget.value.trim().toLowerCase() !== verifiedEmail) {
                 verifiedEmail = '';
+                otpWasSent = false;
                 inquiryForm.dataset.verifiedEmail = '';
                 updateEmailVerification();
             }

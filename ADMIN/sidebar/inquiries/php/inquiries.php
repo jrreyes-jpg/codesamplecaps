@@ -2265,6 +2265,13 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
         $where[] = inquiry_center_quotation_filter_condition($quotationFilter);
     }
 
+    // Kapag may binuksang details, kunin ito kahit luma na ang filter sa URL.
+    if ($detailsInquiryId > 0) {
+        $where = ['id = ?'];
+        $types = 'i';
+        $params = [$detailsInquiryId];
+    }
+
     $preferredTimeSelect = $hasPreferredInspectionTime
         ? 'preferred_inspection_time'
         : 'NULL AS preferred_inspection_time';
@@ -2565,6 +2572,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-13',
+    '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [

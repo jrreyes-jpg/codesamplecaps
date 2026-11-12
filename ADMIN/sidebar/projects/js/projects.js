@@ -1929,8 +1929,6 @@ function initWalkInInquiryPanel() {
 
     function closeOtpModal() {
         window.edgeActionLoading?.hide();
-        window.clearInterval(otpClock);
-        otpClock = null;
         otpModal?.classList.remove('is-open');
         otpModal?.setAttribute('aria-hidden', 'true');
         panel.classList.remove('is-otp-locked');
@@ -2552,16 +2550,6 @@ function initWalkInInquiryPanel() {
         pendingConfirmAction = null;
     }
 
-    function askToCloseOtp() {
-        if (!otpModal?.classList.contains('is-open')) return;
-        showConfirm({
-            title: 'Cancel email verification?',
-            message: 'You will return to the Walk-in Inquiry form.',
-            accept: 'Go Back',
-            cancel: 'Continue Verification',
-        }, closeOtpModal);
-    }
-
     function askToDiscard(action) {
         if (!hasDraftContent()) {
             action();
@@ -2718,7 +2706,7 @@ function initWalkInInquiryPanel() {
         }
         if (otpModal?.classList.contains('is-open')) {
             event.preventDefault();
-            otpCode?.focus({ preventScroll: true });
+            closeOtpModal();
             return;
         }
         if (confirmModal?.classList.contains('is-open')) {
@@ -2791,7 +2779,7 @@ function initWalkInInquiryPanel() {
     otpResendButton?.addEventListener('click', resendEmailOtp);
     otpModal?.addEventListener('click', function (event) {
         if (event.target === otpModal || event.target.closest('[data-walk-in-otp-close]')) {
-            askToCloseOtp();
+            closeOtpModal();
         }
     });
     otpCode?.addEventListener('input', function () {

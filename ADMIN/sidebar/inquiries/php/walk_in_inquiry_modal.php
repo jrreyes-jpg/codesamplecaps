@@ -161,25 +161,19 @@
         </form>
     </div>
 </section>
-<section class="walk-in-otp-modal" data-walk-in-otp-modal aria-hidden="true">
-    <div class="walk-in-otp-card" role="dialog" aria-modal="true" aria-labelledby="walk-in-otp-title">
-        <div class="walk-in-otp-content" data-walk-in-otp-content>
-            <div class="walk-in-otp-heading">
-                <span class="walk-in-otp-icon" aria-hidden="true">&#9993;</span>
-                <h3 id="walk-in-otp-title">Verify Client Email</h3>
-                <p>Enter the 6-digit code sent to</p>
-                <strong class="walk-in-otp-email" data-walk-in-otp-email></strong>
-            </div>
-            <label class="walk-in-otp-label" for="walk_in_otp_code">Verification Code</label>
-            <input class="walk-in-otp-code" id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-describedby="walk-in-otp-help walk-in-otp-error" data-walk-in-otp-code>
-            <small class="walk-in-field-error walk-in-otp-message" id="walk-in-otp-error" data-walk-in-otp-error></small>
-            <p class="walk-in-otp-timer" data-walk-in-otp-timer>Code expires in 03:00</p>
-            <div class="walk-in-otp-resend">
-                <button type="button" class="walk-in-otp-resend-button" data-walk-in-otp-resend disabled>Resend Code (01:00)</button>
-                <p id="walk-in-otp-help">Did not get the code? Check Spam or Junk. You can resend when the timer ends.</p>
-            </div>
-            <div class="walk-in-confirm-actions">
-                <button type="button" class="btn-secondary" data-walk-in-otp-close>Close</button>
+<section class="email-otp-modal" data-walk-in-otp-modal aria-hidden="true">
+    <div class="email-otp-dialog" role="dialog" aria-modal="true" aria-labelledby="walk-in-otp-title">
+        <div data-walk-in-otp-content>
+            <button type="button" class="email-otp-close" data-walk-in-otp-close aria-label="Close email verification">&times;</button>
+            <h3 class="email-otp-title" id="walk-in-otp-title">Verify Client Email</h3>
+            <p class="email-otp-text">Enter the 6-digit code sent to <strong class="email-otp-email" data-walk-in-otp-email></strong>.</p>
+            <label class="email-otp-label" for="walk_in_otp_code">Verification Code</label>
+            <input class="email-otp-input" id="walk_in_otp_code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-describedby="walk-in-otp-help walk-in-otp-error" data-walk-in-otp-code>
+            <small class="email-otp-message" id="walk-in-otp-error" data-walk-in-otp-error></small>
+            <p class="email-otp-timer" data-walk-in-otp-timer>Code expires in 03:00</p>
+            <p class="email-otp-help" id="walk-in-otp-help">Check Spam or Junk if you did not get the code.</p>
+            <div class="email-otp-actions">
+                <button type="button" class="email-otp-resend" data-walk-in-otp-resend disabled>Resend Code (01:00)</button>
                 <button type="button" class="btn-primary" data-walk-in-otp-verify>Verify Code</button>
             </div>
         </div>

@@ -109,6 +109,23 @@
 
 .button-secondary { background: #e7edf5; color: #344258; }
 
+.button-primary {
+    transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.button-primary:hover,
+.button-primary:focus-visible {
+    background: #0f8f43;
+    box-shadow: 0 4px 10px rgba(15, 143, 67, 0.18);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.button-primary:active {
+    box-shadow: 0 2px 5px rgba(15, 143, 67, 0.14);
+    transform: translateY(1px);
+}
+
 .admin-quotation-filters {
     display: flex;
     gap: 10px;
@@ -366,11 +383,6 @@ body.admin-quotation-send-open { overflow: hidden; }
 .admin-quotation-send-modal__backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, .58);
-}
-
-.admin-quotation-project-modal .admin-quotation-send-modal__backdrop {
-    background: transparent;
 }
 
 .admin-quotation-send-modal__card {
@@ -382,7 +394,7 @@ body.admin-quotation-send-open { overflow: hidden; }
     padding: 24px;
     border-radius: 18px;
     background: #ffffff;
-    box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .16);
 }
 
 .admin-quotation-send-modal__card h2 { margin: 0 0 8px; }
@@ -392,6 +404,75 @@ body.admin-quotation-send-open { overflow: hidden; }
 .admin-quotation-send-modal__card dt { color: #66758d; font-size: 12px; font-weight: 700; }
 .admin-quotation-send-modal__card dd { margin: 3px 0 0; font-weight: 800; overflow-wrap: anywhere; }
 .admin-quotation-send-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+.admin-quotation-project-modal .admin-quotation-send-modal__card {
+    width: min(100%, 500px);
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #dbe5ec;
+    border-radius: 18px;
+}
+
+.admin-quotation-project-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #dbe5ec;
+}
+
+.admin-quotation-project-modal__head h2 {
+    margin: 0;
+}
+
+.admin-quotation-project-modal__close {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: #eef2f7;
+    color: #172033;
+    font: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-quotation-project-modal__close:hover,
+.admin-quotation-project-modal__close:focus-visible {
+    background: #e2e8f0;
+    outline: 2px solid #94a3b8;
+    outline-offset: 2px;
+}
+
+.admin-quotation-project-modal__message {
+    margin: 0;
+    padding: 14px 16px 0;
+    color: #66758d;
+    line-height: 1.5;
+}
+
+.admin-quotation-project-modal .admin-quotation-send-modal__actions {
+    margin-top: 0;
+    padding: 14px 16px 16px;
+}
+
+.admin-quotation-project-modal .button-primary,
+.admin-quotation-project-modal .button-secondary {
+    min-height: 42px;
+    padding: 9px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .button-primary {
+        transition: none;
+    }
+}
 
 .admin-quotation-section { margin-top: 14px; }
 .admin-quotation-materials-note {

@@ -87,14 +87,14 @@ $sentDate = !empty($quotation['sent_at'])
 
 $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261112-4',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261112-9',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261110-5',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261112-2',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -228,7 +228,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </section>
 
             <div class="admin-quotation-send-modal" data-quotation-send-modal hidden>
-                <div class="admin-quotation-send-modal__backdrop" data-quotation-send-cancel></div>
+                <div class="admin-quotation-send-modal__backdrop admin-modal-backdrop" data-quotation-send-cancel></div>
                 <section class="admin-quotation-send-modal__card" role="dialog" aria-modal="true" aria-labelledby="quotationSendTitle">
                     <h2 id="quotationSendTitle">Send quotation to client?</h2>
                     <p>Review the saved quotation before sending it by email.</p>
@@ -245,13 +245,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
 
             <div class="admin-quotation-send-modal admin-quotation-project-modal" data-quotation-project-modal hidden>
-                <div class="admin-quotation-send-modal__backdrop" data-quotation-project-cancel></div>
+                <div class="admin-quotation-send-modal__backdrop admin-modal-backdrop" data-quotation-project-cancel></div>
                 <section class="admin-quotation-send-modal__card" role="dialog" aria-modal="true" aria-labelledby="quotationProjectTitle">
-                    <h2 id="quotationProjectTitle">Continue to Project Setup?</h2>
-                    <p>Create a project from this accepted quotation. Prepare the P.O details, schedule, and assigned team.</p>
+                    <header class="admin-quotation-project-modal__head">
+                        <h2 id="quotationProjectTitle">Create Project?</h2>
+                        <button type="button" class="admin-quotation-project-modal__close" data-quotation-project-cancel aria-label="Close create project confirmation">&times;</button>
+                    </header>
+                    <p class="admin-quotation-project-modal__message">Create a project from this accepted quotation. The client, scope, items, and total will be copied.</p>
                     <div class="admin-quotation-send-modal__actions">
-                        <button type="button" class="button-secondary" data-quotation-project-cancel>Not Now</button>
-                        <button type="button" class="button-primary" data-quotation-project-confirm>Continue to Project Setup</button>
+                        <button type="button" class="button-secondary" data-quotation-project-cancel>Cancel</button>
+                        <button type="button" class="button-primary" data-quotation-project-confirm>Create Project</button>
                     </div>
                 </section>
             </div>

@@ -19,6 +19,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const projectConfirmButton = projectModal?.querySelector('[data-quotation-project-confirm]');
     const projectCancelButtons = projectModal?.querySelectorAll('[data-quotation-project-cancel]') || [];
 
+    // Ilagay sa body para buong screen ang modal overlay.
+    [historyModal, modal, projectModal].forEach(function (modalElement) {
+        if (modalElement && modalElement.parentElement !== document.body) {
+            document.body.appendChild(modalElement);
+        }
+    });
+
     const renderHistory = function (history) {
         if (!historyList || !Array.isArray(history)) return;
         historyList.replaceChildren();
@@ -156,10 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
     projectConfirmButton?.addEventListener('click', function () {
         if (!projectForm) return;
         projectConfirmButton.disabled = true;
-        projectConfirmButton.textContent = 'Opening...';
+        projectConfirmButton.textContent = 'Creating...';
         projectForm.setAttribute('aria-busy', 'true');
         window.edgeActionLoading?.show({
-            title: 'Opening Project Setup...',
+            title: 'Creating Project...',
             message: 'Please wait. Do not close this page.',
         });
         projectForm.submit();

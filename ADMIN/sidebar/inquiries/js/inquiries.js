@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.appendChild(prerequisiteNotice);
 
     const inspectionMonitorModal = document.createElement('div');
-    inspectionMonitorModal.className = 'inspection-monitor-modal';
+    inspectionMonitorModal.className = 'inspection-monitor-modal admin-modal-backdrop';
     inspectionMonitorModal.hidden = true;
     inspectionMonitorModal.innerHTML = [
         '<div class="inspection-monitor-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionMonitorTitle">',

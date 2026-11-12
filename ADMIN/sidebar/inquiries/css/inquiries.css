@@ -2310,26 +2310,6 @@
     box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
 }
 
-.inquiry-modal__back {
-    display: inline-flex;
-    width: fit-content;
-    min-height: 40px;
-    padding: 8px 13px;
-    align-items: center;
-    border-radius: 10px;
-    background: #064e3b;
-    color: #ffffff;
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.inquiry-modal__back:hover,
-.inquiry-modal__back:focus-visible {
-    background: #047857;
-    color: #ffffff;
-}
-
 .inquiry-modal--page .inquiry-modal__head {
     border-radius: 0;
 }

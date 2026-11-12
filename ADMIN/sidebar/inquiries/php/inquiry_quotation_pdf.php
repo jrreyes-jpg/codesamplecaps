@@ -14,6 +14,8 @@ if (!$quotation) {
     exit();
 }
 
+$items = inquiry_quote_client_price_items($items, (float)($quotation['grand_total'] ?? 0));
+
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $statusIndicator = inquiry_quote_status_indicator($quoteStatus, !empty($quotation['engineer_name']));
 $isFinalClientAccepted = inquiry_quote_is_final_client_accepted($conn, $draftId);
@@ -188,8 +190,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                                 <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$item['quantity'], 2), '0'), '.') . ' ' . (string)$item['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['client_unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['client_line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -198,10 +200,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
         </section>
 
         <section class="public-quote-totals">
-            <div><span>Subtotal</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['subtotal']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-            <div><span>MARKUP</span><strong><?php echo htmlspecialchars(number_format((float)$quotation['profit_margin_percent'], 2), ENT_QUOTES, 'UTF-8'); ?>%</strong></div>
-            <div><span>Profit Amount</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['profit_amount']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-            <div class="public-quote-grand-total"><span>Grand Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <div class="public-quote-grand-total"><span>Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
         </section>
 
         <footer class="public-quote-footer">

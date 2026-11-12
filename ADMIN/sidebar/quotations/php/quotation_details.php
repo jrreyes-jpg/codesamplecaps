@@ -74,12 +74,22 @@ $openInquiryUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' .
     'tab' => 'inspection',
     'return_url' => $quotationReturnUrl,
 ]);
+$siteLocationParts = array_values(array_filter([
+    trim((string)($quotation['site_address'] ?? '')),
+    trim((string)($quotation['barangay'] ?? '')),
+    trim((string)($quotation['city_municipality'] ?? '')),
+    trim((string)($quotation['province'] ?? '')),
+], static fn(string $part): bool => $part !== ''));
+$siteLocation = $siteLocationParts ? implode(', ', $siteLocationParts) : 'Not provided';
+$sentDate = !empty($quotation['sent_at'])
+    ? admin_quote_details_date($quotation['sent_at'])
+    : 'Not sent';
 
 $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-8',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261112-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -92,7 +102,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 <main class="main-content">
     <div class="admin-quotation-page admin-quotation-details-page">
-        <a class="admin-quotation-back" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">&larr; Back to Quotation List</a>
+        <nav class="admin-quotation-back-row" aria-label="Quotation navigation">
+            <a class="admin-quotation-back admin-sticky-back-button" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">&larr; Back to Quotation List</a>
+        </nav>
 
         <?php if (!$quotation): ?>
             <section class="admin-quotation-detail">
@@ -116,8 +128,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                 <div class="admin-quotation-summary">
                     <article><span>Client Email</span><strong><?php echo admin_quote_details_e($quotation['email'] ?? 'Not provided'); ?></strong></article>
-                    <article><span>Total</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></article>
-                    <article><span>Prepared By</span><strong><?php echo admin_quote_details_e($quotation['preparer_name'] ?? 'Admin'); ?></strong></article>
+                    <article><span>Site Location</span><strong><?php echo admin_quote_details_e($siteLocation); ?></strong></article>
+                    <article><span>Sent Date</span><strong><?php echo admin_quote_details_e($sentDate); ?></strong></article>
                 </div>
 
                 <div class="admin-quotation-revision-note" data-quotation-revision-note <?php echo $selectedStatus === 'revision_requested' && trim((string)($quotation['client_decision_note'] ?? '')) !== '' ? '' : 'hidden'; ?>>
@@ -165,7 +177,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <a class="button-primary" data-quotation-revise-action href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation" <?php echo $selectedStatus === 'revision_requested' ? '' : 'hidden'; ?>>Revise Quotation</a>
                     <a class="button-secondary" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiry_quotation_pdf.php?id=<?php echo $quotationId; ?>">Preview Quotation</a>
                     <button type="button" class="button-secondary" data-quotation-history-open>View History</button>
-                    <a class="button-secondary" href="<?php echo admin_quote_details_e($openInquiryUrl); ?>">Open Inquiry</a>
+                    <a class="button-secondary" href="<?php echo admin_quote_details_e($openInquiryUrl); ?>">View Inquiry</a>
                     <?php if ($canSendQuotation): ?>
                         <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-send-form" data-quotation-send-form>
                             <input type="hidden" name="csrf_token" value="<?php echo admin_quote_details_e($sendCsrfToken); ?>">

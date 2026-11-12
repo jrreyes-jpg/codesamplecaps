@@ -65,6 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $quotation = inquiry_quote_fetch_by_public_token($conn, $token);
 $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : [];
+$items = $quotation
+    ? inquiry_quote_client_price_items($items, (float)($quotation['grand_total'] ?? 0))
+    : [];
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
 $canRespond = $status === 'sent';
 $hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !empty($quotation['engineer_name']);
@@ -219,8 +222,8 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                                                 <?php endif; ?>
                                             </td>
                                             <td><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$item['quantity'], 2), '0'), '.') . ' ' . (string)$item['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['client_unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars(inquiry_quote_format_money((float)$item['client_line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

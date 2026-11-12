@@ -186,6 +186,58 @@ function inquiry_quote_format_money(float $amount): string
     return 'PHP ' . number_format($amount, 2);
 }
 
+function inquiry_quote_client_price_items(array $items, float $grandTotal): array
+{
+    $subtotal = 0.0;
+    $positiveIndexes = [];
+
+    foreach ($items as $index => $item) {
+        $lineTotal = max(0.0, (float)($item['line_total'] ?? 0));
+        $subtotal += $lineTotal;
+        if ($lineTotal > 0) {
+            $positiveIndexes[] = $index;
+        }
+    }
+
+    if ($subtotal <= 0 || !$positiveIndexes) {
+        foreach ($items as &$item) {
+            $item['client_unit_cost'] = (float)($item['unit_cost'] ?? 0);
+            $item['client_line_total'] = (float)($item['line_total'] ?? 0);
+        }
+        unset($item);
+        return $items;
+    }
+
+    $targetTotal = round(max(0.0, $grandTotal), 2);
+    $priceFactor = $targetTotal / $subtotal;
+    $allocatedTotal = 0.0;
+    $lastPositiveIndex = $positiveIndexes[count($positiveIndexes) - 1];
+
+    foreach ($items as $index => &$item) {
+        $baseLineTotal = max(0.0, (float)($item['line_total'] ?? 0));
+        $quantity = (float)($item['quantity'] ?? 0);
+
+        if ($baseLineTotal <= 0) {
+            $item['client_unit_cost'] = 0.0;
+            $item['client_line_total'] = 0.0;
+            continue;
+        }
+
+        $clientLineTotal = $index === $lastPositiveIndex
+            ? round($targetTotal - $allocatedTotal, 2)
+            : round($baseLineTotal * $priceFactor, 2);
+        $allocatedTotal += $clientLineTotal;
+
+        $item['client_line_total'] = $clientLineTotal;
+        $item['client_unit_cost'] = $quantity > 0
+            ? round($clientLineTotal / $quantity, 2)
+            : round((float)($item['unit_cost'] ?? 0) * $priceFactor, 2);
+    }
+    unset($item);
+
+    return $items;
+}
+
 function inquiry_quote_generate_number(): string
 {
     return 'IQ-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));

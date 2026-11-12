@@ -2583,7 +2583,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-3',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
@@ -2906,7 +2906,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <div class="inquiry-modal__panel" id="inquiryDetailsTop<?php echo (int)$inquiry['id']; ?>" role="<?php echo $isDetailsPage ? 'region' : 'dialog'; ?>" <?php echo $isDetailsPage ? '' : 'aria-modal="true"'; ?> aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
                                 <?php if ($isDetailsPage): ?>
                                     <div class="inquiry-details-page__navigation">
-                                        <a href="<?php echo htmlspecialchars($inquiryListUrl, ENT_QUOTES, 'UTF-8'); ?>" class="inquiry-modal__back" aria-label="Go back">&larr; <?php echo $detailsReturnUrl !== '' ? 'Back to Quotation' : 'Back to Inquiries'; ?></a>
+                                        <a href="<?php echo htmlspecialchars($inquiryListUrl, ENT_QUOTES, 'UTF-8'); ?>" class="inquiry-modal__back admin-sticky-back-button" aria-label="Go back">&larr; <?php echo $detailsReturnUrl !== '' ? 'Back to Quotation' : 'Back to Inquiries'; ?></a>
                                     </div>
                                 <?php endif; ?>
                                 <div class="inquiry-modal__head<?php echo $isDetailsPage && !empty($inquiry['archived_at']) ? ' has-page-archive-actions' : ''; ?>">
@@ -2960,7 +2960,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <span class="inquiry-workflow__marker" aria-hidden="true"><span>2</span><b>&#10003;</b></span>
                                             <span class="inquiry-workflow__label">
                                                 Inspection Schedule
-                                                <small>Next: Assign an engineer and confirm the date.</small>
                                             </span>
                                         </a>
                                     <?php endif; ?>

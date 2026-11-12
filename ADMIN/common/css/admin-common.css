@@ -2915,6 +2915,27 @@ input[data-inline-editable]:disabled {
     background: #14532d;
 }
 
+/* Iisang Back button style para sa Admin detail pages. */
+.admin-sticky-back-button {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 40px;
+    padding: 8px 13px;
+    align-items: center;
+    border-radius: 10px;
+    background: #064e3b;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-sticky-back-button:hover,
+.admin-sticky-back-button:focus-visible {
+    background: #047857;
+    color: #ffffff;
+}
+
 @media (max-width: 430px) {
     .resource-page-tabs {
         display: grid;

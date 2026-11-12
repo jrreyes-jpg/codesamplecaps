@@ -503,7 +503,9 @@ body.admin-quotation-history-open { overflow: hidden; }
 .admin-quotation-details-page {
     width: 100%;
     min-height: 0;
-    padding-bottom: 18px;
+    padding-top: 18px;
+    padding-bottom: 12px;
+    background: #effaf4;
 }
 
 .admin-quotation-details-page > * {
@@ -512,19 +514,58 @@ body.admin-quotation-history-open { overflow: hidden; }
     margin-left: auto;
 }
 
-.admin-quotation-back {
-    display: inline-flex;
-    width: fit-content;
-    min-height: 42px;
-    align-items: center;
+.admin-quotation-back-row {
+    position: sticky;
+    top: 112px;
+    z-index: 40;
     margin-bottom: 14px;
-    padding: 9px 14px;
-    border: 1px solid #b9ddc8;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #126c37;
-    font-weight: 800;
-    text-decoration: none;
+}
+
+.admin-quotation-back {
+    width: fit-content;
+    max-width: 100%;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.10);
+}
+
+.admin-quotation-details-page .admin-quotation-detail {
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(28, 74, 53, 0.06);
+}
+
+.admin-quotation-details-page .admin-quotation-detail-head,
+.admin-quotation-details-page .admin-quotation-summary {
+    margin-bottom: 12px;
+}
+
+.admin-quotation-details-page .admin-quotation-summary article {
+    padding: 10px 12px;
+}
+
+.admin-quotation-details-page .admin-quotation-section {
+    margin-top: 10px;
+}
+
+.admin-quotation-details-page .admin-quotation-section h2 {
+    margin: 0 0 10px;
+}
+
+.admin-quotation-details-page .admin-quotation-table-wrap th,
+.admin-quotation-details-page .admin-quotation-table-wrap td {
+    padding: 9px 11px;
+}
+
+.admin-quotation-details-page .admin-quotation-totals {
+    margin-top: 9px;
+    padding: 8px 12px;
+}
+
+.admin-quotation-details-page .admin-quotation-totals p {
+    padding: 5px 0;
+}
+
+.admin-quotation-details-page .admin-quotation-actions {
+    margin-top: 12px;
+    padding-top: 12px;
 }
 
 .admin-quotation-detail-head h1 {

@@ -33,3 +33,4 @@
 - Use simple colored text for a small secondary status. Avoid a large colored badge when it is not needed.
 - Do not use color alone. Add clear text or an icon for success, warning, and error status.
 - Keep the system lightweight for capstone defense. Reuse shared loaders, avoid heavy blur, large shadows, long animations, duplicate scripts, and forced loading delays. Show loaders only during real server work.
+- Reuse the shared light page background, layouts, buttons, filters, modals, loaders, and helpers when they fit. Keep one shared source and do not copy the same CSS or JavaScript into feature files.

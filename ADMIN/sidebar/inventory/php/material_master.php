@@ -316,9 +316,10 @@ $materialTextPreview = static function (string $text, int $limit = 60): array {
 };
 
 $adminPageTitle = 'Consumable Material Master - Admin';
+$adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261103-6',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261112-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -327,7 +328,7 @@ $adminJsFiles = [
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content inventory-main-content">
+<main class="main-content inventory-main-content inventory-light-main">
     <div class="page-stack inventory-page-stack material-master-page">
         <?php if ($materialFlash): ?>
             <div class="material-toast material-toast--<?php echo $materialFlash['type'] === 'success' ? 'success' : 'error'; ?>" role="<?php echo $materialFlash['type'] === 'success' ? 'status' : 'alert'; ?>" data-material-toast data-auto-hide="<?php echo $materialFlash['type'] === 'success' ? 'true' : 'false'; ?>">
@@ -337,7 +338,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         <?php endif; ?>
 
-        <section class="form-panel inventory-report-panel">
+        <section class="form-panel inventory-report-panel admin-flat-panel">
             <div class="inventory-report-heading">
                 <div>
                     <h1 class="section-title-inline"><?php echo $materialFilter === 'inactive' ? 'Archived Materials' : 'Inventory Report'; ?></h1>

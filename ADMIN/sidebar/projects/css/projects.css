@@ -127,21 +127,21 @@
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
-            margin-top: 12px;
+            gap: 12px;
+            margin-top: 8px;
         }
 
         .metric-card {
             display: grid;
             align-content: center;
             gap: 8px;
-            min-height: 116px;
+            min-height: 96px;
             background: #ffffff;
             border-radius: 16px;
-            padding: 20px;
+            padding: 16px;
             border: 1px solid rgba(148, 163, 184, 0.18);
             border-left: 4px solid rgba(22, 163, 74, 0.5);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            box-shadow: none;
         }
 
         .metric-card span {
@@ -500,7 +500,16 @@
 .projects-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-    gap: 20px;
+    gap: 12px;
+}
+
+/* Shared light canvas tulad ng Inquiry at Quotation list. */
+.main-content.projects-content.projects-list-main {
+    background: #f8fafc;
+}
+
+.projects-list-main > .page-stack {
+    gap: 14px;
 }
 
 .projects-content,
@@ -515,8 +524,8 @@
 
 .project-controls {
     display: grid;
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 
 .projects-section-heading {
@@ -818,7 +827,7 @@
 .project-filter-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 0;
 }
 
@@ -828,7 +837,7 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .project-create-trigger {
@@ -894,8 +903,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 42px;
-    padding: 10px 16px;
+    min-height: 38px;
+    padding: 8px 14px;
     border-radius: 999px;
     background: #ffffff;
     border: 1px solid #d1d5db;
@@ -903,7 +912,7 @@
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 600;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    box-shadow: none;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -911,7 +920,7 @@
     background: #ecfdf5;
     border-color: #86efac;
     color: #166534;
-    box-shadow: 0 12px 22px rgba(22, 163, 74, 0.12);
+    box-shadow: none;
 }
 
 .project-filter-chip.is-active {
@@ -1026,21 +1035,22 @@
 }
 
 .project-card {
-    padding: 16px;
+    padding: 14px;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: 12px;
-    border-radius: 18px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    gap: 10px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: none;
     height: 100%;
     transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .project-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(22, 163, 74, 0.24);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.11);
+    transform: none;
+    border-color: #86cfa8;
+    box-shadow: none;
 }
 
 .project-card__topline {
@@ -2434,18 +2444,20 @@ input[data-inline-editable]:disabled {
     }
 
     .project-filter-chips {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         width: 100%;
         min-width: 0;
         gap: 8px;
-        padding: 0;
+        padding: 0 0 4px;
+        overflow-x: auto;
+        scrollbar-width: thin;
     }
 
     .project-filter-chip {
-        flex: 0 1 auto;
+        flex: 0 0 auto;
         min-height: 40px;
         padding: 8px 12px;
-        white-space: normal;
+        white-space: nowrap;
         text-align: center;
     }
 
@@ -2667,6 +2679,11 @@ input[data-inline-editable]:disabled {
 .project-card.is-draft {
     border: 1px solid rgba(148, 163, 184, 0.45);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+}
+
+.projects-list-main .project-card.is-locked,
+.projects-list-main .project-card.is-draft {
+    background: #ffffff;
 }
 
 .lock-note {

@@ -6,13 +6,13 @@
 .inquiries-shell {
     position: relative;
     display: grid;
-    gap: 14px;
+    gap: 10px;
     box-sizing: border-box;
-    padding-top: 20px;
+    padding-top: 16px;
 }
 
-/* White page para mas clean at madaling basahin ang inquiry details. */
-.main-content.admin-dashboard-content.inquiry-details-main {
+/* Shared light canvas para list at details. */
+.main-content.admin-dashboard-content.inquiry-center-main {
     background: #f8fafc;
 }
 
@@ -869,9 +869,9 @@
 .inquiries-hero,
 .inquiry-card,
 .inquiry-filter-bar {
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: none;
 }
 
 .inquiries-hero,
@@ -987,14 +987,14 @@
 
 .inquiry-list {
     display: grid;
-    gap: 10px;
+    gap: 8px;
 }
 
 .inquiry-card {
     display: grid;
-    gap: 10px;
-    border-radius: 18px;
-    padding: 16px;
+    gap: 8px;
+    border-radius: 14px;
+    padding: 14px;
 }
 
 .inquiry-card.is-unviewed {
@@ -1074,7 +1074,7 @@
 
 .inquiry-card__summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     background: rgba(248, 250, 252, 0.82);
@@ -2095,9 +2095,9 @@
 }
 
 .inquiry-source-strip {
-    margin-top: 2px;
-    padding-bottom: 7px;
-    border-bottom: 1px solid #e2e8f0;
+    margin-top: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
 }
 
 .inquiry-status-strip--quotation {
@@ -4842,7 +4842,7 @@ body.inquiry-modal-open {
     display: grid;
     grid-template-columns: auto minmax(240px, 1fr) auto;
     align-items: center;
-    gap: 18px;
+    gap: 12px;
 }
 
 .inquiry-page-header h1 {
@@ -4868,7 +4868,7 @@ body.inquiry-modal-open {
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    min-height: 48px;
+    min-height: 44px;
     padding: 10px 46px 10px 14px;
     border: 1px solid #cbd5e1;
     border-radius: 12px;
@@ -4987,5 +4987,31 @@ body.inquiry-modal-open {
 
     .inquiry-sort-form select {
         width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .inquiry-status-strip {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+    }
+
+    .inquiry-status-strip > * {
+        flex: 0 0 auto;
+    }
+
+    .inquiry-card__summary {
+        grid-template-columns: 1fr;
+    }
+
+    .inquiry-card__info {
+        border-right: 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .inquiry-card__info:last-child {
+        border-bottom: 0;
     }
 }

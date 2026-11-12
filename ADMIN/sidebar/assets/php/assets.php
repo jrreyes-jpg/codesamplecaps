@@ -1412,7 +1412,7 @@ foreach ($assets as $assetIndex => $assetRow) {
 $adminPageTitle = 'Asset Report - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
     '/codesamplecaps/ADMIN/sidebar/assets/css/assets.css?v=20261112-4',
 ];
 $adminJsFiles = [
@@ -1424,7 +1424,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
     <main class="main-content assets-content">
-        <section class="asset-report-panel" aria-labelledby="assetReportTitle">
+        <section class="asset-report-panel admin-flat-panel" aria-labelledby="assetReportTitle">
             <div class="asset-report-heading">
                 <h1 id="assetReportTitle">Assets</h1>
                 <?php if (count($assets) > 0): ?>

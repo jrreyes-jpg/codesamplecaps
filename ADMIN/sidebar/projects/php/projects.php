@@ -3229,10 +3229,11 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
 ?>
 <?php
 $adminPageTitle = $isCreateProjectPage ? 'Create Project - Admin' : 'Project Management - Admin';
+$adminBodyClass = !$isCreateProjectPage ? 'admin-light-page' : '';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261112-6',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261112-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -3243,7 +3244,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-    <main class="main-content projects-content">
+    <main class="main-content projects-content<?php echo !$isCreateProjectPage ? ' projects-list-main' : ''; ?>">
         <div class="page-stack<?php echo $isCreateProjectPage ? ' page-stack--project-create' : ''; ?>">
             <?php if ($flash): ?>
                 <?php $flashType = in_array((string)($flash['type'] ?? ''), ['success', 'warning', 'error'], true) ? (string)$flash['type'] : 'success'; ?>

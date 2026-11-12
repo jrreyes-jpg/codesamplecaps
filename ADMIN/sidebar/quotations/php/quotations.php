@@ -138,9 +138,10 @@ $statusLabels = [
 ];
 
 $adminPageTitle = 'Quotations - Edge Automation';
+$adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261110-2',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261112-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -150,7 +151,7 @@ $adminJsFiles = [
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content admin-dashboard-content">
+<main class="main-content admin-dashboard-content admin-quotation-list-main">
     <div class="admin-quotation-page admin-quotation-list-page">
         <header class="admin-quotation-heading">
             <div>

@@ -2,6 +2,11 @@
     padding-top: 112px;
 }
 
+/* Shared light canvas para sa buong Inventory module. */
+.main-content.inventory-light-main {
+    background: #f8fafc;
+}
+
 /* Delivery list: simple status for Admin and Clerk flow. */
 .admin-material-delivery-list .data-table {
     min-width: 780px;
@@ -37,7 +42,7 @@
 .inventory-page-stack {
     display: grid;
     min-width: 0;
-    gap: 24px;
+    gap: 14px;
     align-items: start;
 }
 
@@ -224,15 +229,15 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .inventory-report-heading__actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
 }
 
 .material-master-page .inventory-report-heading {
@@ -301,7 +306,7 @@
     display: grid;
     gap: 6px;
     width: min(100%, 460px);
-    margin: 0 0 16px;
+    margin: 0 0 12px;
 }
 
 .inventory-report-search label {
@@ -914,22 +919,30 @@ body.material-create-modal-open {
     overflow: hidden;
 }
 
-.material-history-page .form-panel,
-.material-master-page .form-panel {
+.material-history-page .form-panel {
     background: #fff;
 }
 
 .material-master-page .inventory-report-panel {
     box-sizing: border-box;
-    padding: 24px;
+    padding: 8px;
     overflow: visible;
 }
 
 .material-history-page .material-history-panel {
     box-sizing: border-box;
     min-width: 0;
-    padding: 24px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: none;
     overflow: visible;
+}
+
+.material-stock-in-page .form-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: none;
 }
 
 .material-history-panel .material-master-heading {

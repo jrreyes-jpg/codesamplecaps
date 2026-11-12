@@ -2537,12 +2537,13 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
 }
 
 $adminPageTitle = 'Inquiry Center - Edge Automation';
+$adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-1',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-5',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-6',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
@@ -2559,7 +2560,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content<?php echo $detailsInquiryId > 0 ? ' inquiry-details-main' : ''; ?>">
+<main class="main-content admin-dashboard-content inquiry-center-main<?php echo $detailsInquiryId > 0 ? ' inquiry-details-main' : ''; ?>">
     <div
         class="inquiries-shell<?php echo $detailsInquiryId > 0 ? ' is-details-page' : ''; ?>"
         data-latest-revision-id="<?php echo $latestRevisionId; ?>"
@@ -2586,7 +2587,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
 
         <div class="inquiry-page-header">
-            <h1>Inquiry Center</h1>
+            <h1>Inquiries</h1>
             <form class="inquiry-header-search" method="GET" role="search">
                 <div class="inquiry-search-field" data-search-field>
                     <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries..." aria-label="Search inquiries">

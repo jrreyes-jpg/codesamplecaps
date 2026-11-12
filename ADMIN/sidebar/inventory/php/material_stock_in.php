@@ -58,9 +58,10 @@ $deliveryReady = material_delivery_verification_is_ready($conn);
 $deliveries = material_delivery_verification_fetch($conn);
 
 $adminPageTitle = 'Material Stock In - Admin';
+$adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261112-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -69,7 +70,7 @@ $adminJsFiles = [
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content inventory-main-content">
+<main class="main-content inventory-main-content inventory-light-main">
     <div class="page-stack inventory-page-stack material-stock-in-page">
         <?php if (is_array($flash)): ?>
             <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : 'alert-error'; ?>">

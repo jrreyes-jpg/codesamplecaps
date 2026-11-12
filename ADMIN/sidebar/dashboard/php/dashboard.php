@@ -15,7 +15,6 @@ if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
 }
 $action = '';
 
-admin_ensure_user_profile_photo_column($conn);
 $dashboardFlash = consumeDashboardFlash();
 if ($dashboardFlash['type'] === 'success') {
     $message = $dashboardFlash['text'];
@@ -120,7 +119,14 @@ SVG;
 }
 
 
-$supportsProfilePhoto = hasColumn($conn, 'users', 'profile_photo_path');
+$requestedAction = $_SERVER['REQUEST_METHOD'] === 'POST' ? (string)($_POST['action'] ?? '') : '';
+$needsProfileData = $activeTab === 'profile'
+    || in_array($requestedAction, ['update_my_profile', 'change_my_password'], true);
+
+if ($needsProfileData) {
+    admin_ensure_user_profile_photo_column($conn);
+}
+$supportsProfilePhoto = $needsProfileData && hasColumn($conn, 'users', 'profile_photo_path');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -166,7 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
 $csrfToken = getCsrfToken();
-$currentAdmin = admin_get_user_by_id($conn, (int)($_SESSION['user_id'] ?? 0));
+$currentAdmin = $needsProfileData
+    ? admin_get_user_by_id($conn, (int)($_SESSION['user_id'] ?? 0))
+    : [];
 if ($supportsProfilePhoto && $currentAdmin) {
     $currentAdmin['profile_photo_path'] = profile_photo_migrate_legacy_reference(
         $conn,
@@ -183,9 +191,11 @@ $currentAdminPhotoUrl = $currentAdminPhoto !== ''
     ? profile_photo_public_url($currentAdminPhoto)
     : '';
 $currentAdminPhotoPreviewUrl = $currentAdminPhotoUrl !== '' ? $currentAdminPhotoUrl : $defaultAdminPhotoUrl;
-$adminMetrics = admin_load_dashboard_metrics($conn);
-foreach ($adminMetrics as $metricName => $metricValue) {
-    ${$metricName} = $metricValue;
+if ($activeTab === 'dashboard') {
+    $adminMetrics = admin_load_dashboard_metrics($conn);
+    foreach ($adminMetrics as $metricName => $metricValue) {
+        ${$metricName} = $metricValue;
+    }
 }
 
 if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
@@ -195,10 +205,11 @@ if (!in_array($activeTab, ['dashboard', 'profile'], true)) {
 ?>
 <?php
 $adminPageTitle = 'Admin Dashboard - Edge Automation';
+$adminBodyClass = 'admin-light-page';
 
 $adminCssFiles = [
-    '/codesamplecaps/ADMIN/common/css/admin-common.css',
-    '/codesamplecaps/ADMIN/sidebar/dashboard/css/dashboard.css',
+    '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
+    '/codesamplecaps/ADMIN/sidebar/dashboard/css/dashboard.css?v=20261112-1',
 ];
 
 $adminJsFiles = [
@@ -216,14 +227,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
     <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     <?php
+    $csrfToken = $csrfToken ?? '';
+    ?>
+    <?php if ($activeTab === 'dashboard'): ?>
+    <?php
     $activeProjectCount = $ongoingProjects + $pendingProjects + $onHoldProjects;
     $activeWorkforceCount = $activeEngineerCount + $activeForemanCount + $activeClientCount;
     $pendingInquiries = $pendingInquiries ?? 0;
-    $csrfToken = $csrfToken ?? '';
     ?>
-    <div id="dashboard" class="tab-content <?php echo $activeTab === 'dashboard' ? 'active' : ''; ?>">
+    <div id="dashboard" class="tab-content active">
         <section class="dashboard-grid overview-dashboard" data-superadmin-overview>
-            <section class="dashboard-panel summary-panel">
+            <section class="dashboard-panel summary-panel admin-flat-panel">
                 <div class="panel-heading">
                     <div>
                         <h1 class="dashboard-section-title">Overview</h1>
@@ -253,7 +267,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </section>
 
-            <section class="dashboard-panel overview-attention-panel">
+            <section class="dashboard-panel overview-attention-panel admin-flat-panel">
                 <div class="panel-heading">
                     <div>
                         <h2 class="dashboard-section-title">Needs Attention</h2>
@@ -283,7 +297,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </section>
 
-            <section class="dashboard-panel activity-panel overview-activity-panel">
+            <section class="dashboard-panel activity-panel overview-activity-panel admin-flat-panel">
                 <div class="panel-heading">
                     <div>
                         <h2 class="dashboard-section-title">Recent Activity</h2>
@@ -313,7 +327,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </section>
 
-            <details class="dashboard-panel analytics-panel overview-analytics-details" data-overview-analytics>
+            <details class="dashboard-panel analytics-panel overview-analytics-details admin-flat-panel" data-overview-analytics>
                 <summary class="overview-analytics-summary">
                     <span>
                         <strong>Operations Analytics</strong>
@@ -362,9 +376,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </section>
         </section>
     </div>
+    <?php endif; ?>
 
 
-    <div id="profile" class="tab-content <?php echo $activeTab === 'profile' ? 'active' : ''; ?>">
+    <?php if ($activeTab === 'profile'): ?>
+    <div id="profile" class="tab-content active">
 
 
         <div class="profile-grid">
@@ -462,5 +478,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </section>
         </div>
     </div>
+    <?php endif; ?>
 </main>
 <?php include __DIR__ . '/../../../layout/footer.php'; ?>

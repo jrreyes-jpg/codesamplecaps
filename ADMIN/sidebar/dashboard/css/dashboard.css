@@ -899,3 +899,91 @@
         text-align: left;
     }
 }
+
+/* Shared light layout para mabilis at malinaw sa online defense. */
+.admin-dashboard-content {
+    background: #f8fafc;
+}
+
+.overview-dashboard {
+    gap: 14px;
+}
+
+.overview-dashboard .dashboard-panel.admin-flat-panel {
+    margin-top: 0;
+    padding: 18px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.overview-summary-grid,
+.overview-attention-grid,
+.mini-overview,
+.profile-grid {
+    gap: 12px;
+}
+
+.overview-summary-grid .metric-tile,
+.overview-attention-card,
+.mini-overview-card,
+.profile-form-card {
+    border: 1px solid #dbe4ee;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: none;
+}
+
+.metric-tile-link {
+    transition: border-color 0.12s ease;
+}
+
+.metric-tile-link:hover,
+.metric-tile-link:focus-visible {
+    transform: none;
+    filter: none;
+    border-color: #86cfa8;
+    box-shadow: none;
+}
+
+.overview-attention-card--danger.is-active,
+.overview-attention-card--warning.is-active,
+.overview-attention-card--neutral.is-active,
+.overview-attention-card.is-clear {
+    background: #ffffff;
+    box-shadow: none;
+}
+
+.overview-quick-actions a {
+    box-shadow: none;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.profile-form-card {
+    padding: 20px;
+}
+
+.profile-form-card--security,
+.profile-photo-upload {
+    background: #ffffff;
+}
+
+.profile-photo-upload {
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.btn-primary--dark {
+    background: #166534;
+}
+
+@media (max-width: 700px) {
+    .overview-dashboard .dashboard-panel.admin-flat-panel {
+        padding: 14px 0;
+    }
+
+    .profile-form-card {
+        padding: 16px;
+    }
+}

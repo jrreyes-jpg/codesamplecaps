@@ -396,7 +396,15 @@ usort($adminBellItems, static function (array $left, array $right): int {
 });
 $adminBellItems = array_slice($adminBellItems, 0, 8);
 
-if (
+if (isset($_SESSION['profile_photo_reference'])) {
+    $profilePhotoPath = trim((string)$_SESSION['profile_photo_reference']);
+    if ($profilePhotoPath !== '') {
+        $superAdminProfilePhotoUrl = profile_photo_public_url(
+            $profilePhotoPath,
+            (int)($_SESSION['user_id'] ?? 0)
+        );
+    }
+} elseif (
     isset($conn)
     && $conn instanceof mysqli
     && super_admin_sidebar_column_exists($conn, 'users', 'profile_photo_path')
@@ -414,8 +422,12 @@ if (
             $profileRow['profile_photo_path'] ?? null
         );
         $profilePhotoPath = trim((string)$profilePhotoPath);
+        $_SESSION['profile_photo_reference'] = $profilePhotoPath;
         if ($profilePhotoPath !== '') {
-            $superAdminProfilePhotoUrl = profile_photo_public_url($profilePhotoPath);
+            $superAdminProfilePhotoUrl = profile_photo_public_url(
+                $profilePhotoPath,
+                (int)$_SESSION['user_id']
+            );
         }
     }
 }

@@ -15,8 +15,8 @@ if ($userId <= 0) {
 }
 
 $columnResult = $conn->query("SHOW COLUMNS FROM users LIKE 'profile_photo_path'");
-if ($columnResult && $columnResult->num_rows === 0) {
-    $conn->query('ALTER TABLE users ADD COLUMN profile_photo_path VARCHAR(255) NULL AFTER token_expiry');
+if (!$columnResult || $columnResult->num_rows === 0) {
+    profile_photo_output_default_image();
 }
 
 $stmt = $conn->prepare('SELECT profile_photo_path FROM users WHERE id = ? LIMIT 1');

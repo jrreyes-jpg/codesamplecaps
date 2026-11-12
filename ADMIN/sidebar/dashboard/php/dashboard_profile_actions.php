@@ -98,6 +98,7 @@ function admin_dashboard_handle_update_my_profile(
     }
 
     $_SESSION['name'] = $fullName;
+    $_SESSION['profile_photo_reference'] = trim((string)$newPhotoPath);
 
     if ($uploadedNewPhoto) {
         profile_photo_cleanup_duplicates(

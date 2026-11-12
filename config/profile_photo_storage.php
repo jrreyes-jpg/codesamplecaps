@@ -187,6 +187,7 @@ if (!function_exists('profile_photo_output_default_image')) {
         if (is_file($defaultPath) && is_readable($defaultPath)) {
             header('Content-Type: image/jpeg');
             header('Content-Length: ' . (string)filesize($defaultPath));
+            header('Cache-Control: private, max-age=31536000, immutable');
             readfile($defaultPath);
             exit;
         }
@@ -218,6 +219,8 @@ if (!function_exists('profile_photo_output_reference')) {
 
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . (string)filesize($path));
+        // Versioned ang URL kaya ligtas i-cache hanggang may bagong upload.
+        header('Cache-Control: private, max-age=31536000, immutable');
         readfile($path);
         exit;
     }

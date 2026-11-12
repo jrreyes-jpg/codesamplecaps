@@ -542,9 +542,7 @@ function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere
 
 function inquiry_center_quotation_status_label(string $status): string
 {
-    return inquiry_quote_normalize_status($status) === 'accepted'
-        ? 'Client Approved'
-        : inquiry_quote_status_label($status);
+    return inquiry_quote_status_label($status);
 }
 
 function inquiry_center_redirect(string $view, string $message): void
@@ -2593,7 +2591,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261110-10',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261112-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261110-3',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2687,7 +2685,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php $showQuotationFilters = false; ?>
         <?php if ($showQuotationFilters): ?>
             <nav class="inquiry-status-strip inquiry-status-strip--quotation" aria-label="Initial quotation filters">
-                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Client Approved', 'needs_revision' => 'Needs Revision', 'rejected' => 'Rejected']; ?>
+                <?php $quotationFilterChips = ['needs_quotation' => 'Needs Quotation', 'draft' => 'Draft', 'awaiting_client' => 'Awaiting Client', 'accepted' => 'Accepted', 'needs_revision' => 'Revision Requested', 'rejected' => 'Rejected']; ?>
                 <?php if ($statusFilter === 'For Inspection'): unset($quotationFilterChips['needs_quotation']); endif; ?>
                 <?php foreach ($quotationFilterChips as $filterKey => $filterLabel): ?>
                     <a class="inquiry-quotation-filter <?php echo $quotationFilter === $filterKey ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $statusFilter, 'search' => $search, 'quotation_filter' => $filterKey, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
@@ -3450,8 +3448,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     : 'Quotation V' . $quotationVersion);
                                             $quotationDisplayStatus = match ($quotationStatus) {
                                                 'draft' => 'Draft',
-                                                'sent' => 'Awaiting Client Approval',
-                                                'accepted' => 'Approved',
+                                                'sent' => 'Awaiting Client',
+                                                'accepted' => 'Accepted',
                                                 default => inquiry_center_quotation_status_label((string)$quotationDraft['status']),
                                             };
                                             $quotationStatusClass = 'status-draft';

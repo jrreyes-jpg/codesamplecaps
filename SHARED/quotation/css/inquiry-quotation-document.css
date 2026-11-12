@@ -290,6 +290,12 @@ body {
     white-space: nowrap;
 }
 
+.public-quote-table--compact th:nth-child(n+2),
+.public-quote-table--compact td:nth-child(n+2) {
+    text-align: right;
+    white-space: nowrap;
+}
+
 .public-quote-table small {
     display: block;
     margin-top: 2px;
@@ -333,6 +339,10 @@ body {
     margin-top: 16px;
     padding-top: 12px;
     border-top: 1px solid #dbe5f1;
+}
+
+.public-quote-footer--single {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .public-quote-footer p {

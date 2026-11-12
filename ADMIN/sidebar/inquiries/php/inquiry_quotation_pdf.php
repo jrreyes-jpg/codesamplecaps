@@ -15,6 +15,9 @@ if (!$quotation) {
 }
 
 $items = inquiry_quote_client_price_items($items, (float)($quotation['grand_total'] ?? 0));
+$items = array_values(array_filter($items, static function (array $item): bool {
+    return (float)($item['client_line_total'] ?? 0) > 0;
+}));
 
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $statusIndicator = inquiry_quote_status_indicator($quoteStatus, !empty($quotation['engineer_name']));
@@ -31,8 +34,8 @@ $quotationStageLabel = $isFinalClientAccepted
     : ($isInitialQuotation ? 'Initial Quotation' : 'Revised Quotation');
 $statusLabel = match ($quoteStatus) {
     'draft' => 'Draft',
-    'sent' => 'Awaiting Client',
-    'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
+    'sent' => 'Awaiting Client Response',
+    'accepted' => 'Accepted',
     default => inquiry_quote_status_label($quoteStatus),
 };
 $inquiryId = (int)($quotation['inquiry_id'] ?? 0);
@@ -47,12 +50,6 @@ foreach (['return_search' => 'search', 'return_status' => 'status', 'return_view
     }
 }
 $backToInquiriesUrl = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query($backToInquiriesParams);
-$preparedByName = trim((string)($_SESSION['name'] ?? '')) ?: 'Admin';
-$preparedByRole = 'Admin';
-$showPreparedByRole = strcasecmp(
-    preg_replace('/\s+/', ' ', trim($preparedByName)),
-    preg_replace('/\s+/', ' ', trim($preparedByRole))
-) !== 0;
 $quotationTimestamp = strtotime((string)($quotation['created_at'] ?? '')) ?: time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
@@ -63,7 +60,7 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars((string)$quotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> - Quotation</title>
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css?v=20261112-1">
     <link rel="stylesheet" href="/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiry-quotation-pdf.css">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 </head>
@@ -115,11 +112,6 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             <div class="public-quote-prepared-by">
                 <span>Date</span>
                 <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
-                <span>Prepared By</span>
-                <strong><?php echo htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                <?php if ($showPreparedByRole): ?>
-                    <small><?php echo htmlspecialchars($preparedByRole, ENT_QUOTES, 'UTF-8'); ?></small>
-                <?php endif; ?>
             </div>
         </section>
 
@@ -169,10 +161,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
         <section class="public-quote-section">
             <h2>Cost Breakdown</h2>
             <div class="public-quote-table-wrap">
-            <table class="public-quote-table">
+            <table class="public-quote-table public-quote-table--compact">
                 <thead>
                     <tr>
-                        <th>Type</th>
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Unit Cost</th>
@@ -180,9 +171,11 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                     </tr>
                 </thead>
                 <tbody>
+                    <?php if (!$items): ?>
+                        <tr><td colspan="4">No charged items.</td></tr>
+                    <?php endif; ?>
                     <?php foreach ($items as $item): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$item['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
                             <td>
                                 <strong><?php echo htmlspecialchars((string)$item['item_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <?php if (!empty($item['notes'])): ?>
@@ -203,30 +196,12 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
             <div class="public-quote-grand-total"><span>Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
         </section>
 
-        <footer class="public-quote-footer">
+        <footer class="public-quote-footer public-quote-footer--single">
             <div>
                 <strong>Notes</strong>
                 <p><?php echo $isInitialQuotation
                     ? 'This initial quotation is based on the information provided in the inquiry. Final scope and costs may be revised after site inspection or further technical assessment.'
                     : 'This quotation uses the validated scope and itemized costs. New findings during site inspection may require a revised quotation. The payment schedule will be confirmed in the written agreement.'; ?></p>
-            </div>
-            <div>
-                <strong>Approval</strong>
-                <p>
-                    <?php if ($isFinalClientAccepted): ?>
-                        Final quotation accepted by the client.
-                    <?php elseif ($quoteStatus === 'accepted'): ?>
-                        Initial quotation accepted. Final quotation export is not yet available.
-                    <?php elseif ($quoteStatus === 'sent'): ?>
-                        Awaiting client approval.
-                    <?php elseif ($quoteStatus === 'revision_requested'): ?>
-                        Client requested a revision. Final quotation export is not available.
-                    <?php elseif ($quoteStatus === 'rejected'): ?>
-                        Client rejected this quotation. Final quotation export is not available.
-                    <?php else: ?>
-                        Draft quotation. Not yet sent to the client.
-                    <?php endif; ?>
-                </p>
             </div>
         </footer>
     </main>

@@ -2339,7 +2339,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     const statusLabel = modal.querySelector('[data-quotation-status-label]');
                     if (statusLabel) {
-                        statusLabel.textContent = 'Client Approved';
+                        statusLabel.textContent = 'Accepted';
                         statusLabel.classList.remove('status-draft', 'status-sent', 'status-revision');
                         statusLabel.classList.add('status-accepted');
                     }

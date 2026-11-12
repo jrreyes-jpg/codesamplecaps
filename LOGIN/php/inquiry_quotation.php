@@ -68,11 +68,13 @@ $items = $quotation ? inquiry_quote_fetch_items($conn, (int)$quotation['id']) : 
 $items = $quotation
     ? inquiry_quote_client_price_items($items, (float)($quotation['grand_total'] ?? 0))
     : [];
+$items = array_values(array_filter($items, static function (array $item): bool {
+    return (float)($item['client_line_total'] ?? 0) > 0;
+}));
 $status = $quotation ? inquiry_quote_normalize_status((string)$quotation['status']) : '';
 $canRespond = $status === 'sent';
 $hasInspectionSchedule = $quotation && !empty($quotation['scheduled_at']) && !empty($quotation['engineer_name']);
 $statusIndicator = $quotation ? inquiry_quote_status_indicator($status, !empty($quotation['engineer_name'])) : null;
-$isApprovedAwaitingSchedule = $status === 'accepted' && !$hasInspectionSchedule;
 $isInitialQuotation = $quotation
     && empty($quotation['parent_draft_id'])
     && (int)($quotation['revision_no'] ?? 0) === 0;
@@ -84,19 +86,17 @@ $quotationStageLabel = $isFinalClientAccepted
     : ($isInitialQuotation ? 'Initial Quotation' : 'Revised Quotation');
 $quotationStatusLabel = match ($status) {
     'draft' => 'Draft',
-    'sent' => 'Awaiting Client Approval',
-    'accepted' => $isFinalClientAccepted ? 'Accepted Final Quotation' : 'Initial Quotation Accepted',
+    'sent' => 'Awaiting Your Response',
+    'accepted' => 'Accepted',
     default => inquiry_quote_status_label($status),
 };
-$preparerName = trim((string)($quotation['preparer_name'] ?? '')) ?: 'Admin';
-$preparerRole = 'Admin';
-$showPreparerRole = strcasecmp(
-    preg_replace('/\s+/', ' ', trim($preparerName)),
-    preg_replace('/\s+/', ' ', trim($preparerRole))
-) !== 0;
 $quotationTimestamp = $quotation ? (strtotime((string)($quotation['created_at'] ?? '')) ?: time()) : time();
 $quotationDate = date('M j, Y', $quotationTimestamp);
 $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
+$bodyClasses = [$isFinalClientAccepted ? 'has-quotation-toolbar' : 'quotation-preview-only'];
+if ($canRespond) {
+    $bodyClasses[] = 'has-quotation-response';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -105,11 +105,11 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quotation Review - Edge Automation</title>
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css">
-    <link rel="stylesheet" href="/codesamplecaps/LOGIN/css/inquiry_quotation.css">
-    <script src="/codesamplecaps/LOGIN/js/inquiry_quotation.js" defer></script>
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/quotation/css/inquiry-quotation-document.css?v=20261112-1">
+    <link rel="stylesheet" href="/codesamplecaps/LOGIN/css/inquiry_quotation.css?v=20261112-2">
+    <script src="/codesamplecaps/LOGIN/js/inquiry_quotation.js?v=20261112-1" defer></script>
 </head>
-<body class="<?php echo $isFinalClientAccepted ? 'has-quotation-toolbar' : 'quotation-preview-only'; ?>">
+<body class="<?php echo htmlspecialchars(implode(' ', $bodyClasses), ENT_QUOTES, 'UTF-8'); ?>">
     <?php if ($quotation && $isFinalClientAccepted): ?>
         <div class="sticky-toolbar">
             <div class="sticky-toolbar__inner">
@@ -165,11 +165,6 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         <div class="public-quote-prepared-by">
                             <span>Date</span>
                             <strong><?php echo htmlspecialchars($quotationDate, ENT_QUOTES, 'UTF-8'); ?></strong>
-                            <span>Prepared By</span>
-                            <strong><?php echo htmlspecialchars($preparerName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                            <?php if ($showPreparerRole): ?>
-                                <small><?php echo htmlspecialchars($preparerRole, ENT_QUOTES, 'UTF-8'); ?></small>
-                            <?php endif; ?>
                         </div>
                     </section>
 
@@ -201,10 +196,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                     <section class="public-quote-section">
                         <h2>Cost Breakdown</h2>
                         <div class="public-quote-table-wrap">
-                            <table class="public-quote-table">
+                            <table class="public-quote-table public-quote-table--compact">
                                 <thead>
                                     <tr>
-                                        <th>Type</th>
                                         <th>Item</th>
                                         <th>Qty</th>
                                         <th>Unit Cost</th>
@@ -212,9 +206,11 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php if (!$items): ?>
+                                        <tr><td colspan="4">No charged items.</td></tr>
+                                    <?php endif; ?>
                                     <?php foreach ($items as $item): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$item['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td>
                                                 <strong><?php echo htmlspecialchars((string)$item['item_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 <?php if (!empty($item['notes'])): ?>
@@ -242,59 +238,31 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
                         </section>
                     <?php endif; ?>
 
-                    <footer class="public-quote-footer">
+                    <footer class="public-quote-footer public-quote-footer--single">
                         <div>
                             <strong>Notes</strong>
                             <p><?php echo $isInitialQuotation
                                 ? 'This initial quotation is based on the information provided in the inquiry. Final scope and costs may be revised after site inspection or further technical assessment.'
                                 : 'This quotation is based on the listed scope and costs. Any approved changes may require a revised quotation.'; ?></p>
                         </div>
-                        <div>
-                            <strong>Client Status</strong>
-                            <p>
-                                <?php if ($isFinalClientAccepted): ?>
-                                    Final quotation accepted by the client.
-                                <?php elseif ($isApprovedAwaitingSchedule): ?>
-                                    Initial quotation accepted. Waiting for the Admin inspection schedule.
-                                <?php elseif ($status === 'sent'): ?>
-                                    Awaiting your approval.
-                                <?php elseif ($status === 'revision_requested'): ?>
-                                    Revision requested. Waiting for the Admin update.
-                                <?php elseif ($status === 'rejected'): ?>
-                                    Quotation rejected.
-                                <?php else: ?>
-                                    <?php echo htmlspecialchars($quotationStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                <?php endif; ?>
-                            </p>
-                        </div>
                     </footer>
                 </article>
 
-                <?php if (!$isApprovedAwaitingSchedule): ?>
+                <?php if ($canRespond): ?>
                 <section class="public-quote-controls" aria-label="Quotation response">
-                    <?php if ($canRespond): ?>
-                        <form method="POST" class="public-quote-form" data-public-quotation-form>
-                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                            <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
-                            <label class="public-quote-decision-note" data-decision-note>
-                                <span>Decision Note</span>
-                                <textarea name="note" rows="4" placeholder="Please select Request Revision or Reject to provide details..." disabled></textarea>
-                            </label>
-                            <div class="public-quote-actions">
-                                <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept" data-quotation-decision>Approve Quotation</button>
-                                <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision" data-quotation-decision>Request Revision</button>
-                                <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject" data-quotation-decision>Reject</button>
-                            </div>
-                        </form>
-                    <?php elseif ($isFinalClientAccepted): ?>
-                        <div class="public-quote-finalized">
-                            <strong>Status: Accepted Final Quotation</strong>
+                    <form method="POST" class="public-quote-form" data-public-quotation-form>
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
+                        <label class="public-quote-decision-note" data-decision-note>
+                            <span>Decision Note</span>
+                            <textarea name="note" rows="4" placeholder="Please select Request Revision or Reject to provide details..." disabled></textarea>
+                        </label>
+                        <div class="public-quote-actions">
+                            <button type="submit" name="action" value="client_accept" class="public-quote-button public-quote-button--accept" data-quotation-decision>Accept Quotation</button>
+                            <button type="submit" name="action" value="client_revision" class="public-quote-button public-quote-button--revision" data-quotation-decision>Request Revision</button>
+                            <button type="submit" name="action" value="client_reject" class="public-quote-button public-quote-button--reject" data-quotation-decision>Reject Quotation</button>
                         </div>
-                    <?php else: ?>
-                        <div class="public-quote-empty">
-                            This quotation is already <?php echo htmlspecialchars(inquiry_quote_status_label($status), ENT_QUOTES, 'UTF-8'); ?>.
-                        </div>
-                    <?php endif; ?>
+                    </form>
                 </section>
                 <?php endif; ?>
             <?php endif; ?>

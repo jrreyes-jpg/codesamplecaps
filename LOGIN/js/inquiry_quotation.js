@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const responseForm = document.querySelector('[data-public-quotation-form]');
     const responseMessages = {
-        client_accept: 'You have approved the quotation. Please wait for the Admin to assign an Engineer and schedule the inspection.',
+        client_accept: 'You have accepted the quotation. Please wait for the next update.',
         client_revision: 'You have requested changes to the quotation. The Admin will review your feedback and send an updated quotation.',
         client_reject: 'You have rejected the quotation. The Admin will contact you to discuss next steps.',
     };
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
         '<p data-public-quote-confirmation-message></p>',
         '<div class="public-quote-confirmation-modal__actions">',
         '<button type="button" class="public-quote-button public-quote-confirmation-modal__cancel" data-public-quote-confirmation-cancel>Cancel</button>',
-        '<button type="button" class="public-quote-button public-quote-button--accept" data-public-quote-confirmation-approve>Approve Quotation</button>',
+        '<button type="button" class="public-quote-button public-quote-button--accept" data-public-quote-confirmation-approve>Accept Quotation</button>',
         '</div>',
         '</div>',
     ].join('');
@@ -73,9 +73,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const confirmationDetails = {
         client_accept: {
-            title: 'Approve initial quotation?',
-            message: 'This confirms your acceptance of the initial quotation and allows the Admin to schedule the site inspection. Final scope and costs may be revised after the site inspection.',
-            confirm: 'Approve Quotation',
+            title: 'Accept quotation?',
+            message: 'This confirms that you accept this quotation.',
+            confirm: 'Accept Quotation',
             buttonClass: 'public-quote-button--accept',
         },
         client_revision: {
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         client_reject: {
             title: 'Reject quotation?',
-            message: 'This will permanently cancel the inquiry.',
+            message: 'This marks the quotation as rejected and sends your reason to the Admin.',
             confirm: 'Reject Quotation',
             buttonClass: 'public-quote-button--reject',
         },
@@ -154,10 +154,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const originalText = submitButton.textContent;
             responseForm.dataset.submitting = '1';
             submitButton.disabled = true;
-            submitButton.textContent = action === 'client_accept' ? 'Approving...' : 'Saving...';
+            submitButton.textContent = action === 'client_accept' ? 'Accepting...' : 'Saving...';
             if (action === 'client_accept') {
                 const approveButton = confirmationModal.querySelector('[data-public-quote-confirmation-approve]');
-                if (approveButton) approveButton.textContent = 'Approving...';
+                if (approveButton) approveButton.textContent = 'Accepting...';
             }
             setConfirmationLoading(true);
 

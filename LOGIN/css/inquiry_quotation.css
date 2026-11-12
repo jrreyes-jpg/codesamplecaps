@@ -48,6 +48,23 @@
     padding-top: 84px;
 }
 
+.has-quotation-response .public-quote-shell {
+    padding-bottom: 112px;
+}
+
+.has-quotation-response .public-quote-controls {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    left: 16px;
+    z-index: 900;
+    width: min(948px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 12px;
+    border: 1px solid #dbe5f1;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+}
+
 .public-quote-card {
     display: grid;
     gap: 16px;
@@ -227,8 +244,33 @@
         padding-top: 74px;
     }
 
+    .has-quotation-response .public-quote-shell {
+        padding-bottom: 108px;
+    }
+
+    .has-quotation-response .public-quote-controls {
+        right: 10px;
+        bottom: 8px;
+        left: 10px;
+        width: calc(100% - 20px);
+        padding: 8px;
+    }
+
     .public-quote-actions {
         grid-template-columns: 1fr;
+    }
+
+    .has-quotation-response .public-quote-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .has-quotation-response .public-quote-button {
+        min-width: 0;
+        padding: 9px 5px;
+        font-size: 0.76rem;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
     }
 
     .public-quote-finalized {

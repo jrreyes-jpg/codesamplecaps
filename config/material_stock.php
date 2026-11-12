@@ -2,6 +2,13 @@
 
 require_once __DIR__ . '/audit_log.php';
 
+if (!function_exists('material_stock_non_stock_label')) {
+    function material_stock_non_stock_label(): string
+    {
+        return 'Non-stock';
+    }
+}
+
 if (!function_exists('material_stock_whole_count_units')) {
     function material_stock_whole_count_units(): array
     {

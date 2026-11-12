@@ -63,11 +63,11 @@
 }
 
 .quotation-create-card {
-    padding: 28px;
+    padding: 22px;
     border: 1px solid #dfe9e5;
     border-radius: 22px;
     background: #ffffff;
-    box-shadow: 0 6px 18px rgba(15, 61, 48, 0.06);
+    box-shadow: 0 3px 10px rgba(15, 61, 48, 0.04);
 }
 
 .quotation-create-heading,
@@ -184,13 +184,13 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
-    margin: 24px 0 14px;
+    margin: 16px 0 10px;
 }
 
 .quotation-create-client-grid > div,
 .quotation-create-scope {
     min-width: 0;
-    padding: 14px;
+    padding: 10px 12px;
     border: 1px solid #e2ebe7;
     border-radius: 12px;
     background: #f8fbfa;
@@ -211,17 +211,28 @@
 }
 
 .quotation-create-scope {
-    margin-bottom: 26px;
+    margin-bottom: 16px;
+}
+
+.quotation-create-scope summary {
+    color: #52655c;
+    cursor: pointer;
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.quotation-create-scope[open] summary {
+    margin-bottom: 8px;
 }
 
 .quotation-create-form {
     display: grid;
-    gap: 16px;
+    gap: 12px;
 }
 
 .quotation-create-items {
     display: grid;
-    gap: 12px;
+    gap: 8px;
 }
 
 .quotation-create-item {
@@ -229,7 +240,7 @@
     grid-template-columns: minmax(210px, 1.35fr) minmax(180px, 1.1fr) minmax(75px, .42fr) minmax(95px, .55fr) minmax(140px, .78fr) minmax(120px, .65fr) auto;
     align-items: end;
     gap: 10px;
-    padding: 14px;
+    padding: 10px;
     border: 1px solid #dce8e3;
     border-radius: 14px;
     background: #fbfdfc;
@@ -447,7 +458,7 @@
 .quotation-create-direct-costs {
     display: grid;
     gap: 12px;
-    padding: 16px;
+    padding: 12px;
     border: 1px solid #dce8e3;
     border-radius: 14px;
     background: #f8fbfa;
@@ -528,7 +539,7 @@
 .quotation-create-materials-note {
     display: grid;
     gap: 6px;
-    padding: 14px;
+    padding: 10px 12px;
     border: 1px solid #dce8e3;
     border-radius: 12px;
     background: #f8fbfa;
@@ -543,7 +554,7 @@
 .quotation-create-materials-note textarea {
     box-sizing: border-box;
     width: 100%;
-    min-height: 64px;
+    min-height: 52px;
     resize: vertical;
     padding: 10px;
     border: 1px solid #cddbd5;
@@ -1143,6 +1154,26 @@
 }
 
 .inquiry-status[data-status="Inspection Submitted"] {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.inquiry-status[data-status="Quotation Draft"] {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+.inquiry-status[data-status="Awaiting Client"] {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.inquiry-status[data-status="Revision Requested"] {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.inquiry-status[data-status="Accepted"] {
     background: #dcfce7 !important;
     color: #166534 !important;
 }

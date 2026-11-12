@@ -495,13 +495,19 @@ function inquiry_center_lifecycle_filter_counts(mysqli $conn, array $searchWhere
 {
     $counts = array_fill_keys(['all', 'pending_review', 'needs_information', 'qualified', 'for_inspection', 'inspection_submitted', 'not_qualified', 'archived'], 0);
     $latestInspectionStatus = inquiry_center_latest_inspection_status_sql();
+    $withoutQuotation = inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')
+        ? " AND NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts submitted_quote
+                WHERE submitted_quote.inquiry_id = service_inquiries.id
+            )"
+        : '';
     $sql = "SELECT
                 COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS all_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status IN ('Pending Review', 'Verified Lead', 'Not Qualified') THEN 1 END) AS pending_review_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = 'Needs Information' THEN 1 END) AS needs_information_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = 'Verified Lead' THEN 1 END) AS qualified_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = 'For Inspection' AND COALESCE({$latestInspectionStatus}, '') <> 'Submitted' THEN 1 END) AS for_inspection_count,
-                COUNT(CASE WHEN archived_at IS NULL AND status = 'For Inspection' AND {$latestInspectionStatus} = 'Submitted' THEN 1 END) AS inspection_submitted_count,
+                COUNT(CASE WHEN archived_at IS NULL AND status = 'For Inspection' AND {$latestInspectionStatus} = 'Submitted'{$withoutQuotation} THEN 1 END) AS inspection_submitted_count,
                 COUNT(CASE WHEN archived_at IS NULL AND status = 'Not Qualified' THEN 1 END) AS not_qualified_count,
                 COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS archived_count
             FROM service_inquiries";
@@ -2204,6 +2210,12 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
     } elseif ($statusFilter === 'Inspection Submitted') {
         $where[] = "status = 'For Inspection'";
         $where[] = inquiry_center_latest_inspection_status_sql() . " = 'Submitted'";
+        if ($hasInquiryQuotationTable) {
+            $where[] = 'NOT EXISTS (
+                SELECT 1 FROM inquiry_quotation_drafts submitted_quote
+                WHERE submitted_quote.inquiry_id = service_inquiries.id
+            )';
+        }
         if ($hasQuotationProjectLink) {
             $where[] = 'NOT EXISTS (
                 SELECT 1 FROM inquiry_quotation_drafts quote_filter
@@ -2571,7 +2583,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261110-13',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
@@ -2741,9 +2753,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $latestInspectionStatus = $latestInspection
                             ? (string)($latestInspection['status'] ?? 'Assigned')
                             : 'Not Scheduled';
+                        $quotationLifecycleStatus = match ($quotationListStatus) {
+                            'draft' => 'Quotation Draft',
+                            'sent' => 'Awaiting Client',
+                            'revision_requested', 'for_revision' => 'Revision Requested',
+                            'accepted', 'approved' => 'Accepted',
+                            'rejected' => 'Rejected',
+                            default => '',
+                        };
                         $displayStatus = $isConvertedToProject
                             ? 'Converted to Project'
-                            : ($quotationListStatus === 'rejected' ? 'Rejected' : $currentStatus);
+                            : ($quotationLifecycleStatus !== '' ? $quotationLifecycleStatus : $currentStatus);
                         if (in_array($displayStatus, ['Verified Lead', 'Not Qualified'], true)) {
                             $displayStatus = 'Pending Review';
                         }

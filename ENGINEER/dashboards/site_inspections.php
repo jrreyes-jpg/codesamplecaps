@@ -2090,7 +2090,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <span class="material-combobox__list" data-material-combobox-list></span>
                                             </span>
                                             <select class="material-picker-source" name="material_id[]" data-material-picker tabindex="-1" aria-hidden="true" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <option value="">Manual / Not in Inventory</option>
+                                                <option value=""><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
                                                 <?php foreach ($materialOptions as $material): ?>
                                                     <option
                                                         value="<?php echo (int)$material['id']; ?>"

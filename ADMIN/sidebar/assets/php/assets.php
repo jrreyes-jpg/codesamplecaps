@@ -807,7 +807,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $conn->commit();
 
-                $_SESSION['assets_message'] = 'Asset created with inventory and QR generated.';
+                $_SESSION['assets_message'] = $qrLibraryReady
+                    ? 'Asset saved. QR codes are ready.'
+                    : 'Asset saved. QR printing is temporarily unavailable.';
+                $_SESSION['assets_message_type'] = $qrLibraryReady ? 'success' : 'warning';
                 $_SESSION['assets_qr_preview'] = $qrValue;
                 $_SESSION['assets_created_asset_id'] = $assetId;
             } catch (Throwable $exception) {
@@ -1171,12 +1174,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (isset($_SESSION['assets_message'])) {
-    $message = (string)$_SESSION['assets_message'];
+    $_SESSION['auth_flash'] = [
+        'type' => in_array((string)($_SESSION['assets_message_type'] ?? ''), ['success', 'warning'], true)
+            ? (string)$_SESSION['assets_message_type']
+            : 'success',
+        'message' => (string)$_SESSION['assets_message'],
+    ];
     unset($_SESSION['assets_message']);
+    unset($_SESSION['assets_message_type']);
 }
 
 if (isset($_SESSION['assets_error'])) {
-    $error = (string)$_SESSION['assets_error'];
+    $_SESSION['auth_flash'] = [
+        'type' => 'error',
+        'message' => (string)$_SESSION['assets_error'],
+    ];
     unset($_SESSION['assets_error']);
 }
 
@@ -1442,9 +1454,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </div>
                 <?php endif; ?>
             </div>
-
-            <?php if ($message): ?><div class="alert alert-success asset-report-alert"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
-            <?php if ($error): ?><div class="alert alert-error asset-report-alert"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
             <?php if (count($assets) > 0): ?>
                 <div class="asset-filter-row">

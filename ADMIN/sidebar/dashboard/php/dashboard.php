@@ -221,7 +221,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content<?php echo $activeTab === 'profile' ? ' account-settings-content' : ''; ?>">
+<main class="main-content admin-dashboard-content shared-page-surface<?php echo $activeTab === 'profile' ? ' account-settings-content' : ''; ?>">
 
 
     <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>

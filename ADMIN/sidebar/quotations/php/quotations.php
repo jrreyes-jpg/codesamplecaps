@@ -151,7 +151,7 @@ $adminJsFiles = [
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content admin-dashboard-content admin-quotation-list-main">
+<main class="main-content admin-dashboard-content admin-quotation-list-main shared-page-surface">
     <div class="admin-quotation-page admin-quotation-list-page">
         <header class="admin-quotation-heading">
             <div>

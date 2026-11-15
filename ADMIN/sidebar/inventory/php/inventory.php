@@ -460,7 +460,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-    <main class="main-content inventory-light-main">
+    <main class="main-content inventory-light-main shared-page-surface">
         <div class="page-stack">
             <nav class="resource-page-tabs" aria-label="Asset sections">
                 <a href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">Asset Management</a>

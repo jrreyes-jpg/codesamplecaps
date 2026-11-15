@@ -505,7 +505,7 @@
 
 /* Shared light canvas tulad ng Inquiry at Quotation list. */
 .main-content.projects-content.projects-list-main {
-    background: #f8fafc;
+    background: var(--shared-page-surface-bg);
 }
 
 .projects-list-main > .page-stack {

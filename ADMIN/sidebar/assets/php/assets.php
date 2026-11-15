@@ -1435,7 +1435,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-    <main class="main-content assets-content">
+    <main class="main-content assets-content shared-page-surface">
         <section class="asset-report-panel admin-flat-panel" aria-labelledby="assetReportTitle">
             <div class="asset-report-heading">
                 <h1 id="assetReportTitle">Assets</h1>

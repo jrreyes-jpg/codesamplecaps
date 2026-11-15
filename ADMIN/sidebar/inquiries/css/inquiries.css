@@ -13,7 +13,7 @@
 
 /* Shared light canvas para list at details. */
 .main-content.admin-dashboard-content.inquiry-center-main {
-    background: #f8fafc;
+    background: var(--shared-page-surface-bg);
 }
 
 /* Direct quotation page para quotation muna bago inspection. */
@@ -1005,7 +1005,9 @@
 }
 
 .inquiry-card.is-viewed {
-    background: rgba(255, 255, 255, 0.94);
+    background: var(--shared-card-surface-bg);
+    border-color: var(--shared-card-surface-border);
+    box-shadow: var(--shared-card-surface-shadow);
 }
 
 .inquiry-card__head {

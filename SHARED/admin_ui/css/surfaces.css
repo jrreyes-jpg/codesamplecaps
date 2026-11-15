@@ -1,0 +1,51 @@
+/* Shared light surfaces para pare-pareho at magaan ang Admin pages. */
+:root {
+    --shared-page-surface-bg: #f8fafc;
+    --shared-card-surface-bg: #f0fdf4;
+    --shared-card-surface-border: #bbe5c8;
+    --shared-card-surface-shadow: 0 2px 10px rgba(15, 118, 80, 0.04);
+}
+
+.main-content.shared-page-surface {
+    background: var(--shared-page-surface-bg);
+}
+
+.shared-list-card {
+    background: var(--shared-card-surface-bg);
+    border: 1px solid var(--shared-card-surface-border);
+    box-shadow: var(--shared-card-surface-shadow);
+}
+
+/* Shared strong hover para sa main action ng isang card. */
+.shared-strong-action {
+    transition: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.shared-strong-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(21, 128, 61, 0.18);
+}
+
+.shared-strong-action:focus-visible {
+    outline: 3px solid rgba(34, 197, 94, 0.3);
+    outline-offset: 3px;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(21, 128, 61, 0.16);
+}
+
+.shared-strong-action:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(21, 128, 61, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shared-strong-action {
+        transition: none;
+    }
+
+    .shared-strong-action:hover,
+    .shared-strong-action:focus-visible,
+    .shared-strong-action:active {
+        transform: none;
+    }
+}

@@ -3244,7 +3244,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-    <main class="main-content projects-content<?php echo !$isCreateProjectPage ? ' projects-list-main' : ''; ?>">
+    <main class="main-content projects-content<?php echo !$isCreateProjectPage ? ' projects-list-main shared-page-surface' : ''; ?>">
         <div class="page-stack<?php echo $isCreateProjectPage ? ' page-stack--project-create' : ''; ?>">
             <?php if ($flash): ?>
                 <?php $flashType = in_array((string)($flash['type'] ?? ''), ['success', 'warning', 'error'], true) ? (string)$flash['type'] : 'success'; ?>

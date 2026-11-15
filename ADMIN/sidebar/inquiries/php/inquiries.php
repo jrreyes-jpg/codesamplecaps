@@ -2560,7 +2560,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content inquiry-center-main<?php echo $detailsInquiryId > 0 ? ' inquiry-details-main' : ''; ?>">
+<main class="main-content admin-dashboard-content inquiry-center-main shared-page-surface<?php echo $detailsInquiryId > 0 ? ' inquiry-details-main' : ''; ?>">
     <div
         class="inquiries-shell<?php echo $detailsInquiryId > 0 ? ' is-details-page' : ''; ?>"
         data-latest-revision-id="<?php echo $latestRevisionId; ?>"
@@ -2795,7 +2795,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             && empty($inquiry['archived_at'])
                             && in_array($latestInspectionStatus, ['Assigned', 'Acknowledged'], true);
                     ?>
-                    <article class="inquiry-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
+                    <article class="inquiry-card shared-list-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
                         <div class="inquiry-card__head">
                             <div class="inquiry-card__identity">
                                 <?php if (!$isViewed): ?>
@@ -2831,7 +2831,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
 
                         <?php if ($isConvertedToProject): ?>
-                            <a class="inquiry-next-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                            <a class="inquiry-next-action shared-strong-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
                                 Open Project
                             </a>
                         <?php else: ?>

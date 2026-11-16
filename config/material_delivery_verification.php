@@ -101,7 +101,8 @@ if (!function_exists('material_delivery_verification_fetch')) {
             return [];
         }
 
-        $where = $status === 'for_verification' ? "WHERE d.status = 'for_verification'" : '';
+        $allowedStatuses = ['for_verification', 'verified', 'discrepancy'];
+        $where = in_array($status, $allowedStatuses, true) ? "WHERE d.status = '" . $status . "'" : '';
         $result = $conn->query(
             "SELECT d.*, m.material_name, m.material_code, m.unit,
                     creator.full_name AS created_by_name, verifier.full_name AS verified_by_name
@@ -146,7 +147,10 @@ if (!function_exists('material_delivery_verification_confirm')) {
 
             $verifiedQuantity = material_delivery_verification_validate_quantity($verifiedInput, (string)$delivery['unit']);
             $before = (float)$delivery['physical_quantity'];
-            $after = $before + $verifiedQuantity;
+            $expectedQuantity = (float)$delivery['expected_quantity'];
+            $isVerified = abs($verifiedQuantity - $expectedQuantity) < 0.005;
+            $status = $isVerified ? 'verified' : 'discrepancy';
+            $after = $isVerified ? $before + $verifiedQuantity : $before;
             $clerkNotes = substr(trim($clerkNotes), 0, 500);
             $remarks = 'DR ' . (string)$delivery['delivery_receipt_no']
                 . ' | Expected: ' . material_delivery_verification_format_quantity((float)$delivery['expected_quantity'])
@@ -155,29 +159,31 @@ if (!function_exists('material_delivery_verification_confirm')) {
                 $remarks .= ' | ' . $clerkNotes;
             }
 
-            $materialUpdate = $conn->prepare('UPDATE materials SET physical_quantity = ? WHERE id = ?');
-            $materialUpdate->bind_param('di', $after, $delivery['material_id']);
-            if (!$materialUpdate->execute()) {
-                throw new RuntimeException('Unable to update stock.');
+            if ($isVerified) {
+                $materialUpdate = $conn->prepare('UPDATE materials SET physical_quantity = ? WHERE id = ?');
+                $materialUpdate->bind_param('di', $after, $delivery['material_id']);
+                if (!$materialUpdate->execute()) {
+                    throw new RuntimeException('Unable to update stock.');
+                }
             }
 
-            $movement = $conn->prepare(
-                "INSERT INTO material_stock_movements
-                    (material_id, movement_type, quantity, physical_before, physical_after, remarks, created_by)
-                 VALUES (?, 'stock_in', ?, ?, ?, ?, ?)"
+            material_stock_log_movement(
+                $conn,
+                (int)$delivery['material_id'],
+                $isVerified ? 'stock_in' : 'discrepancy',
+                $verifiedQuantity,
+                $before,
+                $after,
+                $remarks,
+                $clerkUserId
             );
-            $materialId = (int)$delivery['material_id'];
-            $movement->bind_param('idddsi', $materialId, $verifiedQuantity, $before, $after, $remarks, $clerkUserId);
-            if (!$movement->execute()) {
-                throw new RuntimeException('Unable to save stock history.');
-            }
 
             $deliveryUpdate = $conn->prepare(
                 "UPDATE material_delivery_verifications
-                 SET status = 'verified', verified_quantity = ?, clerk_notes = NULLIF(?, ''), verified_by = ?, verified_at = NOW()
+                 SET status = ?, verified_quantity = ?, clerk_notes = NULLIF(?, ''), verified_by = ?, verified_at = NOW()
                  WHERE id = ? AND status = 'for_verification'"
             );
-            $deliveryUpdate->bind_param('dsii', $verifiedQuantity, $clerkNotes, $clerkUserId, $deliveryId);
+            $deliveryUpdate->bind_param('sdsii', $status, $verifiedQuantity, $clerkNotes, $clerkUserId, $deliveryId);
             if (!$deliveryUpdate->execute() || $deliveryUpdate->affected_rows !== 1) {
                 throw new RuntimeException('Delivery record changed. Please try again.');
             }
@@ -188,6 +194,7 @@ if (!function_exists('material_delivery_verification_confirm')) {
                 'unit' => (string)$delivery['unit'],
                 'expected_quantity' => (float)$delivery['expected_quantity'],
                 'verified_quantity' => $verifiedQuantity,
+                'status' => $status,
             ];
         } catch (Throwable $exception) {
             $conn->rollback();

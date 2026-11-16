@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Security check failed. Please try again.');
         }
         if (!material_stock_consume_once_token('admin_material_stock_in', $_POST['request_token'] ?? null)) {
-            throw new RuntimeException('This Stock In form was already sent. Please try again.');
+            throw new RuntimeException('This delivery receipt was already sent. Please try again.');
         }
         material_delivery_verification_create(
             $conn,
@@ -57,11 +57,11 @@ $materials = material_stock_fetch_active_materials($conn);
 $deliveryReady = material_delivery_verification_is_ready($conn);
 $deliveries = material_delivery_verification_fetch($conn);
 
-$adminPageTitle = 'Material Stock In - Admin';
+$adminPageTitle = 'Log Delivery Receipt - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261112-7',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261116-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -74,14 +74,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
     <div class="page-stack inventory-page-stack material-stock-in-page">
         <?php if (is_array($flash)): ?>
             <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : 'alert-error'; ?>">
-                <?php echo htmlspecialchars((string)($flash['message'] ?? 'Unable to save Stock In.')); ?>
+                <?php echo htmlspecialchars((string)($flash['message'] ?? 'Unable to save delivery receipt.')); ?>
             </div>
         <?php endif; ?>
 
         <section class="form-panel admin-material-stock-in-panel">
             <div class="inventory-report-heading material-stock-in-heading">
                 <div>
-                    <h1 class="section-title-inline">Material Stock In</h1>
+                    <h1 class="section-title-inline">Log Delivery Receipt</h1>
                     <p>Record the supplier delivery receipt. The Clerk will count first before stock is added.</p>
                 </div>
                 <nav class="resource-page-tabs inventory-page-tabs inventory-report-tabs" aria-label="Inventory sections">
@@ -167,7 +167,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <td data-label="Material"><strong><?php echo htmlspecialchars((string)$delivery['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$delivery['material_code']); ?></small></td>
                             <td data-label="Expected"><?php echo htmlspecialchars(material_delivery_verification_format_quantity((float)$delivery['expected_quantity']) . ' ' . (string)$delivery['unit']); ?></td>
                             <td data-label="Supplier / Receipt"><?php echo htmlspecialchars(trim((string)$delivery['supplier_name']) ?: '—'); ?><small><?php echo htmlspecialchars((string)$delivery['delivery_receipt_no']); ?></small></td>
-                            <td data-label="Status"><span class="material-delivery-status material-delivery-status--<?php echo htmlspecialchars((string)$delivery['status']); ?>"><?php echo $delivery['status'] === 'verified' ? 'Verified' : 'For Verification'; ?></span></td>
+                            <td data-label="Status"><span class="material-delivery-status material-delivery-status--<?php echo htmlspecialchars((string)$delivery['status']); ?>"><?php echo match ((string)$delivery['status']) { 'verified' => 'Verified', 'discrepancy' => 'Discrepancy', default => 'Pending Verification' }; ?></span></td>
                             <td data-label="Verified"><?php echo $delivery['verified_quantity'] !== null ? htmlspecialchars(material_delivery_verification_format_quantity((float)$delivery['verified_quantity']) . ' ' . (string)$delivery['unit']) : 'Waiting for Clerk'; ?></td>
                             <td data-label="Difference"><?php echo $difference === null ? '—' : htmlspecialchars(($difference > 0 ? '+' : '') . material_delivery_verification_format_quantity($difference) . ' ' . (string)$delivery['unit']); ?></td>
                         </tr>

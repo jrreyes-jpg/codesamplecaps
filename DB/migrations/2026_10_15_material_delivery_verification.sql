@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS material_delivery_verifications (
     supplier_name VARCHAR(180) NULL,
     delivery_receipt_no VARCHAR(120) NOT NULL,
     admin_notes VARCHAR(500) NULL,
-    status ENUM('for_verification', 'verified') NOT NULL DEFAULT 'for_verification',
+    status ENUM('for_verification', 'verified', 'discrepancy') NOT NULL DEFAULT 'for_verification',
     verified_quantity DECIMAL(12,2) NULL,
     clerk_notes VARCHAR(500) NULL,
     created_by INT(11) NOT NULL,

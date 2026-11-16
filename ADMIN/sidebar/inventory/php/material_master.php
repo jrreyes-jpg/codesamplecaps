@@ -305,21 +305,11 @@ $materialFormUnitEditable = $materialFormMode !== 'edit' || isset($deletableMate
 $displayMaterialQuantity = static function (float $quantity): string {
     return rtrim(rtrim(number_format($quantity, 2, '.', ','), '0'), '.');
 };
-$materialTextPreview = static function (string $text, int $limit = 60): array {
-    $text = trim($text);
-    $length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
-    if ($length <= $limit) {
-        return ['text' => $text, 'long' => false];
-    }
-    $preview = function_exists('mb_substr') ? mb_substr($text, 0, $limit, 'UTF-8') : substr($text, 0, $limit);
-    return ['text' => rtrim($preview) . '...', 'long' => true];
-};
-
 $adminPageTitle = 'Consumable Material Master - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261112-7',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261116-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -348,7 +338,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
                 </nav>
                 <div class="inventory-report-heading__actions">
-                    <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/material_stock_in.php">Stock In</a>
+                    <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/material_stock_in.php">Log Delivery Receipt</a>
                     <button type="button" class="btn-primary" data-material-modal-open>+ Add Material</button>
                 </div>
             </div>
@@ -374,11 +364,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <table class="data-table material-master-table mobile-card-table">
                     <colgroup>
                         <?php if ($materialFilter === 'active'): ?><col class="material-col-select"><?php endif; ?>
-                        <col class="material-col-item"><col class="material-col-description"><col class="material-col-unit"><col class="material-col-stock"><col class="material-col-count"><col class="material-col-variance"><col class="material-col-remarks"><col class="material-col-actions">
+                        <col class="material-col-item"><col class="material-col-unit"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-count"><col class="material-col-variance"><col class="material-col-remarks"><col class="material-col-actions">
                     </colgroup>
-                    <thead><tr><?php if ($materialFilter === 'active'): ?><th class="material-selection-cell"><input type="checkbox" data-material-select-all aria-label="Select all active materials"></th><?php endif; ?><th>Item</th><th>Description</th><th>Unit</th><th>System Stock</th><th>Clerk Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
+                    <thead><tr><?php if ($materialFilter === 'active'): ?><th class="material-selection-cell"><input type="checkbox" data-material-select-all aria-label="Select all active materials"></th><?php endif; ?><th>Item</th><th>Unit</th><th>On-Hand</th><th>Reserved</th><th>Available</th><th>Clerk Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
                     <tbody>
-                    <?php if ($materials === []): ?><tr><td colspan="<?php echo $materialFilter === 'active' ? '9' : '8'; ?>" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
+                    <?php if ($materials === []): ?><tr><td colspan="<?php echo $materialFilter === 'active' ? '10' : '9'; ?>" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
                     <?php foreach ($materials as $material): ?>
                         <?php
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
@@ -390,7 +380,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $canArchive = $archiveBlockReason === '';
                         $stockStatus = material_stock_alert_status($material);
                         $description = trim((string)$material['description']);
-                        $descriptionPreview = $materialTextPreview($description);
                         ?>
                         <tr class="<?php echo $isShortage ? 'material-master-row--shortage' : ''; ?>" data-inventory-report-row>
                             <?php if ($materialFilter === 'active'): ?>
@@ -401,24 +390,20 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     </div>
                                 </td>
                             <?php endif; ?>
-                            <td data-label="Item" class="material-item-cell"><strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong><small><?php echo htmlspecialchars((string)$material['material_code']); ?></small></td>
-                            <td data-label="Description" class="material-report-description">
-                                <?php if ($description === ''): ?>
-                                    &mdash;
-                                <?php else: ?>
-                                    <span><?php echo htmlspecialchars($descriptionPreview['text']); ?></span>
-                                    <?php if ($descriptionPreview['long']): ?>
-                                        <button type="button" class="material-description-view" data-material-description-open data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-description="<?php echo htmlspecialchars($description, ENT_QUOTES, 'UTF-8'); ?>">View Description</button>
-                                    <?php endif; ?>
-                                <?php endif; ?>
+                            <td data-label="Item" class="material-item-cell">
+                                <strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong>
+                                <small><?php echo htmlspecialchars((string)$material['material_code']); ?></small>
+                                <?php if ($description !== ''): ?><button type="button" class="material-description-view" data-material-description-open data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-description="<?php echo htmlspecialchars($description, ENT_QUOTES, 'UTF-8'); ?>">View Description</button><?php endif; ?>
                             </td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
-                            <td data-label="System Stock" class="material-master-number material-stock-cell">
+                            <td data-label="On-Hand Stock" class="material-master-number material-stock-cell">
                                 <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong>
                                 <?php if ($stockStatus !== 'available'): ?>
                                     <span class="material-stock-status material-stock-status--<?php echo htmlspecialchars($stockStatus); ?>"><?php echo $stockStatus === 'out-of-stock' ? 'Out of Stock' : 'Low Stock'; ?></span>
                                 <?php endif; ?>
                             </td>
+                            <td data-label="Reserved Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['reserved_quantity'])); ?></strong></td>
+                            <td data-label="Available Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity(material_stock_available_quantity($material))); ?></strong></td>
                             <td data-label="Clerk Physical Count" class="material-master-count">
                                 <?php if ($latestCount === null): ?>
                                     <span class="material-audit-pending">Not yet counted</span>
@@ -498,7 +483,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    <tr data-inventory-report-empty hidden><td colspan="<?php echo $materialFilter === 'active' ? '9' : '8'; ?>" class="empty-state">No matching materials.</td></tr>
+                    <tr data-inventory-report-empty hidden><td colspan="<?php echo $materialFilter === 'active' ? '10' : '9'; ?>" class="empty-state">No matching materials.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -578,7 +563,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
                     <div class="material-create-modal__actions">
-                        <button type="button" class="btn-secondary material-create-modal__clear material-create-modal__clear--warning" data-material-clear<?php echo $materialFormMode === 'edit' ? ' hidden' : ''; ?>>Clear Form</button>
                         <div class="material-create-modal__actions-end">
                             <button type="button" class="btn-secondary" data-material-modal-close>Cancel</button>
                             <button type="submit" class="btn-primary" data-material-submit><?php echo $materialFormMode === 'edit' ? 'Save Changes' : 'Add Material'; ?></button>

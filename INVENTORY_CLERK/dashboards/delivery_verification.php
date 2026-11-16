@@ -15,14 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('This delivery was already confirmed. Refresh and try again.');
         }
 
-        material_delivery_verification_confirm(
+        $result = material_delivery_verification_confirm(
             $conn,
             (int)($_POST['delivery_id'] ?? 0),
             $_POST['verified_quantity'] ?? null,
             (string)($_POST['clerk_notes'] ?? ''),
             (int)($_SESSION['user_id'] ?? 0)
         );
-        $_SESSION[$flashKey] = ['type' => 'success', 'message' => 'Actual quantity was verified and added to stock.'];
+        $_SESSION[$flashKey] = $result['status'] === 'verified'
+            ? ['type' => 'success', 'message' => 'Delivery verified. On-Hand stock was updated.']
+            : ['type' => 'error', 'message' => 'Quantity mismatch found. Stock was not changed. Admin review is needed.'];
     } catch (Throwable $exception) {
         $_SESSION[$flashKey] = ['type' => 'error', 'message' => $exception->getMessage()];
     }
@@ -37,7 +39,7 @@ $storageReady = material_delivery_verification_is_ready($conn);
 $deliveries = $storageReady ? material_delivery_verification_fetch($conn, 'for_verification') : [];
 $requestToken = material_stock_issue_once_token('delivery_verification');
 
-inventory_clerk_render_page('Delivery Verification', function () use ($flash, $storageReady, $deliveries, $csrfToken, $requestToken): void {
+inventory_clerk_render_page('Pending Deliveries', function () use ($flash, $storageReady, $deliveries, $csrfToken, $requestToken): void {
 ?>
 <div class="page-stack delivery-verification-page">
     <?php if ($flash): ?>
@@ -49,8 +51,8 @@ inventory_clerk_render_page('Delivery Verification', function () use ($flash, $s
     <section class="form-panel">
         <div class="materials-master-list__heading">
             <div>
-                <h1 class="section-title-inline">Delivery Verification</h1>
-                <p>Count the delivered materials. Only the verified quantity is added to stock.</p>
+                <h1 class="section-title-inline">Pending Deliveries</h1>
+                <p>Enter the actual received quantity. A mismatch is sent to Admin and does not change stock.</p>
             </div>
         </div>
 
@@ -81,7 +83,7 @@ inventory_clerk_render_page('Delivery Verification', function () use ($flash, $s
                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                                 <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($requestToken); ?>">
                                 <input type="hidden" name="delivery_id" value="<?php echo $deliveryId; ?>">
-                                <button type="submit" class="btn-primary">Verify & Add Stock</button>
+                                <button type="submit" class="btn-primary">Submit Verification</button>
                                 </form>
                             </td>
                         </tr>

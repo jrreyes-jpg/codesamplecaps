@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS material_stock_movements (
     id INT(11) NOT NULL AUTO_INCREMENT,
     material_id INT(11) NOT NULL,
     reservation_id INT(11) DEFAULT NULL,
-    movement_type ENUM('stock_in', 'project_issue', 'manual_stock_out', 'adjustment_in', 'adjustment_out') NOT NULL,
+    movement_type ENUM('stock_in', 'reserved', 'discrepancy', 'project_issue', 'manual_stock_out', 'adjustment_in', 'adjustment_out') NOT NULL,
     quantity DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     physical_before DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     physical_after DECIMAL(12,2) NOT NULL DEFAULT 0.00,

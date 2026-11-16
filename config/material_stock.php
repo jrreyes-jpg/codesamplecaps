@@ -149,6 +149,98 @@ if (!function_exists('material_stock_available_quantity')) {
     }
 }
 
+if (!function_exists('material_stock_log_movement')) {
+    function material_stock_log_movement(
+        mysqli $conn,
+        int $materialId,
+        string $movementType,
+        float $quantity,
+        float $physicalBefore,
+        float $physicalAfter,
+        ?string $remarks,
+        int $userId,
+        ?int $reservationId = null
+    ): void {
+        $allowedTypes = ['stock_in', 'reserved', 'discrepancy', 'project_issue', 'manual_stock_out', 'adjustment_in', 'adjustment_out'];
+        if (!in_array($movementType, $allowedTypes, true)) {
+            throw new RuntimeException('Invalid stock history type.');
+        }
+
+        $stmt = $conn->prepare(
+            'INSERT INTO material_stock_movements
+                (material_id, reservation_id, movement_type, quantity, physical_before, physical_after, remarks, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, NULLIF(?, \'\'), ?)'
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Unable to prepare stock history.');
+        }
+
+        $cleanRemarks = substr(trim((string)$remarks), 0, 1000);
+        $stmt->bind_param('iisdddsi', $materialId, $reservationId, $movementType, $quantity, $physicalBefore, $physicalAfter, $cleanRemarks, $userId);
+        if (!$stmt->execute()) {
+            throw new RuntimeException('Unable to save stock history.');
+        }
+    }
+}
+
+if (!function_exists('material_stock_history_filter_types')) {
+    function material_stock_history_filter_types(): array
+    {
+        return ['stock_in', 'discrepancy', 'reserved'];
+    }
+}
+
+if (!function_exists('material_stock_history_type_label')) {
+    function material_stock_history_type_label(string $type): string
+    {
+        return match ($type) {
+            'stock_in' => 'Stock-In',
+            'reserved' => 'Reserved',
+            'discrepancy' => 'Discrepancy',
+            default => ucwords(str_replace('_', ' ', $type)),
+        };
+    }
+}
+
+if (!function_exists('material_stock_fetch_history')) {
+    function material_stock_fetch_history(mysqli $conn, int $materialId = 0, string $type = '', int $limit = 200): array
+    {
+        $where = [];
+        $params = [];
+        $types = '';
+        if ($materialId > 0) {
+            $where[] = 'sm.material_id = ?';
+            $params[] = $materialId;
+            $types .= 'i';
+        }
+        if (in_array($type, material_stock_history_filter_types(), true)) {
+            $where[] = 'sm.movement_type = ?';
+            $params[] = $type;
+            $types .= 's';
+        }
+
+        $sql = "SELECT sm.*, m.material_name, m.unit, u.full_name
+                FROM material_stock_movements sm
+                INNER JOIN materials m ON m.id = sm.material_id
+                LEFT JOIN users u ON u.id = sm.created_by";
+        if ($where !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $safeLimit = max(1, min($limit, 500));
+        $sql .= ' ORDER BY sm.created_at DESC, sm.id DESC LIMIT ' . $safeLimit;
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Unable to load material history.');
+        }
+        if ($params !== []) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+}
+
 if (!function_exists('material_stock_alert_status')) {
     function material_stock_alert_status(array $material): string
     {
@@ -754,6 +846,7 @@ if (!function_exists('material_stock_reserve_approved_inspection_requirements'))
                 if (!$insertReservation->execute()) {
                     throw new RuntimeException('Unable to save project material reservation.');
                 }
+                $reservationId = (int)$conn->insert_id;
             } else {
                 $updateReservation = $conn->prepare(
                     'UPDATE project_material_reservations
@@ -784,6 +877,18 @@ if (!function_exists('material_stock_reserve_approved_inspection_requirements'))
                 if (!$updateMaterial->execute() || $updateMaterial->affected_rows !== 1) {
                     throw new RuntimeException('Material stock changed. Please try again.');
                 }
+
+                material_stock_log_movement(
+                    $conn,
+                    $materialId,
+                    'reserved',
+                    $reserveNow,
+                    (float)$material['physical_quantity'],
+                    (float)$material['physical_quantity'],
+                    'Reserved for project #' . $projectId,
+                    $userId,
+                    $reservationId
+                );
             }
 
             $shortage = max(0.0, $requiredQuantity - $nextReserved - $currentIssued);
@@ -837,13 +942,7 @@ if (!function_exists('material_stock_add_stock_in')) {
             $update->bind_param('di', $after, $materialId);
             $update->execute();
 
-            $movement = $conn->prepare(
-                "INSERT INTO material_stock_movements
-                 (material_id, movement_type, quantity, physical_before, physical_after, remarks, created_by)
-                 VALUES (?, 'stock_in', ?, ?, ?, ?, ?)"
-            );
-            $movement->bind_param('idddsi', $materialId, $quantity, $before, $after, $remarks, $userId);
-            $movement->execute();
+            material_stock_log_movement($conn, $materialId, 'stock_in', $quantity, $before, $after, $remarks, $userId);
             $conn->commit();
 
             return [

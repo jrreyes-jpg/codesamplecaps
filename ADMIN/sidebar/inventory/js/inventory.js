@@ -322,7 +322,6 @@
     const closeButtons = Array.from(modal.querySelectorAll('[data-material-modal-close]'));
     const form = modal.querySelector('[data-material-create-form]');
     const submitButton = modal.querySelector('[data-material-submit]');
-    const clearButton = modal.querySelector('[data-material-clear]');
     const generalError = modal.querySelector('[data-material-general-error]');
     const aiSuggestButton = modal.querySelector('[data-material-ai-suggest]');
     const aiSuggestFeedback = modal.querySelector('[data-material-ai-feedback]');
@@ -665,7 +664,6 @@
         if (formId) formId.value = isEdit ? String(data.materialId || '') : '';
         if (requestToken) requestToken.value = isEdit ? modal.dataset.updateToken : modal.dataset.createToken;
         if (submitButton) submitButton.textContent = isEdit ? 'Save Changes' : 'Add Material';
-        if (clearButton) clearButton.hidden = isEdit;
 
         if (isEdit) {
             fields.material_name.value = data.materialName || '';
@@ -732,7 +730,6 @@
         showAiSuggestionFeedback('', '');
         clearAddForm(false);
         closeButtons.forEach(function (button) { button.disabled = false; });
-        if (clearButton) clearButton.disabled = false;
         if (submitButton) submitButton.disabled = false;
         setFormMode('add', {});
     }
@@ -784,13 +781,6 @@
     closeButtons.forEach(function (button) {
         button.addEventListener('click', closeModal);
     });
-    if (clearButton) {
-        clearButton.addEventListener('click', function () {
-            if (!isAddMode() || isSubmitting) return;
-            clearAddForm(true);
-            panel.focus({ preventScroll: true });
-        });
-    }
     aiSuggestButton?.addEventListener('click', suggestMaterialDetails);
 
     modal.addEventListener('click', function (event) {
@@ -872,7 +862,6 @@
             closeButtons.forEach(function (button) {
                 button.disabled = true;
             });
-            if (clearButton) clearButton.disabled = true;
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.textContent = 'Saving...';

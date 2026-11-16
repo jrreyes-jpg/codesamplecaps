@@ -959,7 +959,7 @@ CREATE TABLE `material_stock_movements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `material_id` int(11) NOT NULL,
   `reservation_id` int(11) DEFAULT NULL,
-  `movement_type` enum('stock_in','project_issue','manual_stock_out','adjustment_in','adjustment_out') NOT NULL,
+  `movement_type` enum('stock_in','reserved','discrepancy','project_issue','manual_stock_out','adjustment_in','adjustment_out') NOT NULL,
   `quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
   `physical_before` decimal(12,2) NOT NULL DEFAULT 0.00,
   `physical_after` decimal(12,2) NOT NULL DEFAULT 0.00,

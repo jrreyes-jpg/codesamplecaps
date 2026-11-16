@@ -1,0 +1,80 @@
+.shared-material-suggestion-field {
+    position: relative;
+    display: block;
+    min-width: 0;
+}
+
+.shared-material-suggestions {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;
+    display: grid;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--material-suggestion-border, #cbd5e1);
+    border-radius: var(--material-suggestion-radius, 12px);
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+.shared-material-suggestions[hidden] {
+    display: none;
+}
+
+.shared-material-suggestions button {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 0;
+    color: #1e293b;
+    text-align: left;
+    background: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.shared-material-suggestions button:first-child {
+    border-radius: calc(var(--material-suggestion-radius, 12px) - 1px) calc(var(--material-suggestion-radius, 12px) - 1px) 0 0;
+}
+
+.shared-material-suggestions button:last-child {
+    border-radius: 0 0 calc(var(--material-suggestion-radius, 12px) - 1px) calc(var(--material-suggestion-radius, 12px) - 1px);
+}
+
+.shared-material-suggestions button:only-child {
+    border-radius: calc(var(--material-suggestion-radius, 12px) - 1px);
+}
+
+.shared-material-suggestions button + button {
+    border-top: 1px solid #e2e8f0;
+}
+
+.shared-material-suggestions button:hover,
+.shared-material-suggestions button:focus-visible {
+    color: #166534;
+    background: #dcfce7;
+    outline: none;
+}
+
+.costing-row {
+    --material-suggestion-border: #cbd5e1;
+    --material-suggestion-radius: 12px;
+}
+
+.quotation-create-item {
+    --material-suggestion-border: #cddbd5;
+    --material-suggestion-radius: 9px;
+}
+
+@media (max-width: 640px) {
+    .shared-material-suggestions {
+        max-height: 150px;
+    }
+}

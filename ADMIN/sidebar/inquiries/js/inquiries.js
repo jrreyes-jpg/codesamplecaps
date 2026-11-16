@@ -3264,6 +3264,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const itemName = row.querySelector('input[name="item_name[]"]');
             const quantityInput = row.querySelector('input[name="quantity[]"]');
             const unitCostInput = row.querySelector('input[name="unit_cost[]"]');
+            window.EdgeMaterialSuggestions?.bind(row);
 
             row.classList.toggle('is-material-item', isMaterial);
             row.classList.toggle('has-linked-material', isLinkedMaterial);
@@ -3458,6 +3459,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     mode: 'quotation-item-remove',
                 }
             );
+        });
+
+        items?.addEventListener('edge:material-suggestion-selected', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            const materialSelect = row?.querySelector('select[name="material_id[]"]');
+            if (!row || !materialSelect || !event.detail?.value) return;
+            materialSelect.value = String(event.detail.value);
+            materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
         });
 
         items?.addEventListener('change', function (event) {

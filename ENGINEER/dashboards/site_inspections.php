@@ -184,38 +184,11 @@ function engineer_inspection_fetch_active_material(mysqli $conn, int $materialId
     return $stmt->get_result()->fetch_assoc() ?: null;
 }
 
-function engineer_inspection_normalize_material_name(string $name): string
-{
-    $name = preg_replace('/\s+/u', ' ', trim($name)) ?? trim($name);
-    return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
-}
-
 function engineer_inspection_valid_manual_material_name(string $name): bool
 {
     $name = preg_replace('/\s+/u', ' ', trim($name)) ?? trim($name);
     $length = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
     return $length >= 2 && $length <= 100 && preg_match('/\p{L}/u', $name) === 1;
-}
-
-function engineer_inspection_find_active_material_by_name(mysqli $conn, string $materialName): ?array
-{
-    $normalizedName = engineer_inspection_normalize_material_name($materialName);
-    if ($normalizedName === '') {
-        return null;
-    }
-
-    $result = $conn->query("SELECT id, material_name FROM materials WHERE status = 'active'");
-    if (!$result) {
-        return null;
-    }
-
-    while ($material = $result->fetch_assoc()) {
-        if (engineer_inspection_normalize_material_name((string)$material['material_name']) === $normalizedName) {
-            return $material;
-        }
-    }
-
-    return null;
 }
 
 function engineer_inspection_asset_requirements_table_exists(mysqli $conn): bool
@@ -957,11 +930,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
 
-                $existingMaterial = engineer_inspection_find_active_material_by_name($conn, $itemName);
-                if ($existingMaterial) {
-                    $error = (string)$existingMaterial['material_name'] . ' already exists. Select it from Material Reference.';
-                    break;
-                }
             }
 
             $lineTotal = $quantity * $unitCost;
@@ -1581,6 +1549,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
     '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261109-7',
+    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -2073,7 +2042,7 @@ require __DIR__ . '/../layout/header.php';
                                 <summary>Cost Estimate <span>Materials and other estimated costs</span></summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($materialCostItems as $itemIndex => $item): ?>
-                                    <div class="costing-row">
+                                    <div class="costing-row" data-material-suggestion-scope>
                                         <strong class="costing-row__number" data-costing-row-number>Material <?php echo $itemIndex + 1; ?></strong>
                                         <input type="hidden" name="item_type[]" value="material">
                                         <label data-material-field>
@@ -2089,13 +2058,15 @@ require __DIR__ . '/../layout/header.php';
                                                 <button type="button" data-material-combobox-toggle aria-label="Show material options" <?php echo !$canEditCosting ? 'disabled' : ''; ?>></button>
                                                 <span class="material-combobox__list" data-material-combobox-list></span>
                                             </span>
-                                            <select class="material-picker-source" name="material_id[]" data-material-picker tabindex="-1" aria-hidden="true" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <select class="material-picker-source" name="material_id[]" data-material-picker data-material-suggestion-source tabindex="-1" aria-hidden="true" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <option value=""><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
                                                 <?php foreach ($materialOptions as $material): ?>
                                                     <option
                                                         value="<?php echo (int)$material['id']; ?>"
                                                         data-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-material-suggestion-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-material-suggestion-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         data-available="<?php echo htmlspecialchars((string)$material['available_quantity'], ENT_QUOTES, 'UTF-8'); ?>"
                                                         <?php echo (int)($item['material_id'] ?? 0) === (int)$material['id'] ? 'selected' : ''; ?>
                                                     >
@@ -2108,8 +2079,10 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label data-item-name-field<?php echo !$canEditCosting || (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
                                             <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="item_name[]" placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                            <span class="material-name-suggestions" data-material-name-suggestions hidden></span>
+                                            <div class="shared-material-suggestion-field" data-material-suggestion-field>
+                                                <input type="text" name="item_name[]" data-material-suggestion-input placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <span class="shared-material-suggestions" data-material-suggestion-list hidden></span>
+                                            </div>
                                         </label>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
@@ -2358,6 +2331,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261116-1',
     '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261109-1',
 ];
 require __DIR__ . '/../layout/footer.php';

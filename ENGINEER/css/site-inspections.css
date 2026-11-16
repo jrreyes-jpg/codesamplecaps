@@ -1697,42 +1697,6 @@ body.inspection-modal-open {
     color: #64748b;
 }
 
-.material-name-suggestions {
-    position: absolute;
-    z-index: 29;
-    top: calc(100% - 24px);
-    right: 0;
-    left: 0;
-    max-height: 180px;
-    overflow-y: auto;
-    padding: 5px;
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
-}
-
-.material-name-suggestions[hidden] {
-    display: none;
-}
-
-.costing-row label .material-name-suggestions button {
-    width: 100%;
-    border: 0;
-    border-radius: 8px;
-    padding: 9px 10px;
-    color: #1e293b;
-    text-align: left;
-    background: transparent;
-    font: inherit;
-    cursor: pointer;
-}
-
-.costing-row label .material-name-suggestions button:hover {
-    color: #166534;
-    background: #dcfce7;
-}
-
 .costing-row input:disabled,
 .costing-row select:disabled {
     background: #f1f5f9;

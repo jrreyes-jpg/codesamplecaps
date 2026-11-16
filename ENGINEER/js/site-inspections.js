@@ -629,15 +629,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
     };
 
-    const findExistingMaterialOption = function (row, materialName) {
-        const normalizedName = normalizeMaterialName(materialName);
-        if (!normalizedName) return null;
-
-        return Array.from(row.querySelectorAll('[data-material-picker] option[data-name]')).find(function (option) {
-            return normalizeMaterialName(option.getAttribute('data-name')) === normalizedName;
-        }) || null;
-    };
-
     const isValidManualMaterialName = function (value) {
         const name = String(value || '').trim().replace(/\s+/g, ' ');
         return name.length >= 2 && name.length <= 100 && /\p{L}/u.test(name);
@@ -648,17 +639,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const nameField = row.querySelector('input[name="item_name[]"]');
         const unitField = row.querySelector('select[name="unit[]"]');
         const comboboxInput = row.querySelector('[data-material-combobox-input]');
-        const suggestions = row.querySelector('[data-material-name-suggestions]');
         if (!picker || !option) return;
 
         picker.value = option.value;
         if (nameField) nameField.value = option.getAttribute('data-name') || option.textContent.trim();
         if (unitField && option.getAttribute('data-unit')) unitField.value = option.getAttribute('data-unit');
         if (comboboxInput) comboboxInput.value = option.textContent.trim();
-        if (suggestions) {
-            suggestions.hidden = true;
-            suggestions.innerHTML = '';
-        }
+        window.EdgeMaterialSuggestions?.close(row.querySelector('[data-material-suggestion-field]'));
         setLinkedMaterialState(row);
         updateMaterialAvailability(row);
     };
@@ -676,14 +663,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const materialName = nameField.value.trim();
-        const existingOption = findExistingMaterialOption(row, materialName);
-        if (existingOption) {
-            clearFieldError(nameField);
-            nameField.classList.remove('is-valid');
-            selectExistingMaterialOption(row, existingOption);
-            return true;
-        }
-
         if (isValidManualMaterialName(materialName)) {
             clearFieldError(nameField);
             nameField.classList.add('is-valid');
@@ -1193,7 +1172,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const materialToggle = row.querySelector('[data-material-combobox-toggle]');
         const materialList = row.querySelector('[data-material-combobox-list]');
         const materialNameField = row.querySelector('input[name="item_name[]"]');
-        const materialNameSuggestions = row.querySelector('[data-material-name-suggestions]');
 
         const closeMaterialCombobox = function () {
             materialCombobox?.classList.remove('is-open');
@@ -1266,48 +1244,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const closeMaterialNameSuggestions = function () {
-            if (!materialNameSuggestions) return;
-            materialNameSuggestions.hidden = true;
-            materialNameSuggestions.innerHTML = '';
-        };
-
-        const renderMaterialNameSuggestions = function () {
-            if (!materialNameField || !materialNameSuggestions || materialNameField.closest('[data-item-name-field]')?.hidden) {
-                closeMaterialNameSuggestions();
-                return;
-            }
-            const query = normalizeMaterialName(materialNameField.value);
-            if (query.length < 2) {
-                closeMaterialNameSuggestions();
-                return;
-            }
-
-            const matches = Array.from(materialPicker?.options || []).filter(function (option) {
-                const optionName = option.getAttribute('data-name') || '';
-                return option.value !== '' && normalizeMaterialName(optionName).includes(query);
-            }).slice(0, 5);
-            materialNameSuggestions.innerHTML = '';
-            matches.forEach(function (option) {
-                const choice = document.createElement('button');
-                choice.type = 'button';
-                choice.textContent = option.getAttribute('data-name') || option.textContent.trim();
-                choice.addEventListener('click', function () {
-                    selectExistingMaterialOption(row, option);
-                    saveFormDraft(form);
-                    updateSaveDraftState(form);
-                });
-                materialNameSuggestions.appendChild(choice);
-            });
-            materialNameSuggestions.hidden = matches.length === 0;
-        };
-
-        materialNameField?.addEventListener('input', renderMaterialNameSuggestions);
-        document.addEventListener('click', function (event) {
-            if (!materialNameSuggestions?.parentElement?.contains(event.target)) {
-                closeMaterialNameSuggestions();
-            }
+        row.addEventListener('edge:material-suggestion-selected', function (event) {
+            selectExistingMaterialOption(row, event.detail?.option);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
         });
+        window.EdgeMaterialSuggestions?.bind(row);
 
         typeField?.addEventListener('change', function () {
             const nextType = typeField.value;
@@ -1405,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             updateManualMaterialNameState(row, false);
             syncMaterialComboboxText();
-            closeMaterialNameSuggestions();
+            window.EdgeMaterialSuggestions?.close(row.querySelector('[data-material-suggestion-field]'));
             updateMaterialAvailability(row);
             saveFormDraft(form);
             updateSaveDraftState(form);

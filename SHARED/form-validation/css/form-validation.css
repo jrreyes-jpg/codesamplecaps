@@ -1,0 +1,20 @@
+/* Shared na simple validation para sa forms. */
+.shared-field-invalid,
+.shared-field-invalid:focus {
+    border-color: #dc2626 !important;
+    outline-color: rgba(220, 38, 38, 0.14) !important;
+}
+
+.shared-field-error {
+    display: block;
+    margin-top: 4px;
+    color: #dc2626;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.shared-field-error[hidden],
+.shared-field-error:empty {
+    display: none;
+}

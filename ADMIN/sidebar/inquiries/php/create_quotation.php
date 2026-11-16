@@ -201,13 +201,14 @@ $shouldSendToClient = $quotationSubmitAction === 'send_to_client';
 $marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
 $marginPercent = is_numeric($marginPercentRaw) ? (float)$marginPercentRaw : 0.0;
 $markupError = '';
+$quotationNonSpaceLength = strlen((string)preg_replace('/\s+/', '', $quotationNo));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'admin_create_inquiry_quotation')) {
         $error = 'Your form expired. Please refresh and try again.';
-    } elseif ($shouldSendToClient && $quotationNo === '') {
-        $error = 'Enter the official Edge quotation number before sending.';
-    } elseif ($quotationNo !== '' && (strlen($quotationNo) < 3 || strlen($quotationNo) > 80 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $quotationNo))) {
+    } elseif (($shouldSendToClient || $quotationNo !== '') && $quotationNonSpaceLength < 3) {
+        $error = 'Minimum of 3 characters required.';
+    } elseif ($quotationNo !== '' && (strlen($quotationNo) > 80 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $quotationNo))) {
         $error = 'Use only letters, numbers, dash, slash, underscore, or period for the quotation number.';
     } elseif ($marginPercentRaw === '') {
         $markupError = 'Markup is required.';
@@ -476,6 +477,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
+    '/codesamplecaps/SHARED/form-validation/css/form-validation.css?v=20261116-1',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261116-2',
 ];
@@ -483,8 +485,9 @@ $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
+    '/codesamplecaps/SHARED/form-validation/js/form-validation.js?v=20261116-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261116-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261112-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261116-3',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -512,7 +515,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-number">
                     <label for="quotationNumber">Quotation Number <span class="quotation-required-mark" aria-hidden="true">*</span></label>
                     <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" maxlength="80" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter official Edge number" autocomplete="off" aria-describedby="quotationNumberError"<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
-                    <span id="quotationNumberError" class="quotation-number-error" data-quotation-number-error aria-live="polite"></span>
+                    <span id="quotationNumberError" class="shared-field-error" data-quotation-number-error aria-live="polite" hidden></span>
                     <?php if (!$isInitialQuotationDraft): ?>
                         <small>Revision number is based on the original quotation.</small>
                     <?php endif; ?>

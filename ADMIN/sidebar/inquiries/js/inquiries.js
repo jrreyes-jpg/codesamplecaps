@@ -2705,33 +2705,25 @@ document.addEventListener('DOMContentLoaded', function () {
         let quotationSubmitAccepted = false;
         let quotationLeaveAccepted = false;
         let localDraftTimer = null;
-
-        const clearQuotationNumberError = function () {
-            quotationNumberInput?.classList.remove('is-invalid');
-            quotationNumberInput?.removeAttribute('aria-invalid');
-            if (quotationNumberError) quotationNumberError.textContent = '';
-        };
+        let quotationNumberTouched = false;
 
         const validateQuotationNumber = function (requiredForSend = false) {
             if (!quotationNumberInput || quotationNumberInput.readOnly) return true;
 
-            const value = quotationNumberInput.value.trim();
-            let message = '';
-            if (requiredForSend && value === '') {
-                message = 'Quotation number is required before sending.';
-            } else if (value !== '' && value.length < 3) {
-                message = 'Enter at least 3 characters.';
-            } else if (value !== '' && !/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/.test(value)) {
-                message = 'Use letters, numbers, dash, slash, underscore, or period only.';
+            const validator = window.EdgeFormValidation;
+            if (!validator) {
+                const fallbackCount = quotationNumberInput.value.replace(/\s/g, '').length;
+                return (!requiredForSend && fallbackCount === 0) || fallbackCount >= 3;
             }
 
-            clearQuotationNumberError();
-            if (message === '') return true;
+            const nonSpaceCount = validator.countNonSpaceCharacters(quotationNumberInput.value);
+            const isValid = validator.validateMinimumNonSpace(quotationNumberInput, quotationNumberError, {
+                minimum: 3,
+                message: 'Minimum of 3 characters required',
+                showError: requiredForSend || quotationNumberTouched,
+            });
 
-            quotationNumberInput.classList.add('is-invalid');
-            quotationNumberInput.setAttribute('aria-invalid', 'true');
-            if (quotationNumberError) quotationNumberError.textContent = message;
-            return false;
+            return requiredForSend || nonSpaceCount > 0 ? isValid : true;
         };
 
         const getQuotationFormState = function () {
@@ -3544,17 +3536,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 delete form.dataset.quotationSendConfirmed;
             } else if (event.submitter?.hasAttribute('data-confirm-quotation-send')) {
                 event.preventDefault();
+                const grandTotalValue = Number.parseFloat(String(totalOutput?.textContent || '0').replace(/,/g, ''));
+                const grandTotalLabel = 'PHP ' + new Intl.NumberFormat('en-PH', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                }).format(Number.isFinite(grandTotalValue) ? grandTotalValue : 0);
                 showConfirm(
                     form,
                     'The latest quotation details will be saved first, then emailed to the client.',
                     [
                         { label: 'Quotation Number', value: quotationNumberInput?.value.trim() || '' },
                         { label: 'Client Email', value: form.dataset.quotationClientEmail || '' },
+                        { label: 'Grand Total', value: grandTotalLabel },
                     ],
                     {
                         title: 'Send quotation to client?',
                         cancel: 'Cancel',
-                        confirm: 'Send Quotation',
+                        confirm: 'Send to Client',
                         mode: 'quotation-send-direct',
                     }
                 );
@@ -3644,7 +3642,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         quotationNumberInput?.addEventListener('input', function () {
-            clearQuotationNumberError();
+            quotationNumberTouched = true;
+            validateQuotationNumber(false);
             markQuotationDirty();
             scheduleLocalQuotationDraftSave();
         });

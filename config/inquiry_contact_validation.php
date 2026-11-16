@@ -8,6 +8,31 @@ function inquiry_contact_normalize_name(string $name): string
     return mb_strtolower($name, 'UTF-8');
 }
 
+function inquiry_contact_validation_message(array $result): string
+{
+    $status = (string)($result['status'] ?? '');
+    $mismatchStatuses = [
+        'contact_not_allowed',
+        'email_mismatch',
+        'phone_mismatch',
+        'name_mismatch',
+        'contact_mismatch',
+    ];
+
+    if (in_array($status, $mismatchStatuses, true)) {
+        return 'Client details do not match our records. Check the name, phone number, and email.';
+    }
+
+    return $status === 'server_error'
+        ? 'Unable to check the client details. Try again.'
+        : 'Invalid client details.';
+}
+
+function inquiry_contact_is_existing(array $result): bool
+{
+    return in_array((string)($result['status'] ?? ''), ['existing_client', 'existing_inquiry'], true);
+}
+
 function inquiry_contact_validation_result(mysqli $conn, string $name, string $email, string $phone): array
 {
     $email = mb_strtolower(trim($email), 'UTF-8');

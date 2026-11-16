@@ -554,8 +554,8 @@ if (empty($_SESSION['inquiry_form_token'])) {
                     <input type="email" name="email" data-label="Email Address" required autocomplete="email">
                     <small class="field-error"></small>
                     <span class="inquiry-email-verify-row">
-                        <button type="button" class="inquiry-email-verify-button js-inquiry-email-verify">Verify Email</button>
-                        <small class="inquiry-email-verify-status js-inquiry-email-status" aria-live="polite">Email not verified</small>
+                        <button type="button" class="inquiry-email-verify-button js-inquiry-email-verify" disabled>Verify Email</button>
+                        <small class="inquiry-email-verify-status js-inquiry-email-status" aria-live="polite" hidden></small>
                     </span>
                 </label>
             </div>

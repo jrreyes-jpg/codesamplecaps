@@ -46,8 +46,8 @@
                     <input id="walk_in_email" name="email" type="email" maxlength="190" autocomplete="email" value="<?php echo htmlspecialchars((string)($walkInOldInput['email'] ?? ''), ENT_QUOTES); ?>" placeholder="name@example.com" data-walk-in-email required>
                     <small class="walk-in-field-error" data-walk-in-email-error></small>
                     <span class="walk-in-email-tools">
-                        <button type="button" class="walk-in-verify-email-button" data-walk-in-send-otp>Send Verification Code</button>
-                        <small class="walk-in-email-status" data-walk-in-email-status>Email not verified</small>
+                        <button type="button" class="walk-in-verify-email-button" data-walk-in-send-otp disabled>Send Verification Code</button>
+                        <small class="walk-in-email-status" data-walk-in-email-status aria-live="polite" hidden></small>
                     </span>
                 </div>
 

@@ -32,28 +32,34 @@ $_SESSION['public_inquiry_contact_check_at'] = $now;
 $name = trim((string)($_POST['client_name'] ?? ''));
 $email = trim((string)($_POST['email'] ?? ''));
 $phone = normalize_ph_mobile(trim((string)($_POST['contact_no'] ?? '')));
+$normalizedEmail = mb_strtolower($email, 'UTF-8');
+$verifiedSessionEmail = mb_strtolower(trim((string)($_SESSION['public_inquiry_email_verified']['email'] ?? '')), 'UTF-8');
+$sessionEmailVerified = $normalizedEmail !== '' && hash_equals($verifiedSessionEmail, $normalizedEmail);
 
 if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !is_valid_ph_mobile($phone)) {
-    echo json_encode(['valid' => true, 'complete' => false, 'status' => 'incomplete_contact', 'can_verify_email' => filter_var($email, FILTER_VALIDATE_EMAIL) !== false]);
+    echo json_encode([
+        'valid' => true,
+        'complete' => false,
+        'status' => 'incomplete_contact',
+        'email_verified' => false,
+        'can_verify_email' => false,
+        'message' => '',
+    ]);
     exit;
 }
 
 $result = inquiry_contact_validation_result($conn, $name, $email, $phone);
-$messages = [
-    'contact_not_allowed' => 'This email or number belongs to a staff account.',
-    'email_mismatch' => 'Email already used. Use another email.',
-    'phone_mismatch' => 'Number already used. Use another number.',
-    'contact_mismatch' => 'Email and number do not match.',
-    'name_mismatch' => 'Name does not match this contact.',
-    'server_error' => 'Unable to check the client details. Try again.',
-];
+$valid = (bool)($result['valid'] ?? false);
+$existing = $valid && inquiry_contact_is_existing($result);
 
 echo json_encode([
-    'valid' => (bool)($result['valid'] ?? false),
+    'valid' => $valid,
     'complete' => true,
     'status' => (string)($result['status'] ?? 'server_error'),
     'field' => (string)($result['field'] ?? ''),
-    'email_verified' => !empty($result['email_verified']),
-    'can_verify_email' => (bool)($result['valid'] ?? false) && empty($result['email_verified']),
-    'message' => !empty($result['valid']) ? '' : ($messages[$result['status'] ?? ''] ?? 'Invalid client details.'),
+    'email_verified' => $sessionEmailVerified,
+    'can_verify_email' => $valid && !$sessionEmailVerified,
+    'message' => !$valid
+        ? inquiry_contact_validation_message($result)
+        : ($existing && !$sessionEmailVerified ? 'Existing client found. Verify email.' : ''),
 ]);

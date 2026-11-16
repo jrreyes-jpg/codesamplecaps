@@ -35,17 +35,10 @@ if (!is_valid_ph_mobile($phone)) {
 
 $contactValidation = inquiry_contact_validation_result($conn, $name, $email, $phone);
 if (empty($contactValidation['valid'])) {
-    $contactMessages = [
-        'contact_not_allowed' => 'This contact belongs to a staff account.',
-        'email_mismatch' => 'Email already used. Use another email.',
-        'phone_mismatch' => 'Number already used. Use another number.',
-        'contact_mismatch' => 'Email and number do not match.',
-        'name_mismatch' => 'Name does not match this contact.',
-    ];
     echo json_encode([
         'success' => false,
         'field' => (string)($contactValidation['field'] ?? ''),
-        'message' => $contactMessages[$contactValidation['status'] ?? ''] ?? 'Check the contact details.',
+        'message' => inquiry_contact_validation_message($contactValidation),
     ]);
     exit();
 }

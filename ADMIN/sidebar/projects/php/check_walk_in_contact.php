@@ -24,129 +24,35 @@ $name = trim((string)($_POST['client_name'] ?? ''));
 $email = trim((string)($_POST['email'] ?? ''));
 $phone = trim((string)($_POST['contact_no'] ?? ''));
 $normalizedEmail = mb_strtolower($email, 'UTF-8');
-$normalizedPhone = normalize_ph_mobile($phone);
 $emailIsValid = filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
 $phoneIsValid = is_valid_ph_mobile($phone);
 $nameIsValid = $name !== '';
 $sessionEmailVerified = $emailIsValid && walk_in_email_is_verified($normalizedEmail);
 
-if (!$emailIsValid && !$phoneIsValid) {
+if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
     echo json_encode([
         'valid' => true,
         'complete' => false,
         'status' => 'incomplete_contact',
         'email_verified' => false,
         'can_verify_email' => false,
-    ]);
-    exit();
-}
-
-// I-check agad ang email o kumpletong number kahit hindi pa tapos ang form.
-$lookupEmail = $emailIsValid ? $normalizedEmail : '';
-$lookupPhone = $phoneIsValid ? $normalizedPhone : '';
-$lookupStmt = $conn->prepare(
-    'SELECT full_name, email, phone_normalized, role, status
-     FROM users
-     WHERE deleted_at IS NULL
-       AND (LOWER(email) = ? OR phone_normalized = ?)'
-);
-if (!$lookupStmt) {
-    echo json_encode(['valid' => false, 'complete' => false, 'status' => 'server_error', 'message' => 'Unable to check the client details. Try again.']);
-    exit();
-}
-$lookupStmt->bind_param('ss', $lookupEmail, $lookupPhone);
-$lookupStmt->execute();
-$lookupResult = $lookupStmt->get_result();
-$clientFound = false;
-$clientMatchedField = '';
-while ($user = $lookupResult->fetch_assoc()) {
-    $emailMatches = $emailIsValid && mb_strtolower((string)($user['email'] ?? ''), 'UTF-8') === $normalizedEmail;
-    $phoneMatches = $phoneIsValid && (string)($user['phone_normalized'] ?? '') === $normalizedPhone;
-    $role = strtolower((string)($user['role'] ?? ''));
-
-    if ($role !== 'client' && ($emailMatches || $phoneMatches)) {
-        $field = $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone');
-        $message = $field === 'email'
-            ? 'This email belongs to a staff account.'
-            : ($field === 'phone' ? 'This number belongs to a staff account.' : 'This email and number belong to a staff account.');
-        echo json_encode([
-            'valid' => false,
-            'complete' => false,
-            'status' => 'contact_not_allowed',
-            'email_verified' => false,
-            'can_verify_email' => false,
-            'field' => $field,
-            'message' => $message,
-        ]);
-        exit();
-    }
-
-    if ($role !== 'client') {
-        continue;
-    }
-
-    if ($emailMatches || $phoneMatches) {
-        $clientFound = true;
-        $clientMatchedField = $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone');
-    }
-}
-
-// Ipakita agad kung may dating inquiry ang number o email.
-// Hindi ito block kung pareho ang buong client details sa huli.
-if (!$clientFound && ($lookupEmail !== '' || $lookupPhone !== '')) {
-    $inquiryStmt = $conn->prepare(
-        'SELECT id, email, contact_no
-         FROM service_inquiries
-         WHERE LOWER(email) = ? OR contact_no = ?
-         ORDER BY id DESC'
-    );
-    if ($inquiryStmt) {
-        $inquiryStmt->bind_param('ss', $lookupEmail, $lookupPhone);
-        $inquiryStmt->execute();
-        $inquiryResult = $inquiryStmt->get_result();
-        while ($inquiry = $inquiryResult->fetch_assoc()) {
-            $emailMatches = $emailIsValid
-                && mb_strtolower((string)($inquiry['email'] ?? ''), 'UTF-8') === $normalizedEmail;
-            $phoneMatches = $phoneIsValid
-                && normalize_ph_mobile((string)($inquiry['contact_no'] ?? '')) === $normalizedPhone;
-            if ($emailMatches || $phoneMatches) {
-                $clientFound = true;
-                $clientMatchedField = $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone');
-                break;
-            }
-        }
-    }
-}
-
-if (!$nameIsValid || !$emailIsValid || !$phoneIsValid) {
-    echo json_encode([
-        'valid' => true,
-        'complete' => false,
-        'status' => $clientFound ? 'existing_client_detected' : 'incomplete_contact',
-        'email_verified' => $sessionEmailVerified,
-        'can_verify_email' => $emailIsValid && !$clientFound,
-        'field' => $clientMatchedField,
-        'message' => $clientFound ? 'Existing client found.' : '',
+        'message' => '',
     ]);
     exit();
 }
 
 $result = inquiry_contact_validation_result($conn, $name, $email, $phone);
-$messages = [
-    'contact_not_allowed' => 'This email or number belongs to a staff account.',
-    'email_mismatch' => 'Email already used. Use another email.',
-    'phone_mismatch' => 'Number already used. Use another number.',
-    'name_mismatch' => 'Name does not match this contact.',
-    'contact_mismatch' => 'Email and number do not match.',
-    'server_error' => 'Unable to check the client details. Try again.',
-];
+$valid = (bool)($result['valid'] ?? false);
+$existing = $valid && inquiry_contact_is_existing($result);
 
 echo json_encode([
-    'valid' => (bool)$result['valid'],
+    'valid' => $valid,
     'complete' => true,
-    'status' => (string)$result['status'],
-    'email_verified' => $sessionEmailVerified || !empty($result['email_verified']),
-    'can_verify_email' => (bool)$result['valid'],
+    'status' => (string)($result['status'] ?? 'server_error'),
+    'email_verified' => $sessionEmailVerified,
+    'can_verify_email' => $valid && !$sessionEmailVerified,
     'field' => (string)($result['field'] ?? ''),
-    'message' => $result['valid'] ? '' : ($messages[$result['status']] ?? 'Invalid client details.'),
+    'message' => !$valid
+        ? inquiry_contact_validation_message($result)
+        : ($existing && !$sessionEmailVerified ? 'Existing client found. Verify email.' : ''),
 ]);

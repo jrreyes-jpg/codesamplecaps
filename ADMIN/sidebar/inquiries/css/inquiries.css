@@ -2276,6 +2276,16 @@
     display: none;
 }
 
+/* Flat details page para walang dobleng puting wrapper. */
+.main-content.admin-dashboard-content.inquiry-details-main {
+    padding: 92px 24px 24px;
+}
+
+.inquiries-shell.is-details-page {
+    gap: 8px;
+    padding-top: 8px;
+}
+
 .inquiry-modal--page {
     position: static;
     z-index: auto;
@@ -2292,8 +2302,10 @@
     max-height: none;
     min-height: 0;
     overflow: visible;
-    border-radius: 20px;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .inquiry-modal--page .inquiry-modal-panels {
@@ -2310,7 +2322,7 @@
     top: 112px;
     z-index: 40;
     width: fit-content;
-    margin: 0 0 8px 14px;
+    margin: 0 0 8px;
     padding: 0;
     border-radius: 10px;
     background: transparent;

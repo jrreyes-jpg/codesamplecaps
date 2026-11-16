@@ -632,9 +632,8 @@ const initInquiryForm = () => {
             const currentEmail = (emailInput?.value || '').trim().toLowerCase();
             const isVerified = currentEmail !== '' && currentEmail === verifiedEmail;
 
-            emailVerifyStatus.textContent = isVerified
-                ? 'Email verified'
-                : (contactNote || 'Email not verified');
+            emailVerifyStatus.textContent = isVerified ? 'Email verified' : '';
+            emailVerifyStatus.hidden = !isVerified;
             emailVerifyStatus.classList.toggle('is-verified', isVerified);
             emailInput.readOnly = isVerified;
             emailInput.classList.toggle('is-email-locked', isVerified);
@@ -642,7 +641,8 @@ const initInquiryForm = () => {
                 verifyEmailButton.textContent = isVerified
                     ? 'Change Email'
                     : (otpWasSent ? 'Enter Verification Code' : 'Send Verification Code');
-                verifyEmailButton.disabled = !isVerified && !emailPattern.test(currentEmail);
+                verifyEmailButton.disabled = !isVerified
+                    && (!emailPattern.test(currentEmail) || !contactCanVerifyEmail);
             }
             if (isVerified) {
                 setFieldValid(emailInput);
@@ -669,36 +669,36 @@ const initInquiryForm = () => {
             if (result.complete === false) {
                 contactCanVerifyEmail = false;
                 contactNote = '';
+                clearFieldError(emailInput);
                 updateEmailVerification();
                 return false;
             }
 
             if (!result.valid) {
-                const field = result.field || 'email';
                 const error = result.message || 'Invalid client details.';
-                if (field === 'name' || field === 'both') setFieldError(clientNameInput, error);
-                if (field === 'email' || field === 'both') setFieldError(emailInput, error);
-                if (field === 'phone' || field === 'both') setFieldError(contactInput, error);
+                clearFieldError(clientNameInput);
+                clearFieldError(contactInput);
+                setFieldError(emailInput, error);
                 verifiedEmail = '';
                 inquiryForm.dataset.verifiedEmail = '';
                 contactCanVerifyEmail = false;
-                contactNote = 'Email cannot be verified.';
+                contactNote = '';
                 updateEmailVerification();
                 return false;
             }
 
-            contactCanVerifyEmail = result.can_verify_email !== false || !!result.email_verified;
-            if (result.status === 'existing_client' && result.email_verified) {
+            contactCanVerifyEmail = result.can_verify_email !== false;
+            if (result.email_verified) {
                 verifiedEmail = (emailInput?.value || '').trim().toLowerCase();
                 inquiryForm.dataset.verifiedEmail = verifiedEmail;
-                contactNote = 'Existing client found.';
-            } else if (result.status === 'existing_inquiry') {
-                contactNote = 'Existing inquiry found. Verify email.';
-            } else {
                 contactNote = '';
+                clearFieldError(emailInput);
+            } else {
+                contactNote = result.message || 'Verify your email to continue.';
+                setFieldWarning(emailInput, contactNote);
             }
             updateEmailVerification();
-            return contactCanVerifyEmail || !!result.email_verified;
+            return contactCanVerifyEmail || result.email_verified;
         };
 
         const checkContactDetails = async () => {
@@ -1426,7 +1426,7 @@ const initInquiryForm = () => {
                     return false;
                 }
                 if (value.toLowerCase() !== verifiedEmail) {
-                    setFieldWarning(field, 'Verify this email to continue.');
+                    setFieldWarning(field, contactNote || 'Verify your email to continue.');
                     return false;
                 }
             } else if (field === inspectionDateInput) {
@@ -1867,7 +1867,7 @@ const restoreInquiryDraft = () => {
                 }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
-                if (contactIdentityFields.includes(field) && field !== clientNameInput && field !== emailInput) {
+                if (contactIdentityFields.includes(field)) {
                     queueContactCheck();
                 }
             });
@@ -1996,7 +1996,7 @@ const restoreInquiryDraft = () => {
                     setFieldError(field, 'Please enter a valid email address.');
                     firstInvalidField = firstInvalidField || field;
                 } else if (field === emailInput && value !== '' && value.toLowerCase() !== verifiedEmail) {
-                    setFieldWarning(field, 'Verify this email to continue.');
+                    setFieldWarning(field, contactNote || 'Verify your email to continue.');
                     firstInvalidField = firstInvalidField || field;
                 }
 

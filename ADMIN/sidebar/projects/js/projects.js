@@ -1952,13 +1952,14 @@ function initWalkInInquiryPanel() {
         const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
         if (!valid) return setValidation(emailAddress, emailError, 'Enter a valid email address.');
         if (emailIsVerified) return setValidation(emailAddress, emailError, '');
-        return setEmailWarning('Verify this email to continue.');
+        return setEmailWarning('Verify your email to continue.');
     }
 
     function syncVerifyEmailButton() {
         if (!sendOtpButton) return;
         const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailAddress?.value || '').trim());
-        sendOtpButton.disabled = Date.now() < otpLockedUntil || (!emailIsVerified && !hasValidEmail);
+        sendOtpButton.disabled = Date.now() < otpLockedUntil
+            || (!emailIsVerified && (!hasValidEmail || !contactCanVerifyEmail));
         sendOtpButton.textContent = emailIsVerified
             ? 'Change Email'
             : (emailOtpWasSent ? 'Enter Verification Code' : 'Send Verification Code');
@@ -1973,7 +1974,8 @@ function initWalkInInquiryPanel() {
             else emailAddress.classList.remove('is-valid-live');
         }
         if (emailStatus) {
-            emailStatus.textContent = statusMessage || (verified ? '✓ Email Verified' : 'Email not verified');
+            emailStatus.textContent = statusMessage || (verified ? 'Email verified' : '');
+            emailStatus.hidden = emailStatus.textContent === '';
             emailStatus.classList.toggle('is-verified', verified);
         }
         if (sendOtpButton) {
@@ -2287,6 +2289,10 @@ function initWalkInInquiryPanel() {
         const requestId = ++contactCheckId;
         if (!nameIsValid || !emailIsValid || !phoneIsValid) {
             contactCanVerifyEmail = false;
+            if (!emailIsVerified) {
+                setEmailVerified(false);
+                resetValidation(emailAddress, emailError);
+            }
             syncVerifyEmailButton();
             return false;
         }
@@ -2307,52 +2313,27 @@ function initWalkInInquiryPanel() {
             if (requestId !== contactCheckId) return false;
             const message = result.valid ? '' : (result.message || 'Invalid client details.');
             if (nameIsValid) setValidation(clientName, nameError, '');
-            if (emailIsValid && !emailIsVerified) setEmailWarning('Verify this email to continue.');
             if (phoneIsValid) setValidation(contactNumber, contactError, '');
+            setContactInfo(contactError, '');
             if (!result.valid) {
                 contactCanVerifyEmail = false;
-                if (result.field === 'name') setValidation(clientName, nameError, message);
-                if (result.field === 'email' || result.field === 'both') setValidation(emailAddress, emailError, message);
-                if (result.field === 'phone' || result.field === 'both') setValidation(contactNumber, contactError, message);
-                if (!result.field) setValidation(emailAddress, emailError, message);
                 setEmailVerified(false);
+                setValidation(emailAddress, emailError, message);
+                syncVerifyEmailButton();
+            } else if (result.complete === false) {
+                contactCanVerifyEmail = false;
+                if (!emailIsVerified) setEmailVerified(false);
+                resetValidation(emailAddress, emailError);
                 syncVerifyEmailButton();
             } else if (result.email_verified) {
                 contactCanVerifyEmail = true;
-                if (result.status === 'existing_client') {
-                    setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
-                    setEmailVerified(true, 'Existing client found.');
-                } else {
-                    setEmailVerified(true, 'Email verified');
-                }
-            } else if (result.complete === false) {
-                contactCanVerifyEmail = false;
-                if (result.status === 'existing_client_detected') {
-                    // Red muna habang kulang o hindi tugma ang buong client details.
-                    if (result.field === 'phone' || result.field === 'both') {
-                        setValidation(contactNumber, contactError, 'Number already used.');
-                    }
-                    if (result.field === 'email' || result.field === 'both') {
-                        setValidation(emailAddress, emailError, 'Email already used.');
-                    }
-                }
-                if (!emailIsVerified) {
-                    setEmailVerified(false, result.status === 'existing_client_detected' ? 'Existing client found.' : 'Email not verified');
-                }
-                syncVerifyEmailButton();
-            } else if (result.status === 'existing_client') {
-                contactCanVerifyEmail = result.can_verify_email !== false;
-                setContactInfo(contactError, 'Existing client found. You may create another inquiry.');
-                setEmailVerified(false, 'Existing client found. Verify email.');
-            } else if (result.status === 'existing_inquiry') {
-                contactCanVerifyEmail = result.can_verify_email !== false;
-                setContactInfo(contactError, 'Existing inquiry found. You may create another inquiry.');
-                if (!emailIsVerified) setEmailVerified(false, 'Existing inquiry found. Verify email.');
-            } else if (!emailIsVerified) {
+                setEmailVerified(true, 'Email verified');
+            } else {
                 contactCanVerifyEmail = result.can_verify_email !== false;
                 setEmailVerified(false);
+                setEmailWarning(result.message || 'Verify your email to continue.');
             }
-            return Boolean(result.valid && (result.complete !== false || result.can_verify_email));
+            return Boolean(result.valid && result.complete !== false && (result.email_verified || contactCanVerifyEmail));
         } catch (error) {
             if (requestId !== contactCheckId) return false;
             contactCanVerifyEmail = false;
@@ -2823,6 +2804,7 @@ function initWalkInInquiryPanel() {
         resetValidation(emailAddress, emailError);
         syncVerifyEmailButton();
         window.clearTimeout(contactCheckTimer);
+        contactCheckTimer = window.setTimeout(checkExistingContact, 450);
     });
     sendOtpButton?.addEventListener('click', function () {
         if (emailIsVerified) {

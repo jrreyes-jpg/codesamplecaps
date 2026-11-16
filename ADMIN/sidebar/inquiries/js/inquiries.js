@@ -595,24 +595,6 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmBox.hidden = true;
     };
 
-    const lockConfirmForQuotationDraft = function () {
-        const cancelButton = confirmBox.querySelector('[data-inquiry-confirm-no]');
-        const confirmButton = confirmBox.querySelector('[data-inquiry-confirm-yes]');
-        confirmBox.dataset.submitting = '1';
-        if (cancelButton) {
-            cancelButton.disabled = true;
-        }
-        if (confirmButton) {
-            confirmButton.disabled = true;
-            confirmButton.textContent = 'Creating draft...';
-        }
-        confirmBox.hidden = true;
-        window.edgeActionLoading?.show({
-            title: 'Creating quotation...',
-            message: 'Please wait while the quotation draft is prepared.',
-        });
-    };
-
     const inquiryReviewHasChanges = function (modal) {
         return false;
     };
@@ -2687,7 +2669,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
         const materialsNoteInput = form?.querySelector('textarea[name="materials_note"]');
         const markupError = form?.querySelector('[data-quotation-markup-error]');
-        const updateSubmitButton = form?.querySelector('[data-quotation-update-submit]');
+        const saveDraftButton = form?.querySelector('[data-quotation-save-draft]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
         const isInitialQuotation = form?.dataset.initialQuotation === 'true';
         const canUseLocalDraft = isInitialQuotation && !isEditMode;
@@ -2786,11 +2768,11 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const updateEditSubmitState = function () {
-            if (!isEditMode || !updateSubmitButton) {
+            if (!isEditMode || !saveDraftButton) {
                 return;
             }
 
-            updateSubmitButton.disabled = !isQuotationDirty();
+            saveDraftButton.disabled = !isQuotationDirty();
         };
 
         const markQuotationDirty = function () {
@@ -3558,23 +3540,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (event.submitter?.hasAttribute('data-confirm-quotation-save')
-                && form.dataset.quotationDraftConfirmed !== '1') {
-                event.preventDefault();
-                showConfirm(
-                    form,
-                    'This will save the current costing as an initial quotation draft. You can review and edit it before sending it to the client.',
-                    null,
-                    {
-                        title: 'Create initial quotation draft?',
-                        cancel: 'Cancel',
-                        confirm: 'Create Draft',
-                        mode: 'quotation-draft-create',
-                    }
-                );
-                return;
-            }
-
             if (form.dataset.quotationSendConfirmed === '1') {
                 delete form.dataset.quotationSendConfirmed;
             } else if (event.submitter?.hasAttribute('data-confirm-quotation-send')) {
@@ -3591,24 +3556,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         cancel: 'Cancel',
                         confirm: 'Send Quotation',
                         mode: 'quotation-send-direct',
-                    }
-                );
-                return;
-            }
-
-            if (form.dataset.quotationUpdateConfirmed === '1') {
-                delete form.dataset.quotationUpdateConfirmed;
-            } else if (event.submitter?.hasAttribute('data-confirm-quotation-update')) {
-                event.preventDefault();
-                showConfirm(
-                    form,
-                    'This will update the saved quotation using your current items, quantities, costs, notes, markup, and recalculated totals.',
-                    null,
-                    {
-                        title: 'Save quotation changes?',
-                        cancel: 'Cancel',
-                        confirm: 'Save Changes',
-                        mode: 'quotation-update',
                     }
                 );
                 return;
@@ -3673,16 +3620,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (canUseLocalDraft && !quotationSubmitAccepted && !quotationLeaveAccepted) {
                 saveLocalQuotationDraft();
             }
-        });
-
-        form?.querySelector('[data-quotation-cancel]')?.addEventListener('click', function (event) {
-            if (!isQuotationDirty()) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            leaveQuotationWithoutSaving(this.href);
         });
 
         form?.addEventListener('input', function (event) {
@@ -3919,20 +3856,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (confirmationMode === 'quotation-completeness') {
             closeConfirm();
             form.dataset.completenessConfirmed = '1';
-            form.requestSubmit();
-            return;
-        }
-
-        if (confirmationMode === 'quotation-draft-create') {
-            form.dataset.quotationDraftConfirmed = '1';
-            lockConfirmForQuotationDraft();
-            form.requestSubmit();
-            return;
-        }
-
-        if (confirmationMode === 'quotation-update') {
-            closeConfirm();
-            form.dataset.quotationUpdateConfirmed = '1';
             form.requestSubmit();
             return;
         }

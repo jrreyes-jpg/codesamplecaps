@@ -2,7 +2,7 @@
     box-sizing: border-box;
     min-height: calc(100dvh - 110px);
     padding: 30px clamp(16px, 3vw, 40px);
-    background: linear-gradient(135deg, #f7fbf9 0%, #e3fff2 100%);
+    background: transparent;
     color: #121a2b;
 }
 
@@ -175,8 +175,11 @@
 .admin-quotation-detail {
     min-width: 0;
     padding: 18px;
-    border: 1px solid #dbe5ec;
     border-radius: 20px;
+}
+
+.admin-quotation-list {
+    border: 1px solid #dbe5ec;
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 14px 34px rgba(28, 74, 53, 0.08);
 }
@@ -321,23 +324,6 @@
     text-align: right;
 }
 
-.admin-quotation-summary {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
-}
-
-.admin-quotation-summary article {
-    min-width: 0;
-    padding: 13px;
-    border: 1px solid #dce5ed;
-    border-radius: 12px;
-    background: #f8fafc;
-}
-
-.admin-quotation-summary span { display: block; margin-bottom: 4px; color: #66758d; font-size: 13px; font-weight: 700; }
-.admin-quotation-summary strong { display: block; overflow-wrap: anywhere; }
 .admin-quotation-actions {
     justify-content: flex-start;
     flex-wrap: wrap;
@@ -588,13 +574,12 @@ body.admin-quotation-history-open { overflow: hidden; }
 .admin-quotation-details-page {
     width: 100%;
     min-height: 0;
-    padding-top: 18px;
-    padding-bottom: 12px;
-    background: #effaf4;
+    padding: 12px clamp(12px, 2vw, 24px) 16px;
+    background: transparent;
 }
 
 .admin-quotation-details-page > * {
-    width: min(100%, 1180px);
+    width: min(100%, 1320px);
     margin-right: auto;
     margin-left: auto;
 }
@@ -603,58 +588,55 @@ body.admin-quotation-history-open { overflow: hidden; }
     position: sticky;
     top: 112px;
     z-index: 40;
-    margin-bottom: 14px;
+    margin-bottom: 8px;
 }
 
 .admin-quotation-back {
-    width: fit-content;
-    max-width: 100%;
-    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.10);
+    flex-shrink: 0;
 }
 
 .admin-quotation-details-page .admin-quotation-detail {
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(28, 74, 53, 0.06);
+    padding: 8px;
 }
 
-.admin-quotation-details-page .admin-quotation-detail-head,
-.admin-quotation-details-page .admin-quotation-summary {
-    margin-bottom: 12px;
+.admin-quotation-details-page .admin-quotation-detail-head {
+    gap: 10px;
+    margin-bottom: 4px;
 }
 
-.admin-quotation-details-page .admin-quotation-summary article {
-    padding: 10px 12px;
+.admin-quotation-details-page .shared-info-grid {
+    margin: 8px 0;
 }
 
 .admin-quotation-details-page .admin-quotation-section {
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .admin-quotation-details-page .admin-quotation-section h2 {
-    margin: 0 0 10px;
+    margin: 0 0 5px;
 }
 
 .admin-quotation-details-page .admin-quotation-table-wrap th,
 .admin-quotation-details-page .admin-quotation-table-wrap td {
-    padding: 9px 11px;
+    padding: 6px 8px;
 }
 
 .admin-quotation-details-page .admin-quotation-totals {
-    margin-top: 9px;
-    padding: 8px 12px;
+    margin-top: 7px;
+    padding: 6px 10px;
 }
 
 .admin-quotation-details-page .admin-quotation-totals p {
-    padding: 5px 0;
+    padding: 4px 0;
 }
 
 .admin-quotation-details-page .admin-quotation-actions {
-    margin-top: 12px;
-    padding-top: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
 }
 
 .admin-quotation-detail-head h1 {
-    margin: 5px 0;
+    margin: 0 0 2px;
     font-size: clamp(23px, 2.4vw, 32px);
     overflow-wrap: anywhere;
 }
@@ -671,13 +653,13 @@ body.admin-quotation-history-open { overflow: hidden; }
 @media (max-width: 760px) {
     .admin-quotation-page { padding: 20px 12px 36px; }
     .admin-quotation-list-page { padding: 0; }
+    .admin-quotation-details-page { padding: 10px 10px 16px; }
     .admin-quotation-list { grid-template-columns: 1fr; }
     .admin-quotation-detail-head { flex-direction: column; }
     .admin-quotation-detail-status {
         justify-items: start;
         text-align: left;
     }
-    .admin-quotation-summary { grid-template-columns: 1fr; }
     .button-primary,
     .button-secondary { width: 100%; }
     .admin-quotation-send-form,
@@ -709,6 +691,7 @@ body.admin-quotation-history-open { overflow: hidden; }
     .admin-quotation-search > div > button[type="submit"] { width: 100%; }
     .admin-quotation-list,
     .admin-quotation-detail { padding: 14px; border-radius: 16px; }
+    .admin-quotation-details-page .admin-quotation-detail { padding: 8px; }
     .admin-quotation-table-wrap { overflow: visible; border: 0; }
     .admin-quotation-table-wrap table,
     .admin-quotation-table-wrap tbody,

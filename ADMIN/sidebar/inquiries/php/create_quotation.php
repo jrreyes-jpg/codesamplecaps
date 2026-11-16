@@ -445,9 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'type' => 'success',
                     'message' => $shouldSendToClient
                         ? 'Quotation saved and sent to the client.'
-                        : ($isEditMode
-                            ? 'Quotation draft updated successfully.'
-                            : 'Quotation draft created successfully.'),
+                        : 'Draft saved.',
                 ];
                 $redirectStatus = $shouldSendToClient ? 'sent' : 'draft';
                 header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=' . $redirectStatus . '&id=' . $draftId);
@@ -479,7 +477,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261116-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -493,7 +491,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-<main class="main-content admin-dashboard-content initial-quotation-editor">
+<main class="main-content admin-dashboard-content initial-quotation-editor shared-page-surface">
     <div class="inquiries-shell quotation-create-shell" data-quotation-create>
         <?php if ($error !== ''): ?>
             <div class="shared-toast shared-toast--error" role="alert" data-shared-toast>
@@ -503,8 +501,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
         <?php endif; ?>
 
-        <section class="quotation-create-card">
-            <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft' : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary quotation-create-back">&larr; Back to <?php echo $isEditMode ? 'Quotations' : 'Inquiries'; ?></a>
+        <section class="quotation-create-card admin-flat-panel">
+            <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft' : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="quotation-create-back shared-back-button" data-quotation-back>&larr; Back to <?php echo $isEditMode ? 'Quotations' : 'Inquiries'; ?></a>
 
             <div class="quotation-create-heading">
                 <div class="quotation-create-title-row">
@@ -521,10 +519,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
             </div>
 
-            <div class="quotation-create-client-grid">
-                <div><span>Client</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php if (trim((string)$inquiry['company_name']) !== ''): ?><small><?php echo htmlspecialchars((string)$inquiry['company_name'], ENT_QUOTES, 'UTF-8'); ?></small><?php endif; ?></div>
-                <div><span>Service</span><strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                <div><span>Location</span><strong><?php echo htmlspecialchars(trim((string)$inquiry['site_address'] . ', ' . (string)$inquiry['barangay'] . ', ' . (string)$inquiry['city_municipality'] . ', ' . (string)$inquiry['province'], ' ,'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <div class="shared-info-grid">
+                <div class="shared-info-card"><span class="shared-info-label">Client</span><strong><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php if (trim((string)$inquiry['company_name']) !== ''): ?><small><?php echo htmlspecialchars((string)$inquiry['company_name'], ENT_QUOTES, 'UTF-8'); ?></small><?php endif; ?></div>
+                <div class="shared-info-card"><span class="shared-info-label">Service</span><strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                <div class="shared-info-card"><span class="shared-info-label">Location</span><strong><?php echo htmlspecialchars(trim((string)$inquiry['site_address'] . ', ' . (string)$inquiry['barangay'] . ', ' . (string)$inquiry['city_municipality'] . ', ' . (string)$inquiry['province'], ' ,'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
             </div>
 
             <details class="quotation-create-scope">
@@ -638,10 +636,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                 <div class="quotation-create-actions">
                     <div class="quotation-create-actions__primary">
-                        <button type="submit" class="btn-secondary" data-quotation-save-draft <?php echo $isEditMode ? 'data-confirm-quotation-update data-quotation-update-submit disabled' : 'data-confirm-quotation-save'; ?>>Save Draft</button>
+                        <button type="submit" class="btn-secondary" data-quotation-save-draft<?php echo $isEditMode ? ' disabled' : ''; ?>>Save Draft</button>
                         <button type="submit" class="btn-primary" data-confirm-quotation-send>Send to Client</button>
                     </div>
-                    <a href="<?php echo $isEditMode ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=draft' : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?inquiry_id=' . $inquiryId . '&amp;tab=quotation'; ?>" class="btn-secondary" data-quotation-cancel>Cancel</a>
                 </div>
             </form>
         </section>

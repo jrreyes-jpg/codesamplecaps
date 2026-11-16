@@ -98,7 +98,7 @@ $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261112-9',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261116-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -109,25 +109,24 @@ $adminJsFiles = [
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content">
+<main class="main-content admin-dashboard-content shared-page-surface">
     <div class="admin-quotation-page admin-quotation-details-page">
         <nav class="admin-quotation-back-row" aria-label="Quotation navigation">
-            <a class="admin-quotation-back admin-sticky-back-button" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">&larr; Back to Quotation List</a>
+            <a class="admin-quotation-back shared-back-button" href="/codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php">&larr; Back to Quotations</a>
         </nav>
 
         <?php if (!$quotation): ?>
-            <section class="admin-quotation-detail">
+            <section class="admin-quotation-detail admin-flat-panel">
                 <div class="admin-quotation-empty">
                     <h1>Quotation not found</h1>
                     <p>The quotation may have been removed or is not available.</p>
                 </div>
             </section>
         <?php else: ?>
-            <section class="admin-quotation-detail" data-quotation-live-status data-quotation-id="<?php echo $quotationId; ?>" data-current-status="<?php echo admin_quote_details_e($selectedStatus); ?>" data-current-updated-at="<?php echo admin_quote_details_e($quotation['updated_at'] ?? ''); ?>">
+            <section class="admin-quotation-detail admin-flat-panel" data-quotation-live-status data-quotation-id="<?php echo $quotationId; ?>" data-current-status="<?php echo admin_quote_details_e($selectedStatus); ?>" data-current-updated-at="<?php echo admin_quote_details_e($quotation['updated_at'] ?? ''); ?>">
                 <div class="admin-quotation-detail-head">
                     <div>
                         <h1><?php echo admin_quote_details_e($quotation['client_name'] ?? 'Client'); ?></h1>
-                        <p><?php echo admin_quote_details_e($quotation['service_category'] ?? 'Service not provided'); ?></p>
                     </div>
                     <div class="admin-quotation-detail-status">
                         <span class="quote-status <?php echo admin_quote_details_status_class($selectedStatus); ?>" data-quotation-status-badge><?php echo admin_quote_details_e($statusLabels[$selectedStatus] ?? inquiry_quote_status_label($selectedStatus)); ?></span>
@@ -135,10 +134,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </div>
                 </div>
 
-                <div class="admin-quotation-summary">
-                    <article><span>Client Email</span><strong><?php echo admin_quote_details_e($quotation['email'] ?? 'Not provided'); ?></strong></article>
-                    <article><span>Site Location</span><strong><?php echo admin_quote_details_e($siteLocation); ?></strong></article>
-                    <article><span>Sent Date</span><strong><?php echo admin_quote_details_e($sentDate); ?></strong></article>
+                <div class="shared-info-grid">
+                    <article class="shared-info-card"><span class="shared-info-label">Client</span><strong><?php echo admin_quote_details_e($quotation['client_name'] ?? 'Client'); ?></strong></article>
+                    <article class="shared-info-card"><span class="shared-info-label">Service</span><strong><?php echo admin_quote_details_e($quotation['service_category'] ?? 'Not provided'); ?></strong></article>
+                    <article class="shared-info-card"><span class="shared-info-label">Location</span><strong><?php echo admin_quote_details_e($siteLocation); ?></strong></article>
                 </div>
 
                 <div class="admin-quotation-revision-note" data-quotation-revision-note <?php echo $selectedStatus === 'revision_requested' && trim((string)($quotation['client_decision_note'] ?? '')) !== '' ? '' : 'hidden'; ?>>

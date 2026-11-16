@@ -11,49 +11,17 @@
     padding-top: 16px;
 }
 
-/* Shared light canvas para list at details. */
-.main-content.admin-dashboard-content.inquiry-center-main {
-    background: var(--shared-page-surface-bg);
-}
-
-/* Direct quotation page para quotation muna bago inspection. */
-.main-content.initial-quotation-editor {
-    background: #f1faf5;
-}
-
 .quotation-create-shell {
     max-width: 1440px;
     margin: 0 auto;
 }
 
 .quotation-create-back {
-    display: inline-flex;
     position: sticky;
     top: 100px;
     z-index: 12;
     align-self: flex-start;
-    width: fit-content;
     margin-bottom: 18px;
-    padding: 8px 12px;
-    border: 1px solid #86cda6;
-    border-radius: 9px;
-    background: #ecfdf5;
-    box-shadow: 0 3px 8px rgba(21, 128, 61, 0.08);
-    color: #166534;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.quotation-create-back:hover,
-.quotation-create-back:focus-visible {
-    border-color: #4caf72;
-    background: #dcfce7;
-    color: #14532d;
-    outline: none;
-}
-
-.quotation-create-back:focus-visible {
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.20), 0 5px 14px rgba(21, 128, 61, 0.10);
 }
 
 .quotation-create-status {
@@ -68,11 +36,7 @@
 }
 
 .quotation-create-card {
-    padding: 22px;
-    border: 1px solid #dfe9e5;
-    border-radius: 22px;
-    background: #ffffff;
-    box-shadow: 0 3px 10px rgba(15, 61, 48, 0.04);
+    padding: 0;
 }
 
 .quotation-create-heading,
@@ -116,7 +80,6 @@
 }
 
 .quotation-create-number label,
-.quotation-create-client-grid span,
 .quotation-create-scope > span,
 .quotation-create-item label > span,
 .quotation-create-item__line-total > span,
@@ -185,34 +148,12 @@
     gap: 10px;
 }
 
-.quotation-create-client-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin: 16px 0 10px;
-}
-
-.quotation-create-client-grid > div,
 .quotation-create-scope {
     min-width: 0;
     padding: 10px 12px;
     border: 1px solid #e2ebe7;
     border-radius: 12px;
     background: #f8fbfa;
-}
-
-.quotation-create-client-grid strong {
-    display: block;
-    overflow-wrap: anywhere;
-    color: #1c3028;
-}
-
-.quotation-create-client-grid small {
-    display: block;
-    margin-top: 3px;
-    color: #617066;
-    font-size: .82rem;
-    overflow-wrap: anywhere;
 }
 
 .quotation-create-scope {
@@ -758,8 +699,8 @@
     }
 
     .quotation-create-card {
-        padding: 18px;
-        border-radius: 16px;
+        padding: 0;
+        border-radius: 0;
     }
 
     .quotation-create-heading,
@@ -773,7 +714,6 @@
         min-width: 0;
     }
 
-    .quotation-create-client-grid,
     .quotation-create-item,
     .quotation-create-summary {
         grid-template-columns: 1fr;

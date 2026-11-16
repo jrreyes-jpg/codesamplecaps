@@ -528,7 +528,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </div>
 
             <details class="quotation-create-scope">
-                <summary>Inquiry Scope</summary>
+                <summary>Project Description</summary>
                 <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
             </details>
 

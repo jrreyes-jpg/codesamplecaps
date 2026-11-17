@@ -23,7 +23,7 @@ if (!inquiry_email_is_valid_format($email)) {
     echo json_encode(['success' => false, 'message' => inquiry_email_invalid_message()]);
     exit();
 }
-$contactValidation = inquiry_contact_validation_result($conn, $name, $email, $phone);
+$contactValidation = inquiry_contact_validation_result($conn, $name, $email, $phone, true);
 if (empty($contactValidation['valid'])) {
     echo json_encode([
         'success' => false,

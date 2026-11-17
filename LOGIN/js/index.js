@@ -137,7 +137,7 @@ const initInquiryStatusToast = () => {
         invalid: ['Please check the form and try again.', 'error'],
         email_error: ['We could not send the verification code. Please try again later.', 'error'],
         email_not_verified: ['Please verify your email before submitting.', 'error'],
-        account_email_exists: ['This email is already registered to an existing account.', 'error'],
+        account_email_exists: ['This email is already registered. Please use another email.', 'error'],
         expired: ['The verification code expired. Please submit the inquiry again.', 'error'],
     };
     const [message, type] = messages[status] || ['Sorry, the inquiry service had a problem. Please try again later.', 'error'];

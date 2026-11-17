@@ -207,13 +207,16 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     if ($contactNo === '' || !is_valid_ph_mobile($contactNo)) {
         throw new InvalidArgumentException('Enter a valid mobile number.');
     }
-    $contactValidation = inquiry_contact_validation_result($conn, $clientName, $email, $contactNo);
+    $contactValidation = inquiry_contact_validation_result($conn, $clientName, $email, $contactNo, true);
     if (!$contactValidation['valid']) {
         if ($contactValidation['status'] === 'account_email_exists') {
-            throw new InvalidArgumentException('This email is already registered to an existing account.');
+            throw new InvalidArgumentException('This email belongs to a staff or unavailable account. Please use another email.');
         }
         throw new RuntimeException('Unable to check the client details. Try again.');
     }
+    $clientId = isset($contactValidation['client_id'])
+        ? (int)$contactValidation['client_id']
+        : null;
     $emailVerified = walk_in_email_is_verified($email);
     if (!$emailVerified) {
         throw new InvalidArgumentException('Verify the client email before saving.');
@@ -285,6 +288,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     $hasEstimatedBudget = walk_in_inquiry_has_column($conn, 'estimated_budget');
     if (
         walk_in_inquiry_has_column($conn, 'inquiry_source')
+        && walk_in_inquiry_has_column($conn, 'client_id')
         && walk_in_inquiry_has_column($conn, 'contact_person')
         && walk_in_inquiry_has_column($conn, 'preferred_inspection_time')
         && $hasEstimatedBudget
@@ -293,16 +297,17 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
         $preferredTime = null;
         $stmt = $conn->prepare(
             'INSERT INTO service_inquiries
-                (inquiry_source, client_name, contact_person, company_name, email, contact_no,
+                (client_id, inquiry_source, client_name, contact_person, company_name, email, contact_no,
                  province, city_municipality, barangay, site_address, service_category,
                  estimated_budget, description, preferred_inspection_date, preferred_inspection_time, status, admin_notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$stmt) {
             throw new RuntimeException('Unable to save the walk-in inquiry.');
         }
         $stmt->bind_param(
-            'sssssssssssssssss',
+            'isssssssssssssssss',
+            $clientId,
             $source,
             $clientName,
             $clientName,

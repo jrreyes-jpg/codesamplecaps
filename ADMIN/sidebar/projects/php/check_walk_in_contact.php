@@ -38,7 +38,7 @@ if (!$emailIsValid) {
     exit();
 }
 
-$result = inquiry_contact_validation_result($conn, $name, $email, (string)($_POST['contact_no'] ?? ''));
+$result = inquiry_contact_validation_result($conn, $name, $email, (string)($_POST['contact_no'] ?? ''), true);
 $valid = (bool)($result['valid'] ?? false);
 
 echo json_encode([
@@ -48,5 +48,7 @@ echo json_encode([
     'email_verified' => $sessionEmailVerified,
     'can_verify_email' => $valid && !$sessionEmailVerified,
     'field' => (string)($result['field'] ?? ''),
-    'message' => !$valid ? inquiry_contact_validation_message($result) : '',
+    'message' => (string)($result['status'] ?? '') === 'existing_client'
+        ? 'Existing client account found. Verify email to continue.'
+        : (!$valid ? inquiry_contact_validation_message($result) : ''),
 ]);

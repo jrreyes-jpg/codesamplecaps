@@ -2057,7 +2057,7 @@ function initWalkInInquiryPanel() {
         }
         if (otpVerifyButton) {
             otpVerifyButton.textContent = 'Verify Code';
-            otpVerifyButton.disabled = false;
+            otpVerifyButton.disabled = true;
         }
         otpExpiresAt = Date.now() + (Number(expiresIn) || 180) * 1000;
         otpResendAt = Date.now() + resendIn * 1000;
@@ -2130,7 +2130,7 @@ function initWalkInInquiryPanel() {
         otpModal?.setAttribute('aria-hidden', 'false');
         if (Date.now() >= otpLockedUntil && Date.now() < otpExpiresAt) {
             if (otpCode) otpCode.disabled = false;
-            if (otpVerifyButton) otpVerifyButton.disabled = false;
+            if (otpVerifyButton) otpVerifyButton.disabled = !/^\d{6}$/.test(String(otpCode?.value || ''));
         }
         window.requestAnimationFrame(function () {
             otpCode?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2873,6 +2873,11 @@ function initWalkInInquiryPanel() {
     });
     otpCode?.addEventListener('input', function () {
         otpCode.value = otpCode.value.replace(/\D/g, '').slice(0, 6);
+        if (otpVerifyButton) {
+            otpVerifyButton.disabled = !/^\d{6}$/.test(otpCode.value)
+                || Date.now() >= otpExpiresAt
+                || Date.now() < otpLockedUntil;
+        }
         otpCode.classList.remove('is-invalid');
         if (otpError) {
             otpError.textContent = '';

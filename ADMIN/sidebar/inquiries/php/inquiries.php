@@ -2545,7 +2545,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261117-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-1',
-    '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
+    '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [

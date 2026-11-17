@@ -174,7 +174,7 @@
             <p class="email-otp-help" id="walk-in-otp-help">Check Spam or Junk if you did not get the code.</p>
             <div class="email-otp-actions">
                 <button type="button" class="email-otp-resend" data-walk-in-otp-resend disabled>Resend Code (01:00)</button>
-                <button type="button" class="btn-primary" data-walk-in-otp-verify>Verify Code</button>
+                <button type="button" class="btn-primary" data-walk-in-otp-verify disabled>Verify Code</button>
             </div>
         </div>
     </div>

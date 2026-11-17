@@ -31,7 +31,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-1">
     <link rel="stylesheet" href="../css/public-confirmation.css">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/css/action-loading.css') ?: 1)); ?>">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 
@@ -693,7 +693,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <p class="email-otp-help">Check Spam or Junk if you did not get the code.</p>
             <div class="email-otp-actions">
                 <button class="email-otp-resend js-inquiry-otp-resend" type="button">Resend Code</button>
-                <button class="btn btn-primary js-inquiry-otp-confirm" type="button">Verify Code</button>
+                <button class="btn btn-primary js-inquiry-otp-confirm" type="button" disabled>Verify Code</button>
             </div>
         </div>
     </div>

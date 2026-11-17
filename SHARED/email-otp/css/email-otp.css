@@ -104,6 +104,12 @@
 .email-otp-actions button:disabled { box-shadow: none; cursor: not-allowed; opacity: 1; }
 .email-otp-actions .btn-primary:disabled,
 .email-otp-actions .btn:disabled { border-color: #cbd5e1; background: #cbd5e1; color: #64748b; }
+.email-otp-actions .btn-primary:not(:disabled),
+.email-otp-actions .btn:not(:disabled) { border-color: #16a34a; background: #16a34a; color: #ffffff; box-shadow: none; }
+.email-otp-actions .btn-primary:not(:disabled):hover,
+.email-otp-actions .btn-primary:not(:disabled):focus-visible,
+.email-otp-actions .btn:not(:disabled):hover,
+.email-otp-actions .btn:not(:disabled):focus-visible { background: #15803d; }
 
 .email-otp-modal.is-busy { pointer-events: none; }
 body.has-inquiry-otp-open,

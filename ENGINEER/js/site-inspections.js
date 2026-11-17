@@ -755,9 +755,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (check) check.hidden = false;
         const reminder = field.closest('label')?.querySelector('[data-findings-reminder]');
         if (reminder) {
-            reminder.textContent = 'Valid findings.';
             reminder.classList.remove('is-error');
-            reminder.classList.add('is-valid');
+            reminder.classList.remove('is-valid');
+            reminder.hidden = true;
         }
     };
 
@@ -770,6 +770,7 @@ document.addEventListener('DOMContentLoaded', function () {
             reminder.textContent = findingsErrorMessage(field.value);
             reminder.classList.remove('is-valid');
             reminder.classList.add('is-error');
+            reminder.hidden = false;
         }
     };
 
@@ -779,8 +780,8 @@ document.addEventListener('DOMContentLoaded', function () {
         field.classList.remove('is-invalid');
         const reminder = field.closest('label')?.querySelector('[data-findings-reminder]');
         if (reminder) {
-            reminder.textContent = 'Required. Enter at least 10 characters.';
             reminder.classList.remove('is-error', 'is-valid');
+            reminder.hidden = true;
         }
     };
 
@@ -921,11 +922,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (feedback) {
             feedback.classList.toggle('is-valid', value !== '' && valid);
             feedback.classList.toggle('is-invalid', value !== '' && !valid && showError);
-            feedback.textContent = value === ''
-                ? 'Paste a shared file or folder link. Set access to Anyone with the link - Viewer.'
-                : (valid
-                    ? 'Valid Google Drive sharing link. Make sure access is Viewer.'
-                    : 'Use a shared Google Drive file or folder link.');
+            feedback.textContent = value !== '' && !valid && showError
+                ? 'Use a Google Drive file or folder link.'
+                : '';
+            feedback.hidden = feedback.textContent === '';
         }
         return valid;
     };
@@ -1498,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 savedBox = document.createElement('div');
                 savedBox.className = 'inspection-evidence__saved';
                 savedBox.setAttribute('aria-label', 'Saved inspection photos');
-                evidence.insertBefore(savedBox, evidence.querySelector('.inspection-evidence__upload'));
+                evidence.insertBefore(savedBox, evidence.querySelector('.inspection-evidence__fields'));
             }
             photos.forEach(function (photo) {
                 const card = document.createElement('figure');

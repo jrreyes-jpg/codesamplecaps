@@ -1266,6 +1266,7 @@ body.inspection-modal-open {
 }
 
 .inspection-findings-control textarea {
+    min-height: 72px;
     padding-right: 42px;
 }
 
@@ -1328,6 +1329,18 @@ body.inspection-modal-open {
     border: 1px solid #cfe3d6;
     border-radius: 14px;
     background: #f8fffa;
+}
+
+.inspection-evidence__fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+
+.inspection-evidence__drive:only-child,
+.inspection-evidence__upload[hidden] + .inspection-evidence__drive {
+    grid-column: 1 / -1;
 }
 
 .inspection-evidence__head strong,
@@ -1501,6 +1514,10 @@ body.inspection-modal-open {
 }
 
 @media (max-width: 640px) {
+    .inspection-evidence__fields {
+        grid-template-columns: 1fr;
+    }
+
     .inspection-evidence__saved,
     .inspection-evidence__preview {
         grid-template-columns: 1fr;

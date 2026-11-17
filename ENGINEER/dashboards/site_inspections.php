@@ -1986,11 +1986,11 @@ require __DIR__ . '/../layout/header.php';
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
                                     <div class="inspection-findings-control">
-                                        <textarea name="engineer_findings" rows="3" maxlength="1000" aria-describedby="engineerFindingsReminder<?php echo $inspectionId; ?> engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Actual problem found, site condition, or recommended scope" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                        <textarea name="engineer_findings" rows="2" maxlength="1000" aria-describedby="engineerFindingsReminder<?php echo $inspectionId; ?> engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Problem found and recommended work" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                         <span class="inspection-findings-check" data-findings-check aria-hidden="true" hidden>&#10003;</span>
                                     </div>
                                     <div class="inspection-findings-feedback">
-                                        <small id="engineerFindingsReminder<?php echo $inspectionId; ?>" class="inspection-findings-reminder" data-findings-reminder>Enter at least 10 characters.</small>
+                                        <small id="engineerFindingsReminder<?php echo $inspectionId; ?>" class="inspection-findings-reminder" data-findings-reminder hidden></small>
                                         <small id="engineerFindingsCount<?php echo $inspectionId; ?>" class="inspection-findings-count" data-findings-count>0 / 1000</small>
                                     </div>
                                 </label>
@@ -2000,7 +2000,6 @@ require __DIR__ . '/../layout/header.php';
                                 <div class="inspection-evidence__head">
                                     <div>
                                         <strong>Inspection Evidence <span>(Optional)</span></strong>
-                                        <small>Add up to 3 photos. Use Google Drive for videos or many files.</small>
                                     </div>
                                 </div>
 
@@ -2018,24 +2017,29 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($canEditCosting): ?>
-                                    <label class="inspection-evidence__upload"<?php echo count($inspectionPhotos) >= 3 ? ' hidden' : ''; ?>>
-                                        <span>Upload Photos</span>
-                                        <input type="file" name="inspection_photos[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple data-inspection-photo-input>
-                                        <small>JPG, PNG, or WEBP. Maximum 2 MB each.</small>
+                                <div class="inspection-evidence__fields">
+                                    <?php if ($canEditCosting): ?>
+                                        <label class="inspection-evidence__upload"<?php echo count($inspectionPhotos) >= 3 ? ' hidden' : ''; ?>>
+                                            <span>Upload Photos</span>
+                                            <input type="file" name="inspection_photos[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple data-inspection-photo-input>
+                                            <small>JPG, PNG, WEBP &bull; Max 2 MB</small>
+                                        </label>
+                                    <?php endif; ?>
+
+                                    <label class="inspection-evidence__drive">
+                                        <span>Google Drive Link <small>(Optional)</small></span>
+                                        <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Google Drive file or folder link" aria-describedby="inspectionDriveHelp<?php echo $inspectionId; ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?> data-inspection-drive-url>
+                                        <small id="inspectionDriveHelp<?php echo $inspectionId; ?>" data-inspection-drive-feedback hidden></small>
                                     </label>
+
+                                    <?php if (!$canEditCosting && $inspectionDriveLink !== ''): ?>
+                                        <a class="inspection-evidence__drive-link" href="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer">Open Google Drive</a>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ($canEditCosting): ?>
                                     <div class="inspection-evidence__feedback" data-inspection-photo-feedback hidden></div>
                                     <div class="inspection-evidence__preview" data-inspection-photo-preview></div>
-                                <?php endif; ?>
-
-                                <label class="inspection-evidence__drive">
-                                    <span>Google Drive Link <small>(Optional)</small></span>
-                                    <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://drive.google.com/file/d/... or /drive/folders/..." aria-describedby="inspectionDriveHelp<?php echo $inspectionId; ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?> data-inspection-drive-url>
-                                    <small id="inspectionDriveHelp<?php echo $inspectionId; ?>" data-inspection-drive-feedback>Paste a shared file or folder link. Set access to Anyone with the link - Viewer.</small>
-                                </label>
-
-                                <?php if (!$canEditCosting && $inspectionDriveLink !== ''): ?>
-                                    <a class="inspection-evidence__drive-link" href="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer">Open Google Drive</a>
                                 <?php endif; ?>
                             </section>
 

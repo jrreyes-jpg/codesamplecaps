@@ -2722,9 +2722,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             'rejected' => 'Rejected',
                             default => '',
                         };
+                        $isPendingConfirmation = in_array($currentStatus, ['Pending Review', 'Verified Lead', 'Not Qualified'], true);
                         $displayStatus = $isConvertedToProject
                             ? 'Converted to Project'
-                            : ($quotationLifecycleStatus !== '' ? $quotationLifecycleStatus : $currentStatus);
+                            : ($isPendingConfirmation
+                                ? 'Pending Review'
+                                : ($quotationLifecycleStatus !== '' ? $quotationLifecycleStatus : $currentStatus));
                         if (in_array($displayStatus, ['Verified Lead', 'Not Qualified'], true)) {
                             $displayStatus = 'Pending Review';
                         }

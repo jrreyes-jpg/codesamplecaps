@@ -190,18 +190,18 @@ if ($otherServiceDetails !== '') {
 $hasEstimatedBudget = inquiry_column_exists($conn, 'estimated_budget');
 $stmt = $hasEstimatedBudget
     ? $conn->prepare(
-        'INSERT INTO service_inquiries (
+        "INSERT INTO service_inquiries (
             client_name, company_name, email, contact_no, province,
             city_municipality, barangay, site_address, service_category,
-            estimated_budget, description, preferred_inspection_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            estimated_budget, description, preferred_inspection_date, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending Review')"
     )
     : $conn->prepare(
-        'INSERT INTO service_inquiries (
+        "INSERT INTO service_inquiries (
             client_name, company_name, email, contact_no, province,
             city_municipality, barangay, site_address, service_category,
-            description, preferred_inspection_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            description, preferred_inspection_date, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending Review')"
     );
 if (!$stmt) {
     redirect_to_form('server_error');

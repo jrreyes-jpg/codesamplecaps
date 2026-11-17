@@ -190,11 +190,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         }
 
         $insert = $conn->prepare(
-            'INSERT INTO service_inquiries (
+            "INSERT INTO service_inquiries (
                 client_name, company_name, email, contact_no, province,
                 city_municipality, barangay, site_address, service_category,
-                description, preferred_inspection_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                description, preferred_inspection_date, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending Review')"
         );
 
         $clientName = (string)($payload['client_name'] ?? '');

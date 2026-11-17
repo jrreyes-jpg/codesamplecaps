@@ -2320,6 +2320,19 @@ body.has-inquiry-otp-open {
     color: #166534;
 }
 
+.inquiry-success-modal__home-button {
+    border-color: #16a34a;
+    background: #16a34a;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.inquiry-success-modal__home-button:hover,
+.inquiry-success-modal__home-button:focus-visible {
+    border-color: #15803d;
+    background: #15803d;
+}
+
 @keyframes inquirySuccessFade {
     from {
         opacity: 0;

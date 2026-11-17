@@ -91,7 +91,7 @@ const showInquirySuccessModal = () => {
         '<div class="inquiry-success-modal__icon" aria-hidden="true">✓</div>',
         '<h2 id="inquirySuccessTitle">Inquiry Received</h2>',
         '<p><strong>What happens next?</strong><br>Edge Automation Technology Services, Co. will check the Engineer\'s availability. If another date is needed, we will contact you. Your confirmed site inspection schedule will be sent by email.</p>',
-        '<button type="button" class="btn btn-primary" data-inquiry-success-close>Back to Home</button>',
+        '<button type="button" class="btn inquiry-success-modal__home-button" data-inquiry-success-home>Back to Home</button>',
         '</div>',
     ].join('');
 
@@ -102,7 +102,16 @@ const showInquirySuccessModal = () => {
         window.setTimeout(() => modal.remove(), 220);
     };
 
-    modal.querySelector('[data-inquiry-success-close]')?.addEventListener('click', closeModal);
+    const goToHome = () => {
+        modal.classList.add('is-closing');
+        window.setTimeout(() => {
+            modal.remove();
+            window.history.replaceState({}, document.title, window.location.pathname);
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        }, 220);
+    };
+
+    modal.querySelector('[data-inquiry-success-home]')?.addEventListener('click', goToHome);
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
             closeModal();

@@ -2274,6 +2274,14 @@ body.inspection-is-submitting {
     grid-auto-rows: auto;
 }
 
+/* Full-page report: sections lang ang cards, walang card sa loob ng card. */
+.inspection-modal--page .inspection-costing-form {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
 .inspection-details-navigation {
     position: sticky;
     top: 112px;

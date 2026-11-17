@@ -201,7 +201,7 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     ) {
         throw new InvalidArgumentException('Enter a valid company name or leave it blank.');
     }
-    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (!inquiry_email_is_valid_format($email)) {
         throw new InvalidArgumentException('Enter a valid email address.');
     }
     if ($contactNo === '' || !is_valid_ph_mobile($contactNo)) {
@@ -209,15 +209,12 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     }
     $contactValidation = inquiry_contact_validation_result($conn, $clientName, $email, $contactNo);
     if (!$contactValidation['valid']) {
-        if ($contactValidation['status'] === 'contact_not_allowed') {
-            throw new InvalidArgumentException('This email or number belongs to a staff account.');
-        }
-        if (in_array($contactValidation['status'], ['contact_mismatch', 'email_mismatch', 'phone_mismatch', 'name_mismatch'], true)) {
-            throw new InvalidArgumentException('Use the same full name, email, and number of the existing client.');
+        if ($contactValidation['status'] === 'account_email_exists') {
+            throw new InvalidArgumentException('This email is already registered to an existing account.');
         }
         throw new RuntimeException('Unable to check the client details. Try again.');
     }
-    $emailVerified = walk_in_email_is_verified($email) || !empty($contactValidation['email_verified']);
+    $emailVerified = walk_in_email_is_verified($email);
     if (!$emailVerified) {
         throw new InvalidArgumentException('Verify the client email before saving.');
     }

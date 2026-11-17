@@ -4,7 +4,6 @@ require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../../../config/inquiry_contact_validation.php';
-require_once __DIR__ . '/../../../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../../../config/walk_in_email_verification.php';
 require_once __DIR__ . '/../../../../services/EmailService.php';
 
@@ -17,22 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !auth_is_valid_csrf($_POST['csrf_to
     exit();
 }
 
-$name = trim((string)($_POST['client_name'] ?? ''));
+$name = trim((string)($_POST['client_name'] ?? '')) ?: 'Client';
 $email = mb_strtolower(trim((string)($_POST['email'] ?? '')), 'UTF-8');
 $phone = normalize_ph_mobile(trim((string)($_POST['contact_no'] ?? '')));
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    echo json_encode(['success' => false, 'message' => 'Enter a valid email first.']);
+if (!inquiry_email_is_valid_format($email)) {
+    echo json_encode(['success' => false, 'message' => inquiry_email_invalid_message()]);
     exit();
 }
-if (!inquiry_name_is_valid($name)) {
-    echo json_encode(['success' => false, 'field' => 'name', 'message' => 'Enter a valid full name.']);
-    exit();
-}
-if (!is_valid_ph_mobile($phone)) {
-    echo json_encode(['success' => false, 'field' => 'phone', 'message' => 'Enter a valid contact number.']);
-    exit();
-}
-
 $contactValidation = inquiry_contact_validation_result($conn, $name, $email, $phone);
 if (empty($contactValidation['valid'])) {
     echo json_encode([
@@ -61,23 +51,17 @@ if (!$verificationLock['ok']) {
     exit();
 }
 
-// Huwag padalhan ng client OTP ang email ng staff.
-$accountStmt = $conn->prepare('SELECT role, status FROM users WHERE deleted_at IS NULL AND LOWER(email) = ? LIMIT 1');
-if (!$accountStmt) {
-    echo json_encode(['success' => false, 'message' => 'Unable to check this email right now.']);
-    exit();
-}
-$accountStmt->bind_param('s', $email);
-$accountStmt->execute();
-$account = $accountStmt->get_result()->fetch_assoc();
-if ($account && strtolower((string)($account['role'] ?? '')) !== 'client') {
-    echo json_encode(['success' => false, 'message' => 'This email belongs to a staff account.']);
-    exit();
-}
-
 $resendWait = walk_in_email_verification_resend_wait($email);
 if ($resendWait > 0) {
-    echo json_encode(['success' => false, 'message' => 'Wait ' . $resendWait . ' seconds before sending another code.']);
+    $pendingState = $_SESSION[walk_in_email_otp_pending_key()] ?? [];
+    echo json_encode([
+        'success' => true,
+        'status' => 'already_sent',
+        'email' => $email,
+        'message' => 'A code was already sent. Enter it below.',
+        'expires_in' => max(0, (int)($pendingState['expires_at'] ?? 0) - time()),
+        'resend_after' => $resendWait,
+    ]);
     exit();
 }
 
@@ -131,6 +115,8 @@ if (!(new EmailService())->sendInquiryOtp($email, $name, $otp, $expiresAt)) {
 walk_in_email_verification_start($email, $otp, $validSeconds);
 echo json_encode([
     'success' => true,
+    'status' => 'sent',
+    'email' => $email,
     'message' => 'Code sent.',
     'expires_in' => $validSeconds,
     'resend_after' => inquiry_otp_resend_cooldown_seconds(),

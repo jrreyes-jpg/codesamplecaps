@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
+require_once __DIR__ . '/../../config/inquiry_email_verification.php';
 
 function inquiry_verify_json(array $data, int $status = 200): never
 {
@@ -18,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $formToken = trim((string)($_POST['inquiry_form_token'] ?? ''));
+$submittedEmail = mb_strtolower(trim((string)($_POST['email'] ?? '')), 'UTF-8');
 $otp = trim((string)($_POST['otp'] ?? ''));
 $pendingToken = (string)($_SESSION['public_inquiry_otp_token'] ?? '');
 
@@ -44,8 +46,11 @@ if (!inquiry_otp_prepare_rate_limit_table($conn)) {
 
 $payload = json_decode((string)$pending['payload_json'], true);
 $email = strtolower(trim((string)($payload['email'] ?? '')));
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+if (!inquiry_email_is_valid_format($email)) {
     inquiry_verify_json(['success' => false, 'message' => 'Verification failed. Send a new code.'], 422);
+}
+if ($submittedEmail === '' || !hash_equals($email, $submittedEmail)) {
+    inquiry_verify_json(['success' => false, 'message' => 'Email changed. Send a new verification code.'], 422);
 }
 
 $verificationLock = inquiry_otp_rate_status($conn, 'email_verify', $email);

@@ -23,14 +23,7 @@ if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'super_admin')) {
 $_SESSION['walk_in_inquiry_old_input'] = $_POST;
 
 try {
-    $contactCheck = inquiry_contact_validation_result(
-        $conn,
-        (string)($_POST['client_name'] ?? ''),
-        (string)($_POST['email'] ?? ''),
-        (string)($_POST['contact_no'] ?? '')
-    );
-    $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''))
-        || !empty($contactCheck['email_verified']);
+    $emailWasVerified = walk_in_email_is_verified((string)($_POST['email'] ?? ''));
     $preferredEngineerId = max(0, (int)($_POST['preferred_engineer_id'] ?? 0));
     $notificationResult = [];
     $inquiryId = create_walk_in_inquiry($conn, $_POST, $notificationResult);

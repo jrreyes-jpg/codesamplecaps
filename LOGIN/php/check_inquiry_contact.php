@@ -4,6 +4,7 @@ session_start();
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
+require_once __DIR__ . '/../../config/inquiry_email_verification.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -31,12 +32,10 @@ $_SESSION['public_inquiry_contact_check_at'] = $now;
 
 $name = trim((string)($_POST['client_name'] ?? ''));
 $email = trim((string)($_POST['email'] ?? ''));
-$phone = normalize_ph_mobile(trim((string)($_POST['contact_no'] ?? '')));
 $normalizedEmail = mb_strtolower($email, 'UTF-8');
-$verifiedSessionEmail = mb_strtolower(trim((string)($_SESSION['public_inquiry_email_verified']['email'] ?? '')), 'UTF-8');
-$sessionEmailVerified = $normalizedEmail !== '' && hash_equals($verifiedSessionEmail, $normalizedEmail);
+$sessionEmailVerified = inquiry_email_is_verified('public_inquiry_email_verified', $normalizedEmail);
 
-if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !is_valid_ph_mobile($phone)) {
+if (!inquiry_email_is_valid_format($email)) {
     echo json_encode([
         'valid' => true,
         'complete' => false,
@@ -48,9 +47,8 @@ if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !is_valid_ph_m
     exit;
 }
 
-$result = inquiry_contact_validation_result($conn, $name, $email, $phone);
+$result = inquiry_contact_validation_result($conn, $name, $email, (string)($_POST['contact_no'] ?? ''));
 $valid = (bool)($result['valid'] ?? false);
-$existing = $valid && inquiry_contact_is_existing($result);
 
 echo json_encode([
     'valid' => $valid,
@@ -59,7 +57,5 @@ echo json_encode([
     'field' => (string)($result['field'] ?? ''),
     'email_verified' => $sessionEmailVerified,
     'can_verify_email' => $valid && !$sessionEmailVerified,
-    'message' => !$valid
-        ? inquiry_contact_validation_message($result)
-        : ($existing && !$sessionEmailVerified ? 'Existing client found. Verify email.' : ''),
+    'message' => !$valid ? inquiry_contact_validation_message($result) : '',
 ]);

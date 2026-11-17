@@ -2546,6 +2546,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261117-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
+    '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
 $adminJsFiles = [
@@ -2554,6 +2555,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
+    '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261112-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
 ];

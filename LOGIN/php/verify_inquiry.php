@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         $clientName = is_array($payload) ? trim((string)($payload['client_name'] ?? '')) : '';
         $email = is_array($payload) ? trim((string)($payload['email'] ?? '')) : '';
 
-        if ($clientName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if ($clientName === '' || !inquiry_email_is_valid_format($email)) {
             verify_inquiry_redirect_verify($token, 'resend_failed');
         } else {
             $newOtp = (string)random_int(100000, 999999);
@@ -203,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requestAction === 'resend') {
         $contactNo = normalize_ph_mobile((string)($payload['contact_no'] ?? ''));
 
         if (!inquiry_name_is_valid($clientName)
-            || !filter_var($email, FILTER_VALIDATE_EMAIL)
+            || !inquiry_email_is_valid_format($email)
             || !is_valid_ph_mobile($contactNo)) {
             verify_inquiry_redirect_home('invalid');
         }

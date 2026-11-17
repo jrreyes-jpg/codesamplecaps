@@ -14,9 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !auth_is_valid_csrf($_POST['csrf_to
     exit();
 }
 
-$email = trim((string)($_POST['email'] ?? ''));
+$email = mb_strtolower(trim((string)($_POST['email'] ?? '')), 'UTF-8');
 $otp = trim((string)($_POST['otp'] ?? ''));
-if (!preg_match('/^\d{6}$/', $otp)) {
+if (!inquiry_email_is_valid_format($email) || !preg_match('/^\d{6}$/', $otp)) {
     echo json_encode(['success' => false, 'message' => 'Enter the 6-digit code.']);
     exit();
 }
@@ -41,11 +41,11 @@ if (!$verificationLock['ok']) {
 
 $result = walk_in_email_verification_verify($email, $otp);
 if (!$result['valid']) {
-    $state = $_SESSION[walk_in_email_verification_key()] ?? [];
+    $state = $_SESSION[walk_in_email_otp_pending_key()] ?? [];
     $attempts = (int)($state['attempts'] ?? 0);
     if ($attempts >= inquiry_otp_max_attempts()) {
         inquiry_otp_lock_scope($conn, 'walk_in_email_verify', $email, inquiry_otp_lock_seconds());
-        walk_in_email_verification_clear();
+        walk_in_email_otp_pending_clear();
         http_response_code(429);
         echo json_encode([
             'success' => false,

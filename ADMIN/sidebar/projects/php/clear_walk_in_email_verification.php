@@ -13,5 +13,5 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST'
     exit();
 }
 
-walk_in_email_verification_clear();
+walk_in_email_otp_pending_clear();
 echo json_encode(['success' => true]);

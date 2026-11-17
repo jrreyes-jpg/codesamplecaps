@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../config/service_barangays.php';
 require_once __DIR__ . '/../../config/service_location_dataset.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
+require_once __DIR__ . '/../../config/inquiry_email_verification.php';
 
 // Gamitin ang saved location data para mabilis ang page.
 $serviceHierarchy = service_area_hierarchy();
@@ -13,7 +14,7 @@ $serviceBarangays = service_barangays_hierarchy($conn);
 $preferredInspectionDateRange = inquiry_preferred_date_range();
 $inquiryFormStyleVersion = (string)(filemtime(__DIR__ . '/../css/index.css') ?: 1);
 $inquiryFormScriptVersion = (string)(filemtime(__DIR__ . '/../js/index.js') ?: 1);
-$verifiedInquiryEmail = strtolower(trim((string)($_SESSION['public_inquiry_email_verified']['email'] ?? '')));
+$verifiedInquiryEmail = inquiry_email_verified_value('public_inquiry_email_verified');
 
 if (empty($_SESSION['inquiry_form_token'])) {
     $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
@@ -32,6 +33,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="stylesheet" href="/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2">
     <link rel="stylesheet" href="../css/public-confirmation.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/email-verification/css/email-verification.css') ?: 1)); ?>">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/css/action-loading.css') ?: 1)); ?>">
     <link rel="icon" type="image/png" href="/codesamplecaps/IMAGES/edge-favicon.png?v=1">
 
@@ -706,6 +708,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <script src="../js/loader.js?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../js/loader.js')); ?>" defer></script>
     <script src="../js/public-confirmation.js" defer></script>
     <script src="/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/js/action-loading.js') ?: 1)); ?>" defer></script>
+    <script src="/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/email-verification/js/email-verification.js') ?: 1)); ?>" defer></script>
     <script src="../js/index.js?v=<?php echo rawurlencode($inquiryFormScriptVersion); ?>" defer></script>
 
 </body>

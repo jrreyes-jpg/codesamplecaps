@@ -1591,6 +1591,10 @@ function initWalkInInquiryPanel() {
     const otpTimer = otpModal?.querySelector('[data-walk-in-otp-timer]');
     const draftKey = 'codesamplecaps.admin.walkInInquiryDraft';
     const panelStateKey = 'codesamplecaps.admin.walkInInquiryOpen';
+    const strictEmailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const isValidInquiryEmail = (value) => window.edgeEmailVerificationUI?.isValidEmail
+        ? window.edgeEmailVerificationUI.isValidEmail(value)
+        : strictEmailPattern.test(String(value || '').trim());
     let locationData = null;
     let locationLoading = null;
     let pendingConfirmAction = null;
@@ -1607,6 +1611,7 @@ function initWalkInInquiryPanel() {
     let contactEdited = false;
     let emailIsVerified = false;
     let emailOtpWasSent = false;
+    let otpTargetEmail = '';
     let contactCanVerifyEmail = false;
     let walkInFormDirty = false;
     let historyGuardReady = false;
@@ -1618,6 +1623,10 @@ function initWalkInInquiryPanel() {
     let otpLockedUntil = 0;
 
     if (!panel || !form) return;
+
+    if (otpModal && otpModal.parentElement !== document.body) {
+        document.body.appendChild(otpModal);
+    }
 
     function syncWalkInDateWindow() {
         if (!dateInput) return;
@@ -1951,15 +1960,15 @@ function initWalkInInquiryPanel() {
 
     function validateEmail() {
         const value = String(emailAddress?.value || '').trim();
-        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-        if (!valid) return setValidation(emailAddress, emailError, 'Enter a valid email address.');
+        const valid = isValidInquiryEmail(value);
+        if (!valid) return setValidation(emailAddress, emailError, 'Please enter a complete email address.');
         if (emailIsVerified) return setValidation(emailAddress, emailError, '');
         return setEmailWarning('Verify your email to continue.');
     }
 
     function syncVerifyEmailButton() {
         if (!sendOtpButton) return;
-        const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailAddress?.value || '').trim());
+        const hasValidEmail = isValidInquiryEmail(emailAddress?.value);
         sendOtpButton.disabled = Date.now() < otpLockedUntil
             || (!emailIsVerified && (!hasValidEmail || !contactCanVerifyEmail));
         sendOtpButton.textContent = emailIsVerified
@@ -1970,15 +1979,18 @@ function initWalkInInquiryPanel() {
     function setEmailVerified(verified, statusMessage = '') {
         emailIsVerified = verified;
         if (emailAddress) {
-            emailAddress.readOnly = verified;
-            emailAddress.classList.toggle('is-email-locked', verified);
+            window.edgeEmailVerificationUI?.setState({
+                input: emailAddress,
+                status: emailStatus,
+                verified,
+            });
             if (verified) setValidation(emailAddress, emailError, '');
             else emailAddress.classList.remove('is-valid-live');
         }
         if (emailStatus) {
-            emailStatus.textContent = statusMessage || (verified ? 'Email verified' : '');
+            emailStatus.textContent = verified ? '' : statusMessage;
             emailStatus.hidden = emailStatus.textContent === '';
-            emailStatus.classList.toggle('is-verified', verified);
+            emailStatus.classList.remove('is-verified');
         }
         if (sendOtpButton) {
             syncVerifyEmailButton();
@@ -1987,20 +1999,14 @@ function initWalkInInquiryPanel() {
     }
 
     function unlockVerifiedEmail() {
-        const clearVerificationData = new FormData();
-        clearVerificationData.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
-        fetch('/codesamplecaps/ADMIN/sidebar/projects/php/clear_walk_in_email_verification.php', {
-            method: 'POST',
-            headers: { Accept: 'application/json' },
-            body: clearVerificationData,
-        }).catch(function () {
-            // Lilinisin din ito kapag nag-expire ang session.
-        });
         contactCanVerifyEmail = false;
         emailOtpWasSent = false;
+        window.edgeEmailVerificationUI?.clearAndFocus({
+            input: emailAddress,
+            status: emailStatus,
+        });
         setEmailVerified(false);
         resetValidation(emailAddress, emailError);
-        emailAddress?.focus({ preventScroll: true });
     }
 
     function closeOtpModal() {
@@ -2010,12 +2016,30 @@ function initWalkInInquiryPanel() {
         panel.classList.remove('is-otp-locked');
         document.body.classList.remove('walk-in-otp-lock');
         if (dialog) dialog.inert = false;
+        window.edgeEmailVerificationUI?.setState({
+            input: emailAddress,
+            status: emailStatus,
+            verified: emailIsVerified,
+        });
         if (otpError) {
             otpError.textContent = '';
             otpError.classList.remove('is-success');
         }
         if (otpCode) otpCode.value = '';
         sendOtpButton?.focus({ preventScroll: true });
+    }
+
+    function cancelPendingOtp() {
+        if (!otpTargetEmail) return;
+        otpTargetEmail = '';
+        emailOtpWasSent = false;
+        const data = new FormData();
+        data.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+        fetch('/codesamplecaps/ADMIN/sidebar/projects/php/clear_walk_in_email_verification.php', {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            body: data,
+        }).catch(function () {});
     }
 
     function formatOtpTime(seconds) {
@@ -2116,6 +2140,7 @@ function initWalkInInquiryPanel() {
         panel.classList.add('is-otp-locked');
         document.body.classList.add('walk-in-otp-lock');
         if (dialog) dialog.inert = true;
+        if (emailAddress) emailAddress.readOnly = true;
         if (isSending) {
             window.edgeActionLoading?.show({
                 title: 'Sending code...',
@@ -2130,15 +2155,17 @@ function initWalkInInquiryPanel() {
 
     function showOtpEntry() {
         window.edgeActionLoading?.hide();
-        otpModal?.classList.add('is-open');
-        otpModal?.setAttribute('aria-hidden', 'false');
         if (Date.now() >= otpLockedUntil && Date.now() < otpExpiresAt) {
             if (otpCode) otpCode.disabled = false;
             if (otpVerifyButton) otpVerifyButton.disabled = !/^\d{6}$/.test(String(otpCode?.value || ''));
         }
         window.requestAnimationFrame(function () {
-            otpCode?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            otpCode?.focus({ preventScroll: true });
+            otpModal?.classList.add('is-open');
+            otpModal?.setAttribute('aria-hidden', 'false');
+            window.requestAnimationFrame(function () {
+                otpCode?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                otpCode?.focus({ preventScroll: true });
+            });
         });
     }
 
@@ -2182,7 +2209,14 @@ function initWalkInInquiryPanel() {
                 } else setValidation(emailAddress, emailError, errorMessage);
                 return;
             }
-            if (otpEmail) otpEmail.textContent = emailAddress.value.trim();
+            const responseStatus = result.status || 'sent';
+            if (!['sent', 'already_sent'].includes(responseStatus)) {
+                closeOtpModal();
+                setValidation(emailAddress, emailError, result.message || 'Email cannot be sent right now.');
+                return;
+            }
+            otpTargetEmail = String(result.email || emailAddress.value).trim().toLowerCase();
+            if (otpEmail) otpEmail.textContent = otpTargetEmail;
             emailOtpWasSent = true;
             startOtpClock(result.expires_in, Number(result.resend_after) || 60);
             showOtpEntry();
@@ -2221,6 +2255,8 @@ function initWalkInInquiryPanel() {
                 }
                 return;
             }
+            otpTargetEmail = String(result.email || emailAddress.value).trim().toLowerCase();
+            if (otpEmail) otpEmail.textContent = otpTargetEmail;
             if (otpError) {
                 otpError.textContent = 'A new code was sent.';
                 otpError.classList.add('is-success');
@@ -2250,6 +2286,13 @@ function initWalkInInquiryPanel() {
             otpCode?.focus({ preventScroll: true });
             return;
         }
+        const currentEmail = String(emailAddress?.value || '').trim().toLowerCase();
+        if (!otpTargetEmail || currentEmail !== otpTargetEmail) {
+            if (otpError) otpError.textContent = 'Email changed. Send a new verification code.';
+            cancelPendingOtp();
+            closeOtpModal();
+            return;
+        }
         otpCode?.classList.remove('is-invalid');
         otpVerifyButton?.setAttribute('disabled', 'disabled');
         const data = new FormData();
@@ -2275,6 +2318,7 @@ function initWalkInInquiryPanel() {
                 return;
             }
             setEmailVerified(true);
+            otpTargetEmail = '';
             closeOtpModal();
         } catch (error) {
             if (otpError) otpError.textContent = 'Unable to verify the code. Try again.';
@@ -2290,11 +2334,9 @@ function initWalkInInquiryPanel() {
         const name = String(clientName?.value || '').trim();
         const email = String(emailAddress?.value || '').trim();
         const phone = String(contactNumber?.value || '');
-        const nameIsValid = /^[\p{L}\p{M} .'\u2019-]+$/u.test(name) && (name.match(/\p{L}/gu) || []).length >= 2;
-        const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        const phoneIsValid = /^09\d{9}$/.test(phone);
+        const emailIsValid = isValidInquiryEmail(email);
         const requestId = ++contactCheckId;
-        if (!nameIsValid || !emailIsValid || !phoneIsValid) {
+        if (!emailIsValid) {
             contactCanVerifyEmail = false;
             if (!emailIsVerified) {
                 setEmailVerified(false);
@@ -2319,8 +2361,6 @@ function initWalkInInquiryPanel() {
             const result = await response.json();
             if (requestId !== contactCheckId) return false;
             const message = result.valid ? '' : (result.message || 'Invalid client details.');
-            if (nameIsValid) setValidation(clientName, nameError, '');
-            if (phoneIsValid) setValidation(contactNumber, contactError, '');
             setContactInfo(contactError, '');
             if (!result.valid) {
                 contactCanVerifyEmail = false;
@@ -2334,7 +2374,7 @@ function initWalkInInquiryPanel() {
                 syncVerifyEmailButton();
             } else if (result.email_verified) {
                 contactCanVerifyEmail = true;
-                setEmailVerified(true, 'Email verified');
+                setEmailVerified(true);
             } else {
                 contactCanVerifyEmail = result.can_verify_email !== false;
                 setEmailVerified(false);
@@ -2669,15 +2709,7 @@ function initWalkInInquiryPanel() {
     }
 
     function clearForm() {
-        const clearVerificationData = new FormData();
-        clearVerificationData.append('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
-        fetch('/codesamplecaps/ADMIN/sidebar/projects/php/clear_walk_in_email_verification.php', {
-            method: 'POST',
-            headers: { Accept: 'application/json' },
-            body: clearVerificationData,
-        }).catch(function () {
-            // Mawawala rin ito kapag nag-expire ang server session.
-        });
+        cancelPendingOtp();
         form.reset();
         keepContactPrefix();
         syncWalkInSaveAction();
@@ -2810,8 +2842,6 @@ function initWalkInInquiryPanel() {
 
     contactNumber?.addEventListener('input', function () {
         contactEdited = true;
-        contactCanVerifyEmail = false;
-        syncVerifyEmailButton();
         keepContactPrefix();
         keepContactCursorAfterPrefix();
         validateContact();
@@ -2836,12 +2866,20 @@ function initWalkInInquiryPanel() {
     });
     emailAddress?.addEventListener('input', function () {
         emailEdited = true;
+        const pendingEmailChanged = otpTargetEmail
+            && emailAddress.value.trim().toLowerCase() !== otpTargetEmail;
+        if (pendingEmailChanged) {
+            cancelPendingOtp();
+        }
         contactCanVerifyEmail = false;
         emailOtpWasSent = false;
         otpExpiresAt = 0;
         otpResendAt = 0;
         setEmailVerified(false);
         resetValidation(emailAddress, emailError);
+        if (pendingEmailChanged) {
+            setEmailWarning('Email changed. Send a new verification code.');
+        }
         syncVerifyEmailButton();
         window.clearTimeout(contactCheckTimer);
         contactCheckTimer = window.setTimeout(checkExistingContact, 450);
@@ -2856,13 +2894,6 @@ function initWalkInInquiryPanel() {
             openOtpModal(false);
             updateOtpClock();
             showOtpEntry();
-            return;
-        }
-
-        const hasValidName = validateName();
-        const hasValidContact = validateContact();
-        if (!hasValidName || !hasValidContact) {
-            (hasValidName ? contactNumber : clientName)?.focus({ preventScroll: true });
             return;
         }
 
@@ -2923,11 +2954,7 @@ function initWalkInInquiryPanel() {
         checkExistingContact();
     });
     clientName?.addEventListener('input', function () {
-        contactCanVerifyEmail = false;
-        syncVerifyEmailButton();
         validateName();
-        window.clearTimeout(contactCheckTimer);
-        contactCheckTimer = window.setTimeout(checkExistingContact, 450);
     });
     clientName?.addEventListener('blur', checkExistingContact);
     companyName?.addEventListener('input', validateCompany);

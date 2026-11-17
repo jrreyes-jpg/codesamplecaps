@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_name_validation.php';
 require_once __DIR__ . '/../../config/inquiry_preferred_date.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
+require_once __DIR__ . '/../../config/inquiry_email_verification.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 $allowedCategories = [
@@ -106,7 +107,7 @@ if (
     $errors[] = 'company_name';
 }
 
-if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+if (!inquiry_email_is_valid_format($email)) {
     $errors[] = 'email';
 }
 
@@ -173,12 +174,7 @@ if (!$contactValidation['valid']) {
     redirect_to_form((string)$contactValidation['status']);
 }
 
-$verifiedEmail = $_SESSION['public_inquiry_email_verified'] ?? [];
-if (
-    !is_array($verifiedEmail)
-    || strtolower((string)($verifiedEmail['email'] ?? '')) !== strtolower($email)
-    || (int)($verifiedEmail['verified_at'] ?? 0) < (time() - 900)
-) {
+if (!inquiry_email_is_verified('public_inquiry_email_verified', $email)) {
     redirect_to_form('email_not_verified');
 }
 

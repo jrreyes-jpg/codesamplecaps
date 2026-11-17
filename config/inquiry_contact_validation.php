@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/phone_normalization.php';
+require_once __DIR__ . '/inquiry_email_verification.php';
 
 function inquiry_contact_normalize_name(string $name): string
 {
@@ -11,16 +12,11 @@ function inquiry_contact_normalize_name(string $name): string
 function inquiry_contact_validation_message(array $result): string
 {
     $status = (string)($result['status'] ?? '');
-    $mismatchStatuses = [
-        'contact_not_allowed',
-        'email_mismatch',
-        'phone_mismatch',
-        'name_mismatch',
-        'contact_mismatch',
-    ];
-
-    if (in_array($status, $mismatchStatuses, true)) {
-        return 'Client details do not match our records. Check the name, phone number, and email.';
+    if ($status === 'account_email_exists') {
+        return 'This email is already registered to an existing account.';
+    }
+    if ($status === 'invalid_email') {
+        return inquiry_email_invalid_message();
     }
 
     return $status === 'server_error'
@@ -28,114 +24,27 @@ function inquiry_contact_validation_message(array $result): string
         : 'Invalid client details.';
 }
 
-function inquiry_contact_is_existing(array $result): bool
-{
-    return in_array((string)($result['status'] ?? ''), ['existing_client', 'existing_inquiry'], true);
-}
-
 function inquiry_contact_validation_result(mysqli $conn, string $name, string $email, string $phone): array
 {
     $email = mb_strtolower(trim($email), 'UTF-8');
-    $phone = normalize_ph_mobile($phone);
+    if (!inquiry_email_is_valid_format($email)) {
+        return ['valid' => false, 'status' => 'invalid_email', 'field' => 'email'];
+    }
 
-    $stmt = $conn->prepare(
-        'SELECT id, full_name, email, phone_normalized, role, status
-         FROM users
-         WHERE deleted_at IS NULL
-           AND (LOWER(email) = ? OR phone_normalized = ?)'
-    );
+    // Email lang ang account duplicate check. Independent ang name at phone ng inquiry.
+    $stmt = $conn->prepare('SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1');
     if (!$stmt) {
         return ['valid' => false, 'status' => 'server_error'];
     }
 
-    $stmt->bind_param('ss', $email, $phone);
+    $stmt->bind_param('s', $email);
     if (!$stmt->execute()) {
         return ['valid' => false, 'status' => 'server_error'];
     }
 
-    $emailClient = null;
-    $phoneClient = null;
-    $result = $stmt->get_result();
-
-    while ($user = $result->fetch_assoc()) {
-        $role = strtolower((string)($user['role'] ?? ''));
-        // Client lang ang puwedeng gumamit ulit ng dating account details.
-        if ($role !== 'client') {
-            $emailMatches = mb_strtolower((string)($user['email'] ?? ''), 'UTF-8') === $email;
-            $phoneMatches = (string)($user['phone_normalized'] ?? '') === $phone;
-            return [
-                'valid' => false,
-                'status' => 'contact_not_allowed',
-                'field' => $emailMatches && $phoneMatches ? 'both' : ($emailMatches ? 'email' : 'phone'),
-            ];
-        }
-
-        if (mb_strtolower((string)($user['email'] ?? ''), 'UTF-8') === $email) {
-            $emailClient = $user;
-        }
-        // Normalized na ang phone bago ikumpara para pareho ang 09 at +63 format.
-        if ((string)($user['phone_normalized'] ?? '') === $phone) {
-            $phoneClient = $user;
-        }
+    if ($stmt->get_result()->fetch_assoc()) {
+        return ['valid' => false, 'status' => 'account_email_exists', 'field' => 'email'];
     }
 
-    if ($emailClient !== null || $phoneClient !== null) {
-        if ($emailClient === null) return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
-        if ($phoneClient === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
-        if ((int)$emailClient['id'] !== (int)$phoneClient['id']) {
-            return ['valid' => false, 'status' => 'contact_mismatch', 'field' => 'both'];
-        }
-        if (inquiry_contact_normalize_name((string)$emailClient['full_name']) !== inquiry_contact_normalize_name($name)) {
-            return ['valid' => false, 'status' => 'name_mismatch', 'field' => 'name'];
-        }
-
-        return [
-            'valid' => true,
-            'status' => 'existing_client',
-            'email_verified' => strtolower((string)($emailClient['status'] ?? '')) === 'active',
-        ];
-    }
-
-    // Tingnan din ang dating inquiry para pareho ang detalye ng walk-in at online client.
-    $inquiryStmt = $conn->prepare(
-        'SELECT id, client_name, email, contact_no
-         FROM service_inquiries
-         WHERE LOWER(email) = ? OR contact_no = ?
-         ORDER BY id DESC'
-    );
-    if (!$inquiryStmt) {
-        return ['valid' => false, 'status' => 'server_error'];
-    }
-
-    $inquiryStmt->bind_param('ss', $email, $phone);
-    if (!$inquiryStmt->execute()) {
-        return ['valid' => false, 'status' => 'server_error'];
-    }
-
-    $emailInquiry = null;
-    $phoneInquiry = null;
-    $inquiryResult = $inquiryStmt->get_result();
-    while ($inquiry = $inquiryResult->fetch_assoc()) {
-        if ($emailInquiry === null && mb_strtolower((string)$inquiry['email'], 'UTF-8') === $email) {
-            $emailInquiry = $inquiry;
-        }
-        if ($phoneInquiry === null && normalize_ph_mobile((string)$inquiry['contact_no']) === $phone) {
-            $phoneInquiry = $inquiry;
-        }
-    }
-
-    if ($emailInquiry === null && $phoneInquiry === null) {
-        return ['valid' => true, 'status' => 'new_contact', 'email_verified' => false];
-    }
-
-    if ($emailInquiry === null) return ['valid' => false, 'status' => 'phone_mismatch', 'field' => 'phone'];
-    if ($phoneInquiry === null) return ['valid' => false, 'status' => 'email_mismatch', 'field' => 'email'];
-    if ((int)$emailInquiry['id'] !== (int)$phoneInquiry['id']) {
-        return ['valid' => false, 'status' => 'contact_mismatch', 'field' => 'both'];
-    }
-    if (inquiry_contact_normalize_name((string)$emailInquiry['client_name']) !== inquiry_contact_normalize_name($name)) {
-        return ['valid' => false, 'status' => 'name_mismatch', 'field' => 'name'];
-    }
-
-    return ['valid' => true, 'status' => 'existing_inquiry', 'email_verified' => false];
+    return ['valid' => true, 'status' => 'new_contact', 'email_verified' => false];
 }

@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
 require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
-require_once __DIR__ . '/../../config/inquiry_name_validation.php';
+require_once __DIR__ . '/../../config/inquiry_email_verification.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 
 function inquiry_otp_json(array $data, int $status = 200): never
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $token = trim((string)($_POST['inquiry_form_token'] ?? ''));
-$name = trim((string)($_POST['client_name'] ?? ''));
+$name = trim((string)($_POST['client_name'] ?? '')) ?: 'Client';
 $email = strtolower(trim((string)($_POST['email'] ?? '')));
 $phone = normalize_ph_mobile(trim((string)($_POST['contact_no'] ?? '')));
 $isResend = (string)($_POST['resend'] ?? '') === '1';
@@ -30,16 +30,9 @@ if ($token === '' || empty($_SESSION['inquiry_form_token']) || !hash_equals((str
     inquiry_otp_json(['success' => false, 'message' => 'Please refresh the form and try again.'], 403);
 }
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    inquiry_otp_json(['success' => false, 'message' => 'Enter a valid email address.'], 422);
+if (!inquiry_email_is_valid_format($email)) {
+    inquiry_otp_json(['success' => false, 'message' => inquiry_email_invalid_message()], 422);
 }
-if (!inquiry_name_is_valid($name)) {
-    inquiry_otp_json(['success' => false, 'field' => 'name', 'message' => 'Enter a valid full name.'], 422);
-}
-if (!is_valid_ph_mobile($phone)) {
-    inquiry_otp_json(['success' => false, 'field' => 'phone', 'message' => 'Enter a valid contact number.'], 422);
-}
-
 $contactValidation = inquiry_contact_validation_result($conn, $name, $email, $phone);
 if (empty($contactValidation['valid'])) {
     inquiry_otp_json([
@@ -63,14 +56,6 @@ if (!$verificationLock['ok']) {
     ], 429);
 }
 
-// Hindi puwedeng gamitin ang staff email sa public client inquiry.
-$userCheck = $conn->prepare('SELECT role FROM users WHERE deleted_at IS NULL AND LOWER(email) = ? LIMIT 1');
-if (!$userCheck) {
-    inquiry_otp_json(['success' => false, 'message' => 'Could not check the email. Try again.'], 500);
-}
-$userCheck->bind_param('s', $email);
-$userCheck->execute();
-$existingUser = $userCheck->get_result()->fetch_assoc();
 $lastSentAt = (int)($_SESSION['public_inquiry_otp_sent_at'] ?? 0);
 $expiresAt = (int)($_SESSION['public_inquiry_otp_expires_at'] ?? 0);
 $pendingEmail = strtolower((string)($_SESSION['public_inquiry_otp_email'] ?? ''));
@@ -82,6 +67,8 @@ $cooldown = inquiry_otp_resend_cooldown_seconds();
 if (!$isResend && $hasPendingCode) {
     inquiry_otp_json([
         'success' => true,
+        'status' => 'already_sent',
+        'email' => $email,
         'message' => $expiresAt > time()
             ? 'A code was already sent. Enter it below.'
             : 'Code expired. Resend a new code.',
@@ -135,22 +122,6 @@ if (!$ipLimit['ok']) {
     ], 429);
 }
 
-$genericMessage = 'If the email is valid, a verification code was sent.';
-
-// Pareho ang sagot para hindi malaman kung staff email ito.
-if ($existingUser && strtolower((string)($existingUser['role'] ?? '')) !== 'client') {
-    $_SESSION['public_inquiry_otp_sent_at'] = time();
-    $_SESSION['public_inquiry_otp_expires_at'] = time() + inquiry_otp_validity_seconds();
-    $_SESSION['public_inquiry_otp_email'] = $email;
-    unset($_SESSION['public_inquiry_otp_token'], $_SESSION['public_inquiry_email_verified']);
-    inquiry_otp_json([
-        'success' => true,
-        'message' => $genericMessage,
-        'expires_in' => inquiry_otp_validity_seconds(),
-        'resend_after' => $cooldown,
-    ]);
-}
-
 $resendCount = (int)($_SESSION['public_inquiry_otp_resend_count'] ?? 0);
 
 $otp = (string)random_int(100000, 999999);
@@ -182,11 +153,11 @@ $_SESSION['public_inquiry_otp_sent_at'] = time();
 $_SESSION['public_inquiry_otp_expires_at'] = time() + $validity;
 $_SESSION['public_inquiry_otp_email'] = $email;
 $_SESSION['public_inquiry_otp_resend_count'] = $isResend ? $resendCount + 1 : 0;
-unset($_SESSION['public_inquiry_email_verified']);
-
 inquiry_otp_json([
     'success' => true,
-    'message' => $genericMessage,
+    'status' => 'sent',
+    'email' => $email,
+    'message' => 'Verification code sent.',
     'expires_in' => $validity,
     'resend_after' => $cooldown,
 ]);

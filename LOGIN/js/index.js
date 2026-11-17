@@ -58,6 +58,24 @@ const inquiryFormReturnStatuses = new Set([
     'expired',
     'server_error',
 ]);
+const inquiryReturnPositionKey = 'edgeInquiryReturnScrollY';
+
+const restoreInquiryReturnPosition = () => {
+    try {
+        const savedPosition = Number(window.sessionStorage.getItem(inquiryReturnPositionKey));
+        if (Number.isFinite(savedPosition) && savedPosition >= 0) {
+            window.scrollTo({ top: savedPosition, left: 0, behavior: 'auto' });
+        }
+    } catch (error) {
+    }
+};
+
+const clearInquiryReturnPosition = () => {
+    try {
+        window.sessionStorage.removeItem(inquiryReturnPositionKey);
+    } catch (error) {
+    }
+};
 
 const inquiryAutoOpenRequested = () => {
     const url = new URL(window.location.href);
@@ -98,7 +116,10 @@ const showInquirySuccessModal = () => {
 
     const closeModal = () => {
         modal.classList.add('is-closing');
-        window.setTimeout(() => modal.remove(), 220);
+        window.setTimeout(() => {
+            modal.remove();
+            clearInquiryReturnPosition();
+        }, 220);
     };
 
     const goToHome = () => {
@@ -106,7 +127,7 @@ const showInquirySuccessModal = () => {
         window.setTimeout(() => {
             modal.remove();
             window.history.replaceState({}, document.title, window.location.pathname);
-            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+            clearInquiryReturnPosition();
         }, 220);
     };
 
@@ -143,6 +164,7 @@ const initInquiryStatusToast = () => {
     const [message, type] = messages[status] || ['Sorry, the inquiry service had a problem. Please try again later.', 'error'];
 
     if (status === 'success') {
+        restoreInquiryReturnPosition();
         localStorage.removeItem('edgeInquiryFormDraft');
         document.querySelectorAll('.js-inquiry-form').forEach((form) => {
             form.reset();
@@ -175,6 +197,7 @@ const initInquiryStatusToast = () => {
 
     const url = new URL(window.location.href);
     url.searchParams.delete('inquiry');
+    if (status === 'success') url.hash = '';
     window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
 };
 
@@ -322,7 +345,13 @@ const initConsultationModal = () => {
     closeButton.addEventListener('click', closeModal);
 
     if (openInquiryButton) {
-        openInquiryButton.addEventListener('click', openInquiryModal);
+        openInquiryButton.addEventListener('click', () => {
+            try {
+                window.sessionStorage.setItem(inquiryReturnPositionKey, String(Math.max(0, window.scrollY)));
+            } catch (error) {
+            }
+            openInquiryModal();
+        });
     }
 
     if (closeInquiryButton) {

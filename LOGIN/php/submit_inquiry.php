@@ -3,7 +3,7 @@ session_start();
 
 // Handle the landing page inquiry form and save the quotation request safely.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /codesamplecaps/LOGIN/php/index.php#contact');
+    header('Location: /codesamplecaps/LOGIN/php/index.php');
     exit();
 }
 
@@ -27,7 +27,7 @@ $allowedCategories = [
 
 function redirect_to_form(string $status): void
 {
-    header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=' . rawurlencode($status) . '#contact');
+    header('Location: /codesamplecaps/LOGIN/php/index.php?inquiry=' . rawurlencode($status));
     exit();
 }
 

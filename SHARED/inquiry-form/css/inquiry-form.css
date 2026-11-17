@@ -21,6 +21,7 @@
     border-color: #16a34a !important;
     background: #16a34a !important;
     color: #ffffff !important;
+    box-shadow: none !important;
 }
 
 .shared-ready-submit:not(:disabled):hover,

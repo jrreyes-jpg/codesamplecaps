@@ -857,6 +857,10 @@ const initInquiryForm = () => {
                 }
                 if (expired && !otpIsExpired) {
                     otpIsExpired = true;
+                    if (otpMessage) {
+                        otpMessage.textContent = '';
+                        otpMessage.classList.remove('is-error');
+                    }
                     if (otpCodeInput) {
                         otpCodeInput.value = '';
                         otpCodeInput.blur();
@@ -1011,7 +1015,7 @@ const initInquiryForm = () => {
                     otpWasSent = true;
                     openOtpModal(false);
                     startOtpClock(expiresIn, resendAfter);
-                    otpMessage.textContent = successMessage;
+                    otpMessage.textContent = expiresIn > 0 ? successMessage : '';
                     otpMessage.classList.remove('is-error');
                     window.requestAnimationFrame(() => {
                         otpCodeInput?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

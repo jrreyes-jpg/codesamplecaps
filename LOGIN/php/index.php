@@ -29,7 +29,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="preload" href="../../IMAGES/edge.jpg" as="image">
     <link rel="stylesheet" href="../css/loader.css?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../css/loader.css')); ?>">
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
-    <link rel="stylesheet" href="/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-1">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2">
     <link rel="stylesheet" href="../css/public-confirmation.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/css/action-loading.css') ?: 1)); ?>">

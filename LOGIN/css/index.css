@@ -855,10 +855,11 @@ h4 {
 }
 
 .inquiry-form input.is-email-locked {
-    border-color: #86efac;
-    background: #f0fdf4;
-    color: #166534;
-    cursor: not-allowed;
+    border-color: #16a34a;
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.11);
+    cursor: text;
 }
 
 .inquiry-email-verify-status {

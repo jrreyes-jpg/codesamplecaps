@@ -2035,6 +2035,10 @@ function initWalkInInquiryPanel() {
             otpTimer.classList.toggle('is-expired', isExpired);
         }
         if (isExpired && Date.now() >= otpLockedUntil) {
+            if (otpError) {
+                otpError.textContent = '';
+                otpError.classList.remove('is-success');
+            }
             if (otpCode) {
                 otpCode.value = '';
                 otpCode.disabled = true;

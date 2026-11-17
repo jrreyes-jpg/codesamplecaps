@@ -2256,11 +2256,12 @@ body.inspection-is-submitting {
     width: 100%;
     height: auto;
     max-height: none;
-    padding: 22px;
+    padding: 0;
     overflow: visible;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 22px;
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .inspection-modal--page .inspection-tab-panel {
@@ -2313,8 +2314,8 @@ body.inspection-is-submitting {
 
 @media (max-width: 700px) {
     .inspection-modal--page .inspection-modal__panel {
-        padding: 16px;
-        border-radius: 16px;
+        padding: 0;
+        border-radius: 0;
     }
 
     .inspection-modal--page .inspection-modal__head {

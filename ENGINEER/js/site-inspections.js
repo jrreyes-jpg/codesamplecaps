@@ -2635,6 +2635,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionPanel = document.querySelector('.inspection-panel');
     const inspectionFilterButtons = Array.from(document.querySelectorAll('[data-inspection-filter]'));
     const inspectionFilterEmpty = inspectionPanel?.querySelector('[data-inspection-filter-empty]');
+    const inspectionListControls = document.querySelector('[data-shared-list-controls]');
+    const inspectionSearchInput = inspectionListControls?.querySelector('[data-shared-list-search]');
+    const inspectionSortInput = inspectionListControls?.querySelector('[data-shared-list-sort]');
     const inspectionFilterMessages = {
         all: 'No site inspections yet.',
         new: 'No new site inspections.',
@@ -2655,11 +2658,23 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!inspectionPanel || inspectionFilterButtons.length === 0) return;
 
         const cards = Array.from(inspectionPanel.querySelectorAll(':scope > [data-inspection-card-id]'));
+        const query = String(inspectionSearchInput?.value || '').trim().toLowerCase();
+        const sortDirection = inspectionSortInput?.value === 'oldest' ? 1 : -1;
+        const sortedCards = cards.slice().sort(function (left, right) {
+            return (Number(left.dataset.listSort) - Number(right.dataset.listSort)) * sortDirection;
+        });
+        const orderChanged = sortedCards.some(function (card, index) { return cards[index] !== card; });
+        if (orderChanged) {
+            const fragment = document.createDocumentFragment();
+            sortedCards.forEach(function (card) { fragment.appendChild(card); });
+            inspectionPanel.insertBefore(fragment, inspectionFilterEmpty || null);
+        }
         let visibleCount = 0;
-        cards.forEach(function (card) {
+        sortedCards.forEach(function (card) {
             // Huwag isara ang details habang nagbabago ang New o status.
             const detailsAreOpen = Boolean(card.querySelector('.inspection-modal:not([hidden])'));
-            const shouldHide = !inspectionMatchesFilter(card, activeInspectionFilter) && !detailsAreOpen;
+            const matchesSearch = query === '' || String(card.dataset.listSearch || '').includes(query);
+            const shouldHide = (!inspectionMatchesFilter(card, activeInspectionFilter) || !matchesSearch) && !detailsAreOpen;
             if (card.hidden !== shouldHide) card.hidden = shouldHide;
             if (!shouldHide) visibleCount++;
         });
@@ -2676,7 +2691,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (initialEmptyMessage) initialEmptyMessage.hidden = cards.length > 0;
         if (inspectionFilterEmpty) {
             inspectionFilterEmpty.hidden = visibleCount > 0 || Boolean(initialEmptyMessage && cards.length === 0);
-            const message = cards.length === 0 ? inspectionFilterMessages.all : inspectionFilterMessages[activeInspectionFilter];
+            const message = cards.length === 0
+                ? inspectionFilterMessages.all
+                : (query !== '' ? 'No inspections match your search.' : inspectionFilterMessages[activeInspectionFilter]);
             if (inspectionFilterEmpty.textContent !== message) inspectionFilterEmpty.textContent = message;
         }
     };
@@ -2687,6 +2704,8 @@ document.addEventListener('DOMContentLoaded', function () {
             applyInspectionFilter();
         });
     });
+
+    inspectionListControls?.addEventListener('shared:list-controls-change', applyInspectionFilter);
 
     if (inspectionPanel && inspectionFilterButtons.length > 0) {
         let filterRefreshQueued = false;

@@ -8,7 +8,6 @@
     gap: 16px;
 }
 
-.inspection-panel,
 .inspection-card {
     background: rgba(255, 255, 255, 0.96);
     border: 1px solid rgba(148, 163, 184, 0.2);
@@ -19,8 +18,11 @@
     display: grid;
     gap: 12px;
     min-width: 0;
-    border-radius: 22px;
-    padding: 20px;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .inspection-toolbar {
@@ -38,6 +40,10 @@
     font-size: 1.4rem;
     line-height: 1.3;
     overflow-wrap: anywhere;
+}
+
+.inspection-toolbar .shared-list-controls {
+    flex: 1 1 440px;
 }
 
 .inspection-filters {
@@ -2110,8 +2116,8 @@ body.inspection-is-submitting {
     }
 
     .inspection-panel {
-        padding: 12px;
-        border-radius: 16px;
+        padding: 0;
+        border-radius: 0;
     }
 
     .inspection-card {

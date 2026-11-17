@@ -11,6 +11,17 @@
     background: var(--shared-page-surface-bg);
 }
 
+/* Iisang compact content wrapper para sa Admin list at form pages. */
+.shared-page-container {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding-top: 16px;
+}
+
 .shared-list-card {
     background: var(--shared-card-surface-bg);
     border: 1px solid var(--shared-card-surface-border);

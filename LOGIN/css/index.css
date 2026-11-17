@@ -504,8 +504,8 @@ h4 {
 
 .inquiry-form {
     display: grid;
-    gap: 14px;
-    padding: 28px;
+    gap: 10px;
+    padding: 22px;
     background: #ffffff;
     border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 14px;
@@ -515,7 +515,7 @@ h4 {
 .inquiry-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 16px;
+    gap: 10px 14px;
 }
 
 .inquiry-grid--contact-details {
@@ -529,7 +529,7 @@ h4 {
 .inquiry-service-group {
     display: grid;
     min-width: 0;
-    gap: 14px;
+    gap: 10px;
     align-content: start;
 }
 
@@ -543,13 +543,13 @@ h4 {
 }
 
 .inquiry-grid--contact-details input {
-    height: 48px;
-    min-height: 48px;
+    height: 42px;
+    min-height: 42px;
 }
 
 .inquiry-form label {
     display: grid;
-    gap: 6px;
+    gap: 4px;
     justify-items: stretch;
     text-align: left;
     color: #172033;
@@ -567,7 +567,7 @@ h4 {
     width: 100%;
     border: 1px solid #cbd5e1;
     border-radius: 10px;
-    padding: 11px 13px;
+    padding: 9px 12px;
     color: #0f172a;
     background: #f8fafc;
     font: inherit;
@@ -575,13 +575,13 @@ h4 {
 
 .inquiry-form input,
 .inquiry-form select {
-    min-height: 48px;
+    min-height: 42px;
     line-height: 1.2;
 }
 
 .inquiry-form select,
 .inquiry-form input[type="date"] {
-    padding-block: 11px;
+    padding-block: 9px;
 }
 
 .inquiry-combobox {
@@ -609,7 +609,7 @@ h4 {
 
 .inquiry-combobox-button {
     position: absolute;
-    top: 7px;
+    top: 4px;
     right: 8px;
     width: 34px;
     height: 34px;
@@ -1065,7 +1065,7 @@ body.has-inquiry-otp-open {
 }
 
 .date-picker-button {
-    min-height: 48px;
+    min-height: 42px;
     border: 1px solid #cbd5e1;
     border-radius: 10px;
     background: #eef2f7;

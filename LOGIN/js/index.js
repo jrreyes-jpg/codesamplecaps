@@ -621,6 +621,9 @@ const initInquiryForm = () => {
         let contactCheckId = 0;
         let contactCanVerifyEmail = false;
         let contactNote = '';
+        let syncSubmitReadyState = () => {};
+        let syncClearActionState = () => {};
+        let inquiryFormDirty = false;
 
         if (!contactInput || !message) {
             return;
@@ -649,6 +652,7 @@ const initInquiryForm = () => {
             } else if (emailInput.classList.contains('is-valid')) {
                 resetFieldState(emailInput);
             }
+            syncSubmitReadyState();
         };
 
         const unlockVerifiedEmail = () => {
@@ -1397,6 +1401,55 @@ const initInquiryForm = () => {
             return getBarangaySuggestions().includes(barangayInput.value.trim()) && isSystemSelected(barangayInput);
         };
 
+        const isInquiryReady = () => {
+            const requiredFields = Array.from(inquiryForm.querySelectorAll('[required]'))
+                .filter((field) => !field.disabled);
+            const requiredFieldsReady = requiredFields.every((field) => field.value.trim() !== '' && field.checkValidity());
+            const siteAddress = inquiryForm.querySelector('textarea[name="site_address"]')?.value.trim() || '';
+            const description = inquiryForm.querySelector('textarea[name="description"]')?.value.trim() || '';
+            const descriptionLetters = description.match(/\p{L}/gu) || [];
+            const clientName = (clientNameInput?.value || '').trim();
+            const clientNameLetters = clientName.match(/\p{L}/gu) || [];
+            const selectedServiceNeedsDetails = serviceSelect?.value === 'Other / Not sure yet';
+            const otherServiceReady = !selectedServiceNeedsDetails
+                || (otherServiceInput?.value || '').trim().length >= 4;
+            const email = (emailInput?.value || '').trim().toLowerCase();
+
+            return requiredFieldsReady
+                && phonePattern.test(contactInput.value.trim())
+                && email !== ''
+                && email === verifiedEmail
+                && clientNameLetters.length >= 2
+                && isValidRegion()
+                && isValidArea()
+                && isValidCity()
+                && isValidBarangay()
+                && siteAddress.length >= 5
+                && description.length >= 10
+                && descriptionLetters.length >= 5
+                && otherServiceReady;
+        };
+
+        syncSubmitReadyState = () => {
+            if (!submitButton || isSubmittingInquiry) return;
+            submitButton.disabled = !isInquiryReady();
+        };
+
+        const hasInquiryContent = () => {
+            return Array.from(inquiryForm.elements).some((field) => {
+                if (!field.name || field.type === 'hidden' || field.type === 'submit' || field.type === 'button') {
+                    return false;
+                }
+                return field.type === 'checkbox' || field.type === 'radio'
+                    ? field.checked
+                    : field.value.trim() !== '';
+            });
+        };
+
+        syncClearActionState = () => {
+            if (clearDraftButton) clearDraftButton.disabled = !inquiryFormDirty || !hasInquiryContent();
+        };
+
         const validateLiveField = (field, showRequiredError = false) => {
             if (!field || field.type === 'hidden' || field.disabled) {
                 if (field) resetFieldState(field);
@@ -1738,7 +1791,7 @@ const saveInquiryDraft = () => {
 const restoreInquiryDraft = () => {
     if (window.edgeInquiryStatus === 'success') {
         localStorage.removeItem(draftKey);
-        return;
+        return false;
     }
 
     let draft = {};
@@ -1746,13 +1799,13 @@ const restoreInquiryDraft = () => {
         draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
     } catch (error) {
         localStorage.removeItem(draftKey);
-        return;
+        return false;
     }
 
     delete draft.inquiry_form_token;
 
     if (Object.keys(draft).length === 0) {
-        return;
+        return false;
     }
 
     const regionDraft = typeof draft.region === 'string' && window.edgeServiceHierarchy?.[draft.region]
@@ -1802,6 +1855,8 @@ const restoreInquiryDraft = () => {
             }
             syncOtherServiceField();
             validatePreferredDateRange();
+
+            return Object.values(draft).some((value) => String(value || '').trim() !== '');
 
         };
 
@@ -1853,7 +1908,8 @@ const restoreInquiryDraft = () => {
             field.addEventListener('focus', () => {
                 gentlyRevealField(field);
             });
-            field.addEventListener('input', () => {
+            field.addEventListener('input', (event) => {
+                if (event.isTrusted) inquiryFormDirty = true;
                 field.dataset.touched = '1';
                 if (contactIdentityFields.includes(field)) {
                     contactCanVerifyEmail = false;
@@ -1870,17 +1926,29 @@ const restoreInquiryDraft = () => {
                 if (contactIdentityFields.includes(field)) {
                     queueContactCheck();
                 }
+                syncSubmitReadyState();
+                syncClearActionState();
             });
-            field.addEventListener('change', () => {
+            field.addEventListener('change', (event) => {
+                if (event.isTrusted) inquiryFormDirty = true;
                 field.dataset.touched = '1';
                 validateLiveField(field, true);
                 clearFormMessageIfReady();
                 saveInquiryDraft();
+                syncSubmitReadyState();
+                syncClearActionState();
             });
             field.addEventListener('blur', () => {
                 field.dataset.touched = '1';
                 validateLiveField(field, true);
             });
+        });
+
+        inquiryForm.addEventListener('click', (event) => {
+            if (event.isTrusted && event.target.closest('.inquiry-combobox-list button')) {
+                inquiryFormDirty = true;
+                syncClearActionState();
+            }
         });
 
         const validateAutofilledIdentity = (field) => {
@@ -1916,7 +1984,9 @@ const restoreInquiryDraft = () => {
             verifiedEmail = '';
             contactCanVerifyEmail = false;
             inquiryForm.dataset.verifiedEmail = '';
+            inquiryFormDirty = false;
             updateEmailVerification();
+            syncClearActionState();
         };
 
         clearDraftButton?.addEventListener('click', () => {
@@ -1937,8 +2007,10 @@ const restoreInquiryDraft = () => {
             });
         });
 
-        restoreInquiryDraft();
+        inquiryFormDirty = restoreInquiryDraft();
         updateEmailVerification();
+        syncSubmitReadyState();
+        syncClearActionState();
         checkContactDetails();
         [150, 700].forEach((delay) => {
             window.setTimeout(() => {
@@ -2109,9 +2181,9 @@ const restoreInquiryDraft = () => {
 
             isSubmittingInquiry = false;
             isSubmitConfirmed = false;
-            submitButton.disabled = false;
             submitButton.removeAttribute('aria-busy');
             submitButton.textContent = 'Submit Inquiry';
+            syncSubmitReadyState();
             window.edgeActionLoading?.hide();
         });
     });

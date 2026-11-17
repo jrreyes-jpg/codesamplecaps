@@ -1,0 +1,39 @@
+.shared-inquiry-textarea {
+    min-height: 76px;
+    max-height: 220px;
+    field-sizing: content;
+    resize: vertical;
+    overflow-y: auto;
+    line-height: 1.4;
+}
+
+.shared-ready-submit:disabled {
+    border-color: #9ca3af !important;
+    background: #9ca3af !important;
+    color: #ffffff !important;
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.shared-ready-submit:not(:disabled) {
+    border-color: #16a34a !important;
+    background: #16a34a !important;
+    color: #ffffff !important;
+}
+
+.shared-ready-submit:not(:disabled):hover,
+.shared-ready-submit:not(:disabled):focus-visible {
+    background: #15803d !important;
+}
+
+.shared-clear-action:disabled {
+    border-color: #d1d5db !important;
+    background: #e5e7eb !important;
+    color: #9ca3af !important;
+    opacity: 0.7;
+    cursor: not-allowed;
+    box-shadow: none !important;
+    transform: none !important;
+}

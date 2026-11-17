@@ -44,13 +44,6 @@
     background: #fee2e2;
 }
 
-.inventory-page-stack {
-    display: grid;
-    min-width: 0;
-    gap: 14px;
-    align-items: start;
-}
-
 .inventory-page-tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -262,36 +255,159 @@
 }
 
 .material-stock-in-page .form-panel {
-    width: min(100%, 1080px);
+    width: 100%;
     margin-inline: auto;
 }
 
 .admin-material-stock-in-panel {
     box-sizing: border-box;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
-.admin-material-stock-in-panel .form-actions {
-    justify-content: flex-end;
+.material-delivery-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
-.material-stock-in-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+.material-delivery-rows {
+    display: grid;
+    gap: 10px;
 }
 
-.material-stock-in-notes {
-    grid-column: 1 / -1;
+.material-delivery-row {
+    display: grid;
+    grid-template-columns: minmax(240px, 1.5fr) minmax(180px, 0.8fr) 44px;
+    gap: 10px;
+    align-items: end;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.material-quantity-control {
+    display: flex;
+    min-width: 0;
+    min-height: 44px;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.material-quantity-control input {
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+}
+
+.material-quantity-control span {
+    display: inline-flex;
+    min-width: 64px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    border: 0;
+    border-left: 0;
+    border-left: 1px solid #d1d5db;
+    border-radius: 0;
+    background: #eef6f1;
+    color: #166534;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.material-quantity-control:focus-within {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+}
+
+.admin-material-stock-in-panel input:not([type="hidden"]),
+.admin-material-stock-in-panel select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #172033;
+    font: inherit;
+}
+
+.admin-material-stock-in-panel input:not([type="hidden"]):focus,
+.admin-material-stock-in-panel select:focus {
+    border-color: #16a34a;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+}
+
+.admin-material-stock-in-panel .material-quantity-control input {
+    min-height: 42px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.material-row-remove {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.material-row-remove:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.material-delivery-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.material-delivery-action-bar .btn-primary:disabled {
+    background: #9ca3af;
+    color: #ffffff;
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.admin-material-delivery-list .data-table th,
+.admin-material-delivery-list .data-table td {
+    padding: 8px 10px;
 }
 
 .material-stock-in-page .inventory-report-heading {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .material-stock-in-page .inventory-report-heading__actions {
-    grid-column: 3;
+    grid-column: 2;
     justify-self: end;
+}
+
+.material-stock-in-page .inventory-report-heading__actions .btn-secondary {
+    min-height: 40px;
+    border-radius: 12px;
 }
 
 .inventory-report-heading .section-title-inline,
@@ -937,6 +1053,29 @@ body.material-create-modal-open {
     box-shadow: none;
 }
 
+.material-stock-in-page .admin-material-stock-in-panel {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.admin-material-delivery-list {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px 14px;
+    border-color: #bbe5c8;
+    background: #f0fdf4;
+}
+
+.admin-material-delivery-list .inventory-report-heading {
+    margin-bottom: 6px;
+}
+
+.admin-material-delivery-list .table-responsive {
+    border-radius: 12px;
+    background: #ffffff;
+}
+
 .material-history-panel .material-master-heading {
     margin-bottom: 18px;
 }
@@ -1051,9 +1190,6 @@ body.material-create-modal-open {
         min-width: 0;
     }
 
-    .inventory-page-stack {
-        gap: 18px;
-    }
 }
 
 .material-master-number {
@@ -1166,6 +1302,20 @@ body.material-create-modal-open {
 
     .material-stock-in-form-grid {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .material-delivery-meta-grid,
+    .material-delivery-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .material-row-remove {
+        justify-self: end;
+    }
+
+    .material-delivery-action-bar {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .inventory-report-tabs {

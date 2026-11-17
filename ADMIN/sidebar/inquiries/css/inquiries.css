@@ -3,14 +3,6 @@
    Sakop: client inquiry list, filters, detail cards, and status forms.
 ========================================================= */
 
-.inquiries-shell {
-    position: relative;
-    display: grid;
-    gap: 10px;
-    box-sizing: border-box;
-    padding-top: 16px;
-}
-
 .quotation-create-shell {
     max-width: 1440px;
     margin: 0 auto;

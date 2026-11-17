@@ -50,6 +50,26 @@ if (!function_exists('material_delivery_verification_create')) {
         string $adminNotes,
         int $adminUserId
     ): void {
+        material_delivery_verification_create_batch(
+            $conn,
+            [['material_id' => $materialId, 'expected_quantity' => $expectedInput]],
+            $supplierName,
+            $receiptNo,
+            $adminNotes,
+            $adminUserId
+        );
+    }
+}
+
+if (!function_exists('material_delivery_verification_create_batch')) {
+    function material_delivery_verification_create_batch(
+        mysqli $conn,
+        array $materialRows,
+        string $supplierName,
+        string $receiptNo,
+        string $adminNotes,
+        int $adminUserId
+    ): int {
         if (!material_delivery_verification_is_ready($conn)) {
             throw new RuntimeException('Delivery verification setup is not ready.');
         }
@@ -62,34 +82,74 @@ if (!function_exists('material_delivery_verification_create')) {
         if ($receiptNo === '') {
             throw new RuntimeException('Enter delivery receipt number.');
         }
+        if ($materialRows === [] || count($materialRows) > 50) {
+            throw new RuntimeException('Add 1 to 50 materials only.');
+        }
 
-        $materialStmt = $conn->prepare('SELECT unit FROM materials WHERE id = ? AND status = \'active\' LIMIT 1');
+        $materialIds = [];
+        foreach ($materialRows as $row) {
+            $materialId = filter_var($row['material_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+            if ($materialId === 0) {
+                throw new RuntimeException('Pick an active material for every row.');
+            }
+            if (isset($materialIds[$materialId])) {
+                throw new RuntimeException('Do not add the same material twice.');
+            }
+            $materialIds[$materialId] = true;
+        }
+
+        $ids = array_keys($materialIds);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $materialStmt = $conn->prepare("SELECT id, unit FROM materials WHERE id IN ({$placeholders}) AND status = 'active'");
         if (!$materialStmt) {
             throw new RuntimeException('Unable to check material.');
         }
-        $materialStmt->bind_param('i', $materialId);
+        $bindValues = [str_repeat('i', count($ids))];
+        foreach ($ids as $index => $id) {
+            $bindValues[] = &$ids[$index];
+        }
+        call_user_func_array([$materialStmt, 'bind_param'], $bindValues);
         $materialStmt->execute();
-        $material = $materialStmt->get_result()->fetch_assoc();
-        if (!$material) {
-            throw new RuntimeException('Pick active material.');
+        $units = [];
+        foreach ($materialStmt->get_result()->fetch_all(MYSQLI_ASSOC) as $material) {
+            $units[(int)$material['id']] = (string)$material['unit'];
+        }
+        if (count($units) !== count($ids)) {
+            throw new RuntimeException('Pick active materials only.');
         }
 
-        $expectedQuantity = material_delivery_verification_validate_quantity($expectedInput, (string)$material['unit']);
         $supplierName = substr($supplierName, 0, 180);
         $receiptNo = substr($receiptNo, 0, 120);
         $adminNotes = substr(trim($adminNotes), 0, 500);
 
-        $insert = $conn->prepare(
-            'INSERT INTO material_delivery_verifications
-                (material_id, expected_quantity, supplier_name, delivery_receipt_no, admin_notes, created_by)
-             VALUES (?, ?, NULLIF(?, \'\'), ?, NULLIF(?, \'\'), ?)'
-        );
-        if (!$insert) {
-            throw new RuntimeException('Unable to save delivery record.');
-        }
-        $insert->bind_param('idsssi', $materialId, $expectedQuantity, $supplierName, $receiptNo, $adminNotes, $adminUserId);
-        if (!$insert->execute()) {
-            throw new RuntimeException('Unable to save delivery record.');
+        $conn->begin_transaction();
+        try {
+            $insert = $conn->prepare(
+                "INSERT INTO material_delivery_verifications
+                    (material_id, expected_quantity, supplier_name, delivery_receipt_no, admin_notes, status, created_by)
+                 VALUES (?, ?, NULLIF(?, ''), ?, NULLIF(?, ''), 'for_verification', ?)"
+            );
+            if (!$insert) {
+                throw new RuntimeException('Unable to save delivery records.');
+            }
+
+            foreach ($materialRows as $row) {
+                $materialId = (int)$row['material_id'];
+                $expectedQuantity = material_delivery_verification_validate_quantity(
+                    $row['expected_quantity'] ?? '',
+                    $units[$materialId]
+                );
+                $insert->bind_param('idsssi', $materialId, $expectedQuantity, $supplierName, $receiptNo, $adminNotes, $adminUserId);
+                if (!$insert->execute()) {
+                    throw new RuntimeException('Unable to save delivery records.');
+                }
+            }
+
+            $conn->commit();
+            return count($materialRows);
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            throw $exception;
         }
     }
 }

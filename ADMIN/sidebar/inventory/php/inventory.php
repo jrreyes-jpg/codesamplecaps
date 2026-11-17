@@ -450,7 +450,7 @@ $adminPageTitle = 'Inventory Management - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261112-7',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -461,7 +461,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
     <main class="main-content inventory-light-main shared-page-surface">
-        <div class="page-stack">
+        <div class="shared-page-container page-stack">
             <nav class="resource-page-tabs" aria-label="Asset sections">
                 <a href="/codesamplecaps/ADMIN/sidebar/assets/php/assets.php">Asset Management</a>
                 <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=assets">Asset Inventory</a>

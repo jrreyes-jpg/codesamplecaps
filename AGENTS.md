@@ -1,36 +1,24 @@
 # Project Instructions
 
-- Use only HTML, CSS, vanilla JavaScript, PHP, MySQL, and XAMPP.
-- Keep every page friendly for mobile, laptop, and desktop.
-- Do not allow overlap, cut text, broken spacing, or misaligned items.
-- Make long text wrap safely.
-- Make forms, cards, tables, buttons, modals, filters, and search bars responsive.
-- Match the current colors, fonts, spacing, and design.
-- Keep the UI simple and clear for a capstone project.
-- Do not add inline CSS, inline JavaScript, or inline event handlers.
-- Put CSS and JavaScript in the correct external feature files.
-- Do not change unrelated working features.
-- Keep database and server validation safe.
-- Check changed PHP files with the XAMPP PHP lint command.
-- Check the changed code before finishing.
-- Reply with short and simple Taglish.
-- Before editing, say the exact small change that will be made.
-- Keep desktop modals compact when the content is short.
-- Keep mobile modals easy to scroll and fit inside the screen.
-- Put status beside or below its related details.
-- Do not repeat the same status or notification in many cards.
-- Reuse working backend actions, helpers, and services. Do not create duplicate logic.
-- If feature-only logic is needed by another feature, move it to the correct shared file and update all users of that logic.
-- Remove an old or duplicate logic copy only after checking that no active file or workflow still uses it.
-- Reuse existing database tables, columns, relations, and services before creating new ones.
-- Keep one clear source of truth. Do not save the same data in different tables without a real need.
-- Do not delete or merge a table only because it is empty. First check all PHP and SQL references, foreign keys, and workflow use.
-- Before deleting or merging database tables, create a database backup and a reversible SQL migration with a rollback plan.
-- Delete or merge a database table only when it is confirmed unused or duplicated and the change will not break old records or working features.
-- Put new schema changes in a versioned file inside `DB/migrations`. Do not add new runtime `CREATE TABLE` or `ALTER TABLE` code inside page files.
-- Add color coding when it helps the user understand a status or action.
-- Keep status colors consistent: green for success or completed, blue for active or in progress, yellow or orange for pending or warning, red for error or destructive action, and gray for neutral or inactive.
-- Use simple colored text for a small secondary status. Avoid a large colored badge when it is not needed.
-- Do not use color alone. Add clear text or an icon for success, warning, and error status.
-- Keep the system lightweight for capstone defense. Reuse shared loaders, avoid heavy blur, large shadows, long animations, duplicate scripts, and forced loading delays. Show loaders only during real server work.
-- Reuse the shared light page background, layouts, buttons, filters, modals, loaders, and helpers when they fit. Keep one shared source and do not copy the same CSS or JavaScript into feature files.
+## Tech Stack & Lightweight Rules
+- Use only HTML, CSS, vanilla JavaScript, PHP, MySQL, and XAMPP (no external libraries/frameworks).
+- Inspect existing files first before editing. Keep the system ultra-lightweight with zero lag for online capstone demos (no heavy blur, large shadows, long animations, or fake delays).
+- Put CSS and JS in external feature/shared files only; do not use inline CSS, inline JS, or inline event handlers.
+- Do not break unrelated working features.
+
+## UI, Layout & Color Coding
+- Make every page, form, card, table, button, modal, filter, and search bar responsive (mobile, laptop, desktop) with zero overlap, cut text, or broken alignment; wrap long text safely.
+- Keep desktop modals compact when content is short, and mobile modals scrollable within the screen.
+- Reuse shared backgrounds, layouts, buttons, filters, modals, loaders, and helpers.
+- Keep status colors consistent with clear text/icon labels: green (success/completed), blue (active/in progress), yellow/orange (pending/warning), red (error/destructive), gray (neutral/inactive).
+- Place status beside/below related details without repeating identical status/alerts across multiple cards; use simple colored text for minor statuses.
+
+## Shared Logic & Database Safety
+- Reuse existing backend actions, helpers, services, CSS, and JS. Move reusable feature logic into shared files, update all references, and delete duplicates only after confirming nothing uses them.
+- Reuse existing DB tables/columns as one source of truth. Never delete/merge tables just because they are empty—check all PHP/SQL references and foreign keys first, and create a backup + reversible migration with rollback before dropping/merging.
+- Put schema changes in versioned files under `DB/migrations` (no runtime `CREATE`/`ALTER TABLE` in page files). Keep server/DB validation safe.
+
+## Workflow & Response Format
+- Reply in short, simple Taglish.
+- State the exact small change before editing.
+- Lint changed PHP files with XAMPP PHP and review `git diff` before finishing.

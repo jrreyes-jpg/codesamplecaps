@@ -2542,8 +2542,9 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261112-6',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261117-1',
+    '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-1',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
 ];
@@ -2554,7 +2555,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261112-2',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261110-3',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-1',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -2562,7 +2563,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
 <main class="main-content admin-dashboard-content inquiry-center-main shared-page-surface<?php echo $detailsInquiryId > 0 ? ' inquiry-details-main' : ''; ?>">
     <div
-        class="inquiries-shell<?php echo $detailsInquiryId > 0 ? ' is-details-page' : ''; ?>"
+        class="shared-page-container inquiries-shell<?php echo $detailsInquiryId > 0 ? ' is-details-page' : ''; ?>"
         data-latest-revision-id="<?php echo $latestRevisionId; ?>"
         data-latest-revision-updated-at="<?php echo htmlspecialchars($latestRevisionUpdatedAt, ENT_QUOTES, 'UTF-8'); ?>"
         data-latest-rejected-id="<?php echo $latestRejectedId; ?>"

@@ -1558,6 +1558,7 @@ function initWalkInInquiryPanel() {
     const engineerSelect = panel?.querySelector('select[name="preferred_engineer_id"]');
     const nextActionInput = panel?.querySelector('[data-walk-in-next-action]');
     const submitActionButton = panel?.querySelector('[data-walk-in-submit-action]');
+    const clearFormButton = panel?.querySelector('[data-walk-in-clear]');
     const engineerHelp = panel?.querySelector('[data-walk-in-engineer-help]');
     const nameError = panel?.querySelector('[data-walk-in-name-error]');
     const companyError = panel?.querySelector('[data-walk-in-company-error]');
@@ -1607,6 +1608,7 @@ function initWalkInInquiryPanel() {
     let emailIsVerified = false;
     let emailOtpWasSent = false;
     let contactCanVerifyEmail = false;
+    let walkInFormDirty = false;
     let historyGuardReady = false;
     let ignoreNextPopstate = false;
     let otpExpiresAt = 0;
@@ -1981,6 +1983,7 @@ function initWalkInInquiryPanel() {
         if (sendOtpButton) {
             syncVerifyEmailButton();
         }
+        syncWalkInSaveAction();
     }
 
     function unlockVerifiedEmail() {
@@ -2391,8 +2394,8 @@ function initWalkInInquiryPanel() {
             submitActionButton.textContent = hasConfirmedEngineer
                 ? 'Save Confirmed Inspection'
                 : 'Save as Pending';
-            submitActionButton.disabled = hasConfirmedEngineer
-                && (engineerAvailabilityPending || engineerBusyOnDate || engineerAvailabilityFailed);
+            submitActionButton.disabled = !isWalkInReady()
+                || (hasConfirmedEngineer && (engineerAvailabilityPending || engineerBusyOnDate || engineerAvailabilityFailed));
         }
         if (engineerHelp) {
             engineerHelp.textContent = hasConfirmedEngineer
@@ -2423,6 +2426,31 @@ function initWalkInInquiryPanel() {
             availabilityFeedback.classList.toggle('is-info', state === 'info');
             engineerSelect?.classList.toggle('is-invalid-live', state === 'error');
         }
+    }
+
+    function isWalkInReady() {
+        const requiredFields = Array.from(form.querySelectorAll('[required]'))
+            .filter(function (field) { return !field.disabled; });
+        const requiredFieldsReady = requiredFields.every(function (field) {
+            return String(field.value || '').trim() !== '' && field.checkValidity();
+        });
+        const descriptionValue = String(description?.value || '').trim();
+        const descriptionLetters = descriptionValue.match(/\p{L}/gu) || [];
+        const selectedServiceNeedsDetails = serviceSelect?.value === 'Other Service';
+        const otherServiceReady = !selectedServiceNeedsDetails
+            || String(otherService?.value || '').trim().length >= 4;
+
+        return requiredFieldsReady
+            && emailIsVerified
+            && /^09\d{9}$/.test(String(contactNumber?.value || ''))
+            && isSelectedLocation(regionSelect, getRegionOptions())
+            && isSelectedLocation(areaSelect, getAreaOptions())
+            && isSelectedLocation(citySelect, getCityOptions())
+            && isSelectedLocation(barangaySelect, getBarangayOptions())
+            && String(siteAddress?.value || '').trim().length >= 5
+            && descriptionValue.length >= 10
+            && descriptionLetters.length >= 5
+            && otherServiceReady;
     }
 
     function formatWalkInDate(value) {
@@ -2519,6 +2547,10 @@ function initWalkInInquiryPanel() {
         });
     }
 
+    function syncClearActionState() {
+        if (clearFormButton) clearFormButton.disabled = !walkInFormDirty || !hasDraftContent();
+    }
+
     function enableHistoryGuard() {
         if (historyGuardReady) return;
         window.history.replaceState({ ...(window.history.state || {}), walkInGuardBase: true }, '', window.location.href);
@@ -2571,6 +2603,8 @@ function initWalkInInquiryPanel() {
         keepContactPrefix();
         syncOtherService();
         syncWalkInSaveAction();
+        walkInFormDirty = hasDraftContent();
+        syncClearActionState();
         enableHistoryGuard();
         return true;
     }
@@ -2669,6 +2703,8 @@ function initWalkInInquiryPanel() {
         window.clearInterval(otpClock);
         otpClock = null;
         setEmailVerified(false);
+        walkInFormDirty = false;
+        syncClearActionState();
         clientName?.focus({ preventScroll: true });
     }
 
@@ -2926,8 +2962,25 @@ function initWalkInInquiryPanel() {
     barangaySelect?.addEventListener('change', function () {
         validateLocation(barangaySelect, getBarangayOptions(), barangayError, 'barangay');
     });
-    form.addEventListener('input', saveDraft);
-    form.addEventListener('change', saveDraft);
+    form.addEventListener('input', function (event) {
+        if (event.isTrusted) walkInFormDirty = true;
+        saveDraft();
+        syncWalkInSaveAction();
+        syncClearActionState();
+    });
+    form.addEventListener('change', function (event) {
+        if (event.isTrusted) walkInFormDirty = true;
+        saveDraft();
+        syncWalkInSaveAction();
+        syncClearActionState();
+    });
+
+    panel.addEventListener('click', function (event) {
+        if (event.isTrusted && event.target.closest('[data-walk-in-combobox-list] button')) {
+            walkInFormDirty = true;
+            syncClearActionState();
+        }
+    });
 
     form.addEventListener('submit', async function (event) {
         if (saveConfirmed) return;
@@ -3005,6 +3058,8 @@ function initWalkInInquiryPanel() {
     }
     syncOtherService();
     syncWalkInSaveAction();
+    walkInFormDirty = form.dataset.hasServerInput === '1' && hasDraftContent();
+    syncClearActionState();
     keepContactPrefix();
     setEmailVerified(false);
     if (contactNumber?.value && contactNumber.value !== '09') validateContact();

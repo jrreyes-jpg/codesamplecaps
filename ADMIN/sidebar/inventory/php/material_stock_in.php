@@ -12,8 +12,15 @@ $flashKey = 'admin_material_stock_in_flash';
 $postText = static fn(mixed $value): string => is_string($value) || is_numeric($value) ? trim((string)$value) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $materialId = filter_var($postText($_POST['material_id'] ?? ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
-    $quantity = $postText($_POST['quantity'] ?? '');
+    $postedMaterialIds = is_array($_POST['material_ids'] ?? null) ? $_POST['material_ids'] : [];
+    $postedQuantities = is_array($_POST['expected_quantities'] ?? null) ? $_POST['expected_quantities'] : [];
+    $materialRows = [];
+    foreach ($postedMaterialIds as $index => $postedMaterialId) {
+        $materialRows[] = [
+            'material_id' => filter_var($postText($postedMaterialId), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0,
+            'expected_quantity' => $postText($postedQuantities[$index] ?? ''),
+        ];
+    }
     $supplierName = $postText($_POST['supplier_name'] ?? '');
     $receiptNo = $postText($_POST['receipt_no'] ?? '');
     $remarks = $postText($_POST['remarks'] ?? '');
@@ -25,10 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!material_stock_consume_once_token('admin_material_stock_in', $_POST['request_token'] ?? null)) {
             throw new RuntimeException('This delivery receipt was already sent. Please try again.');
         }
-        material_delivery_verification_create(
+        $savedCount = material_delivery_verification_create_batch(
             $conn,
-            $materialId,
-            $quantity,
+            $materialRows,
             $supplierName,
             $receiptNo,
             $remarks,
@@ -36,13 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $_SESSION[$flashKey] = [
             'type' => 'success',
-            'message' => 'Delivery saved for Clerk verification. Stock has not changed yet.',
+            'message' => $savedCount . ' material' . ($savedCount === 1 ? '' : 's') . ' sent to Clerk. Stock has not changed yet.',
         ];
     } catch (Throwable $exception) {
         $_SESSION[$flashKey] = [
             'type' => 'error',
             'message' => $exception->getMessage(),
-            'values' => ['material_id' => $materialId, 'quantity' => $quantity, 'supplier_name' => $supplierName, 'receipt_no' => $receiptNo, 'remarks' => $remarks],
+            'values' => ['materials' => $materialRows, 'supplier_name' => $supplierName, 'receipt_no' => $receiptNo, 'remarks' => $remarks],
         ];
     }
 
@@ -52,7 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $flash = $_SESSION[$flashKey] ?? null;
 unset($_SESSION[$flashKey]);
-$values = is_array($flash['values'] ?? null) ? $flash['values'] : ['material_id' => 0, 'quantity' => '', 'supplier_name' => '', 'receipt_no' => '', 'remarks' => ''];
+$values = is_array($flash['values'] ?? null) ? $flash['values'] : ['materials' => [['material_id' => 0, 'expected_quantity' => '']], 'supplier_name' => '', 'receipt_no' => '', 'remarks' => ''];
+$materialRows = is_array($values['materials'] ?? null) && $values['materials'] !== []
+    ? $values['materials']
+    : [['material_id' => 0, 'expected_quantity' => '']];
 $materials = material_stock_fetch_active_materials($conn);
 $deliveryReady = material_delivery_verification_is_ready($conn);
 $deliveries = material_delivery_verification_fetch($conn);
@@ -61,17 +70,17 @@ $adminPageTitle = 'Log Delivery Receipt - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261116-1',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/material_stock_in.js',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/material_stock_in.js?v=20261117-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content inventory-main-content inventory-light-main">
-    <div class="page-stack inventory-page-stack material-stock-in-page">
+<main class="main-content admin-dashboard-content inventory-main-content inventory-light-main shared-page-surface">
+    <div class="shared-page-container page-stack inventory-page-stack material-stock-in-page">
         <?php if (is_array($flash)): ?>
             <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : 'alert-error'; ?>">
                 <?php echo htmlspecialchars((string)($flash['message'] ?? 'Unable to save delivery receipt.')); ?>
@@ -82,13 +91,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <div class="inventory-report-heading material-stock-in-heading">
                 <div>
                     <h1 class="section-title-inline">Log Delivery Receipt</h1>
-                    <p>Record the supplier delivery receipt. The Clerk will count first before stock is added.</p>
                 </div>
-                <nav class="resource-page-tabs inventory-page-tabs inventory-report-tabs" aria-label="Inventory sections">
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
-                    <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
-                </nav>
                 <div class="inventory-report-heading__actions">
+                    <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
                     <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Back to Inventory</a>
                 </div>
             </div>
@@ -97,41 +102,75 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="alert alert-error">Delivery verification setup is not ready. Run the new database migration first.</div>
             <?php endif; ?>
 
-            <form method="POST" data-stock-in-form novalidate>
+            <form method="POST" data-stock-in-form data-delivery-ready="<?php echo $deliveryReady ? 'true' : 'false'; ?>" novalidate>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($requestToken); ?>">
-                <div class="form-grid material-stock-in-form-grid">
+                <div class="material-delivery-meta-grid">
                     <div class="input-group">
-                        <label for="material_id">Material <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <select id="material_id" name="material_id" data-stock-in-material required>
-                            <option value="" disabled<?php echo (int)$values['material_id'] === 0 ? ' selected' : ''; ?>>Select material</option>
-                            <?php foreach ($materials as $material): ?>
-                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>"<?php echo (int)$values['material_id'] === (int)$material['id'] ? ' selected' : ''; ?>>
-                                    <?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="quantity">Expected Quantity <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="quantity" name="quantity" type="number" min="0.01" step="0.01" inputmode="decimal" data-stock-in-quantity required value="<?php echo htmlspecialchars((string)$values['quantity']); ?>">
-                        <small class="material-field-hint" data-stock-in-unit-hint>Select a material to see its unit.</small>
+                        <label for="receipt_no">DR No. <span class="required-indicator" aria-hidden="true">*</span></label>
+                        <input id="receipt_no" name="receipt_no" maxlength="120" required placeholder="Example: DR-1001" value="<?php echo htmlspecialchars((string)$values['receipt_no']); ?>">
                     </div>
                     <div class="input-group">
                         <label for="supplier_name">Supplier <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="supplier_name" name="supplier_name" maxlength="180" required placeholder="Supplier name" value="<?php echo htmlspecialchars((string)$values['supplier_name']); ?>">
                     </div>
                     <div class="input-group">
-                        <label for="receipt_no">Delivery Receipt No. <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="receipt_no" name="receipt_no" maxlength="120" required placeholder="Example: DR-1001" value="<?php echo htmlspecialchars((string)$values['receipt_no']); ?>">
-                    </div>
-                    <div class="input-group material-stock-in-notes">
-                        <label for="remarks">Admin Notes (Optional)</label>
+                        <label for="remarks">Notes (Optional)</label>
                         <input id="remarks" name="remarks" maxlength="500" placeholder="Optional delivery note" value="<?php echo htmlspecialchars((string)$values['remarks']); ?>">
                     </div>
                 </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary" <?php echo $deliveryReady ? '' : 'disabled'; ?>>Send for Clerk Verification</button>
+
+                <div class="material-delivery-rows" data-stock-in-rows>
+                    <?php foreach ($materialRows as $rowIndex => $row): ?>
+                    <div class="material-delivery-row" data-stock-in-row>
+                        <div class="input-group">
+                            <label for="material_id_<?php echo $rowIndex; ?>">Material <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <select id="material_id_<?php echo $rowIndex; ?>" name="material_ids[]" data-stock-in-material required>
+                                <option value="" disabled<?php echo (int)($row['material_id'] ?? 0) === 0 ? ' selected' : ''; ?>>Select material</option>
+                            <?php foreach ($materials as $material): ?>
+                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>"<?php echo (int)($row['material_id'] ?? 0) === (int)$material['id'] ? ' selected' : ''; ?>>
+                                    <?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="quantity_<?php echo $rowIndex; ?>">Expected Qty <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <div class="material-quantity-control">
+                                <input id="quantity_<?php echo $rowIndex; ?>" name="expected_quantities[]" type="number" min="0.01" step="0.01" inputmode="decimal" data-stock-in-quantity required value="<?php echo htmlspecialchars((string)($row['expected_quantity'] ?? '')); ?>">
+                                <span data-stock-in-unit>Unit</span>
+                            </div>
+                        </div>
+                        <button type="button" class="material-row-remove" data-stock-in-row-remove aria-label="Remove material"<?php echo count($materialRows) === 1 ? ' disabled' : ''; ?>>&times;</button>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <template data-stock-in-row-template>
+                    <div class="material-delivery-row" data-stock-in-row>
+                        <div class="input-group">
+                            <label>Material <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <select name="material_ids[]" data-stock-in-material required>
+                                <option value="" disabled selected>Select material</option>
+                                <?php foreach ($materials as $material): ?>
+                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>"><?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Expected Qty <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <div class="material-quantity-control">
+                                <input name="expected_quantities[]" type="number" min="0.01" step="0.01" inputmode="decimal" data-stock-in-quantity required>
+                                <span data-stock-in-unit>Unit</span>
+                            </div>
+                        </div>
+                        <button type="button" class="material-row-remove" data-stock-in-row-remove aria-label="Remove material">&times;</button>
+                    </div>
+                </template>
+
+                <div class="material-delivery-action-bar">
+                    <button type="button" class="btn-secondary" data-stock-in-add>+ Add Material</button>
+                    <button type="submit" class="btn-primary" data-stock-in-submit disabled>Submit Delivery Receipt</button>
                 </div>
             </form>
         </section>
@@ -142,7 +181,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p id="stockInConfirmMessage">The Clerk will count the actual quantity. Stock will not change until the Clerk verifies it.</p>
                 <div class="material-remove-modal__actions">
                     <button type="button" class="btn-secondary" data-stock-in-confirm-close>Cancel</button>
-                    <button type="button" class="btn-primary" data-stock-in-confirm-submit>Send to Clerk</button>
+                    <button type="button" class="btn-primary" data-stock-in-confirm-submit>Submit Delivery Receipt</button>
                 </div>
             </section>
         </div>
@@ -151,7 +190,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <div class="inventory-report-heading">
                 <div>
                     <h2 class="section-title-inline">Delivery Verification</h2>
-                    <p>Stock updates only after the Clerk verifies the actual quantity.</p>
                 </div>
             </div>
             <div class="table-responsive">

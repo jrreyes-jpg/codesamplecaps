@@ -309,7 +309,7 @@ $adminPageTitle = 'Consumable Material Master - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261116-2',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -319,7 +319,7 @@ include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 <main class="main-content inventory-main-content inventory-light-main">
-    <div class="page-stack inventory-page-stack material-master-page">
+    <div class="shared-page-container page-stack inventory-page-stack material-master-page">
         <?php if ($materialFlash): ?>
             <div class="material-toast material-toast--<?php echo $materialFlash['type'] === 'success' ? 'success' : 'error'; ?>" role="<?php echo $materialFlash['type'] === 'success' ? 'status' : 'alert'; ?>" data-material-toast data-auto-hide="<?php echo $materialFlash['type'] === 'success' ? 'true' : 'false'; ?>">
                 <span aria-hidden="true"><?php echo $materialFlash['type'] === 'success' ? '&#10003;' : '!'; ?></span>

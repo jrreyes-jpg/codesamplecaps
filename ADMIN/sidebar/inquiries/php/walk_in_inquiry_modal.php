@@ -122,13 +122,13 @@
 
                 <div class="input-group input-group-wide">
                     <label for="walk_in_site_address">Site Address Details <span class="required-indicator">*</span></label>
-                    <textarea id="walk_in_site_address" name="site_address" rows="2" minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio" data-walk-in-site-address required><?php echo htmlspecialchars((string)($walkInOldInput['site_address'] ?? '')); ?></textarea>
+                    <textarea id="walk_in_site_address" class="shared-inquiry-textarea" name="site_address" rows="2" minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio" data-walk-in-site-address required><?php echo htmlspecialchars((string)($walkInOldInput['site_address'] ?? '')); ?></textarea>
                     <small class="walk-in-field-error" data-walk-in-site-address-error></small>
                 </div>
 
                 <div class="input-group input-group-wide">
                     <label for="walk_in_description">Project Description <span class="required-indicator">*</span></label>
-                    <textarea id="walk_in_description" name="description" rows="3" minlength="10" maxlength="2000" placeholder="Tell us the equipment, issue, or work needed" data-walk-in-description required><?php echo htmlspecialchars((string)($walkInOldInput['description'] ?? '')); ?></textarea>
+                    <textarea id="walk_in_description" class="shared-inquiry-textarea" name="description" rows="2" minlength="10" maxlength="2000" placeholder="Equipment, issue, or work needed" data-walk-in-description required><?php echo htmlspecialchars((string)($walkInOldInput['description'] ?? '')); ?></textarea>
                     <small class="walk-in-field-error" data-walk-in-description-error></small>
                 </div>
 
@@ -154,9 +154,9 @@
             </div>
 
             <div class="form-actions walk-in-inquiry-actions">
-                <button type="button" class="btn-secondary walk-in-clear-button" data-walk-in-clear>Clear Form</button>
+                <button type="button" class="btn-secondary walk-in-clear-button shared-clear-action" data-walk-in-clear disabled>Clear Form</button>
                 <button type="button" class="btn-secondary" data-walk-in-inquiry-close>Cancel</button>
-                <button type="submit" class="btn-primary" value="pending" data-walk-in-submit-action>Save as Pending</button>
+                <button type="submit" class="btn-primary shared-ready-submit" value="pending" data-walk-in-submit-action disabled>Save as Pending</button>
             </div>
         </form>
     </div>

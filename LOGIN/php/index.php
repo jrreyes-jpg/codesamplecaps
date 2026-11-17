@@ -29,6 +29,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <link rel="preload" href="../../IMAGES/edge.jpg" as="image">
     <link rel="stylesheet" href="../css/loader.css?v=<?php echo rawurlencode((string)filemtime(__DIR__ . '/../css/loader.css')); ?>">
     <link rel="stylesheet" href="../css/index.css?v=<?php echo rawurlencode($inquiryFormStyleVersion); ?>">
+    <link rel="stylesheet" href="/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-1">
     <link rel="stylesheet" href="../css/public-confirmation.css">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261112-1">
     <link rel="stylesheet" href="/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/css/action-loading.css') ?: 1)); ?>">
@@ -518,18 +519,11 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <div class="inquiry-grid inquiry-grid--contact-details" data-inquiry-contact-details>
                 <label>
-                    <span class="field-label-with-info">
-                        Contact Person’s Full Name <b class="required-mark">*</b>
-                        <span class="field-info-wrap">
-                            <button class="field-info-button js-field-info-button" type="button" aria-label="Full name guidance" aria-controls="inquiryContactPersonDetails" aria-describedby="inquiryContactPersonDetails" aria-expanded="false">i</button>
-                            <small id="inquiryContactPersonDetails" class="field-tooltip js-field-tooltip" role="tooltip">Enter first name, middle name (optional), last name, and suffix (if any).</small>
-                        </span>
-                    </span>
+                    <span>Contact Person’s Full Name <b class="required-mark">*</b></span>
                     <span class="inquiry-validation-control">
-                        <input id="inquiryContactPerson" type="text" name="client_name" data-label="Contact Person’s Full Name" data-persistent-valid-check required maxlength="150" autocomplete="name" placeholder="e.g., Juan Dela Cruz" aria-describedby="inquiryContactPersonHelp">
+                        <input id="inquiryContactPerson" type="text" name="client_name" data-label="Contact Person’s Full Name" data-persistent-valid-check required maxlength="150" autocomplete="name" placeholder="e.g., Juan Dela Cruz">
                         <span class="inquiry-validation-check" aria-hidden="true"></span>
                     </span>
-                    <small id="inquiryContactPersonHelp" class="field-help">Contact person for this request. Enter your full name.</small>
                     <small class="field-error"></small>
                 </label>
 
@@ -645,37 +639,19 @@ if (empty($_SESSION['inquiry_form_token'])) {
             </div>
 
             <label>
-                <span class="field-label-with-info">
-                    Site Address Details <b class="required-mark">*</b>
-                    <span class="field-info-wrap">
-                        <button class="field-info-button js-field-info-button" type="button" aria-label="Site address help" aria-controls="siteAddressHelp" aria-describedby="siteAddressHelp" aria-expanded="false">i</button>
-                        <small id="siteAddressHelp" class="field-tooltip js-field-tooltip" role="tooltip">Enter the address where the service is needed. Add a unit/floor or nearby landmark, if applicable. No need to repeat the location selected above.</small>
-                    </span>
-                </span>
-                <textarea name="site_address" data-label="Site Address Details" rows="3" required minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio"></textarea>
+                <span>Site Address Details <b class="required-mark">*</b></span>
+                <textarea class="shared-inquiry-textarea" name="site_address" data-label="Site Address Details" rows="2" required minlength="5" maxlength="500" placeholder="House/building no., street, subdivision or sitio"></textarea>
                 <small class="field-error"></small>
             </label>
 
             <label class="project-description-field">
-                <span class="field-label-with-info">
-                    Project Description <b class="required-mark">*</b>
-                    <span class="field-info-wrap">
-                        <button class="field-info-button js-field-info-button" type="button" aria-label="Project description note">i</button>
-                        <small class="field-tooltip js-field-tooltip">Use at least 10 characters. Example: Renovate, install CCTV, or fix wiring.</small>
-                    </span>
-                </span>
-                <textarea name="description" data-label="Project Description" rows="4" required minlength="10" maxlength="2000" data-help-tooltip-target placeholder="Tell us the equipment, issue, site condition, or project scope."></textarea>
+                <span>Project Description <b class="required-mark">*</b></span>
+                <textarea class="shared-inquiry-textarea" name="description" data-label="Project Description" rows="2" required minlength="10" maxlength="2000" placeholder="Equipment, issue, site condition, or project scope"></textarea>
                 <small class="field-error"></small>
             </label>
 
             <label class="preferred-inspection-field">
-                <span class="field-label-with-info">
-                    Tentative Inspection Date <b class="required-mark">*</b>
-                    <span class="field-info-wrap">
-                        <button class="field-info-button js-date-info-button" type="button" aria-label="Inspection date note">i</button>
-                        <small class="field-tooltip js-date-tooltip">This is only your preferred date. We will contact you to confirm the final date.</small>
-                    </span>
-                </span>
+                <span>Tentative Inspection Date <b class="required-mark">*</b></span>
                 <span class="date-input-wrap">
                     <input
                         type="date"
@@ -695,10 +671,10 @@ if (empty($_SESSION['inquiry_form_token'])) {
 
             <p class="inquiry-form-message js-inquiry-message" aria-live="polite"></p>
             <div class="inquiry-modal-actions">
-                <button class="consult-close inquiry-clear-button js-clear-inquiry-draft" type="button">Clear form</button>
+                <button class="consult-close inquiry-clear-button shared-clear-action js-clear-inquiry-draft" type="button" disabled>Clear form</button>
                 <span class="inquiry-modal-primary-actions">
                     <button id="closeInquiryModal" class="consult-close" type="button">Close</button>
-                    <button type="submit" class="btn btn-primary inquiry-submit">Submit Inquiry</button>
+                    <button type="submit" class="btn btn-primary inquiry-submit shared-ready-submit" disabled>Submit Inquiry</button>
                 </span>
             </div>
         </form>

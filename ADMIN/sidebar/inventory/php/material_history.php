@@ -36,14 +36,14 @@ $adminPageTitle = 'Consumable Stock History - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261116-1',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-3',
 ];
 $adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 <main class="main-content inventory-main-content inventory-light-main">
-    <div class="page-stack inventory-page-stack material-history-page">
+    <div class="shared-page-container page-stack inventory-page-stack material-history-page">
         <section class="form-panel material-history-panel">
             <div class="inventory-report-heading material-history-heading">
                 <div><h1 class="section-title-inline">Consumable Stock History</h1></div>

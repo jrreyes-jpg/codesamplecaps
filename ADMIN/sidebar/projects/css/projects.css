@@ -3059,7 +3059,7 @@ body.walk-in-save-lock {
     max-height: min(88vh, 760px);
     overflow: auto;
     margin: 0;
-    padding: 24px;
+    padding: 20px;
     border-radius: 22px;
     background: #ffffff;
     box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
@@ -3074,7 +3074,22 @@ body.walk-in-save-lock {
 .walk-in-inquiry-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 10px 14px;
+}
+
+.walk-in-inquiry-form .input-group {
+    gap: 4px;
+}
+
+.walk-in-inquiry-form .input-group input,
+.walk-in-inquiry-form .input-group select,
+.walk-in-inquiry-form .input-group textarea {
+    min-height: 42px;
+    padding: 9px 12px;
+}
+
+.walk-in-inquiry-form .input-group textarea.shared-inquiry-textarea {
+    min-height: 76px;
 }
 
 .walk-in-inquiry-grid .input-group-wide {
@@ -3097,7 +3112,7 @@ body.walk-in-save-lock {
 
 .walk-in-combobox__toggle {
     position: absolute;
-    top: 8px;
+    top: 4px;
     right: 9px;
     width: 34px;
     height: 34px;
@@ -3169,7 +3184,7 @@ body.walk-in-save-lock {
 
 .walk-in-inquiry-actions {
     justify-content: flex-end;
-    margin-top: 22px;
+    margin-top: 14px;
 }
 
 .walk-in-clear-button {

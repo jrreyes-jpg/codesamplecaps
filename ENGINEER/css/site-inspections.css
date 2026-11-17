@@ -2284,13 +2284,13 @@ body.inspection-is-submitting {
 
 .inspection-details-navigation {
     position: sticky;
-    top: 112px;
+    top: 108px;
     z-index: 40;
-    width: fit-content;
+    width: 100%;
     align-self: flex-start;
     margin: 0 0 8px;
-    border-radius: 10px;
-    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
+    padding: 8px 0;
+    background: #f8fafc;
 }
 
 .inspection-details-back {
@@ -2307,6 +2307,7 @@ body.inspection-is-submitting {
     font-weight: 700;
     line-height: 1.3;
     text-decoration: none;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
 }
 
 .inspection-details-back:hover,
@@ -2335,6 +2336,7 @@ body.inspection-is-submitting {
         top: 88px;
         width: 100%;
         margin: 0 0 6px;
+        padding: 6px 0;
     }
 
     .inspection-details-back {

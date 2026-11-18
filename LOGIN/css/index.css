@@ -516,6 +516,7 @@ h4 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px 14px;
+    align-items: start;
 }
 
 .inquiry-grid--contact-details {
@@ -524,13 +525,6 @@ h4 {
 
 .inquiry-grid--service-preference {
     align-items: start;
-}
-
-.inquiry-service-group {
-    display: grid;
-    min-width: 0;
-    gap: 10px;
-    align-content: start;
 }
 
 .inquiry-grid--service-preference > .preferred-inspection-field {
@@ -575,6 +569,7 @@ h4 {
 
 .inquiry-form input,
 .inquiry-form select {
+    height: 42px;
     min-height: 42px;
     line-height: 1.2;
 }
@@ -829,6 +824,10 @@ h4 {
     align-items: center;
     gap: 10px;
     min-height: 34px;
+}
+
+.inquiry-email-verify-row[hidden] {
+    display: none;
 }
 
 .inquiry-email-verify-button {
@@ -1123,6 +1122,10 @@ body.has-inquiry-otp-open {
 
 .other-service-field.is-hidden {
     display: none;
+}
+
+.inquiry-grid > .other-service-field {
+    grid-column: 1 / -1;
 }
 
 .inquiry-form-message {

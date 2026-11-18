@@ -631,6 +631,7 @@ const initInquiryForm = () => {
         const submitButton = inquiryForm.querySelector('.inquiry-submit');
         const emailInput = inquiryForm.querySelector('input[name="email"]');
         const verifyEmailButton = inquiryForm.querySelector('.js-inquiry-email-verify');
+        const verifyEmailRow = verifyEmailButton?.closest('.inquiry-email-verify-row');
         const emailVerifyStatus = inquiryForm.querySelector('.js-inquiry-email-status');
         const otpModal = document.querySelector('[data-inquiry-otp-modal]');
         const otpCodeInput = otpModal?.querySelector('.js-inquiry-otp-code');
@@ -663,6 +664,7 @@ const initInquiryForm = () => {
         let contactCheckTimer = 0;
         let contactCheckId = 0;
         let contactCanVerifyEmail = false;
+        let contactEmailBlocked = false;
         let contactNote = '';
         let syncSubmitReadyState = () => {};
         let syncClearActionState = () => {};
@@ -685,6 +687,9 @@ const initInquiryForm = () => {
                 status: emailVerifyStatus,
                 verified: isVerified,
             });
+            if (verifyEmailRow) {
+                verifyEmailRow.hidden = contactEmailBlocked && !isVerified;
+            }
             if (Date.now() >= otpLockedUntil) {
                 verifyEmailButton.textContent = isVerified
                     ? 'Change Email'
@@ -703,6 +708,7 @@ const initInquiryForm = () => {
         const unlockVerifiedEmail = () => {
             verifiedEmail = '';
             otpWasSent = false;
+            contactEmailBlocked = false;
             contactNote = '';
             window.edgeEmailVerificationUI?.clearAndFocus({
                 input: emailInput,
@@ -719,6 +725,7 @@ const initInquiryForm = () => {
 
             if (result.complete === false) {
                 contactCanVerifyEmail = false;
+                contactEmailBlocked = false;
                 contactNote = '';
                 clearFieldError(emailInput);
                 updateEmailVerification();
@@ -732,12 +739,14 @@ const initInquiryForm = () => {
                 setFieldError(emailInput, error);
                 verifiedEmail = '';
                 contactCanVerifyEmail = false;
+                contactEmailBlocked = ['active_inquiry_exists', 'account_email_exists'].includes(result.status);
                 contactNote = '';
                 updateEmailVerification();
                 return false;
             }
 
             contactCanVerifyEmail = result.can_verify_email !== false;
+            contactEmailBlocked = false;
             if (result.email_verified) {
                 verifiedEmail = (emailInput?.value || '').trim().toLowerCase();
                 otpTargetEmail = '';
@@ -1989,6 +1998,7 @@ const restoreInquiryDraft = () => {
                 cancelPendingOtp();
             }
             contactCanVerifyEmail = false;
+            contactEmailBlocked = false;
             contactNote = '';
             updateEmailVerification();
             resetFieldState(event.currentTarget);
@@ -2090,6 +2100,7 @@ const restoreInquiryDraft = () => {
             verifiedEmail = '';
             draftExpiresAt = 0;
             contactCanVerifyEmail = false;
+            contactEmailBlocked = false;
             inquiryFormDirty = false;
             updateEmailVerification();
             syncClearActionState();

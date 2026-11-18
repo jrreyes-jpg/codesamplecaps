@@ -562,26 +562,18 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <p class="inquiry-contact-feedback" data-inquiry-contact-feedback aria-live="polite"></p>
 
             <div class="inquiry-grid">
-                <div class="inquiry-service-group">
-                    <label>
-                        <span>Service Category <b class="required-mark">*</b></span>
-                        <select name="service_category" data-label="Service Category" required>
-                            <option value="" selected disabled>Select service</option>
-                            <option>New Automation Installation</option>
-                            <option>System Upgrade/Retrofitting</option>
-                            <option>Preventive Maintenance</option>
-                            <option>Emergency Troubleshooting</option>
-                            <option>Other / Not sure yet</option>
-                        </select>
-                        <small class="field-error"></small>
-                    </label>
-
-                    <label class="other-service-field is-hidden">
-                        <span>Other Service Details <b class="required-mark">*</b></span>
-                        <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed" disabled>
-                        <small class="field-error"></small>
-                    </label>
-                </div>
+                <label>
+                    <span>Service Category <b class="required-mark">*</b></span>
+                    <select name="service_category" data-label="Service Category" required>
+                        <option value="" selected disabled>Select service</option>
+                        <option>New Automation Installation</option>
+                        <option>System Upgrade/Retrofitting</option>
+                        <option>Preventive Maintenance</option>
+                        <option>Emergency Troubleshooting</option>
+                        <option>Other / Not sure yet</option>
+                    </select>
+                    <small class="field-error"></small>
+                </label>
 
                 <label>
                     <span>Estimated Budget <small>(Optional)</small></span>
@@ -592,6 +584,12 @@ if (empty($_SESSION['inquiry_form_token'])) {
                         <?php endforeach; ?>
                     </select>
                     <small class="field-help">This is only a guide. The final cost may change after inspection.</small>
+                    <small class="field-error"></small>
+                </label>
+
+                <label class="other-service-field is-hidden">
+                    <span>Other Service Details <b class="required-mark">*</b></span>
+                    <input type="text" name="other_service_details" data-label="Other Service Details" placeholder="Briefly describe the service needed" disabled>
                     <small class="field-error"></small>
                 </label>
             </div>

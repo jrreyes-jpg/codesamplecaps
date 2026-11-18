@@ -943,6 +943,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $contactNo = preg_replace('/\D+/', '', (string)($_POST['contact_no'] ?? '')) ?? '';
         $siteAddress = trim((string)($_POST['site_address'] ?? ''));
         $serviceCategory = trim((string)($_POST['service_category'] ?? ''));
+        $otherServiceDetails = trim((string)($_POST['other_service_details'] ?? ''));
         $estimatedBudget = trim((string)($_POST['estimated_budget'] ?? ''));
         $description = trim((string)($_POST['description'] ?? ''));
         $preferredDate = trim((string)($_POST['preferred_inspection_date'] ?? ''));
@@ -951,7 +952,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'System Upgrade/Retrofitting',
             'Preventive Maintenance',
             'Emergency Troubleshooting',
-            'Other Service',
+            'Other / Not sure yet',
         ];
 
         if ($inquiryId <= 0) {
@@ -966,6 +967,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Enter a clear site address.';
         } elseif (!in_array($serviceCategory, $serviceOptions, true)) {
             $error = 'Select a valid service category.';
+        } elseif ($serviceCategory === 'Other / Not sure yet' && mb_strlen($otherServiceDetails, 'UTF-8') < 4) {
+            $error = 'Enter clear other service details.';
         } elseif (!inquiry_budget_is_valid($estimatedBudget)) {
             $error = 'Select a valid budget range.';
         } elseif (mb_strlen($description, 'UTF-8') < 10 || mb_strlen($description, 'UTF-8') > 2000) {
@@ -974,6 +977,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $dateValidation = walk_in_inquiry_validate_preferred_date($preferredDate);
             if (!$dateValidation['valid']) {
                 $error = $dateValidation['message'];
+            }
+        }
+
+        if ($error === '' && $serviceCategory === 'Other / Not sure yet') {
+            $description .= "\n\nOther service details: " . $otherServiceDetails;
+            if (mb_strlen($description, 'UTF-8') > 2000) {
+                $error = 'Project and other service details must not exceed 2000 characters.';
             }
         }
 
@@ -2543,7 +2553,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261117-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261118-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
@@ -2556,7 +2566,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261112-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261118-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2725,11 +2735,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             default => '',
                         };
                         $isPendingConfirmation = in_array($currentStatus, ['Pending Review', 'Verified Lead', 'Not Qualified'], true);
-                        $displayStatus = $isConvertedToProject
+                        $displayStatus = $currentStatus === 'Needs Information'
+                            ? 'Needs Information'
+                            : ($isConvertedToProject
                             ? 'Converted to Project'
                             : ($isPendingConfirmation
                                 ? 'Pending Review'
-                                : ($quotationLifecycleStatus !== '' ? $quotationLifecycleStatus : $currentStatus));
+                                : ($quotationLifecycleStatus !== '' ? $quotationLifecycleStatus : $currentStatus)));
                         if (in_array($displayStatus, ['Verified Lead', 'Not Qualified'], true)) {
                             $displayStatus = 'Pending Review';
                         }
@@ -2867,6 +2879,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $inquiryListUrl = $detailsReturnUrl !== ''
                             ? $detailsReturnUrl
                             : '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php' . (!empty($inquiry['archived_at']) ? '?view=archive' : '');
+                        $projectDescription = trim((string)$inquiry['description']);
+                        $otherServiceDetails = '';
+                        if (preg_match('/(?:\r?\n){2}Other service details:\s*(.+)\z/is', $projectDescription, $otherServiceMatch)) {
+                            $otherServiceDetails = trim((string)$otherServiceMatch[1]);
+                            $projectDescription = trim(substr($projectDescription, 0, -strlen((string)$otherServiceMatch[0])));
+                        }
                         ?>
                         <div class="inquiry-modal<?php echo $isDetailsPage ? ' inquiry-modal--page' : ''; ?>" id="<?php echo $inquiryModalId; ?>" data-inquiry-id="<?php echo (int)$inquiry['id']; ?>" data-inspection-id="<?php echo (int)($latestInspection['id'] ?? 0); ?>" data-inspection-status="<?php echo htmlspecialchars((string)($latestInspection['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-submitted-at="<?php echo htmlspecialchars((string)($latestInspection['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-quotation-status="<?php echo htmlspecialchars($quotationStage, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $isServerOpenedModal ? '' : ' hidden'; ?>>
                             <div class="inquiry-modal__panel" id="inquiryDetailsTop<?php echo (int)$inquiry['id']; ?>" role="<?php echo $isDetailsPage ? 'region' : 'dialog'; ?>" <?php echo $isDetailsPage ? '' : 'aria-modal="true"'; ?> aria-labelledby="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>">
@@ -2881,7 +2899,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
                                             <span class="inquiry-modal__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></span>
                                             <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </span>
@@ -2934,7 +2951,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <div class="inquiry-modal-panels" <?php echo !empty($inquiry['archived_at']) ? 'data-archived-readonly="true"' : ''; ?>>
                                 <section class="inquiry-tab-panel<?php echo $serverOpenTab === 'client' ? ' is-active' : ''; ?>" data-inquiry-panel="client"<?php echo $serverOpenTab === 'client' ? '' : ' hidden'; ?>>
                                     <div class="inquiry-section-title">Contact and Request Details</div>
-                                    <div class="inquiry-details-grid">
+                                    <div class="inquiry-details-grid inquiry-details-grid--plain">
                                         <?php if (trim((string)$inquiry['email']) !== ''): ?>
                                             <div class="inquiry-detail"><span>Email</span><strong><?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                         <?php endif; ?>
@@ -2946,9 +2963,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <div class="inquiry-detail"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inquiry['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     </div>
 
-                                    <div class="inquiry-description">
-                                        <strong>Project Description</strong><br>
-                                        <?php echo nl2br(htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8')); ?>
+                                    <div class="inquiry-description inquiry-service-description">
+                                        <div>
+                                            <span>Service Category</span>
+                                            <strong><?php echo htmlspecialchars((string)$inquiry['service_category'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                        </div>
+                                        <?php if ($otherServiceDetails !== ''): ?>
+                                            <div>
+                                                <span>Other Service Details</span>
+                                                <strong><?php echo htmlspecialchars($otherServiceDetails, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="inquiry-service-description__project">
+                                            <span>Project Description</span>
+                                            <strong><?php echo nl2br(htmlspecialchars($projectDescription, ENT_QUOTES, 'UTF-8')); ?></strong>
+                                        </div>
                                     </div>
 
                                     <?php if (empty($inquiry['archived_at']) && $currentStatus === 'Needs Information'): ?>
@@ -2980,11 +3009,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </label>
                                                 <label>
                                                     <span>Service Category</span>
-                                                    <select name="service_category" required>
-                                                        <?php foreach (['New Automation Installation', 'System Upgrade/Retrofitting', 'Preventive Maintenance', 'Emergency Troubleshooting', 'Other Service'] as $service): ?>
-                                                            <option value="<?php echo htmlspecialchars($service, ENT_QUOTES, 'UTF-8'); ?>"<?php echo (string)$inquiry['service_category'] === $service ? ' selected' : ''; ?>><?php echo htmlspecialchars($service, ENT_QUOTES, 'UTF-8'); ?></option>
+                                                    <select name="service_category" data-inquiry-service-category required>
+                                                        <?php foreach (['New Automation Installation', 'System Upgrade/Retrofitting', 'Preventive Maintenance', 'Emergency Troubleshooting', 'Other / Not sure yet'] as $service): ?>
+                                                            <?php $selectedService = (string)$inquiry['service_category'] === 'Other Service' ? 'Other / Not sure yet' : (string)$inquiry['service_category']; ?>
+                                                            <option value="<?php echo htmlspecialchars($service, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $selectedService === $service ? ' selected' : ''; ?>><?php echo htmlspecialchars($service, ENT_QUOTES, 'UTF-8'); ?></option>
                                                         <?php endforeach; ?>
                                                     </select>
+                                                </label>
+                                                <label class="inquiry-details-edit-grid__wide inquiry-other-service-field" data-inquiry-other-service-field<?php echo $selectedService === 'Other / Not sure yet' ? '' : ' hidden'; ?>>
+                                                    <span>Other Service Details</span>
+                                                    <input type="text" name="other_service_details" minlength="4" maxlength="250" value="<?php echo htmlspecialchars($otherServiceDetails, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $selectedService === 'Other / Not sure yet' ? ' required' : ' disabled'; ?>>
                                                 </label>
                                                 <label>
                                                     <span>Estimated Budget</span>
@@ -3001,7 +3035,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </label>
                                                 <label class="inquiry-details-edit-grid__wide">
                                                     <span>Project Description</span>
-                                                    <textarea name="description" rows="3" minlength="10" maxlength="2000" required><?php echo htmlspecialchars((string)$inquiry['description'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                                    <textarea name="description" rows="3" minlength="10" maxlength="2000" required><?php echo htmlspecialchars($projectDescription, ENT_QUOTES, 'UTF-8'); ?></textarea>
                                                 </label>
                                             </div>
                                             <div class="inquiry-review-actions">
@@ -3023,7 +3057,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <input type="hidden" name="action" value="mark_pending_confirmation">
                                                     <button type="submit" class="btn-primary" data-information-complete>Information Complete</button>
                                                 <?php else: ?>
-                                                    <button type="submit" name="action" value="mark_needs_information" class="btn-secondary" data-needs-information-submit disabled>Needs Information</button>
+                                                    <input type="hidden" name="action" value="mark_needs_information">
+                                                    <button type="submit" class="btn-secondary" data-needs-information-submit disabled>Needs Information</button>
                                                 <?php endif; ?>
                                             </div>
                                         </form>

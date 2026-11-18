@@ -1260,6 +1260,10 @@
     grid-column: 1 / -1;
 }
 
+.inquiry-other-service-field[hidden] {
+    display: none;
+}
+
 @media (max-width: 720px) {
     .inquiry-details-edit-grid {
         grid-template-columns: 1fr;
@@ -1331,6 +1335,17 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+}
+
+.inquiry-details-grid--plain {
+    gap: 12px 24px;
+}
+
+.inquiry-details-grid--plain .inquiry-detail {
+    padding: 2px 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 
 .inquiry-expanded-grid {
@@ -2191,7 +2206,7 @@
 
 /* Flat details page para walang dobleng puting wrapper. */
 .main-content.admin-dashboard-content.inquiry-details-main {
-    padding: 92px 24px 24px;
+    padding: 112px 24px 24px;
 }
 
 .inquiries-shell.is-details-page {
@@ -2252,6 +2267,42 @@
 
 .inquiry-modal--page .inquiry-modal__head.has-page-archive-actions > div:first-child {
     padding-right: 100px;
+}
+
+.inquiry-service-description {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 24px;
+    background: #f8fafc;
+}
+
+.inquiry-service-description span {
+    display: block;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.inquiry-service-description strong {
+    display: block;
+    margin-top: 2px;
+    color: #0f172a;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.inquiry-service-description__project {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+    .inquiry-service-description {
+        grid-template-columns: 1fr;
+    }
+
+    .inquiry-service-description__project {
+        grid-column: auto;
+    }
 }
 
 .inquiry-engineer-site-note {

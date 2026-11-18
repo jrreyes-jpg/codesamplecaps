@@ -612,8 +612,11 @@ document.addEventListener('DOMContentLoaded', function () {
         discardConfirmBox.hidden = true;
 
         if (keepEditing && modal) {
-            keepAction?.();
-            modal.querySelector('select[name="engineer_id"], input[name="inspection_date"]')?.focus();
+            if (keepAction) {
+                keepAction();
+            } else {
+                modal.querySelector('select[name="engineer_id"], input[name="inspection_date"]')?.focus();
+            }
         }
     };
 
@@ -655,6 +658,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const inquiryScreeningForm = document.querySelector('.inquiry-screening-form');
     const screeningNoteInput = inquiryScreeningForm?.querySelector('textarea[name="admin_notes"]');
     const needsInformationButton = inquiryScreeningForm?.querySelector('[data-needs-information-submit]');
+    const detailsServiceCategory = inquiryDetailsEditForm?.querySelector('[data-inquiry-service-category]');
+    const otherServiceField = inquiryDetailsEditForm?.querySelector('[data-inquiry-other-service-field]');
+    const otherServiceInput = otherServiceField?.querySelector('input[name="other_service_details"]');
+    let inquiryDetailsSaveAccepted = false;
 
     const editableFormValue = function (form) {
         return Array.from(new FormData(form).entries())
@@ -681,8 +688,24 @@ document.addEventListener('DOMContentLoaded', function () {
         inquiryDetailsEditForm.addEventListener('submit', function (event) {
             if (inquiryDetailsEditForm.dataset.dirty !== '1') {
                 event.preventDefault();
+                return;
             }
+            inquiryDetailsSaveAccepted = true;
+            inquiryDetailsEditForm.dataset.dirty = '0';
         });
+
+        const syncOtherServiceField = function () {
+            const showOtherService = detailsServiceCategory?.value === 'Other / Not sure yet';
+            if (otherServiceField) otherServiceField.hidden = !showOtherService;
+            if (otherServiceInput) {
+                otherServiceInput.disabled = !showOtherService;
+                otherServiceInput.required = showOtherService;
+            }
+            updateDetailsSaveState();
+        };
+
+        detailsServiceCategory?.addEventListener('change', syncOtherServiceField);
+        syncOtherServiceField();
         updateDetailsSaveState();
     }
 
@@ -699,11 +722,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     inquiryScreeningForm?.addEventListener('submit', function (event) {
-        if (!event.submitter?.hasAttribute('data-information-complete')) {
+        const isInformationComplete = event.submitter?.hasAttribute('data-information-complete');
+        const isNeedsInformation = event.submitter?.hasAttribute('data-needs-information-submit');
+        if (!isInformationComplete && !isNeedsInformation) {
             return;
         }
 
-        if (inquiryDetailsEditForm?.dataset.dirty === '1') {
+        if (isInformationComplete && inquiryDetailsEditForm?.dataset.dirty === '1') {
             event.preventDefault();
             showPrerequisiteNotice('Save the updated inquiry details first.');
             return;
@@ -717,14 +742,54 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         showConfirm(
             inquiryScreeningForm,
-            'Have all missing details been confirmed with the client, including details that did not require changes?',
+            isInformationComplete
+                ? 'Have all missing details been confirmed with the client, including details that did not require changes?'
+                : 'This inquiry will be marked as Needs Information. Continue?',
             null,
-            {
-                title: 'Complete this inquiry information?',
-                cancel: 'Review Again',
-                confirm: 'Yes, Complete',
+            isInformationComplete
+                ? {
+                    title: 'Complete this inquiry information?',
+                    cancel: 'Review Again',
+                    confirm: 'Yes, Complete',
+                }
+                : {
+                    title: 'Mark as Needs Information?',
+                    cancel: 'Cancel',
+                    confirm: 'Yes, Mark It',
+                }
+        );
+    });
+
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest('a[href]');
+        if (
+            !link
+            || inquiryDetailsSaveAccepted
+            || inquiryDetailsEditForm?.dataset.dirty !== '1'
+            || link.target === '_blank'
+            || link.hasAttribute('download')
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showDiscardConfirm(
+            inquiryDetailsEditForm.closest('.inquiry-modal'),
+            function () {
+                inquiryDetailsSaveAccepted = true;
+                window.location.href = link.href;
+            },
+            function () {
+                inquiryDetailsEditForm.querySelector('input:not([type="hidden"]), select, textarea')?.focus();
             }
         );
+    }, true);
+
+    window.addEventListener('offline', function () {
+        if (inquiryDetailsEditForm?.dataset.dirty === '1') {
+            showPrerequisiteNotice('Connection lost. Your changes are not saved yet. Keep this page open and save after the connection returns.');
+        }
     });
 
     const closeModal = function (modal) {
@@ -3937,7 +4002,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     window.addEventListener('beforeunload', function (event) {
-        if (window.__edgeLogoutInProgress || !document.querySelector('.inquiry-modal[data-review-saving="1"], .inquiry-modal[data-inspection-scheduling="1"]')) {
+        const hasUnsavedInquiryDetails = !inquiryDetailsSaveAccepted
+            && inquiryDetailsEditForm?.dataset.dirty === '1';
+        const hasSavingWorkflow = document.querySelector('.inquiry-modal[data-review-saving="1"], .inquiry-modal[data-inspection-scheduling="1"]');
+        if (window.__edgeLogoutInProgress || (!hasUnsavedInquiryDetails && !hasSavingWorkflow)) {
             return;
         }
         event.preventDefault();

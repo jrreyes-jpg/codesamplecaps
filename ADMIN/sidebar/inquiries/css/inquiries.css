@@ -1048,6 +1048,11 @@
     color: #92400e !important;
 }
 
+.inquiry-status[data-status="Archived"] {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
 .inquiry-status[data-status="Verified Lead"] {
     background: #dcfce7 !important;
     color: #166534 !important;
@@ -1091,11 +1096,6 @@
 .inquiry-status[data-status="Revision Requested"] {
     background: #fef3c7 !important;
     color: #92400e !important;
-}
-
-.inquiry-status[data-status="Accepted"] {
-    background: #dcfce7 !important;
-    color: #166534 !important;
 }
 
 .inquiry-status[data-status="On Hold"] {
@@ -1748,6 +1748,42 @@
     display: none !important;
 }
 
+.inquiry-schedule-form select,
+.inquiry-schedule-form input[type="date"],
+.inquiry-schedule-form textarea {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: #0f172a;
+    box-shadow: none;
+    font: inherit;
+}
+
+.inquiry-schedule-form select,
+.inquiry-schedule-form input[type="date"] {
+    min-height: 44px;
+    padding: 10px 12px;
+}
+
+.inquiry-schedule-form select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 40px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2315803d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px 16px;
+}
+
+.inquiry-schedule-form select:focus,
+.inquiry-schedule-form input[type="date"]:focus,
+.inquiry-schedule-form textarea:focus {
+    border-color: #16a34a;
+    outline: 2px solid rgba(22, 163, 74, 0.12);
+}
+
 .inquiry-schedule-editor {
     margin-top: 10px;
     border: 1px solid #dbe5f1;
@@ -2239,6 +2275,7 @@
 .inquiry-modal--page .inquiry-modal-panels {
     overflow: visible;
     scrollbar-gutter: auto;
+    background: transparent;
 }
 
 .inquiry-modal--page .inquiry-tab-panel {
@@ -2259,6 +2296,11 @@
 
 .inquiry-modal--page .inquiry-modal__head {
     border-radius: 0;
+    background: transparent;
+}
+
+.inquiry-modal--page .inquiry-modal-tabs {
+    background: transparent;
 }
 
 .inquiry-modal--page .inquiry-modal__head > div:first-child {
@@ -2269,10 +2311,63 @@
     padding-right: 100px;
 }
 
-.inquiry-service-description {
+.inquiry-modal--page .inquiry-service-description {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 24px;
+    gap: 10px;
+    margin-top: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+/* Maliit na cards tulad ng Engineer Site Inspection details. */
+.inquiry-modal--page .inquiry-details-grid--plain .inquiry-detail,
+.inquiry-modal--page .inquiry-service-description > div,
+.inquiry-modal--page .inquiry-inspection-summary-grid > .inquiry-detail {
+    min-height: 76px;
+    padding: 13px 14px;
+    border: 1px solid #dbe5f1;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.inquiry-modal--page .inquiry-screening-form {
+    margin-top: 2px;
+    padding: 14px;
+    border: 1px solid #dbe5f1;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.inquiry-modal--page .inquiry-inspection-summary-grid {
+    gap: 10px;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.inquiry-modal--page .inquiry-tab-panel > .inquiry-schedule-form {
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.inquiry-modal--page .inquiry-tab-panel > .inquiry-schedule-form .inquiry-schedule-context {
+    padding: 11px 13px;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    background: #f0fdf4;
+}
+
+.inquiry-modal--page .inquiry-tab-panel > .inquiry-schedule-form .inquiry-schedule-grid > label,
+.inquiry-modal--page .inquiry-tab-panel > .inquiry-schedule-form > .inquiry-engineer-site-note {
+    margin-top: 0;
+    padding: 14px;
+    border: 1px solid #dbe5f1;
+    border-radius: 12px;
     background: #f8fafc;
 }
 
@@ -2957,7 +3052,7 @@
 
 .inquiry-confirm__details {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: 95px minmax(0, 1fr);
     gap: 8px 14px;
     margin: 14px 0 0;
     padding: 14px;

@@ -553,6 +553,14 @@ document.addEventListener('DOMContentLoaded', function () {
             messageBox.textContent = message;
         }
 
+        if (messageBox && detailsBox) {
+            if (labels.detailsBeforeMessage) {
+                messageBox.before(detailsBox);
+            } else {
+                messageBox.after(detailsBox);
+            }
+        }
+
         if (cancelButton) {
             cancelButton.textContent = labels.cancel || 'No';
         }
@@ -1583,19 +1591,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const scheduleRequestData = new FormData(form);
                 form.dataset.submitting = '1';
                 if (submitButton) {
-                    const spinner = document.createElement('span');
-                    const label = document.createElement('span');
-                    spinner.className = 'inquiry-send-spinner';
-                    spinner.setAttribute('aria-hidden', 'true');
-                    label.textContent = 'Scheduling inspection...';
                     submitButton.disabled = true;
-                    submitButton.classList.add('inquiry-send-button--loading');
-                    submitButton.replaceChildren(spinner, label);
                 }
                 setInspectionSchedulingState(
                     modal,
                     true,
-                    hasExistingSchedule ? 'Updating inspection schedule...' : 'Saving inspection schedule...'
+                    hasExistingSchedule ? 'Updating schedule...' : 'Sending schedule...'
                 );
                 delete form.dataset.confirmed;
                 event.preventDefault();
@@ -1651,16 +1652,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
             event.preventDefault();
             const isReschedule = hasExistingSchedule;
+            const selectedEngineer = engineerInput?.selectedOptions?.[0]?.textContent.trim() || 'Not selected';
+            const selectedDate = dateInput.value
+                ? new Intl.DateTimeFormat('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    timeZone: 'UTC',
+                }).format(new Date(dateInput.value + 'T00:00:00Z'))
+                : 'Not selected';
             showConfirm(
                 form,
                 isReschedule
                     ? 'The updated schedule will be emailed to the Client and Engineer.'
                     : 'The schedule will be emailed to the Client and Engineer.',
-                null,
+                [
+                    { label: 'Engineer', value: selectedEngineer },
+                    { label: 'Date', value: selectedDate },
+                ],
                 {
                     title: isReschedule ? 'Update inspection?' : 'Confirm inspection?',
                     cancel: 'Back',
                     confirm: isReschedule ? 'Update Schedule' : 'Confirm & Notify',
+                    detailsBeforeMessage: true,
                 }
             );
         });
@@ -3908,12 +3922,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     confirmBox.querySelector('[data-inquiry-confirm-no]')?.addEventListener('click', closeConfirm);
-    confirmBox.querySelector('[data-inquiry-confirm-yes]')?.addEventListener('click', function () {
+    confirmBox.querySelector('[data-inquiry-confirm-yes]')?.addEventListener('click', function (event) {
         if (!pendingConfirmForm) {
             closeConfirm();
             return;
         }
 
+        event.currentTarget.disabled = true;
         const form = pendingConfirmForm;
         const confirmationMode = form.dataset.confirmationMode || 'submit';
 

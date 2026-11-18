@@ -2516,7 +2516,7 @@ if (inquiry_center_has_table($conn, 'service_inquiries')) {
             } elseif ($status === 'Verified Lead') {
                 $verifiedCount = $total;
             } elseif ($status === 'For Inspection') {
-                $inspectionCount = $total;
+                $inspectionCount += $total;
             } elseif ($status === 'Not Qualified') {
                 $notQualifiedCount = $total;
             }
@@ -2553,7 +2553,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261118-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261118-5',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
@@ -2566,7 +2566,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261118-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261118-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -2726,34 +2726,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $latestInspectionStatus = $latestInspection
                             ? (string)($latestInspection['status'] ?? 'Assigned')
                             : 'Not Scheduled';
-                        $quotationLifecycleStatus = match ($quotationListStatus) {
-                            'draft' => 'Quotation Draft',
-                            'sent' => 'Awaiting Client',
-                            'revision_requested', 'for_revision' => 'Revision Requested',
-                            'accepted', 'approved' => 'Accepted',
-                            'rejected' => 'Rejected',
-                            default => '',
-                        };
-                        $isPendingConfirmation = in_array($currentStatus, ['Pending Review', 'Verified Lead', 'Not Qualified'], true);
-                        $displayStatus = $currentStatus === 'Needs Information'
-                            ? 'Needs Information'
-                            : ($isConvertedToProject
-                            ? 'Converted to Project'
-                            : ($isPendingConfirmation
-                                ? 'Pending Review'
-                                : ($quotationLifecycleStatus !== '' ? $quotationLifecycleStatus : $currentStatus)));
-                        if (in_array($displayStatus, ['Verified Lead', 'Not Qualified'], true)) {
-                            $displayStatus = 'Pending Review';
-                        }
+                        $displayStatus = !empty($inquiry['archived_at'])
+                            ? 'Archived'
+                            : ($currentStatus === 'Needs Information'
+                                ? 'Needs Information'
+                                : ($isConvertedToProject
+                                    ? 'Converted to Project'
+                                    : ($currentStatus === 'For Inspection' || $latestInspection
+                                        ? 'For Inspection'
+                                        : 'Pending Review')));
                         if (!$isConvertedToProject && $displayStatus === 'For Inspection') {
-                            if (in_array($latestInspectionStatus, ['Ongoing', 'On Hold', 'Completed'], true)) {
-                                $displayStatus = 'Inspection Ongoing';
-                            } elseif ($latestInspectionStatus === 'Submitted') {
+                            if ($latestInspectionStatus === 'Submitted') {
                                 $displayStatus = 'Inspection Submitted';
                             }
                         }
                     ?>
-                    <?php $displayStatusLabel = in_array($displayStatus, ['Inspection Ongoing', 'Inspection Submitted'], true)
+                    <?php $displayStatusLabel = $displayStatus === 'Inspection Submitted'
                         ? $displayStatus
                         : inquiry_center_status_label($displayStatus); ?>
                     <?php
@@ -2838,7 +2826,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                             <div class="inquiry-card__info">
-                                <?php if (in_array($displayStatus, ['For Inspection', 'Inspection Ongoing', 'Inspection Submitted'], true) && !empty($latestInspection['scheduled_at'])): ?>
+                                <?php if (in_array($displayStatus, ['For Inspection', 'Inspection Submitted'], true) && !empty($latestInspection['scheduled_at'])): ?>
                                     <span>Inspection Schedule</span>
                                     <strong><?php echo htmlspecialchars(site_inspection_format_date($latestInspection['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <?php else: ?>
@@ -3353,15 +3341,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="schedule_inspection">
                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
-                                            <?php if (!$showScheduleEditor): ?>
-                                                <strong>Inspection Schedule</strong>
-                                            <?php endif; ?>
                                             <div class="inquiry-schedule-context">
                                                 <?php if (!empty($inquiry['preferred_inspection_date'])): ?>
                                                     <span><b>Client Tentative Date:</b> <?php echo htmlspecialchars(inquiry_center_format_date($inquiry['preferred_inspection_date']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                <?php endif; ?>
-                                                <?php if (!$latestInspection): ?>
-                                                    <span>Confirm with the Client and Engineer before saving.</span>
                                                 <?php endif; ?>
                                             </div>
                                             <?php if ($latestInspection): ?>

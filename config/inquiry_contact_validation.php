@@ -15,6 +15,9 @@ function inquiry_contact_validation_message(array $result): string
     if ($status === 'account_email_exists') {
         return 'This email is already registered. Please use another email.';
     }
+    if ($status === 'active_inquiry_exists') {
+        return "You already have an active inquiry under review. Please wait for our team's update.";
+    }
     if ($status === 'invalid_email') {
         return inquiry_email_invalid_message();
     }
@@ -35,6 +38,27 @@ function inquiry_contact_validation_result(
     $email = mb_strtolower(trim($email), 'UTF-8');
     if (!inquiry_email_is_valid_format($email)) {
         return ['valid' => false, 'status' => 'invalid_email', 'field' => 'email'];
+    }
+
+    // Huwag gumawa ng bagong request habang may kasalukuyang inquiry pa.
+    $activeInquiryStmt = $conn->prepare(
+        "SELECT id
+         FROM service_inquiries
+         WHERE email = ?
+           AND archived_at IS NULL
+           AND LOWER(TRIM(status)) NOT IN ('closed', 'cancelled', 'completed', 'archived')
+         LIMIT 1"
+    );
+    if (!$activeInquiryStmt) {
+        return ['valid' => false, 'status' => 'server_error'];
+    }
+
+    $activeInquiryStmt->bind_param('s', $email);
+    if (!$activeInquiryStmt->execute()) {
+        return ['valid' => false, 'status' => 'server_error'];
+    }
+    if ($activeInquiryStmt->get_result()->fetch_assoc()) {
+        return ['valid' => false, 'status' => 'active_inquiry_exists', 'field' => 'email'];
     }
 
     // Email lang ang account duplicate check. Independent ang name at phone ng inquiry.

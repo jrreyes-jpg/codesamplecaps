@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/inquiry_otp.php';
+require_once __DIR__ . '/../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../config/inquiry_email_verification.php';
 
 function inquiry_verify_json(array $data, int $status = 200): never
@@ -51,6 +52,15 @@ if (!inquiry_email_is_valid_format($email)) {
 }
 if ($submittedEmail === '' || !hash_equals($email, $submittedEmail)) {
     inquiry_verify_json(['success' => false, 'message' => 'Email changed. Send a new verification code.'], 422);
+}
+
+$contactValidation = inquiry_contact_validation_result($conn, 'Client', $email, '');
+if (empty($contactValidation['valid'])) {
+    inquiry_verify_json([
+        'success' => false,
+        'field' => (string)($contactValidation['field'] ?? 'email'),
+        'message' => inquiry_contact_validation_message($contactValidation),
+    ], 422);
 }
 
 $verificationLock = inquiry_otp_rate_status($conn, 'email_verify', $email);

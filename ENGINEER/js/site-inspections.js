@@ -510,6 +510,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const resetRowForType = function (row) {
         row.querySelector('input[name="inventory_id[]"]').value = '';
         row.querySelector('select[name="material_id[]"]').value = '';
+        const nonStockChoice = row.querySelector('[data-non-stock-choice]');
+        if (nonStockChoice) nonStockChoice.value = '';
         row.querySelector('input[name="item_name[]"]').value = '';
         row.querySelector('input[name="quantity[]"]').value = '';
         row.querySelector('select[name="unit[]"]').selectedIndex = 0;
@@ -634,6 +636,66 @@ document.addEventListener('DOMContentLoaded', function () {
         return name.length >= 2 && name.length <= 100 && /\p{L}/u.test(name);
     };
 
+    const findExactStockMaterialOption = function (row, value) {
+        const identity = normalizeMaterialName(value);
+        if (identity === '') return null;
+
+        return Array.from(row.querySelector('[data-material-picker]')?.options || []).find(function (option) {
+            return option.value !== '' && normalizeMaterialName(option.getAttribute('data-name') || '') === identity;
+        }) || null;
+    };
+
+    const updateManualMaterialDecision = function (row, showError) {
+        const picker = row.querySelector('[data-material-picker]');
+        const nameField = row.querySelector('input[name="item_name[]"]');
+        const notesField = row.querySelector('input[name="notes[]"]');
+        const choiceField = row.querySelector('[data-non-stock-choice]');
+        const decision = row.querySelector('[data-manual-material-decision]');
+        const decisionText = row.querySelector('[data-manual-material-decision-text]');
+        const isManual = picker?.value === '' && nameField && !nameField.disabled && !nameField.readOnly;
+        const exactOption = isManual ? findExactStockMaterialOption(row, nameField.value) : null;
+
+        if (!exactOption) {
+            if (choiceField) choiceField.value = '';
+            if (decision) {
+                decision.hidden = true;
+                delete decision.dataset.materialId;
+            }
+            return true;
+        }
+
+        if (decision?.dataset.materialId && decision.dataset.materialId !== exactOption.value && choiceField) {
+            choiceField.value = '';
+        }
+        if (decision) {
+            decision.hidden = false;
+            decision.dataset.materialId = exactOption.value;
+        }
+        if (decisionText) {
+            decisionText.textContent = choiceField?.value === 'keep'
+                ? 'Non-stock chosen. Add a note why.'
+                : `Existing stock material: ${exactOption.getAttribute('data-name') || 'Material'}`;
+        }
+
+        if (choiceField?.value === 'keep') {
+            if (notesField?.value.trim()) {
+                clearFieldError(notesField);
+                clearFieldError(nameField);
+                return true;
+            }
+            clearFieldError(nameField);
+            if (showError) setFieldError(notesField, 'Add a note for this Non-stock material.');
+            return false;
+        }
+
+        if (showError) {
+            setFieldError(nameField, 'Use the stock material or choose Keep as Non-stock.');
+        } else {
+            clearFieldError(nameField);
+        }
+        return false;
+    };
+
     const selectExistingMaterialOption = function (row, option) {
         const picker = row.querySelector('[data-material-picker]');
         const nameField = row.querySelector('input[name="item_name[]"]');
@@ -642,6 +704,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!picker || !option) return;
 
         picker.value = option.value;
+        const choiceField = row.querySelector('[data-non-stock-choice]');
+        if (choiceField) choiceField.value = '';
         if (nameField) nameField.value = option.getAttribute('data-name') || option.textContent.trim();
         if (unitField && option.getAttribute('data-unit')) unitField.value = option.getAttribute('data-unit');
         if (comboboxInput) comboboxInput.value = option.textContent.trim();
@@ -664,11 +728,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const materialName = nameField.value.trim();
         if (isValidManualMaterialName(materialName)) {
+            const decisionIsValid = updateManualMaterialDecision(row, showError);
+            if (!decisionIsValid) {
+                nameField.classList.remove('is-valid');
+                return false;
+            }
             clearFieldError(nameField);
             nameField.classList.add('is-valid');
             return true;
         }
 
+        updateManualMaterialDecision(row, false);
         nameField.classList.remove('is-valid');
         if (showError) {
             setFieldError(nameField, materialName === ''
@@ -1251,6 +1321,25 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         window.EdgeMaterialSuggestions?.bind(row);
 
+        row.querySelector('[data-use-existing-material]')?.addEventListener('click', function () {
+            const decision = row.querySelector('[data-manual-material-decision]');
+            const option = Array.from(materialPicker?.options || []).find(function (item) {
+                return item.value === decision?.dataset.materialId;
+            });
+            selectExistingMaterialOption(row, option);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+
+        row.querySelector('[data-keep-non-stock]')?.addEventListener('click', function () {
+            const choiceField = row.querySelector('[data-non-stock-choice]');
+            if (choiceField) choiceField.value = 'keep';
+            updateManualMaterialNameState(row, false);
+            row.querySelector('input[name="notes[]"]')?.focus();
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+
         typeField?.addEventListener('change', function () {
             const nextType = typeField.value;
             const applyTypeChange = function () {
@@ -1330,6 +1419,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const unit = option?.getAttribute('data-unit') || '';
             const nameField = row.querySelector('input[name="item_name[]"]');
             const unitField = row.querySelector('select[name="unit[]"]');
+            const choiceField = row.querySelector('[data-non-stock-choice]');
+            if (choiceField) choiceField.value = '';
             if (name && nameField) {
                 nameField.value = name;
             }
@@ -1369,7 +1460,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         row.querySelectorAll('input, select').forEach(function (field) {
             field.addEventListener('input', function () {
-                if (field.name === 'item_name[]') {
+                if (field.name === 'item_name[]' || field.name === 'notes[]') {
                     updateManualMaterialNameState(row, field.dataset.validationTouched === 'true');
                 } else {
                     clearFieldError(field);
@@ -1385,7 +1476,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const option = row.querySelector('[data-material-picker]')?.selectedOptions[0];
                     field.value = option?.getAttribute('data-unit') || field.value;
                 }
-                if (field.name === 'item_name[]') {
+                if (field.name === 'item_name[]' || field.name === 'notes[]') {
                     updateManualMaterialNameState(row, field.dataset.validationTouched === 'true');
                 } else {
                     clearFieldError(field);

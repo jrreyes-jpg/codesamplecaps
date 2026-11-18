@@ -191,6 +191,14 @@ function engineer_inspection_valid_manual_material_name(string $name): bool
     return $length >= 2 && $length <= 100 && preg_match('/\p{L}/u', $name) === 1;
 }
 
+function engineer_inspection_material_name_identity(string $name): string
+{
+    $name = preg_replace('/\s+/u', ' ', trim($name)) ?? trim($name);
+    return function_exists('mb_strtolower')
+        ? mb_strtolower($name, 'UTF-8')
+        : strtolower($name);
+}
+
 function engineer_inspection_asset_requirements_table_exists(mysqli $conn): bool
 {
     $result = $conn->query("SHOW TABLES LIKE 'site_inspection_asset_requirements'");
@@ -820,6 +828,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inventoryIds = $_POST['inventory_id'] ?? [];
         $materialIds = $_POST['material_id'] ?? [];
         $itemNames = $_POST['item_name'] ?? [];
+        $nonStockChoices = $_POST['non_stock_choice'] ?? [];
         $quantities = $_POST['quantity'] ?? [];
         $units = $_POST['unit'] ?? [];
         $unitCosts = $_POST['unit_cost'] ?? [];
@@ -850,6 +859,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $grandTotal = 0.0;
         $assetRequirements = [];
         $selectedAssetIds = [];
+        $activeMaterialsByName = [];
+        foreach (material_stock_fetch_active_materials($conn) as $activeMaterial) {
+            $identity = engineer_inspection_material_name_identity((string)($activeMaterial['material_name'] ?? ''));
+            if ($identity !== '' && !isset($activeMaterialsByName[$identity])) {
+                $activeMaterialsByName[$identity] = $activeMaterial;
+            }
+        }
 
         foreach ($itemNames as $index => $rawName) {
             $itemName = trim((string)$rawName);
@@ -868,6 +884,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $inventoryId = (int)($inventoryIds[$index] ?? 0);
             $materialId = (int)($materialIds[$index] ?? 0);
             $itemNotes = trim((string)($notes[$index] ?? ''));
+            $nonStockChoice = trim((string)($nonStockChoices[$index] ?? ''));
 
             if ($itemType === '') {
                 $error = 'Please select a valid cost type.';
@@ -928,6 +945,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!engineer_inspection_valid_manual_material_name($itemName)) {
                     $error = 'Enter a clear material name with 2 to 100 characters and at least one letter.';
                     break;
+                }
+
+                $matchingMaterial = $activeMaterialsByName[engineer_inspection_material_name_identity($itemName)] ?? null;
+                if ($matchingMaterial) {
+                    if ($nonStockChoice !== 'keep') {
+                        $error = 'Choose the existing stock material or keep it as Non-stock.';
+                        break;
+                    }
+                    if ($itemNotes === '') {
+                        $error = 'Add a note when keeping an existing stock material as Non-stock.';
+                        break;
+                    }
                 }
 
             }
@@ -1606,6 +1635,10 @@ require __DIR__ . '/../layout/header.php';
                     $unreadInspectionNotificationId = (int)($unreadInspectionNotificationIds[$inspectionId] ?? 0);
                     $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
                     $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
+                    $initialQuotationItemsWithCost = array_values(array_filter(
+                        $initialQuotationItems,
+                        static fn(array $item): bool => (float)($item['line_total'] ?? 0) > 0
+                    ));
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $inspectionEvidence = $evidenceByInspection[$inspectionId] ?? [];
@@ -1650,6 +1683,15 @@ require __DIR__ . '/../layout/header.php';
                         ? 'Returned for Revision'
                         : ($inspectionStatus === 'Submitted' ? 'Costing Submitted' : $inspectionStatus);
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
+                    $submittedMaterialCostItems = array_values(array_filter(
+                        $materialCostItems,
+                        static fn(array $item): bool => (float)($item['line_total'] ?? 0) > 0
+                    ));
+                    $submittedDirectCostTypes = array_filter(
+                        $directCostTypes,
+                        static fn(string $label, string $type): bool => (float)($costTotalsByType[$type] ?? 0) > 0,
+                        ARRAY_FILTER_USE_BOTH
+                    );
                     $isReturnedForRevision = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned';
                     $revisionHasSavedChanges = $isReturnedForRevision
                         && !engineer_inspection_matches_latest_submitted_version(
@@ -1905,6 +1947,39 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endif; ?>
                                 </div>
 
+                                <?php if ($initialQuotation): ?>
+                                    <details class="inspection-disclosure inspection-initial-quotation">
+                                        <summary>
+                                            Initial Quotation
+                                            <span><?php echo htmlspecialchars((string)$initialQuotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> &middot; <?php echo htmlspecialchars(engineer_format_money((float)$initialQuotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </summary>
+                                        <div class="inspection-initial-quotation__body">
+                                            <p>Original quotation for reference.</p>
+                                            <?php if ($initialQuotationItemsWithCost): ?>
+                                                <div class="inspection-initial-quotation__table-wrap">
+                                                    <table>
+                                                        <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr></thead>
+                                                        <tbody>
+                                                            <?php foreach ($initialQuotationItemsWithCost as $initialItem): ?>
+                                                                <tr>
+                                                                    <td><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$initialItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars((string)$initialItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars((string)$initialItem['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars((string)$initialItem['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            <?php else: ?>
+                                                <p class="inspection-initial-quotation__empty">No priced items were saved.</p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </details>
+                                <?php endif; ?>
+
                                 <?php if (!empty($inspection['admin_remarks'])): ?>
                                     <div class="inspection-admin-remarks" data-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
                                         <strong>Admin Remarks / Reason for Return</strong>
@@ -1936,39 +2011,6 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if ($initialQuotation): ?>
-                                    <details class="inspection-disclosure inspection-initial-quotation" open>
-                                        <summary>
-                                            Initial Quotation
-                                            <span><?php echo htmlspecialchars((string)$initialQuotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars(engineer_format_money((float)$initialQuotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                        </summary>
-                                        <div class="inspection-initial-quotation__body">
-                                            <p>Admin reference only. Add the actual site costs below.</p>
-                                            <?php if ($initialQuotationItems): ?>
-                                                <div class="inspection-initial-quotation__table-wrap">
-                                                    <table>
-                                                        <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr></thead>
-                                                        <tbody>
-                                                            <?php foreach ($initialQuotationItems as $initialItem): ?>
-                                                                <tr>
-                                                                    <td><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$initialItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars((string)$initialItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars((string)$initialItem['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars((string)$initialItem['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            <?php else: ?>
-                                                <p class="inspection-initial-quotation__empty">No initial quotation items were saved.</p>
-                                            <?php endif; ?>
-                                        </div>
-                                    </details>
-                                <?php endif; ?>
-
                                 <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form data-returned-revision="<?php echo $isReturnedForRevision ? 'true' : 'false'; ?>" data-revision-has-saved-changes="<?php echo $revisionHasSavedChanges ? 'true' : 'false'; ?>">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
@@ -1982,6 +2024,12 @@ require __DIR__ . '/../layout/header.php';
                                 <div class="inspection-submit-note inspection-submit-note--waiting">Start the inspection before adding findings and estimated costs.</div>
                             <?php endif; ?>
 
+                            <?php if ($isSubmittedToAdmin): ?>
+                            <section class="inspection-submitted-findings">
+                                <strong>Engineer Findings</strong>
+                                <p><?php echo nl2br(htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8')); ?></p>
+                            </section>
+                            <?php else: ?>
                             <div class="inspection-costing-notes">
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
@@ -1995,7 +2043,9 @@ require __DIR__ . '/../layout/header.php';
                                     </div>
                                 </label>
                             </div>
+                            <?php endif; ?>
 
+                            <?php if ($canEditCosting || $inspectionPhotos || $inspectionDriveLink !== ''): ?>
                             <section class="inspection-evidence" data-inspection-evidence data-inspection-evidence-gallery data-saved-photo-count="<?php echo count($inspectionPhotos); ?>">
                                 <div class="inspection-evidence__head">
                                     <div>
@@ -2026,11 +2076,13 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                     <?php endif; ?>
 
-                                    <label class="inspection-evidence__drive">
-                                        <span>Google Drive Link <small>(Optional)</small></span>
-                                        <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Google Drive file or folder link" aria-describedby="inspectionDriveHelp<?php echo $inspectionId; ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?> data-inspection-drive-url>
-                                        <small id="inspectionDriveHelp<?php echo $inspectionId; ?>" data-inspection-drive-feedback hidden></small>
-                                    </label>
+                                    <?php if ($canEditCosting): ?>
+                                        <label class="inspection-evidence__drive">
+                                            <span>Google Drive Link <small>(Optional)</small></span>
+                                            <input type="url" name="inspection_drive_url" value="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Google Drive file or folder link" aria-describedby="inspectionDriveHelp<?php echo $inspectionId; ?>" data-inspection-drive-url>
+                                            <small id="inspectionDriveHelp<?php echo $inspectionId; ?>" data-inspection-drive-feedback hidden></small>
+                                        </label>
+                                    <?php endif; ?>
 
                                     <?php if (!$canEditCosting && $inspectionDriveLink !== ''): ?>
                                         <a class="inspection-evidence__drive-link" href="<?php echo htmlspecialchars($inspectionDriveLink, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer">Open Google Drive</a>
@@ -2042,21 +2094,66 @@ require __DIR__ . '/../layout/header.php';
                                     <div class="inspection-evidence__preview" data-inspection-photo-preview></div>
                                 <?php endif; ?>
                             </section>
+                            <?php endif; ?>
 
+                            <?php if ($canEditCosting || trim((string)($inspection['risk_notes'] ?? '')) !== '' || trim((string)($inspection['client_requests'] ?? '')) !== ''): ?>
                             <details class="inspection-disclosure inspection-disclosure--notes">
                                 <summary>Additional Notes (Optional)</summary>
                                 <div class="inspection-costing-notes inspection-costing-notes--optional">
+                                    <?php if ($canEditCosting || trim((string)($inspection['risk_notes'] ?? '')) !== ''): ?>
                                     <label>
                                         <span>Risk / Safety Notes</span>
                                         <textarea name="risk_notes" rows="2" placeholder="Access issue, electrical risk, working height, downtime risk..." <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['risk_notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                     </label>
+                                    <?php endif; ?>
+                                    <?php if ($canEditCosting || trim((string)($inspection['client_requests'] ?? '')) !== ''): ?>
                                     <label>
                                         <span>Client Requests</span>
                                         <textarea name="client_requests" rows="2" placeholder="Preferred schedule, brand request, special instruction..." <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['client_requests'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                     </label>
+                                    <?php endif; ?>
                                 </div>
                             </details>
+                            <?php endif; ?>
 
+                            <?php if ($isSubmittedToAdmin): ?>
+                            <details class="inspection-disclosure inspection-initial-quotation inspection-submitted-costs" open>
+                                <summary>Cost Estimate <span>Read-only submitted costs</span></summary>
+                                <div class="inspection-initial-quotation__table-wrap">
+                                    <table>
+                                        <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr></thead>
+                                        <tbody>
+                                            <?php foreach ($submittedMaterialCostItems as $submittedItem): ?>
+                                                <tr>
+                                                    <td>Material</td>
+                                                    <td><?php echo htmlspecialchars((string)($submittedItem['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars((string)($submittedItem['quantity'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars((string)($submittedItem['unit'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)($submittedItem['unit_cost'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)($submittedItem['line_total'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                            <?php foreach ($submittedDirectCostTypes as $submittedType => $submittedLabel): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($submittedLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars($submittedLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td>1.00</td>
+                                                    <td>lot</td>
+                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$costTotalsByType[$submittedType]), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$costTotalsByType[$submittedType]), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                            <?php if (!$submittedMaterialCostItems && !$submittedDirectCostTypes): ?>
+                                                <tr><td colspan="6" class="inspection-readonly-empty">No priced costs were submitted.</td></tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr><th colspan="5">Estimated Cost Total</th><th><?php echo htmlspecialchars(engineer_format_money($totalCost), ENT_QUOTES, 'UTF-8'); ?></th></tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </details>
+                            <?php else: ?>
                             <details class="inspection-disclosure" open>
                                 <summary>Cost Estimate <span>Materials and other estimated costs</span></summary>
                             <div class="costing-rows" data-costing-rows>
@@ -2102,6 +2199,14 @@ require __DIR__ . '/../layout/header.php';
                                                 <input type="text" name="item_name[]" data-material-suggestion-input placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <span class="shared-material-suggestions" data-material-suggestion-list hidden></span>
                                             </div>
+                                            <input type="hidden" name="non_stock_choice[]" value="" data-non-stock-choice>
+                                            <span class="material-exact-match" data-manual-material-decision hidden>
+                                                <small data-manual-material-decision-text></small>
+                                                <span class="material-exact-match__actions">
+                                                    <button type="button" data-use-existing-material>Use from stock</button>
+                                                    <button type="button" data-keep-non-stock>Keep as Non-stock</button>
+                                                </span>
+                                            </span>
                                         </label>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
@@ -2177,6 +2282,7 @@ require __DIR__ . '/../layout/header.php';
                                     <strong data-costing-total><?php echo engineer_format_money($totalCost); ?></strong>
                                 </div>
                             </div>
+                            <?php endif; ?>
 
                             <details class="inspection-disclosure"<?php echo !empty($assetRequirements) ? ' open' : ''; ?><?php echo !$showCompanyAssetRequirements ? ' hidden' : ''; ?>>
                                 <summary>Company Assets Needed <span>Optional reusable company assets</span></summary>

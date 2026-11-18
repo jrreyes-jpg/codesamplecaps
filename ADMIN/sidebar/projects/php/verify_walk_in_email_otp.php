@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/inquiry_otp.php';
+require_once __DIR__ . '/../../../../config/inquiry_contact_validation.php';
 require_once __DIR__ . '/../../../../config/walk_in_email_verification.php';
 
 require_role('admin');
@@ -18,6 +19,17 @@ $email = mb_strtolower(trim((string)($_POST['email'] ?? '')), 'UTF-8');
 $otp = trim((string)($_POST['otp'] ?? ''));
 if (!inquiry_email_is_valid_format($email) || !preg_match('/^\d{6}$/', $otp)) {
     echo json_encode(['success' => false, 'message' => 'Enter the 6-digit code.']);
+    exit();
+}
+
+$contactValidation = inquiry_contact_validation_result($conn, 'Client', $email, '', true);
+if (empty($contactValidation['valid'])) {
+    http_response_code(422);
+    echo json_encode([
+        'success' => false,
+        'field' => (string)($contactValidation['field'] ?? 'email'),
+        'message' => inquiry_contact_validation_message($contactValidation),
+    ]);
     exit();
 }
 

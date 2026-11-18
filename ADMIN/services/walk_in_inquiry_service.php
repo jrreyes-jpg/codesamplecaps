@@ -209,6 +209,9 @@ function create_walk_in_inquiry(mysqli $conn, array $input, array &$notification
     }
     $contactValidation = inquiry_contact_validation_result($conn, $clientName, $email, $contactNo, true);
     if (!$contactValidation['valid']) {
+        if ($contactValidation['status'] === 'active_inquiry_exists') {
+            throw new InvalidArgumentException(inquiry_contact_validation_message($contactValidation));
+        }
         if ($contactValidation['status'] === 'account_email_exists') {
             throw new InvalidArgumentException('This email belongs to a staff or unavailable account. Please use another email.');
         }

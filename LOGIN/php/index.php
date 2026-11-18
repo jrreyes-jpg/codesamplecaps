@@ -14,7 +14,11 @@ $serviceBarangays = service_barangays_hierarchy($conn);
 $preferredInspectionDateRange = inquiry_preferred_date_range();
 $inquiryFormStyleVersion = (string)(filemtime(__DIR__ . '/../css/index.css') ?: 1);
 $inquiryFormScriptVersion = (string)(filemtime(__DIR__ . '/../js/index.js') ?: 1);
-$verifiedInquiryEmail = inquiry_email_verified_value('public_inquiry_email_verified');
+$verifiedInquiryState = inquiry_email_verification_state('public_inquiry_email_verified');
+$verifiedInquiryEmail = mb_strtolower(trim((string)($verifiedInquiryState['email'] ?? '')), 'UTF-8');
+$verifiedInquiryExpiresAt = $verifiedInquiryState
+    ? (int)($verifiedInquiryState['verified_at'] ?? 0) + inquiry_email_verification_lifetime_seconds()
+    : 0;
 
 if (empty($_SESSION['inquiry_form_token'])) {
     $_SESSION['inquiry_form_token'] = bin2hex(random_bytes(32));
@@ -516,7 +520,7 @@ if (empty($_SESSION['inquiry_form_token'])) {
             <p>Send your site details so Edge Automation can review your request.</p>
         </div>
 
-        <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate data-verified-email="<?php echo htmlspecialchars($verifiedInquiryEmail, ENT_QUOTES, 'UTF-8'); ?>">
+        <form class="inquiry-form js-inquiry-form" action="submit_inquiry.php" method="POST" novalidate data-verified-email="<?php echo htmlspecialchars($verifiedInquiryEmail, ENT_QUOTES, 'UTF-8'); ?>" data-verified-email-expires-at="<?php echo $verifiedInquiryExpiresAt; ?>">
             <input type="hidden" name="inquiry_form_token" value="<?php echo htmlspecialchars($_SESSION['inquiry_form_token'], ENT_QUOTES, 'UTF-8'); ?>">
 
             <div class="inquiry-grid inquiry-grid--contact-details" data-inquiry-contact-details>

@@ -159,6 +159,7 @@ const initInquiryStatusToast = () => {
         email_error: ['We could not send the verification code. Please try again later.', 'error'],
         email_not_verified: ['Please verify your email before submitting.', 'error'],
         account_email_exists: ['This email is already registered. Please use another email.', 'error'],
+        active_inquiry_exists: ["You already have an active inquiry under review. Please wait for our team's update.", 'error'],
         expired: ['The verification code expired. Please submit the inquiry again.', 'error'],
     };
     const [message, type] = messages[status] || ['Sorry, the inquiry service had a problem. Please try again later.', 'error'];
@@ -645,6 +646,8 @@ const initInquiryForm = () => {
         ].filter(Boolean);
         const contactFeedback = inquiryForm.querySelector('[data-inquiry-contact-feedback]');
         const draftKey = 'edgeInquiryFormDraft';
+        const draftLifetimeMs = 60 * 60 * 1000;
+        const navigationType = window.performance?.getEntriesByType?.('navigation')?.[0]?.type || '';
         let isSubmittingInquiry = false;
         let isSubmitConfirmed = false;
         let verifiedEmail = (inquiryForm.dataset.verifiedEmail || '').toLowerCase();
@@ -664,6 +667,8 @@ const initInquiryForm = () => {
         let syncSubmitReadyState = () => {};
         let syncClearActionState = () => {};
         let inquiryFormDirty = false;
+        let draftExpiresAt = Number(inquiryForm.dataset.verifiedEmailExpiresAt || 0) * 1000;
+        let draftExpiryTimer = 0;
 
         if (!contactInput || !message) {
             return;
@@ -1149,6 +1154,9 @@ const initInquiryForm = () => {
                 verifiedEmail = (emailInput?.value || '').trim().toLowerCase();
                 otpTargetEmail = '';
                 inquiryForm.dataset.verifiedEmail = verifiedEmail;
+                draftExpiresAt = Date.now() + draftLifetimeMs;
+                inquiryForm.dataset.verifiedEmailExpiresAt = String(Math.floor(draftExpiresAt / 1000));
+                saveInquiryDraft();
                 clearFieldError(emailInput);
                 message.textContent = '';
                 message.classList.remove('is-error');
@@ -1825,18 +1833,43 @@ const initInquiryForm = () => {
             syncOtherServiceField();
         }
 
+const scheduleInquiryDraftExpiry = () => {
+    window.clearTimeout(draftExpiryTimer);
+    if (!Number.isFinite(draftExpiresAt) || draftExpiresAt <= 0) return;
+
+    const remaining = draftExpiresAt - Date.now();
+    if (remaining <= 0) {
+        clearInquiryForm();
+        return;
+    }
+
+    draftExpiryTimer = window.setTimeout(() => {
+        clearInquiryForm();
+    }, Math.min(remaining, 2147483647));
+};
+
 const saveInquiryDraft = () => {
-    const draft = {};
+    const fields = {};
 
     inquiryForm.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
         if (field.name === 'inquiry_form_token') {
             return;
         }
 
-        draft[field.name] = field.value;
+        fields[field.name] = field.value;
     });
 
-    localStorage.setItem(draftKey, JSON.stringify(draft));
+    const now = Date.now();
+    if (!Number.isFinite(draftExpiresAt) || draftExpiresAt <= now) {
+        draftExpiresAt = now + draftLifetimeMs;
+    }
+    localStorage.setItem(draftKey, JSON.stringify({
+        version: 2,
+        saved_at: now,
+        expires_at: draftExpiresAt,
+        fields,
+    }));
+    scheduleInquiryDraftExpiry();
 };
 
 const restoreInquiryDraft = () => {
@@ -1845,13 +1878,33 @@ const restoreInquiryDraft = () => {
         return false;
     }
 
-    let draft = {};
+    if (navigationType !== 'reload') {
+        localStorage.removeItem(draftKey);
+        return false;
+    }
+
+    let savedDraft = {};
     try {
-        draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+        savedDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
     } catch (error) {
         localStorage.removeItem(draftKey);
         return false;
     }
+
+    const savedAt = Number(savedDraft.saved_at || 0);
+    const expiresAt = Number(savedDraft.expires_at || 0);
+    if (savedDraft.version !== 2
+        || !savedDraft.fields
+        || savedAt <= 0
+        || expiresAt <= Date.now()
+        || expiresAt > savedAt + draftLifetimeMs) {
+        localStorage.removeItem(draftKey);
+        return false;
+    }
+
+    const draft = savedDraft.fields;
+    draftExpiresAt = expiresAt;
+    scheduleInquiryDraftExpiry();
 
     delete draft.inquiry_form_token;
 
@@ -2021,6 +2074,7 @@ const restoreInquiryDraft = () => {
 
         const clearInquiryForm = () => {
             cancelPendingOtp();
+            window.clearTimeout(draftExpiryTimer);
             localStorage.removeItem(draftKey);
             inquiryForm.reset();
             contactInput.value = '';
@@ -2034,6 +2088,7 @@ const restoreInquiryDraft = () => {
             message.textContent = '';
             message.classList.remove('is-error');
             verifiedEmail = '';
+            draftExpiresAt = 0;
             contactCanVerifyEmail = false;
             inquiryFormDirty = false;
             updateEmailVerification();
@@ -2058,7 +2113,11 @@ const restoreInquiryDraft = () => {
             });
         });
 
-        inquiryFormDirty = restoreInquiryDraft();
+        if (navigationType === 'reload') {
+            inquiryFormDirty = restoreInquiryDraft();
+        } else {
+            clearInquiryForm();
+        }
         updateEmailVerification();
         syncSubmitReadyState();
         syncClearActionState();
@@ -2068,6 +2127,12 @@ const restoreInquiryDraft = () => {
                 validateAutofilledIdentity(clientNameInput);
                 validateAutofilledIdentity(contactInput);
             }, delay);
+        });
+
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                clearInquiryForm();
+            }
         });
 
         inquiryForm.addEventListener('submit', (event) => {

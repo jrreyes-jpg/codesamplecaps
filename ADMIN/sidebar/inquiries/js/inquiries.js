@@ -586,15 +586,20 @@ document.addEventListener('DOMContentLoaded', function () {
             detailsBox.replaceChildren();
             if (details && details.length) {
                 details.forEach(function (detail) {
+                    const row = document.createElement('div');
                     const term = document.createElement('dt');
                     const description = document.createElement('dd');
+                    row.className = 'inquiry-confirm__detail-row';
                     term.textContent = detail.label;
                     description.textContent = detail.value || 'Not set';
-                    detailsBox.append(term, description);
+                    row.append(term, description);
+                    detailsBox.append(row);
                 });
                 detailsBox.hidden = false;
+                confirmBox.querySelector('.inquiry-confirm__panel')?.classList.add('has-details');
             } else {
                 detailsBox.hidden = true;
+                confirmBox.querySelector('.inquiry-confirm__panel')?.classList.remove('has-details');
             }
         }
 
@@ -2643,8 +2648,12 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             showConfirm(
                 form,
-                'This will copy the read-only Engineer Costing into an editable Admin quotation draft.',
-                null,
+                'Review the Engineer Costing before creating the draft.',
+                [
+                    { label: 'Engineer Costing', value: form.dataset.engineerCostingTotal || 'PHP 0.00' },
+                    { label: 'Result', value: 'Editable Admin quotation draft' },
+                    { label: 'Note', value: 'The client will not receive it yet.' },
+                ],
                 {
                     title: 'Create quotation draft?',
                     cancel: 'Cancel',
@@ -3969,6 +3978,21 @@ document.addEventListener('DOMContentLoaded', function () {
             pendingQuotationItemRemoval = null;
             closeConfirm();
             removeItem?.();
+            return;
+        }
+
+        if (confirmationMode === 'quotation-draft-create') {
+            closeConfirm();
+            form.dataset.confirmed = '1';
+            form.setAttribute('aria-busy', 'true');
+            form.querySelectorAll('button').forEach(function (control) {
+                control.disabled = true;
+            });
+            window.edgeActionLoading?.show({
+                title: 'Creating quotation draft...',
+                message: 'Please wait. Do not close this page.',
+            });
+            form.requestSubmit();
             return;
         }
 

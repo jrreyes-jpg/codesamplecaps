@@ -854,6 +854,14 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
         $draftStmt->execute();
         $draftId = (int)$conn->insert_id;
 
+        // Linisin ang lumang orphan rows bago kopyahin ang Engineer costing.
+        $clearItems = $conn->prepare('DELETE FROM inquiry_quotation_items WHERE draft_id = ?');
+        if (!$clearItems) {
+            throw new RuntimeException('Unable to prepare the quotation item cleanup.');
+        }
+        $clearItems->bind_param('i', $draftId);
+        $clearItems->execute();
+
         $insertItem = $conn->prepare(
             'INSERT INTO inquiry_quotation_items
              (draft_id, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes)

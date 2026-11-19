@@ -1557,7 +1557,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-6',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-7',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261117-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261117-1',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
@@ -1656,7 +1656,9 @@ require __DIR__ . '/../layout/header.php';
                     $adminReviewStatus = (string)($inspection['admin_review_status'] ?? 'Pending');
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
-                        : ($inspectionStatus === 'Submitted' ? 'Costing Submitted' : $inspectionStatus);
+                        : ($inspectionStatus === 'Submitted'
+                            ? ($adminReviewStatus === 'Approved' ? 'Costing Approved' : 'Costing Submitted')
+                            : $inspectionStatus);
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $submittedMaterialCostItems = array_values(array_filter(
                         $materialCostItems,
@@ -1718,7 +1720,11 @@ require __DIR__ . '/../layout/header.php';
                         [
                             'label' => 'Submitted to Admin',
                             'time' => $statusTimes['Submitted'],
-                            'note' => $isSubmittedToAdmin ? 'Waiting for Admin review' : '',
+                            'note' => $isSubmittedToAdmin
+                                ? ($adminReviewStatus === 'Approved'
+                                    ? 'Quotation draft created by Admin'
+                                    : 'Waiting for Admin review')
+                                : '',
                         ],
                     ];
                     $engineerProgressIndex = match ($inspectionStatus) {

@@ -2562,7 +2562,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261119-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261119-2',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
@@ -2575,7 +2575,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261119-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261119-5',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -3277,7 +3277,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php if (empty($inquiry['archived_at']) && $latestInspectionStatus === 'Submitted' && $inspectionReviewStatus === 'Pending' && !$quotationDraft): ?>
                                                     <div class="submitted-inspection-action-row">
                                                         <button type="button" class="inspection-return-button" data-return-costing-open>Return to Engineer</button>
-                                                        <form method="POST" class="submitted-inspection-create-quotation-form">
+                                                        <form method="POST" class="submitted-inspection-create-quotation-form" data-engineer-costing-total="<?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?>">
                                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                             <input type="hidden" name="action" value="create_quotation_draft">
                                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">

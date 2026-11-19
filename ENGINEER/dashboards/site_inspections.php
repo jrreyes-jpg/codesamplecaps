@@ -1519,43 +1519,6 @@ if (inspection_evidence_table_exists($conn)) {
     }
 }
 
-$initialQuotationsByInquiry = [];
-$initialQuotationItemsByInquiry = [];
-if (!empty($inspections)
-    && inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts')
-    && inquiry_quote_table_exists($conn, 'inquiry_quotation_items')) {
-    $initialQuoteResult = $conn->query(
-        "SELECT q.id, q.inquiry_id, q.quotation_no, q.subtotal, q.grand_total
-         FROM inquiry_quotation_drafts q
-         INNER JOIN (
-            SELECT inquiry_id, MAX(id) AS id
-            FROM inquiry_quotation_drafts
-            WHERE parent_draft_id IS NULL
-              AND revision_no = 0
-              AND LOWER(status) = 'accepted'
-            GROUP BY inquiry_id
-         ) accepted_initial ON accepted_initial.id = q.id"
-    );
-
-    foreach ($initialQuoteResult?->fetch_all(MYSQLI_ASSOC) ?: [] as $initialQuote) {
-        $inquiryId = (int)$initialQuote['inquiry_id'];
-        $initialQuotationsByInquiry[$inquiryId] = $initialQuote;
-        $itemStmt = $conn->prepare(
-            'SELECT item_type, item_name, quantity, unit, unit_cost, line_total
-             FROM inquiry_quotation_items
-             WHERE draft_id = ?
-             ORDER BY id ASC'
-        );
-        if (!$itemStmt) {
-            continue;
-        }
-        $draftId = (int)$initialQuote['id'];
-        $itemStmt->bind_param('i', $draftId);
-        $itemStmt->execute();
-        $initialQuotationItemsByInquiry[$inquiryId] = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    }
-}
-
 $csrfToken = engineer_inspection_csrf_token();
 $inspectionFilterLabels = ['all' => 'All', 'new' => 'New', 'ongoing' => 'Ongoing', 'submitted' => 'Submitted'];
 $inspectionFilterCounts = array_fill_keys(array_keys($inspectionFilterLabels), 0);
@@ -1577,7 +1540,8 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261109-7',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-3',
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261117-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261117-1',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
@@ -1587,12 +1551,12 @@ $engineerCssFiles = [
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
-<main class="main-content<?php echo $hasRequestedInspection ? ' inspection-details-main' : ''; ?>">
+<main class="main-content<?php echo $hasRequestedInspection ? ' inspection-details-main shared-page-surface' : ''; ?>">
     <?php
     include __DIR__ . '/../includes/header.php';
     ?>
 
-    <div class="inspection-shell<?php echo $hasRequestedInspection ? ' has-inspection-details' : ''; ?>">
+    <div class="inspection-shell<?php echo $hasRequestedInspection ? ' has-inspection-details shared-page-container' : ''; ?>">
         <div class="inspection-toolbar">
             <h1 id="inspectionPageTitle">Site Inspections</h1>
             <div class="shared-list-controls" data-shared-list-controls>
@@ -1633,12 +1597,6 @@ require __DIR__ . '/../layout/header.php';
                         continue;
                     }
                     $unreadInspectionNotificationId = (int)($unreadInspectionNotificationIds[$inspectionId] ?? 0);
-                    $initialQuotation = $initialQuotationsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? null;
-                    $initialQuotationItems = $initialQuotationItemsByInquiry[(int)($inspection['inquiry_id'] ?? 0)] ?? [];
-                    $initialQuotationItemsWithCost = array_values(array_filter(
-                        $initialQuotationItems,
-                        static fn(array $item): bool => (float)($item['line_total'] ?? 0) > 0
-                    ));
                     $costItems = $costItemsByInspection[$inspectionId] ?? [];
                     $assetRequirements = $assetRequirementsByInspection[$inspectionId] ?? [];
                     $inspectionEvidence = $evidenceByInspection[$inspectionId] ?? [];
@@ -1844,18 +1802,28 @@ require __DIR__ . '/../layout/header.php';
                         </a>
 
                         <div class="inspection-modal<?php echo $isInspectionDetailsPage ? ' inspection-modal--page' : ''; ?>" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' hidden'; ?>>
+                            <?php if ($isInspectionDetailsPage): ?>
+                                <div class="inspection-details-navigation">
+                                    <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="inspection-details-back">&larr; Back to Site Inspections</a>
+                                </div>
+                            <?php endif; ?>
                             <div class="inspection-modal__panel" role="<?php echo $isInspectionDetailsPage ? 'region' : 'dialog'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' aria-modal="true"'; ?> aria-labelledby="inspectionModalTitle<?php echo $inspectionId; ?>">
-                                <?php if ($isInspectionDetailsPage): ?>
-                                    <div class="inspection-details-navigation">
-                                        <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="inspection-details-back">&larr; Back to Site Inspections</a>
-                                    </div>
-                                <?php endif; ?>
                                 <div class="inspection-modal__head">
                                     <div>
                                         <span class="inspection-modal__eyebrow">Site Inspection</span>
                                         <h2 id="inspectionModalTitle<?php echo $inspectionId; ?>"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <p><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></p>
                                     </div>
+                                    <?php if ($isInspectionDetailsPage && !$isInspectionStarted && $isScheduleDateReached): ?>
+                                        <div class="inspection-details-action inspection-details-action--header">
+                                            <form method="POST">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
+                                                <input type="hidden" name="workflow_action" value="start">
+                                                <button type="button" class="btn-primary" data-workflow-transition data-confirm-inspection-transition="Start Inspection">Start Inspection</button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php if (!$isInspectionDetailsPage): ?>
                                         <button type="button" class="inspection-modal__close" data-inspection-modal-close aria-label="Close inspection details">&times;</button>
                                     <?php endif; ?>
@@ -1915,14 +1883,14 @@ require __DIR__ . '/../layout/header.php';
                                     <p class="inspection-schedule-waiting" role="status">This inspection starts on <?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>. Details are available now.</p>
                                 <?php endif; ?>
                                 <div class="inspection-grid">
-                                    <div class="inspection-detail"><span>Scheduled Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail inspection-detail--span-2"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Email Address</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                                    <div class="inspection-detail"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inspection['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--basic"><span>Scheduled Inspection Date</span><strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--basic inspection-detail--span-2"><span>Site Address</span><strong><?php echo htmlspecialchars((string)($inspection['complete_site_address'] ?: 'Not set'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--basic"><span>Contact Number</span><strong><?php echo htmlspecialchars((string)$inspection['contact_no'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--basic"><span>Email Address</span><strong><?php echo htmlspecialchars((string)$inspection['email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--basic"><span>Company</span><strong><?php echo htmlspecialchars((string)($inspection['company_name'] ?: 'Individual client'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                                    <div class="inspection-detail inspection-detail--basic"><span>Estimated Budget</span><strong><?php echo htmlspecialchars(inquiry_budget_label($inspection['estimated_budget'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <?php if (trim((string)$inspection['description']) !== ''): ?>
-                                        <div class="inspection-detail inspection-detail--span-2"><span>Project Description</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
+                                        <div class="inspection-detail inspection-detail--basic inspection-detail--span-2"><span>Project Description</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars((string)$inspection['description'], ENT_QUOTES, 'UTF-8')); ?></strong></div>
                                     <?php endif; ?>
                                     <?php if ($visibleSiteNotes !== ''): ?>
                                         <div class="inspection-detail inspection-detail--wide"><span>Site Notes</span><strong class="inspection-detail__multiline"><?php echo nl2br(htmlspecialchars($visibleSiteNotes, ENT_QUOTES, 'UTF-8')); ?></strong></div>
@@ -1935,7 +1903,7 @@ require __DIR__ . '/../layout/header.php';
                                     <?php elseif (!empty($inspection['resumed_at'])): ?>
                                         <div class="inspection-detail inspection-detail--wide"><span>Last Resumed</span><strong><?php echo htmlspecialchars(site_inspection_format_datetime($inspection['resumed_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong></div>
                                     <?php endif; ?>
-                                    <?php if (!$isInspectionStarted && $isScheduleDateReached): ?>
+                                    <?php if (!$isInspectionDetailsPage && !$isInspectionStarted && $isScheduleDateReached): ?>
                                         <div class="inspection-details-action inspection-detail--wide">
                                             <form method="POST">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -1946,39 +1914,6 @@ require __DIR__ . '/../layout/header.php';
                                         </div>
                                     <?php endif; ?>
                                 </div>
-
-                                <?php if ($initialQuotation): ?>
-                                    <details class="inspection-disclosure inspection-initial-quotation">
-                                        <summary>
-                                            Initial Quotation
-                                            <span><?php echo htmlspecialchars((string)$initialQuotation['quotation_no'], ENT_QUOTES, 'UTF-8'); ?> &middot; <?php echo htmlspecialchars(engineer_format_money((float)$initialQuotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                        </summary>
-                                        <div class="inspection-initial-quotation__body">
-                                            <p>Original quotation for reference.</p>
-                                            <?php if ($initialQuotationItemsWithCost): ?>
-                                                <div class="inspection-initial-quotation__table-wrap">
-                                                    <table>
-                                                        <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr></thead>
-                                                        <tbody>
-                                                            <?php foreach ($initialQuotationItemsWithCost as $initialItem): ?>
-                                                                <tr>
-                                                                    <td><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$initialItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars((string)$initialItem['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars((string)$initialItem['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars((string)$initialItem['unit'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                    <td><?php echo htmlspecialchars(engineer_format_money((float)$initialItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            <?php else: ?>
-                                                <p class="inspection-initial-quotation__empty">No priced items were saved.</p>
-                                            <?php endif; ?>
-                                        </div>
-                                    </details>
-                                <?php endif; ?>
 
                                 <?php if (!empty($inspection['admin_remarks'])): ?>
                                     <div class="inspection-admin-remarks" data-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">

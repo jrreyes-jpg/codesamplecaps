@@ -822,6 +822,15 @@ if (isset($_GET['viewed_inquiry']) && inquiry_center_has_table($conn, 'service_i
     exit();
 }
 
+// Lumang inspection notification links ay buksan na rin bilang full page.
+$legacyOpenInquiry = trim((string)($_GET['open'] ?? ''));
+if ((string)($_GET['tab'] ?? '') === 'inspection'
+    && preg_match('/^inquiryModal(\d+)$/', $legacyOpenInquiry, $legacyOpenMatch)) {
+    $legacyInquiryId = (int)$legacyOpenMatch[1];
+    header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?details=' . $legacyInquiryId . '&tab=inspection&focus=submitted-costing');
+    exit();
+}
+
 // Kapag binuksan ang details, hindi na ito New sa susunod na list view.
 $openedInquiryId = max(0, (int)($_GET['details'] ?? 0));
 if ($openedInquiryId > 0 && inquiry_center_has_table($conn, 'service_inquiries')) {
@@ -2553,7 +2562,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261118-5',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261119-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
@@ -2566,7 +2575,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261118-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261119-2',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -3067,7 +3076,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         && empty($inquiry['archived_at'])
                                         && !inquiry_center_inspection_schedule_is_locked($latestInspection);
                                     $canMonitorInspection = $latestInspection
-                                        && in_array($latestInspectionStatus, ['Ongoing', 'Completed', 'Submitted'], true);
+                                        && in_array($latestInspectionStatus, ['Ongoing', 'Completed'], true);
                                     ?>
                                     <?php if ($latestInspection): ?>
                                         <?php
@@ -3131,7 +3140,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 ? 'is-above'
                                                 : (in_array($clientBudgetPosition, ['within', 'below'], true) ? 'is-within' : 'is-neutral');
                                             ?>
-                                            <section class="submitted-inspection-report">
+                                            <section class="submitted-inspection-report" id="submittedInspectionCosting<?php echo (int)$inquiry['id']; ?>" data-submitted-inspection-costing>
                                                 <div class="submitted-inspection-report__head">
                                                     <div>
                                                     <span>Submitted Inspection Costing</span>

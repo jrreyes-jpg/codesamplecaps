@@ -3292,6 +3292,13 @@ body.inquiry-modal-open {
     border: 1px solid rgba(22, 101, 52, 0.2);
     border-radius: 16px;
     background: #ffffff;
+    scroll-margin-top: 96px;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.submitted-inspection-report.is-notification-target {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
 }
 
 .submitted-inspection-report__head {

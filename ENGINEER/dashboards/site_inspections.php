@@ -143,8 +143,8 @@ function engineer_notify_admin_report_submitted(mysqli $conn, int $inspectionId,
     $adminId = (int)($notice['created_by'] ?? 0);
     $clientName = trim((string)($notice['client_name'] ?? 'Client'));
     $service = trim((string)($notice['service_category'] ?? 'Service request'));
-    $reportPath = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal'
-        . $inquiryId . '&tab=inspection';
+    $reportPath = '/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?details='
+        . $inquiryId . '&tab=inspection&focus=submitted-costing';
     $reportUrl = Config::getInstance()->get('APP_URL') . $reportPath;
 
     user_notifications_create_if_missing(

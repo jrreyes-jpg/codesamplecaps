@@ -28,6 +28,19 @@ document.addEventListener('DOMContentLoaded', function () {
     let inquiryModalScrollTimer = null;
     const backToTopButton = document.querySelector('[data-inquiry-back-to-top]');
 
+    if (pageParams.get('focus') === 'submitted-costing') {
+        const submittedCosting = document.querySelector('.inquiry-modal--page [data-submitted-inspection-costing]');
+        if (submittedCosting) {
+            window.requestAnimationFrame(function () {
+                submittedCosting.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                submittedCosting.classList.add('is-notification-target');
+                window.setTimeout(function () {
+                    submittedCosting.classList.remove('is-notification-target');
+                }, 1600);
+            });
+        }
+    }
+
     function updateBackToTopButton() {
         if (!backToTopButton) {
             return;
@@ -2091,13 +2104,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const monitorButton = modal.querySelector('[data-inspection-monitor-open]');
-        const canMonitor = inspectionStarted;
+        const canMonitor = inspectionStarted && phase !== 'Submitted';
         if (monitorButton && canMonitor && Number.parseInt(monitorButton.dataset.inspectionId || '0', 10) > 0) {
             monitorButton.removeAttribute('hidden');
         } else if (monitorButton) {
             monitorButton.hidden = true;
         }
-        if (canMonitor) moveInspectionMonitorToTools(modal);
+        if (canMonitor) {
+            moveInspectionMonitorToTools(modal);
+        } else {
+            modal.querySelector('.inquiry-modal__head')?.classList.remove('has-inspection-monitor');
+        }
     };
 
     document.querySelectorAll('.inquiry-modal').forEach(moveInspectionMonitorToTools);

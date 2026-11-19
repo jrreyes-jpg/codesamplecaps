@@ -110,6 +110,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (totalBox) {
             totalBox.textContent = money.format(total);
         }
+
+        return { total: total, categoryTotals: categoryTotals };
     };
 
     const storageKeyForForm = function (form) {
@@ -219,23 +221,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasRevisionChange = !isReturnedRevision
                 || isDirty
                 || form.dataset.revisionHasSavedChanges === 'true';
-            submitButton.disabled = !hasRevisionChange;
-            submitButton.classList.toggle('is-locked', !canSubmit || !hasRevisionChange);
-            submitButton.setAttribute('aria-disabled', canSubmit && hasRevisionChange ? 'false' : 'true');
+            // Laging clickable para maituro agad ang unang field na dapat ayusin.
+            submitButton.disabled = false;
+            submitButton.classList.remove('is-locked');
+            submitButton.setAttribute('aria-disabled', 'false');
             submitButton.title = !hasRevisionChange
                 ? 'Change the returned report, costing, or evidence before resubmitting.'
                 : (canSubmit ? '' : 'Click to see the missing or invalid fields.');
 
-            const guidance = form.querySelector('[data-submit-guidance]');
-            if (guidance) {
-                const missingItems = getCostingMissingItems(form);
-                guidance.classList.toggle('is-ready', canSubmit && hasRevisionChange);
-                guidance.textContent = !hasRevisionChange
-                    ? 'Change the report, costing, photo, or Drive link before resubmitting.'
-                    : (canSubmit
-                        ? 'Ready to submit to Admin.'
-                        : `Cannot submit yet. Check: ${missingItems.join(', ')}.`);
-            }
         }
 
         if (new URLSearchParams(window.location.search).has('debug_inspection_dirty')) {
@@ -631,6 +624,67 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
     };
 
+    const materialDisplayField = function (row) {
+        const picker = row.querySelector('[data-material-picker]');
+        return picker?.value
+            ? row.querySelector('[data-material-combobox-input]')
+            : row.querySelector('input[name="item_name[]"]');
+    };
+
+    const setMaterialNotesRequired = function (row, isRequired) {
+        const label = row.querySelector('[data-material-notes-label]');
+        const field = row.querySelector('input[name="notes[]"]');
+        if (label) label.textContent = isRequired ? 'Notes *' : 'Notes (Optional)';
+        if (field) field.toggleAttribute('required', isRequired);
+    };
+
+    const clearDuplicateMaterialErrors = function (form) {
+        form.querySelectorAll('[data-duplicate-material-error]').forEach(function (error) {
+            const holder = error.parentElement;
+            const field = holder?.querySelector('[data-material-combobox-input], input[name="item_name[]"]');
+            error.remove();
+            if (field && !holder.querySelector('.costing-field-error')) {
+                field.classList.remove('is-invalid');
+            }
+        });
+    };
+
+    const validateDuplicateMaterials = function (form, showError) {
+        if (showError) clearDuplicateMaterialErrors(form);
+        const rowsByIdentity = new Map();
+
+        form.querySelectorAll('.costing-row').forEach(function (row) {
+            if (!rowHasMeaningfulData(row)) return;
+            const materialId = row.querySelector('[data-material-picker]')?.value || '';
+            const name = normalizeMaterialName(row.querySelector('input[name="item_name[]"]')?.value);
+            if (name === '') return;
+            const identity = materialId !== '' ? `stock:${materialId}` : `non-stock:${name}`;
+            const rows = rowsByIdentity.get(identity) || [];
+            rows.push(row);
+            rowsByIdentity.set(identity, rows);
+        });
+
+        let firstInvalid = null;
+        rowsByIdentity.forEach(function (rows) {
+            if (rows.length < 2) return;
+            rows.forEach(function (row) {
+                const field = materialDisplayField(row);
+                const holder = field?.closest('label') || field?.parentElement;
+                if (!field || !holder) return;
+                firstInvalid = firstInvalid || field;
+                if (!showError) return;
+                field.classList.add('is-invalid');
+                const error = document.createElement('small');
+                error.className = 'costing-field-error';
+                error.dataset.duplicateMaterialError = 'true';
+                error.textContent = 'Duplicate material row. Update the existing row instead.';
+                holder.appendChild(error);
+            });
+        });
+
+        return firstInvalid;
+    };
+
     const isValidManualMaterialName = function (value) {
         const name = String(value || '').trim().replace(/\s+/g, ' ');
         return name.length >= 2 && name.length <= 100 && /\p{L}/u.test(name);
@@ -651,11 +705,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const notesField = row.querySelector('input[name="notes[]"]');
         const choiceField = row.querySelector('[data-non-stock-choice]');
         const decision = row.querySelector('[data-manual-material-decision]');
-        const decisionText = row.querySelector('[data-manual-material-decision-text]');
         const isManual = picker?.value === '' && nameField && !nameField.disabled && !nameField.readOnly;
         const exactOption = isManual ? findExactStockMaterialOption(row, nameField.value) : null;
 
         if (!exactOption) {
+            setMaterialNotesRequired(row, false);
             if (choiceField) choiceField.value = '';
             if (decision) {
                 decision.hidden = true;
@@ -671,11 +725,7 @@ document.addEventListener('DOMContentLoaded', function () {
             decision.hidden = false;
             decision.dataset.materialId = exactOption.value;
         }
-        if (decisionText) {
-            decisionText.textContent = choiceField?.value === 'keep'
-                ? 'Non-stock chosen. Add a note why.'
-                : `Existing stock material: ${exactOption.getAttribute('data-name') || 'Material'}`;
-        }
+        setMaterialNotesRequired(row, choiceField?.value === 'keep');
 
         if (choiceField?.value === 'keep') {
             if (notesField?.value.trim()) {
@@ -684,12 +734,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return true;
             }
             clearFieldError(nameField);
-            if (showError) setFieldError(notesField, 'Add a note for this Non-stock material.');
+            if (showError) setFieldError(notesField, 'Please explain why this is kept as Non-stock.');
             return false;
         }
 
         if (showError) {
-            setFieldError(nameField, 'Use the stock material or choose Keep as Non-stock.');
+            setFieldError(nameField, 'Choose Use from stock or Keep as Non-stock.');
         } else {
             clearFieldError(nameField);
         }
@@ -712,6 +762,8 @@ document.addEventListener('DOMContentLoaded', function () {
         window.EdgeMaterialSuggestions?.close(row.querySelector('[data-material-suggestion-field]'));
         setLinkedMaterialState(row);
         updateMaterialAvailability(row);
+        const form = row.closest('[data-costing-form]');
+        if (form) validateDuplicateMaterials(form, true);
     };
 
     // Green check lang kapag bago at valid ang manual material.
@@ -721,6 +773,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const isManual = picker && picker.value === '' && nameField && !nameField.disabled && !nameField.readOnly;
 
         if (!isManual) {
+            setMaterialNotesRequired(row, false);
             nameField?.classList.remove('is-valid');
             clearFieldError(nameField);
             return true;
@@ -748,26 +801,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return false;
     };
 
-    const showCostingError = function (form, message) {
-        const errorBox = form.querySelector('[data-costing-error]');
-        if (!errorBox) {
-            return;
-        }
-
-        errorBox.textContent = message;
-        errorBox.hidden = false;
-    };
-
     const clearCostingError = function (form) {
-        const errorBox = form.querySelector('[data-costing-error]');
         form.querySelectorAll('.is-invalid-total').forEach(function (field) {
             field.classList.remove('is-invalid-total');
         });
-
-        if (errorBox) {
-            errorBox.textContent = '';
-            errorBox.hidden = true;
-        }
     };
 
     const clearCostingErrorWhenResolved = function (form) {
@@ -802,14 +839,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return text.length >= 10 && text.length <= 1000 && /\p{L}/u.test(text);
     };
 
-    const findingsErrorMessage = function (value) {
-        const text = String(value || '').trim();
-        if (text === '') return 'Enter at least 10 characters.';
-        if (!/\p{L}/u.test(text)) return 'Use letters to explain the findings.';
-        if (text.length < 10) return 'Enter at least 10 characters.';
-        return 'Maximum 1,000 characters.';
-    };
-
     const clearFindingsSuccess = function (field) {
         if (!field) return;
         field.classList.remove('is-valid');
@@ -837,7 +866,6 @@ document.addEventListener('DOMContentLoaded', function () {
         field.classList.add('is-invalid');
         const reminder = field.closest('label')?.querySelector('[data-findings-reminder]');
         if (reminder) {
-            reminder.textContent = findingsErrorMessage(field.value);
             reminder.classList.remove('is-valid');
             reminder.classList.add('is-error');
             reminder.hidden = false;
@@ -1003,7 +1031,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const validateCosting = function (form, requireFinal) {
         let total = 0;
         let firstInvalid = null;
-        let errorMessage = '';
         const findings = form.querySelector('textarea[name="engineer_findings"]');
 
         clearCostingError(form);
@@ -1049,7 +1076,13 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 const validMaterialName = updateManualMaterialNameState(row, true);
                 if (!validMaterialName) {
-                    firstInvalid = firstInvalid || name;
+                    const exactOption = findExactStockMaterialOption(row, nameValue);
+                    const choice = row.querySelector('[data-non-stock-choice]')?.value || '';
+                    const choiceButton = row.querySelector('[data-use-existing-material]');
+                    const notes = row.querySelector('input[name="notes[]"]');
+                    firstInvalid = firstInvalid || (exactOption
+                        ? (choice === 'keep' ? notes : choiceButton)
+                        : name);
                 }
             }
 
@@ -1069,6 +1102,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
         });
+
+        const duplicateMaterialField = validateDuplicateMaterials(form, true);
+        firstInvalid = firstInvalid || duplicateMaterialField;
 
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
             const amountText = moneyRawText(field.value);
@@ -1121,12 +1157,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const totalBox = form.querySelector('[data-costing-total]');
             totalBox?.classList.add('is-invalid-total');
             firstInvalid = firstInvalid || totalBox;
-            errorMessage = errorMessage || 'Total cost must be greater than 0.';
+        }
+
+        const firstMarkedInvalid = form.querySelector('.is-invalid, .is-invalid-total');
+        if (firstMarkedInvalid) {
+            const invalidRow = firstMarkedInvalid.closest('.costing-row');
+            const invalidName = invalidRow?.querySelector('input[name="item_name[]"]');
+            const needsMaterialChoice = firstMarkedInvalid === invalidName
+                && findExactStockMaterialOption(invalidRow, invalidName.value)
+                && (invalidRow.querySelector('[data-non-stock-choice]')?.value || '') === '';
+            firstInvalid = needsMaterialChoice
+                ? invalidRow.querySelector('[data-use-existing-material]')
+                : firstMarkedInvalid;
         }
 
         if (firstInvalid) {
-            showCostingError(form, 'Complete the highlighted fields before submitting.');
-            firstInvalid.closest('details')?.setAttribute('open', '');
+            let parentSection = firstInvalid.closest('details');
+            while (parentSection) {
+                parentSection.setAttribute('open', '');
+                parentSection = parentSection.parentElement?.closest('details') || null;
+            }
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof firstInvalid.focus === 'function') {
                 firstInvalid.focus();
@@ -1150,9 +1200,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return name !== ''
                 && unit !== ''
                 && isValidQuantityText(quantity, unit)
-                && isValidCostText(unitCost);
+                && isValidCostText(unitCost)
+                && updateManualMaterialDecision(row, false);
         });
         if (!materialRowsAreValid) return false;
+        if (validateDuplicateMaterials(form, false)) return false;
 
         const directAmounts = Array.from(form.querySelectorAll('[data-direct-cost]'));
         if (!directAmounts.every(function (field) { return isValidDirectCostText(field.value.trim()); })) return false;
@@ -1176,57 +1228,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return sum + moneyNumber(field.value);
         }, 0);
         return materialTotal + directTotal > 0;
-    };
-
-    const getCostingMissingItems = function (form) {
-        const missing = [];
-        const findings = form.querySelector('textarea[name="engineer_findings"]');
-        if (!findings || !hasMeaningfulFindings(findings.value)) {
-            missing.push('Engineer Findings');
-        }
-
-        const rows = Array.from(form.querySelectorAll('.costing-row')).filter(rowHasMeaningfulData);
-        const hasInvalidMaterial = rows.some(function (row) {
-            const name = row.querySelector('input[name="item_name[]"]')?.value.trim() || '';
-            const quantity = row.querySelector('input[name="quantity[]"]')?.value.trim() || '';
-            const unit = row.querySelector('select[name="unit[]"]')?.value || '';
-            const unitCost = row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '';
-            return name === '' || unit === '' || !isValidQuantityText(quantity, unit) || !isValidCostText(unitCost);
-        });
-        if (hasInvalidMaterial) {
-            missing.push('Material details');
-        }
-
-        const directAmounts = Array.from(form.querySelectorAll('[data-direct-cost]'));
-        if (directAmounts.some(function (field) { return !isValidDirectCostText(field.value.trim()); })) {
-            missing.push('Other cost amount');
-        }
-
-        const seenAssets = new Set();
-        const hasInvalidAsset = Array.from(form.querySelectorAll('[data-asset-requirement-row]')).some(function (row) {
-            if (!assetRequirementHasMeaningfulData(row)) return false;
-            const assetId = row.querySelector('select[name="asset_requirement_asset_id[]"]')?.value || '';
-            const quantity = row.querySelector('input[name="asset_requirement_quantity[]"]')?.value.trim() || '';
-            if (assetId === '' || seenAssets.has(assetId) || !/^[1-9]\d*$/.test(quantity)) return true;
-            seenAssets.add(assetId);
-            return false;
-        });
-        if (hasInvalidAsset) {
-            missing.push('Asset requirement');
-        }
-
-        const materialTotal = rows.reduce(function (sum, row) {
-            return sum + Number(row.querySelector('input[name="quantity[]"]')?.value || 0)
-                * moneyNumber(row.querySelector('input[name="unit_cost[]"]')?.value || 0);
-        }, 0);
-        const directTotal = directAmounts.reduce(function (sum, field) {
-            return sum + (isValidDirectCostText(field.value.trim()) ? moneyNumber(field.value) : 0);
-        }, 0);
-        if (materialTotal + directTotal <= 0) {
-            missing.push('Total cost above PHP 0');
-        }
-
-        return missing.length > 0 ? missing : ['required fields'];
     };
 
     const bindRow = function (form, row) {
@@ -1315,7 +1316,24 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.addEventListener('edge:material-suggestion-selected', function (event) {
-            selectExistingMaterialOption(row, event.detail?.option);
+            const choiceField = row.querySelector('[data-non-stock-choice]');
+            const unitField = row.querySelector('select[name="unit[]"]');
+            const suggestedName = String(event.detail?.name || '').trim();
+            const suggestedUnit = String(event.detail?.unit || '').trim();
+
+            // Pangalan lang muna. Engineer pa rin ang pipili kung stock o non-stock.
+            if (materialPicker) materialPicker.value = '';
+            if (materialNameField) materialNameField.value = suggestedName;
+            if (choiceField) choiceField.value = '';
+            if (unitField && suggestedUnit && Array.from(unitField.options).some((option) => option.value === suggestedUnit)) {
+                unitField.value = suggestedUnit;
+            }
+
+            setLinkedMaterialState(row);
+            updateMaterialAvailability(row);
+            updateManualMaterialNameState(row, false);
+            validateDuplicateMaterials(form, true);
+            syncTotal(form);
             saveFormDraft(form);
             updateSaveDraftState(form);
         });
@@ -1338,6 +1356,16 @@ document.addEventListener('DOMContentLoaded', function () {
             row.querySelector('input[name="notes[]"]')?.focus();
             saveFormDraft(form);
             updateSaveDraftState(form);
+        });
+
+        row.querySelector('[data-manual-material-decision]')?.addEventListener('focusout', function (event) {
+            const decision = event.currentTarget;
+            window.setTimeout(function () {
+                if (!decision.contains(document.activeElement)) {
+                    updateManualMaterialNameState(row, true);
+                    updateSaveDraftState(form);
+                }
+            }, 0);
         });
 
         typeField?.addEventListener('change', function () {
@@ -1437,6 +1465,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 nameField.classList.remove('is-valid');
             }
             updateManualMaterialNameState(row, false);
+            validateDuplicateMaterials(form, true);
             syncMaterialComboboxText();
             window.EdgeMaterialSuggestions?.close(row.querySelector('[data-material-suggestion-field]'));
             updateMaterialAvailability(row);
@@ -1465,6 +1494,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     clearFieldError(field);
                 }
+                if (field.name === 'item_name[]') validateDuplicateMaterials(form, true);
                 clearCostingErrorWhenResolved(form);
                 updateMaterialAvailability(row);
                 saveFormDraft(form);
@@ -1481,6 +1511,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     clearFieldError(field);
                 }
+                if (field.name === 'item_name[]') validateDuplicateMaterials(form, true);
                 clearCostingErrorWhenResolved(form);
                 updateMaterialAvailability(row);
                 saveFormDraft(form);
@@ -1489,6 +1520,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelector('input[name="item_name[]"]')?.addEventListener('blur', function (event) {
+            event.target.dataset.validationTouched = 'true';
+            updateManualMaterialNameState(row, true);
+            validateDuplicateMaterials(form, true);
+        });
+
+        row.querySelector('input[name="notes[]"]')?.addEventListener('blur', function (event) {
             event.target.dataset.validationTouched = 'true';
             updateManualMaterialNameState(row, true);
         });
@@ -1507,6 +1544,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.remove();
                 }
                 updateCostEntryNumbers(form);
+                validateDuplicateMaterials(form, true);
                 syncTotal(form);
                 saveFormDraft(form);
                 updateSaveDraftState(form);
@@ -1904,6 +1942,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const action = event.submitter?.value || 'save_draft';
             const isFinalSubmit = action === 'submit_to_admin';
 
+            if (isFinalSubmit
+                && form.dataset.returnedRevision === 'true'
+                && !isFormDirty(form)
+                && form.dataset.revisionHasSavedChanges !== 'true') {
+                event.preventDefault();
+                const reportField = form.querySelector('textarea[name="engineer_findings"]');
+                reportField?.closest('details')?.setAttribute('open', '');
+                reportField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                reportField?.focus();
+                return;
+            }
+
             if (!isFinalSubmit && !isFormDirty(form)) {
                 event.preventDefault();
                 updateSaveDraftState(form);
@@ -1920,11 +1970,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (isFinalSubmit && form.dataset.submitConfirmed !== 'true') {
                 event.preventDefault();
+                const currentTotals = syncTotal(form);
+                const materialTotal = currentTotals.categoryTotals.material || 0;
                 openInspectionActionConfirm({
                     trigger: event.submitter,
                     title: 'Submit report to Admin?',
-                    message: 'This will submit the inspection report and estimated costs to Admin for review.',
+                    message: 'Please review the total before sending. You cannot edit this report while Admin is reviewing it.',
                     confirm: 'Submit to Admin',
+                    summary: {
+                        materials: money.format(materialTotal),
+                        otherCosts: money.format(Math.max(0, currentTotals.total - materialTotal)),
+                        total: money.format(currentTotals.total),
+                    },
                     onConfirm: function () {
                         form.dataset.submitConfirmed = 'true';
                         submitCostingToAdmin(form, event.submitter);
@@ -1988,6 +2045,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionActionConfirmModal = document.querySelector('[data-inspection-action-confirm-modal]');
     const inspectionActionConfirmTitle = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-title]');
     const inspectionActionConfirmMessage = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-message]');
+    const inspectionActionConfirmSummary = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-summary]');
+    const inspectionActionConfirmMaterials = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-materials]');
+    const inspectionActionConfirmOtherCosts = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-other-costs]');
+    const inspectionActionConfirmTotal = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-total]');
     const inspectionActionConfirmReasonWrap = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason-wrap]');
     const inspectionActionConfirmReason = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason]');
     const inspectionActionConfirmReasonError = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason-error]');
@@ -2009,6 +2070,14 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionActionConfirmTitle.textContent = options.title;
         inspectionActionConfirmMessage.textContent = options.message;
         inspectionActionConfirmSubmit.textContent = options.confirm;
+        if (inspectionActionConfirmSummary) {
+            inspectionActionConfirmSummary.hidden = !options.summary;
+        }
+        if (options.summary) {
+            inspectionActionConfirmMaterials.textContent = options.summary.materials;
+            inspectionActionConfirmOtherCosts.textContent = options.summary.otherCosts;
+            inspectionActionConfirmTotal.textContent = options.summary.total;
+        }
         if (inspectionActionConfirmReasonWrap) {
             inspectionActionConfirmReasonWrap.hidden = !Boolean(options.requiresReason);
         }
@@ -2581,13 +2650,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!findingsAreValid && findings) {
                     setFieldError(findings, 'Enter 10 to 1,000 characters.');
                 }
-                showCostingError(costingForm, 'Complete the highlighted fields before submitting.');
                 (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 (findings && !findingsAreValid ? findings : costingForm?.querySelector('.is-invalid'))?.focus();
                 return;
             }
             if (button.getAttribute('data-complete-ready') !== 'true' || (costingForm && isFormDirty(costingForm))) {
-                showCostingError(costingForm, 'Save the costing first before submitting.');
                 costingForm?.querySelector('[data-save-draft]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }

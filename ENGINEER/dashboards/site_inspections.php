@@ -857,6 +857,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hasEvidenceChange = false;
         $rows = [];
         $grandTotal = 0.0;
+        $seenStockMaterialIds = [];
+        $seenNonStockMaterialNames = [];
         $assetRequirements = [];
         $selectedAssetIds = [];
         $activeMaterialsByName = [];
@@ -950,15 +952,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $matchingMaterial = $activeMaterialsByName[engineer_inspection_material_name_identity($itemName)] ?? null;
                 if ($matchingMaterial) {
                     if ($nonStockChoice !== 'keep') {
-                        $error = 'Choose the existing stock material or keep it as Non-stock.';
+                        $error = 'Choose Use from stock or Keep as Non-stock.';
                         break;
                     }
                     if ($itemNotes === '') {
-                        $error = 'Add a note when keeping an existing stock material as Non-stock.';
+                        $error = 'Please explain why this is kept as Non-stock.';
                         break;
                     }
                 }
 
+            }
+
+            $materialIdentity = engineer_inspection_material_name_identity($itemName);
+            if ($materialId > 0) {
+                if (isset($seenStockMaterialIds[$materialId])) {
+                    $error = 'Duplicate material row. Update the existing row instead.';
+                    break;
+                }
+                $seenStockMaterialIds[$materialId] = true;
+            } elseif ($materialIdentity !== '') {
+                if (isset($seenNonStockMaterialNames[$materialIdentity])) {
+                    $error = 'Duplicate material row. Update the existing row instead.';
+                    break;
+                }
+                $seenNonStockMaterialNames[$materialIdentity] = true;
             }
 
             $lineTotal = $quantity * $unitCost;
@@ -1540,7 +1557,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-3',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-6',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261117-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261117-1',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
@@ -1949,10 +1966,6 @@ require __DIR__ . '/../layout/header.php';
                                 <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form data-returned-revision="<?php echo $isReturnedForRevision ? 'true' : 'false'; ?>" data-revision-has-saved-changes="<?php echo $revisionHasSavedChanges ? 'true' : 'false'; ?>">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
-                            <div class="costing-head">
-                                <strong><?php echo $canEditCosting ? 'Inspection Report &amp; Cost Estimate' : 'Submitted Inspection Report &amp; Cost Estimate'; ?></strong>
-                            </div>
-                            <p class="costing-error" data-costing-error hidden></p>
                             <?php if ($isLegacyCompletedPending): ?>
                                 <div class="inspection-submit-note inspection-submit-note--waiting">This costing is not yet sent. Review it, then submit it to Admin.</div>
                             <?php elseif (!$canEditCosting && !$isSubmittedToAdmin): ?>
@@ -1969,11 +1982,10 @@ require __DIR__ . '/../layout/header.php';
                                 <label class="inspection-costing-notes__findings">
                                     <span>Engineer Findings <b>*</b></span>
                                     <div class="inspection-findings-control">
-                                        <textarea name="engineer_findings" rows="2" maxlength="1000" aria-describedby="engineerFindingsReminder<?php echo $inspectionId; ?> engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Problem found and recommended work" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                        <textarea name="engineer_findings" rows="2" maxlength="1000" aria-describedby="engineerFindingsCount<?php echo $inspectionId; ?>" placeholder="Problem found and recommended work" <?php echo !$canEditCosting ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string)($inspection['engineer_findings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                                         <span class="inspection-findings-check" data-findings-check aria-hidden="true" hidden>&#10003;</span>
                                     </div>
                                     <div class="inspection-findings-feedback">
-                                        <small id="engineerFindingsReminder<?php echo $inspectionId; ?>" class="inspection-findings-reminder" data-findings-reminder hidden></small>
                                         <small id="engineerFindingsCount<?php echo $inspectionId; ?>" class="inspection-findings-count" data-findings-count>0 / 1000</small>
                                     </div>
                                 </label>
@@ -2090,7 +2102,7 @@ require __DIR__ . '/../layout/header.php';
                             </details>
                             <?php else: ?>
                             <details class="inspection-disclosure" open>
-                                <summary>Cost Estimate <span>Materials and other estimated costs</span></summary>
+                                <summary>Cost Estimate</summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($materialCostItems as $itemIndex => $item): ?>
                                     <div class="costing-row" data-material-suggestion-scope>
@@ -2128,21 +2140,22 @@ require __DIR__ . '/../layout/header.php';
                                             <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                             <?php endif; ?>
                                         </label>
-                                        <label data-item-name-field<?php echo !$canEditCosting || (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
-                                            <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
-                                            <div class="shared-material-suggestion-field" data-material-suggestion-field>
-                                                <input type="text" name="item_name[]" data-material-suggestion-input placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <span class="shared-material-suggestions" data-material-suggestion-list hidden></span>
-                                            </div>
+                                        <div class="material-name-field" data-item-name-field<?php echo !$canEditCosting || (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
+                                            <label>
+                                                <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
+                                                <div class="shared-material-suggestion-field" data-material-suggestion-field>
+                                                    <input type="text" name="item_name[]" data-material-suggestion-input placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                    <span class="shared-material-suggestions" data-material-suggestion-list hidden></span>
+                                                </div>
+                                            </label>
                                             <input type="hidden" name="non_stock_choice[]" value="" data-non-stock-choice>
                                             <span class="material-exact-match" data-manual-material-decision hidden>
-                                                <small data-manual-material-decision-text></small>
                                                 <span class="material-exact-match__actions">
                                                     <button type="button" data-use-existing-material>Use from stock</button>
                                                     <button type="button" data-keep-non-stock>Keep as Non-stock</button>
                                                 </span>
                                             </span>
-                                        </label>
+                                        </div>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
                                             <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
@@ -2162,7 +2175,7 @@ require __DIR__ . '/../layout/header.php';
                                             <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
-                                            <span>Notes (Optional)</span>
+                                            <span data-material-notes-label>Notes (Optional)</span>
                                             <input type="text" name="notes[]" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <?php if ($canEditCosting): ?>
@@ -2291,13 +2304,10 @@ require __DIR__ . '/../layout/header.php';
 
                             <?php if ($canEditCosting): ?>
                                 <div class="inspection-actions">
-                                    <?php if ($workflowAction === 'complete' || $canSubmitToAdmin): ?>
-                                        <p class="inspection-submit-guidance" data-submit-guidance role="status" aria-live="polite"></p>
-                                    <?php endif; ?>
                                     <div class="inspection-actions__group inspection-actions__group--save">
                                         <button type="submit" name="costing_action" value="save_draft" class="btn-secondary" data-save-draft formnovalidate disabled>Save Draft</button>
                                         <?php if ($workflowAction === 'complete' || $canSubmitToAdmin): ?>
-                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary is-locked" data-submit-costing data-confirm-submit-costing aria-disabled="true"><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
+                                            <button type="submit" name="costing_action" value="submit_to_admin" class="btn-primary" data-submit-costing data-confirm-submit-costing aria-disabled="false" formnovalidate><?php echo $isReturnedForRevision ? 'Resubmit to Admin' : 'Submit to Admin'; ?></button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -2332,6 +2342,24 @@ require __DIR__ . '/../layout/header.php';
                     <button type="button" class="inspection-modal__close" data-inspection-action-confirm-close aria-label="Close confirmation">&times;</button>
                 </div>
                 <p data-inspection-action-confirm-message></p>
+                <dl class="inspection-action-confirm__summary" data-inspection-action-confirm-summary hidden>
+                    <div>
+                        <dt>Materials</dt>
+                        <dd data-inspection-action-confirm-materials></dd>
+                    </div>
+                    <div>
+                        <dt>Other Costs</dt>
+                        <dd data-inspection-action-confirm-other-costs></dd>
+                    </div>
+                    <div class="inspection-action-confirm__summary-total">
+                        <dt>Estimated Total</dt>
+                        <dd data-inspection-action-confirm-total></dd>
+                    </div>
+                    <div>
+                        <dt>Status after submit</dt>
+                        <dd class="inspection-action-confirm__next-status">Waiting for Admin review</dd>
+                    </div>
+                </dl>
                 <label class="inspection-action-confirm__reason" data-inspection-action-confirm-reason-wrap hidden>
                     <span>Hold Reason</span>
                     <textarea rows="3" maxlength="2000" data-inspection-action-confirm-reason aria-describedby="inspectionActionConfirmReasonError"></textarea>
@@ -2393,7 +2421,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261116-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261109-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261119-7',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

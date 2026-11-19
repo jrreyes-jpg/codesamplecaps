@@ -843,6 +843,61 @@
     line-height: 1.55;
 }
 
+.inspection-action-confirm__summary {
+    display: grid;
+    gap: 0;
+    margin: 16px 0 0;
+    border: 1px solid #dbe4ee;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.inspection-action-confirm__summary[hidden] {
+    display: none !important;
+}
+
+.inspection-action-confirm__summary > div {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.inspection-action-confirm__summary > div:last-child {
+    border-bottom: 0;
+}
+
+.inspection-action-confirm__summary dt,
+.inspection-action-confirm__summary dd {
+    margin: 0;
+}
+
+.inspection-action-confirm__summary dt {
+    color: #64748b;
+    font-weight: 700;
+}
+
+.inspection-action-confirm__summary dd {
+    color: #0f172a;
+    font-weight: 800;
+    text-align: right;
+}
+
+.inspection-action-confirm__summary .inspection-action-confirm__summary-total {
+    background: #ecfdf3;
+}
+
+.inspection-action-confirm__summary-total dd {
+    color: #166534;
+}
+
+.inspection-action-confirm__summary .inspection-action-confirm__next-status {
+    color: #1d4ed8;
+}
+
 .inspection-confirm-modal__actions {
     display: flex;
     justify-content: flex-end;
@@ -1577,7 +1632,7 @@ body.inspection-modal-open {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
-    align-items: end;
+    align-items: start;
     position: relative;
     padding-bottom: 0;
 }
@@ -1609,12 +1664,8 @@ body.inspection-modal-open {
 }
 
 .material-exact-match {
-    display: grid;
-    gap: 5px;
-    margin-top: 2px;
-    color: #92400e;
-    font-size: 0.72rem;
-    font-weight: 800;
+    display: block;
+    margin-top: 6px;
 }
 
 .material-exact-match[hidden] {
@@ -1641,25 +1692,29 @@ body.inspection-modal-open {
 }
 
 .material-exact-match__actions [data-keep-non-stock] {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-    color: #475569;
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
 }
 
-.material-exact-match__actions button:hover,
-.material-exact-match__actions button:focus-visible {
+.material-exact-match__actions [data-use-existing-material]:hover,
+.material-exact-match__actions [data-use-existing-material]:focus-visible {
     border-color: #16a34a;
     background: #dcfce7;
     outline: none;
 }
 
+.material-exact-match__actions [data-keep-non-stock]:hover,
+.material-exact-match__actions [data-keep-non-stock]:focus-visible {
+    border-color: #d97706;
+    background: #fef3c7;
+    outline: none;
+}
+
 .costing-row label[data-material-field] .material-stock-feedback {
-    position: absolute;
-    right: 0;
-    bottom: 3px;
-    left: 0;
+    position: static;
     width: 100%;
-    margin: 0;
+    margin: 1px 0 0;
     font-size: 0.7rem;
     line-height: 1.15;
     overflow-wrap: break-word;
@@ -1671,12 +1726,24 @@ body.inspection-modal-open {
     gap: 4px;
     min-width: 0;
     position: relative;
-    padding-bottom: 28px;
+    align-content: start;
+    padding-bottom: 0;
+}
+
+.costing-row:has(.costing-field-error) .material-stock-feedback {
+    display: none;
 }
 
 .costing-row [data-material-field][hidden],
 .costing-row [data-item-name-field][hidden] {
     display: none;
+}
+
+.material-name-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    align-content: start;
 }
 
 .costing-row label span {
@@ -1852,41 +1919,18 @@ body.inspection-modal-open {
 }
 
 .costing-field-error {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    position: static;
+    display: block;
     min-height: 22px;
     overflow-wrap: anywhere;
     line-height: 1.2;
     color: #b91c1c;
     font-size: 0.72rem;
     font-weight: 900;
-    line-height: 1.25;
 }
 
 [data-costing-total].is-invalid-total {
     color: #dc2626;
-}
-
-.costing-error {
-    position: sticky;
-    top: 8px;
-    z-index: 8;
-    align-self: start;
-    margin: 0;
-    padding: 10px 12px;
-    border: 1px solid rgba(220, 38, 38, 0.22);
-    border-radius: 12px;
-    background: #fef2f2;
-    color: #b91c1c;
-    font-size: 0.86rem;
-    font-weight: 900;
-    box-shadow: 0 6px 16px rgba(127, 29, 29, 0.12);
-}
-
-.costing-error[hidden] {
-    display: none;
 }
 
 .inspection-costing-form .is-invalid {
@@ -1976,20 +2020,6 @@ body.inspection-modal-open {
     margin-top: 16px;
     padding-top: 14px;
     border-top: 1px solid rgba(22, 101, 52, 0.18);
-}
-
-.inspection-submit-guidance {
-    flex: 1 1 320px;
-    margin: 0;
-    color: #b45309;
-    font-size: 0.82rem;
-    font-weight: 800;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
-.inspection-submit-guidance.is-ready {
-    color: #15803d;
 }
 
 .inspection-section-action {

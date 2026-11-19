@@ -98,7 +98,7 @@ $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261116-4',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261119-6',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -127,6 +127,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="admin-quotation-detail-head">
                     <div>
                         <h1><?php echo admin_quote_details_e($quotation['client_name'] ?? 'Client'); ?></h1>
+                        <p class="admin-quotation-inquiry-reference">INQ-<?php echo str_pad((string)(int)($quotation['inquiry_id'] ?? 0), 6, '0', STR_PAD_LEFT); ?></p>
                     </div>
                     <div class="admin-quotation-detail-status">
                         <span class="quote-status <?php echo admin_quote_details_status_class($selectedStatus); ?>" data-quotation-status-badge><?php echo admin_quote_details_e($statusLabels[$selectedStatus] ?? inquiry_quote_status_label($selectedStatus)); ?></span>
@@ -218,10 +219,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <div class="admin-quotation-history" data-quotation-status-history>
                         <?php if (!$history && $selectedStatus === 'draft'): ?><p>No status history yet.</p><?php endif; ?>
                         <?php foreach ($history as $entry): ?>
-                            <?php $entry['status'] = $entry['to_status'] ?? 'draft'; ?>
+                            <?php
+                            $entry['status'] = $entry['to_status'] ?? 'draft';
+                            $historyLabel = inquiry_quote_normalize_status((string)$entry['status']) === 'draft' && empty($entry['from_status'])
+                                ? 'Draft Created'
+                                : inquiry_quote_status_label((string)$entry['status']);
+                            ?>
                             <article>
                                 <span class="history-dot" aria-hidden="true"></span>
-                                <div><strong><?php echo admin_quote_details_e(inquiry_quote_status_label((string)($entry['status'] ?? 'draft'))); ?></strong><p><?php echo admin_quote_details_e($entry['full_name'] ?? 'System'); ?> · <?php echo admin_quote_details_e(admin_quote_details_date($entry['created_at'] ?? '')); ?></p></div>
+                                <div><strong><?php echo admin_quote_details_e($historyLabel); ?></strong><p><?php echo admin_quote_details_e($entry['full_name'] ?? 'System'); ?> - <?php echo admin_quote_details_e(admin_quote_details_date($entry['created_at'] ?? '')); ?></p></div>
                             </article>
                         <?php endforeach; ?>
                         <?php if ($selectedStatus !== 'draft' && $lastHistoryStatus !== $selectedStatus): ?>

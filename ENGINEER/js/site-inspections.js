@@ -691,6 +691,12 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const findExactStockMaterialOption = function (row, value) {
+        const sharedMatch = window.EdgeMaterialSuggestions?.findExactOption(
+            row.querySelector('[data-material-picker]'),
+            value
+        );
+        if (sharedMatch) return sharedMatch;
+
         const identity = normalizeMaterialName(value);
         if (identity === '') return null;
 
@@ -700,30 +706,17 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const updateManualMaterialDecision = function (row, showError) {
-        const picker = row.querySelector('[data-material-picker]');
         const nameField = row.querySelector('input[name="item_name[]"]');
         const notesField = row.querySelector('input[name="notes[]"]');
         const choiceField = row.querySelector('[data-non-stock-choice]');
-        const decision = row.querySelector('[data-manual-material-decision]');
-        const isManual = picker?.value === '' && nameField && !nameField.disabled && !nameField.readOnly;
-        const exactOption = isManual ? findExactStockMaterialOption(row, nameField.value) : null;
+        const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
+            manualValues: [''],
+        });
+        const exactOption = decisionState?.exactOption || null;
 
         if (!exactOption) {
             setMaterialNotesRequired(row, false);
-            if (choiceField) choiceField.value = '';
-            if (decision) {
-                decision.hidden = true;
-                delete decision.dataset.materialId;
-            }
             return true;
-        }
-
-        if (decision?.dataset.materialId && decision.dataset.materialId !== exactOption.value && choiceField) {
-            choiceField.value = '';
-        }
-        if (decision) {
-            decision.hidden = false;
-            decision.dataset.materialId = exactOption.value;
         }
         setMaterialNotesRequired(row, choiceField?.value === 'keep');
 
@@ -1238,82 +1231,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateManualMaterialNameState(row, false);
 
         const materialPicker = row.querySelector('[data-material-picker]');
-        const materialCombobox = row.querySelector('[data-material-combobox]');
-        const materialInput = row.querySelector('[data-material-combobox-input]');
-        const materialToggle = row.querySelector('[data-material-combobox-toggle]');
-        const materialList = row.querySelector('[data-material-combobox-list]');
         const materialNameField = row.querySelector('input[name="item_name[]"]');
-
-        const closeMaterialCombobox = function () {
-            materialCombobox?.classList.remove('is-open');
-        };
-
-        const syncMaterialComboboxText = function () {
-            const selected = materialPicker?.selectedOptions[0];
-            if (materialInput && selected) {
-                materialInput.value = selected.textContent.trim();
-            }
-        };
-
-        const renderMaterialOptions = function (showAll) {
-            if (!materialInput || !materialList || !materialPicker || materialInput.disabled) return;
-            const query = showAll ? '' : normalizeMaterialName(materialInput.value);
-            const matches = Array.from(materialPicker.options).filter(function (option) {
-                return query === '' || normalizeMaterialName(option.textContent).includes(query);
-            });
-
-            materialList.innerHTML = '';
-            if (matches.length === 0) {
-                const empty = document.createElement('span');
-                empty.className = 'material-combobox__empty';
-                empty.textContent = 'No matching material.';
-                materialList.appendChild(empty);
-            } else {
-                matches.forEach(function (option) {
-                    const choice = document.createElement('button');
-                    choice.type = 'button';
-                    choice.textContent = option.textContent.trim();
-                    choice.classList.toggle('is-selected', option.selected);
-                    choice.addEventListener('click', function () {
-                        materialPicker.value = option.value;
-                        materialInput.value = option.textContent.trim();
-                        closeMaterialCombobox();
-                        materialPicker.dispatchEvent(new Event('change', { bubbles: true }));
-                    });
-                    materialList.appendChild(choice);
-                });
-            }
-            materialCombobox.classList.add('is-open');
-        };
-
-        syncMaterialComboboxText();
-        materialInput?.addEventListener('focus', function () {
-            materialInput.select();
-            renderMaterialOptions(true);
-        });
-        materialInput?.addEventListener('input', function () {
-            renderMaterialOptions(false);
-        });
-        materialToggle?.addEventListener('click', function () {
-            if (materialCombobox?.classList.contains('is-open')) {
-                closeMaterialCombobox();
-                return;
-            }
-            materialInput?.focus();
-            renderMaterialOptions(true);
-        });
-        materialInput?.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                closeMaterialCombobox();
-                syncMaterialComboboxText();
-            }
-        });
-        document.addEventListener('click', function (event) {
-            if (!materialCombobox?.contains(event.target)) {
-                closeMaterialCombobox();
-                syncMaterialComboboxText();
-            }
-        });
 
         row.addEventListener('edge:material-suggestion-selected', function (event) {
             const choiceField = row.querySelector('[data-non-stock-choice]');
@@ -2808,7 +2726,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const status = card.querySelector('.inspection-card__head .inspection-status')?.dataset.status || '';
         if (filter === 'new') return card.classList.contains('is-unviewed');
         if (filter === 'ongoing') return status === 'Ongoing';
-        if (filter === 'submitted') return ['Submitted', 'Costing Submitted', 'Submitted to Admin', 'Submitted for Admin Review'].includes(status);
+        if (filter === 'waiting') return ['Submitted', 'Costing Submitted', 'Submitted to Admin', 'Submitted for Admin Review'].includes(status);
+        if (filter === 'approved') return status === 'Costing Approved';
+        if (filter === 'returned') return status === 'Returned for Revision';
         return true;
     };
 

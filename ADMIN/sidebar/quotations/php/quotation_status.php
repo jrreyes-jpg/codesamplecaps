@@ -44,7 +44,9 @@ $history = array_map(static function (array $entry) use ($labels): array {
 
     return [
         'status' => $entryStatus,
-        'label' => $labels[$entryStatus] ?? inquiry_quote_status_label($entryStatus),
+        'label' => $entryStatus === 'draft' && empty($entry['from_status'])
+            ? 'Draft Created'
+            : ($labels[$entryStatus] ?? inquiry_quote_status_label($entryStatus)),
         'actor' => $actor,
         'date' => $time ? date('M d, Y g:i A', $time) : 'Not recorded',
     ];

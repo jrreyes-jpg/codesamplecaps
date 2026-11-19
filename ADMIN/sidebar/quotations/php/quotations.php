@@ -107,6 +107,7 @@ $quotations = array_values(array_filter($allQuotations, static function (array $
         return true;
     }
     $haystack = implode(' ', [
+        'INQ-' . str_pad((string)($quotation['inquiry_id'] ?? 0), 6, '0', STR_PAD_LEFT),
         $quotation['quotation_no'] ?? '',
         $quotation['client_name'] ?? '',
         $quotation['company_name'] ?? '',
@@ -141,7 +142,7 @@ $adminPageTitle = 'Quotations - Edge Automation';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261112-3',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261119-6',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -161,7 +162,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <input type="hidden" name="status" value="<?php echo admin_quote_e($activeStatus); ?>">
                 <div>
                     <div class="admin-quotation-search__field" data-search-field>
-                        <input id="quotationSearch" name="q" type="search" value="<?php echo admin_quote_e($search); ?>" placeholder="Search client or quotation number" aria-label="Search client or quotation number">
+                        <input id="quotationSearch" name="q" type="search" value="<?php echo admin_quote_e($search); ?>" placeholder="Search client, inquiry, or quotation number" aria-label="Search client, inquiry, or quotation number">
                         <button type="button" class="admin-quotation-search__x" data-search-clear aria-label="Clear quotation search"<?php echo $search === '' ? ' hidden' : ''; ?>>&times;</button>
                     </div>
                     <button type="submit">Search</button>
@@ -202,6 +203,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <div class="admin-quotation-card__main">
                                 <strong class="admin-quotation-card__number<?php echo $isNumberMissing ? ' has-warning' : ''; ?>"><?php echo admin_quote_e($quotationNumberLabel); ?></strong>
                                 <h2><?php echo admin_quote_e($quotation['client_name'] ?? 'Client'); ?></h2>
+                                <span class="admin-quotation-card__inquiry">INQ-<?php echo str_pad((string)(int)($quotation['inquiry_id'] ?? 0), 6, '0', STR_PAD_LEFT); ?></span>
                                 <span class="admin-quotation-card__updated">Updated <?php echo admin_quote_e(admin_quote_date($quotation['updated_at'] ?? '')); ?></span>
                             </div>
                             <div class="admin-quotation-card__side">

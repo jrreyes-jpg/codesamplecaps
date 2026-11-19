@@ -1537,7 +1537,14 @@ if (inspection_evidence_table_exists($conn)) {
 }
 
 $csrfToken = engineer_inspection_csrf_token();
-$inspectionFilterLabels = ['all' => 'All', 'new' => 'New', 'ongoing' => 'Ongoing', 'submitted' => 'Submitted'];
+$inspectionFilterLabels = [
+    'all' => 'All',
+    'new' => 'New',
+    'ongoing' => 'Ongoing',
+    'waiting' => 'Waiting for Admin',
+    'approved' => 'Costing Approved',
+    'returned' => 'Returned',
+];
 $inspectionFilterCounts = array_fill_keys(array_keys($inspectionFilterLabels), 0);
 foreach ($inspections as $filterInspection) {
     $inspectionFilterCounts['all']++;
@@ -1547,7 +1554,16 @@ foreach ($inspections as $filterInspection) {
     if (($filterInspection['status'] ?? '') === 'Ongoing') {
         $inspectionFilterCounts['ongoing']++;
     } elseif (($filterInspection['status'] ?? '') === 'Submitted') {
-        $inspectionFilterCounts['submitted']++;
+        $reviewStatus = (string)($filterInspection['admin_review_status'] ?? 'Pending');
+        if ($reviewStatus === 'Approved') {
+            $inspectionFilterCounts['approved']++;
+        } elseif ($reviewStatus === 'Returned') {
+            $inspectionFilterCounts['returned']++;
+        } else {
+            $inspectionFilterCounts['waiting']++;
+        }
+    } elseif (($filterInspection['admin_review_status'] ?? '') === 'Returned') {
+        $inspectionFilterCounts['returned']++;
     }
 }
 $requestedInspectionId = max(0, (int)($_GET['inspection_id'] ?? 0));
@@ -1557,10 +1573,10 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-7',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-9',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261117-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261117-1',
-    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261116-1',
+    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261119-4',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
@@ -2155,8 +2171,8 @@ require __DIR__ . '/../layout/header.php';
                                                 </div>
                                             </label>
                                             <input type="hidden" name="non_stock_choice[]" value="" data-non-stock-choice>
-                                            <span class="material-exact-match" data-manual-material-decision hidden>
-                                                <span class="material-exact-match__actions">
+                                            <span class="shared-material-decision" data-manual-material-decision hidden>
+                                                <span class="shared-material-decision__actions">
                                                     <button type="button" data-use-existing-material>Use from stock</button>
                                                     <button type="button" data-keep-non-stock>Keep as Non-stock</button>
                                                 </span>
@@ -2426,8 +2442,8 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261117-1',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261116-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261119-7',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261119-5',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261119-10',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

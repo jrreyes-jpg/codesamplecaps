@@ -862,6 +862,16 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
         $clearItems->bind_param('i', $draftId);
         $clearItems->execute();
 
+        // Parehong draft id puwedeng may lumang orphan history sa demo database.
+        if (inquiry_quote_table_exists($conn, 'inquiry_quotation_status_history')) {
+            $clearHistory = $conn->prepare('DELETE FROM inquiry_quotation_status_history WHERE draft_id = ?');
+            if (!$clearHistory) {
+                throw new RuntimeException('Unable to prepare the quotation history cleanup.');
+            }
+            $clearHistory->bind_param('i', $draftId);
+            $clearHistory->execute();
+        }
+
         $insertItem = $conn->prepare(
             'INSERT INTO inquiry_quotation_items
              (draft_id, item_type, material_id, item_name, quantity, unit, unit_cost, line_total, notes)
@@ -883,6 +893,8 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
             $insertItem->bind_param('isisdsdds', $draftId, $itemType, $materialId, $itemName, $quantity, $unit, $unitCost, $lineTotal, $notes);
             $insertItem->execute();
         }
+
+        inquiry_quote_add_history($conn, $draftId, null, 'draft', 'Admin created the quotation draft from approved Engineer Costing.', $adminId, 'admin');
 
         $reviewStmt = $conn->prepare(
             "UPDATE site_inspections

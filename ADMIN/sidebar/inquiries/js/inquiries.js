@@ -3242,31 +3242,12 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const syncMaterialReferenceOptionAvailability = function () {
-            const materialRows = Array.from(items?.querySelectorAll('[data-quotation-item]') || []);
-            const selectedIds = new Set();
-
-            materialRows.forEach(function (row) {
-                const typeSelect = row.querySelector('select[name="item_type[]"]');
+            Array.from(items?.querySelectorAll('[data-quotation-item]') || []).forEach(function (row) {
                 const materialSelect = row.querySelector('select[name="material_id[]"]');
-                const materialId = materialSelect?.value || '';
-                if (typeSelect?.value === 'material' && /^[1-9]\d*$/.test(materialId)) {
-                    selectedIds.add(materialId);
-                }
-            });
-
-            materialRows.forEach(function (row) {
-                const materialSelect = row.querySelector('select[name="material_id[]"]');
-                if (!materialSelect) {
-                    return;
-                }
-
-                const currentMaterialId = materialSelect.value || '';
+                if (!materialSelect) return;
                 Array.from(materialSelect.options).forEach(function (option) {
-                    const optionMaterialId = option.value || '';
-                    // Ang sariling napiling material ay dapat manatiling puwedeng piliin.
-                    option.disabled = /^[1-9]\d*$/.test(optionMaterialId)
-                        && selectedIds.has(optionMaterialId)
-                        && optionMaterialId !== currentMaterialId;
+                    // Placeholder lang ang blank option. Duplicate check ang hahawak sa materials.
+                    option.disabled = option.value === '';
                 });
             });
         };
@@ -3327,6 +3308,47 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
+        const syncAdminMaterialNoteRequirement = function () {
+            items?.querySelectorAll('[data-quotation-item]').forEach(function (row) {
+                const keepNonStock = row.querySelector('[data-non-stock-choice]')?.value === 'keep';
+                const noteWrap = row.querySelector('[data-material-note-wrap]');
+                const noteInput = noteWrap?.querySelector('input[name="item_notes[]"]');
+                if (noteWrap) noteWrap.hidden = !keepNonStock;
+                if (noteInput) noteInput.required = keepNonStock;
+            });
+        };
+
+        const syncAdminNonStockMatch = function (row, showError = false) {
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const nameInput = row.querySelector('input[name="item_name[]"]');
+            const choiceInput = row.querySelector('[data-non-stock-choice]');
+            const matchBox = row.querySelector('[data-non-stock-match]');
+            const errorBox = row.querySelector('[data-non-stock-match-error]');
+            const isNonStock = materialSelect?.value === 'manual';
+            const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
+                manualValues: ['manual'],
+            });
+            const exactOption = isNonStock ? decisionState?.exactOption : null;
+
+            if (!exactOption) {
+                if (matchBox) matchBox.hidden = true;
+                if (choiceInput) choiceInput.value = '';
+                if (errorBox) errorBox.textContent = '';
+                nameInput?.removeAttribute('aria-invalid');
+                syncAdminMaterialNoteRequirement();
+                return true;
+            }
+
+            if (matchBox) matchBox.dataset.materialId = exactOption.value;
+            const isKept = choiceInput?.value === 'keep';
+            const message = isKept ? '' : 'Choose Use from stock or Keep as Non-stock.';
+            if (errorBox) errorBox.textContent = showError ? message : '';
+            nameInput?.setAttribute('aria-invalid', message !== '' && showError ? 'true' : 'false');
+
+            syncAdminMaterialNoteRequirement();
+            return isKept;
+        };
+
         const syncMaterialReference = function (row, resetForMaterialChange = false) {
             const typeSelect = row.querySelector('select[name="item_type[]"]');
             const materialReference = row.querySelector('[data-quotation-material-reference]');
@@ -3382,6 +3404,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             updateMaterialStockStatus(row);
+            syncAdminNonStockMatch(row, false);
 
             if (itemName) {
                 itemName.readOnly = isLinkedMaterial;
@@ -3399,6 +3422,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             validateQuotationQuantity(row, false, false);
             validateMaterialReference(row, false);
+            syncAdminMaterialNoteRequirement();
         };
 
         const restoreLocalQuotationDraft = function (draft) {
@@ -3544,8 +3568,54 @@ document.addEventListener('DOMContentLoaded', function () {
             const row = event.target.closest('[data-quotation-item]');
             const materialSelect = row?.querySelector('select[name="material_id[]"]');
             if (!row || !materialSelect || !event.detail?.value) return;
+            if (materialSelect.value === 'manual') {
+                const nameInput = row.querySelector('input[name="item_name[]"]');
+                const unitSelect = row.querySelector('select[name="unit[]"]');
+                if (nameInput) nameInput.value = event.detail.name || '';
+                if (unitSelect && event.detail.unit) unitSelect.value = event.detail.unit;
+                syncAdminNonStockMatch(row, false);
+                nameInput?.focus();
+                return;
+            }
             materialSelect.value = String(event.detail.value);
             materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        items?.addEventListener('input', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (row && event.target.matches('input[name="item_name[]"]')) {
+                const choiceInput = row.querySelector('[data-non-stock-choice]');
+                if (choiceInput) choiceInput.value = '';
+                syncAdminNonStockMatch(row, false);
+            }
+        });
+
+        items?.addEventListener('focusout', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (row && event.target.matches('input[name="item_name[]"]')) {
+                syncAdminNonStockMatch(row, true);
+            }
+        });
+
+        items?.addEventListener('click', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (!row) return;
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const choiceInput = row.querySelector('[data-non-stock-choice]');
+            const matchBox = row.querySelector('[data-non-stock-match]');
+            if (event.target.closest('[data-use-existing-material]')) {
+                const materialId = matchBox?.dataset.materialId || '';
+                if (materialSelect && materialId) {
+                    materialSelect.value = materialId;
+                    if (choiceInput) choiceInput.value = '';
+                    materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            if (event.target.closest('[data-keep-non-stock]')) {
+                if (choiceInput) choiceInput.value = 'keep';
+                syncAdminNonStockMatch(row, false);
+                row.querySelector('[data-material-note-wrap] input[name="item_notes[]"]')?.focus();
+            }
         });
 
         items?.addEventListener('change', function (event) {
@@ -3616,6 +3686,22 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!validateDuplicateMaterialReferences(true)) {
                 event.preventDefault();
                 items?.querySelector('[data-quotation-material-error]:not(:empty)')?.closest('[data-quotation-material-reference]')?.querySelector('select[name="material_id[]"]')?.focus();
+                return;
+            }
+
+            const unresolvedNonStockRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
+                return !syncAdminNonStockMatch(row, true);
+            });
+            if (unresolvedNonStockRow) {
+                event.preventDefault();
+                unresolvedNonStockRow.querySelector('input[name="item_name[]"]')?.focus();
+                return;
+            }
+
+            if (materialsNoteInput?.required && materialsNoteInput.value.trim() === '') {
+                event.preventDefault();
+                materialsNoteInput.setAttribute('aria-invalid', 'true');
+                materialsNoteInput.focus();
                 return;
             }
 

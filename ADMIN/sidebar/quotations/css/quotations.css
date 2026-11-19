@@ -41,6 +41,14 @@
 .admin-quotation-detail-head p,
 .admin-quotation-history article p { margin: 0; color: #66758d; }
 
+.admin-quotation-card__inquiry,
+.admin-quotation-inquiry-reference {
+    display: block;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
 .admin-quotation-search {
     grid-column: 2;
     display: grid;
@@ -220,6 +228,8 @@
 }
 
 .admin-quotation-card__updated {
+    display: block;
+    margin-top: 5px;
     color: #66758d;
     font-size: 12px;
 }

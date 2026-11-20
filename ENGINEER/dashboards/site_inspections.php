@@ -1539,7 +1539,6 @@ if (inspection_evidence_table_exists($conn)) {
 $csrfToken = engineer_inspection_csrf_token();
 $inspectionFilterLabels = [
     'all' => 'All',
-    'new' => 'New',
     'ongoing' => 'Ongoing',
     'waiting' => 'Waiting for Admin',
     'approved' => 'Costing Approved',
@@ -1548,9 +1547,6 @@ $inspectionFilterLabels = [
 $inspectionFilterCounts = array_fill_keys(array_keys($inspectionFilterLabels), 0);
 foreach ($inspections as $filterInspection) {
     $inspectionFilterCounts['all']++;
-    if ((int)($unreadInspectionNotificationIds[(int)$filterInspection['id']] ?? 0) > 0) {
-        $inspectionFilterCounts['new']++;
-    }
     if (($filterInspection['status'] ?? '') === 'Ongoing') {
         $inspectionFilterCounts['ongoing']++;
     } elseif (($filterInspection['status'] ?? '') === 'Submitted') {
@@ -1573,9 +1569,9 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261119-9',
-    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261117-1',
-    '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261117-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261120-1',
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261120-1',
+    '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261119-4',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
@@ -1584,16 +1580,19 @@ $engineerCssFiles = [
 require __DIR__ . '/../layout/header.php';
 ?>
 <?php include __DIR__ . '/../../SHARED/sidebar/php/sidebar.php'; ?>
-<main class="main-content<?php echo $hasRequestedInspection ? ' inspection-details-main shared-page-surface' : ''; ?>">
+<main class="main-content shared-page-surface<?php echo $hasRequestedInspection ? ' inspection-details-main' : ''; ?>">
     <?php
     include __DIR__ . '/../includes/header.php';
     ?>
 
-    <div class="inspection-shell<?php echo $hasRequestedInspection ? ' has-inspection-details shared-page-container' : ''; ?>">
+    <div class="inspection-shell shared-page-container<?php echo $hasRequestedInspection ? ' has-inspection-details' : ''; ?>">
         <div class="inspection-toolbar">
             <h1 id="inspectionPageTitle">Site Inspections</h1>
             <div class="shared-list-controls" data-shared-list-controls>
-                <input type="search" placeholder="Search client, service, or location" aria-label="Search site inspections" data-shared-list-search>
+                <div class="shared-list-search-field">
+                    <input type="search" placeholder="Search client, service, or location" aria-label="Search site inspections" data-shared-list-search>
+                    <button type="button" class="shared-list-search-clear" data-shared-list-clear aria-label="Clear inspection search" hidden>&times;</button>
+                </div>
                 <select aria-label="Sort site inspections" data-shared-list-sort>
                     <option value="newest">Newest schedule</option>
                     <option value="oldest">Oldest schedule</option>
@@ -1601,9 +1600,10 @@ require __DIR__ . '/../layout/header.php';
             </div>
             <div class="inspection-filters" role="group" aria-label="Filter inspections">
                 <?php foreach ($inspectionFilterLabels as $filterKey => $filterLabel): ?>
-                    <button type="button" class="inspection-filter" data-inspection-filter="<?php echo $filterKey; ?>" aria-pressed="<?php echo $filterKey === 'all' ? 'true' : 'false'; ?>" aria-controls="engineerInspectionList">
+                    <?php $filterTone = match ($filterKey) { 'ongoing' => 'blue', 'waiting' => 'orange', 'approved' => 'green', 'returned' => 'red', default => 'green' }; ?>
+                    <button type="button" class="inspection-filter shared-filter-chip" data-tone="<?php echo $filterTone; ?>" data-inspection-filter="<?php echo $filterKey; ?>" aria-pressed="<?php echo $filterKey === 'all' ? 'true' : 'false'; ?>" aria-controls="engineerInspectionList">
                         <?php echo $filterLabel; ?>
-                        <span data-inspection-filter-count><?php echo $inspectionFilterCounts[$filterKey]; ?></span>
+                        <span class="shared-filter-chip__count" data-inspection-filter-count><?php echo $inspectionFilterCounts[$filterKey]; ?></span>
                     </button>
                 <?php endforeach; ?>
             </div>
@@ -1803,30 +1803,30 @@ require __DIR__ . '/../layout/header.php';
                         (string)($inspection['admin_remarks'] ?? ''),
                     ]));
                     ?>
-                    <article class="inspection-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-list-search="<?php echo htmlspecialchars($inspectionSearchText, ENT_QUOTES, 'UTF-8'); ?>" data-list-sort="<?php echo $inspectionSortTime; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes, $reviewSyncKey])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-key="<?php echo htmlspecialchars($reviewSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                        <div class="inspection-card__head">
-                            <div class="inspection-card__identity">
+                    <article class="inspection-card shared-workflow-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-list-search="<?php echo htmlspecialchars($inspectionSearchText, ENT_QUOTES, 'UTF-8'); ?>" data-list-sort="<?php echo $inspectionSortTime; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes, $reviewSyncKey])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-key="<?php echo htmlspecialchars($reviewSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                        <div class="inspection-card__head shared-workflow-card__head">
+                            <div class="inspection-card__identity shared-workflow-card__identity">
                                 <?php if ($unreadInspectionNotificationId > 0): ?>
-                                    <span class="inspection-card__new-indicator" data-inspection-new-badge>
+                                    <span class="inspection-card__new-indicator shared-workflow-card__new" data-inspection-new-badge>
                                         <span aria-hidden="true"></span>New
                                     </span>
                                 <?php endif; ?>
-                                <span class="inspection-card__eyebrow">Client - Site Inspection</span>
-                                <h2><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                                <span class="inspection-card__eyebrow shared-workflow-card__eyebrow">Client - Site Inspection</span>
+                                <h2 class="shared-workflow-card__title"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             </div>
                             <span class="inspection-status" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
-                        <div class="inspection-card__summary">
-                            <div class="inspection-card__info">
+                        <div class="inspection-card__summary shared-workflow-card__summary">
+                            <div class="inspection-card__info shared-workflow-card__info">
                                 <span>Service</span>
                                 <strong><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
-                            <div class="inspection-card__info">
+                            <div class="inspection-card__info shared-workflow-card__info">
                                 <span>Location</span>
                                 <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
-                            <div class="inspection-card__info">
+                            <div class="inspection-card__info shared-workflow-card__info">
                                 <span>Inspection Schedule</span>
                                 <strong><?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
@@ -1834,7 +1834,7 @@ require __DIR__ . '/../layout/header.php';
 
                         <a
                             href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=<?php echo $inspectionId; ?>"
-                            class="btn-primary inspection-view-button"
+                            class="btn-primary inspection-view-button shared-workflow-action"
                             <?php echo $unreadInspectionNotificationId > 0 ? 'data-engineer-notification-id="' . $unreadInspectionNotificationId . '"' : ''; ?>
                         >
                             View Details
@@ -2439,11 +2439,11 @@ require __DIR__ . '/../layout/header.php';
 <?php
 $engineerJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261117-1',
+    '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261119-5',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261119-10',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261120-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

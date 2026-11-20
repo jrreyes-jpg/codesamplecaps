@@ -17,6 +17,11 @@ document.addEventListener('DOMContentLoaded', function () {
         clearButton.addEventListener('click', function () {
             input.value = '';
             updateClearButton();
+            if (form.hasAttribute('data-shared-list-controls')) {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.focus();
+                return;
+            }
             form.requestSubmit();
         });
 

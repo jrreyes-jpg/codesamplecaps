@@ -587,11 +587,6 @@ function inquiry_center_redirect_to_open_modal(int $inquiryId, string $status, s
         'tab' => $tab,
     ];
 
-    $search = trim((string)($_GET['search'] ?? ''));
-    if ($search !== '') {
-        $query['search'] = $search;
-    }
-
     header('Location: /codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?' . http_build_query($query));
     exit();
 }
@@ -2098,7 +2093,7 @@ $walkInCsrfToken = auth_csrf_token('super_admin');
 $statusFilter = trim((string)($_GET['status'] ?? ''));
 $quotationFilter = trim((string)($_GET['quotation_filter'] ?? ''));
 $sourceFilter = trim((string)($_GET['source'] ?? ''));
-$search = trim((string)($_GET['search'] ?? ''));
+$search = '';
 $view = trim((string)($_GET['view'] ?? 'active'));
 $sortOrder = trim((string)($_GET['sort'] ?? 'oldest'));
 $detailsInquiryId = max(0, (int)($_GET['details'] ?? 0));
@@ -2562,18 +2557,20 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261119-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261120-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
+    '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261103-1',
+    '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261120-1',
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
+    '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261119-5',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
@@ -2610,17 +2607,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
         <div class="inquiry-page-header">
             <h1>Inquiries</h1>
-            <form class="inquiry-header-search" method="GET" role="search">
-                <div class="inquiry-search-field" data-search-field>
-                    <input type="search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search inquiries..." aria-label="Search inquiries">
-                    <button type="button" class="inquiry-search-clear" data-search-clear aria-label="Clear inquiry search"<?php echo $search === '' ? ' hidden' : ''; ?>>&times;</button>
+            <form class="inquiry-header-search" role="search" data-shared-list-controls data-shared-live-only data-shared-search-param="search" data-shared-list-target="#adminInquiryList" data-shared-list-item="[data-inquiry-card-id]" data-shared-list-empty="#adminInquirySearchEmpty">
+                <div class="inquiry-search-field shared-list-search-field">
+                    <input type="search" placeholder="Search inquiries..." aria-label="Search inquiries" data-shared-list-search>
+                    <button type="button" class="shared-list-search-clear" data-shared-list-clear aria-label="Clear inquiry search" hidden>&times;</button>
                 </div>
-                <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
-                <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
-                <?php if ($quotationFilter !== ''): ?><input type="hidden" name="quotation_filter" value="<?php echo htmlspecialchars($quotationFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
-                <?php if ($sourceFilter !== ''): ?><input type="hidden" name="source" value="<?php echo htmlspecialchars($sourceFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
-                <input type="hidden" name="sort" value="<?php echo htmlspecialchars($sortOrder, ENT_QUOTES, 'UTF-8'); ?>">
-                <button type="submit" class="btn-primary">Search</button>
             </form>
             <?php if ($view !== 'archive'): ?>
                 <button type="button" class="btn-primary" data-walk-in-inquiry-open>+ Create Walk-in Inquiry</button>
@@ -2637,20 +2628,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
         <div class="inquiry-lifecycle-toolbar">
         <nav class="inquiry-status-strip inquiry-status-strip--primary" aria-label="Inquiry lifecycle filters">
-            <a class="inquiry-view-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
+            <a class="inquiry-view-link inquiry-lifecycle-filter shared-filter-chip <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" data-tone="green" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span>All</span>
-                <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:all"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
+                <span class="inquiry-quotation-filter__count shared-filter-chip__count" data-inquiry-count-key="lifecycle:all"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
             </a>
             <?php foreach (['Pending Review', 'Needs Information', 'For Inspection', 'Inspection Submitted'] as $status): ?>
                 <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Needs Information' => 'needs_information', 'For Inspection' => 'for_inspection', 'Inspection Submitted' => 'inspection_submitted' }; ?>
-                <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
+                <?php $lifecycleTone = match ($status) { 'Pending Review' => 'yellow', 'Needs Information' => 'orange', 'For Inspection' => 'blue', 'Inspection Submitted' => 'green' }; ?>
+                <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter shared-filter-chip <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-tone="<?php echo $lifecycleTone; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
                     <span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span>
-                    <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:<?php echo htmlspecialchars($lifecycleCountKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
+                    <span class="inquiry-quotation-filter__count shared-filter-chip__count" data-inquiry-count-key="lifecycle:<?php echo htmlspecialchars($lifecycleCountKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
                 </a>
             <?php endforeach; ?>
-            <a class="inquiry-view-link inquiry-lifecycle-filter <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
+            <a class="inquiry-view-link inquiry-lifecycle-filter shared-filter-chip <?php echo $view === 'archive' ? 'is-active' : ''; ?>" data-tone="gray" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span>Archived</span>
-                <span class="inquiry-quotation-filter__count" data-inquiry-count-key="lifecycle:archived"><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></span>
+                <span class="inquiry-quotation-filter__count shared-filter-chip__count" data-inquiry-count-key="lifecycle:archived"><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></span>
             </a>
         </nav>
 
@@ -2682,7 +2674,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php if (empty($inquiryRows)): ?>
             <div class="inquiry-empty">No inquiries found.</div>
         <?php else: ?>
-            <div class="inquiry-list">
+            <div class="inquiry-list" id="adminInquiryList">
                 <?php foreach ($inquiryRows as $inquiry): ?>
                     <?php if ($detailsInquiryId > 0 && (int)$inquiry['id'] !== $detailsInquiryId) continue; ?>
                     <?php $currentStatus = (string)($inquiry['status'] ?? 'Pending Review'); ?>
@@ -2810,31 +2802,31 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             && empty($inquiry['archived_at'])
                             && in_array($latestInspectionStatus, ['Assigned', 'Acknowledged'], true);
                     ?>
-                    <article class="inquiry-card shared-list-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>">
-                        <div class="inquiry-card__head">
-                            <div class="inquiry-card__identity">
+                    <article class="inquiry-card shared-list-card shared-workflow-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>" data-list-search="<?php echo htmlspecialchars(implode(' ', [inquiry_reference_number((int)$inquiry['id']), (string)$inquiry['client_name'], $cardService, $cardLocation]), ENT_QUOTES, 'UTF-8'); ?>">
+                        <div class="inquiry-card__head shared-workflow-card__head">
+                            <div class="inquiry-card__identity shared-workflow-card__identity">
                                 <?php if (!$isViewed): ?>
-                                    <span class="inquiry-card__new-indicator" data-inquiry-unread-indicator>
+                                    <span class="inquiry-card__new-indicator shared-workflow-card__new" data-inquiry-unread-indicator>
                                         <span aria-hidden="true"></span>New
                                     </span>
                                 <?php endif; ?>
-                                <span class="inquiry-card__eyebrow"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry' : 'Online Inquiry'; ?></span>
-                                <h2><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                                <span class="inquiry-card__eyebrow shared-workflow-card__eyebrow"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry' : 'Online Inquiry'; ?></span>
+                                <h2 class="shared-workflow-card__title"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <span class="inquiry-card__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
-                        <div class="inquiry-card__summary">
-                            <div class="inquiry-card__info">
+                        <div class="inquiry-card__summary shared-workflow-card__summary">
+                            <div class="inquiry-card__info shared-workflow-card__info">
                                 <span>Service</span>
                                 <strong><?php echo htmlspecialchars($cardService, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
-                            <div class="inquiry-card__info">
+                            <div class="inquiry-card__info shared-workflow-card__info">
                                 <span>Location</span>
                                 <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
-                            <div class="inquiry-card__info">
+                            <div class="inquiry-card__info shared-workflow-card__info">
                                 <?php if (in_array($displayStatus, ['For Inspection', 'Inspection Submitted'], true) && !empty($latestInspection['scheduled_at'])): ?>
                                     <span>Inspection Schedule</span>
                                     <strong><?php echo htmlspecialchars(site_inspection_format_date($latestInspection['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -2846,13 +2838,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
 
                         <?php if ($isConvertedToProject): ?>
-                            <a class="inquiry-next-action shared-strong-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                            <a class="inquiry-next-action shared-workflow-action shared-strong-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
                                 Open Project
                             </a>
                         <?php else: ?>
                             <a
                                 href="<?php echo htmlspecialchars(inquiry_center_filter_url(['details' => (int)$inquiry['id'], 'view' => !empty($inquiry['archived_at']) ? 'archive' : '', 'tab' => $nextActionTab]), ENT_QUOTES, 'UTF-8'); ?>"
-                                class="inquiry-next-action<?php echo $nextActionClass; ?>"
+                                class="inquiry-next-action shared-workflow-action<?php echo $nextActionClass; ?>"
                             >
                                 <?php echo htmlspecialchars($nextActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                             </a>
@@ -3687,6 +3679,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </article>
                 <?php endforeach; ?>
             </div>
+            <p class="inquiry-empty" id="adminInquirySearchEmpty" data-shared-list-empty hidden>No loaded inquiries match your search.</p>
         <?php endif; ?>
     </div>
 </main>

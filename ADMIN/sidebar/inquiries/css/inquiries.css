@@ -1127,8 +1127,14 @@
 }
 
 .inquiry-status[data-status="Needs Information"] {
-    background: #fef3c7 !important;
-    color: #92400e !important;
+    background: #ffedd5 !important;
+    color: #9a3412 !important;
+}
+
+.inquiry-status-link.shared-filter-chip.is-active {
+    border-color: var(--shared-chip-text) !important;
+    background: var(--shared-chip-text) !important;
+    color: #ffffff !important;
 }
 
 .inquiry-screening-form {

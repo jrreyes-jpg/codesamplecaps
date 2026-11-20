@@ -26,10 +26,9 @@
 }
 
 .inspection-toolbar {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
     gap: 12px 16px;
     min-width: 0;
 }
@@ -43,10 +42,13 @@
 }
 
 .inspection-toolbar .shared-list-controls {
-    flex: 1 1 440px;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
 }
 
 .inspection-filters {
+    grid-column: 1 / -1;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -2098,8 +2100,8 @@ body.inspection-is-submitting {
 
 @media (max-width: 560px) {
     .inspection-toolbar {
+        grid-template-columns: minmax(0, 1fr);
         align-items: stretch;
-        flex-direction: column;
     }
 
     .inspection-filters {

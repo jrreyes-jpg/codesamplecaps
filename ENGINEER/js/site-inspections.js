@@ -2716,7 +2716,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionSortInput = inspectionListControls?.querySelector('[data-shared-list-sort]');
     const inspectionFilterMessages = {
         all: 'No site inspections yet.',
-        new: 'No new site inspections.',
         ongoing: 'No ongoing site inspections.',
         submitted: 'No submitted site inspections.',
     };
@@ -2724,7 +2723,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const inspectionMatchesFilter = function (card, filter) {
         const status = card.querySelector('.inspection-card__head .inspection-status')?.dataset.status || '';
-        if (filter === 'new') return card.classList.contains('is-unviewed');
         if (filter === 'ongoing') return status === 'Ongoing';
         if (filter === 'waiting') return ['Submitted', 'Costing Submitted', 'Submitted to Admin', 'Submitted for Admin Review'].includes(status);
         if (filter === 'approved') return status === 'Costing Approved';

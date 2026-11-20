@@ -211,8 +211,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($marginPercent > 100) {
         $markupError = 'Markup cannot be greater than 100%.';
         $error = $markupError;
-    } elseif (strlen($materialsNote) > 2000) {
-        $error = 'Materials note must be 2000 characters or less.';
     } elseif (count($postedNames) === 0 || count($postedNames) > 50) {
         $error = 'Add from 1 to 50 quotation items only.';
     } else {
@@ -260,6 +258,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($matchingStockId > 0 && $nonStockChoice === 'keep' && $notes === '') {
                 $error = 'Add a material note for the matched Non-stock item.';
+                break;
+            }
+            if (strlen($notes) > 500) {
+                $error = 'Material note must be 500 characters or less.';
                 break;
             }
             if ($materialId > 0 && !material_stock_material_exists($conn, $materialId)) {

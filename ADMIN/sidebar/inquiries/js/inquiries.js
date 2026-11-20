@@ -2772,7 +2772,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const quotationNumberInput = quotationCreate.querySelector('input[name="quotation_no"]');
         const quotationNumberError = quotationCreate.querySelector('[data-quotation-number-error]');
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
-        const materialsNoteInput = form?.querySelector('textarea[name="materials_note"]');
         const markupError = form?.querySelector('[data-quotation-markup-error]');
         const saveDraftButton = form?.querySelector('[data-quotation-save-draft]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
@@ -2839,7 +2838,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return JSON.stringify({
                 quotation_number: quotationNumberInput?.value.trim() || '',
                 markup_percent: marginInput?.value.trim() || '',
-                materials_note: materialsNoteInput?.value.trim() || '',
                 rows: Array.from(items?.querySelectorAll('[data-quotation-item]') || []).map(function (row) {
                     return {
                         material_id: row.querySelector('select[name="material_id[]"]')?.value || '',
@@ -2847,6 +2845,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         quantity: row.querySelector('input[name="quantity[]"]')?.value.trim() || '',
                         unit: row.querySelector('select[name="unit[]"]')?.value || '',
                         unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value.trim() || '',
+                        notes: row.querySelector('input[name="item_notes[]"]')?.value.trim() || '',
                     };
                 }),
                 direct_costs: directCostInputs.map(function (input) {
@@ -2934,7 +2933,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 saved_at: Date.now(),
                 quotation_number: quotationNumberInput?.value || '',
                 markup_percent: marginInput?.value || '',
-                materials_note: materialsNoteInput?.value || '',
                 rows: Array.from(items?.querySelectorAll('[data-quotation-item]') || []).map(function (row) {
                     return {
                         type: row.querySelector('select[name="item_type[]"]')?.value || 'material',
@@ -3475,9 +3473,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (marginInput) {
                 marginInput.value = String(draft.markup_percent || '');
             }
-            if (materialsNoteInput && typeof draft.materials_note === 'string') {
-                materialsNoteInput.value = draft.materials_note;
-            }
             if (quotationNumberInput && draft.quotation_number && !/^IQ-\d{8}-[A-F0-9]{6}$/i.test(String(draft.quotation_number))) {
                 quotationNumberInput.value = String(draft.quotation_number);
             }
@@ -3695,13 +3690,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (unresolvedNonStockRow) {
                 event.preventDefault();
                 unresolvedNonStockRow.querySelector('input[name="item_name[]"]')?.focus();
-                return;
-            }
-
-            if (materialsNoteInput?.required && materialsNoteInput.value.trim() === '') {
-                event.preventDefault();
-                materialsNoteInput.setAttribute('aria-invalid', 'true');
-                materialsNoteInput.focus();
                 return;
             }
 

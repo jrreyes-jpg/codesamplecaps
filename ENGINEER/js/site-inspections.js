@@ -463,6 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const option = picker?.selectedOptions[0];
         const linkedName = option?.getAttribute('data-name') || '';
         const linkedUnit = option?.getAttribute('data-unit') || '';
+        row.classList.toggle('has-linked-material', Boolean(linkedName && linkedUnit));
         if (linkedName && linkedUnit) {
             itemName.value = linkedName;
             itemNameField?.setAttribute('hidden', '');
@@ -964,6 +965,10 @@ document.addEventListener('DOMContentLoaded', function () {
         rowsBox.closest('details')?.setAttribute('open', '');
 
         const row = firstRow.cloneNode(true);
+        row.classList.remove('is-shared-material-linked', 'is-waiting-material-decision');
+        row.querySelectorAll('[data-shared-material-linked-feedback], [data-duplicate-material-error]').forEach(function (node) {
+            node.remove();
+        });
         row.querySelectorAll('input').forEach(function (field) {
             field.value = field.name === 'quantity[]' ? '1' : (field.name === 'item_type[]' ? 'material' : '');
             clearFieldError(field);
@@ -1042,7 +1047,10 @@ document.addEventListener('DOMContentLoaded', function () {
             firstInvalid = driveUrl;
         }
 
-        form.querySelectorAll('.costing-row').forEach(function (row) {
+        const materialRows = Array.from(form.querySelectorAll('.costing-row'));
+        const meaningfulMaterialRows = materialRows.filter(rowHasMeaningfulData);
+
+        materialRows.forEach(function (row) {
             const name = row.querySelector('input[name="item_name[]"]');
             const quantity = row.querySelector('input[name="quantity[]"]');
             const unit = row.querySelector('select[name="unit[]"]');
@@ -1054,7 +1062,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const unitCostText = moneyRawText(unitCost?.value || '');
             const rowHasValue = rowHasMeaningfulData(row);
 
-            if (!rowHasValue) {
+            const blankPlaceholderOnly = materialRows.length === 1 && meaningfulMaterialRows.length === 0;
+            if (!rowHasValue && (!requireFinal || blankPlaceholderOnly)) {
                 return;
             }
 
@@ -1064,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (nameValue === '') {
                 if (name) name.dataset.validationTouched = 'true';
-                setFieldError(name, 'Material name is required.');
+                setFieldError(name, 'Enter the non-stock material name.');
                 firstInvalid = firstInvalid || name;
             } else {
                 const validMaterialName = updateManualMaterialNameState(row, true);
@@ -1256,6 +1265,20 @@ document.addEventListener('DOMContentLoaded', function () {
             updateSaveDraftState(form);
         });
         window.EdgeMaterialSuggestions?.bind(row);
+
+        row.addEventListener('edge:non-stock-choice-reset', function () {
+            updateManualMaterialNameState(row, false);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
+
+        row.addEventListener('edge:material-row-merged', function () {
+            updateCostEntryNumbers(form);
+            validateDuplicateMaterials(form, true);
+            syncTotal(form);
+            saveFormDraft(form);
+            updateSaveDraftState(form);
+        });
 
         row.querySelector('[data-use-existing-material]')?.addEventListener('click', function () {
             const decision = row.querySelector('[data-manual-material-decision]');
@@ -1978,6 +2001,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!inspectionActionConfirmModal || inspectionActionConfirmModal.dataset.submitting === 'true') return;
         const trigger = pendingInspectionActionConfirm?.trigger;
         inspectionActionConfirmModal.hidden = true;
+        window.SharedModalScrollLock?.unlock();
         pendingInspectionActionConfirm = null;
         if (returnFocus) trigger?.focus();
     };
@@ -2010,6 +2034,7 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionActionConfirmSubmit.disabled = false;
         inspectionActionConfirmCancel.disabled = false;
         inspectionActionConfirmModal.hidden = false;
+        window.SharedModalScrollLock?.lock();
         (options.requiresReason ? inspectionActionConfirmReason : inspectionActionConfirmCancel)?.focus();
     };
 
@@ -2051,6 +2076,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (success) {
                 if (success !== false) {
                     inspectionActionConfirmModal.hidden = true;
+                    window.SharedModalScrollLock?.unlock();
                     pendingInspectionActionConfirm = null;
                 }
             })

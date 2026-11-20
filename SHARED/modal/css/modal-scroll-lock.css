@@ -1,0 +1,5 @@
+/* Shared lock para hindi gumalaw ang page sa likod ng modal. */
+html.shared-modal-scroll-lock,
+body.shared-modal-scroll-lock {
+    overflow: hidden;
+}

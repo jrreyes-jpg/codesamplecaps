@@ -1572,8 +1572,10 @@ $engineerCssFiles = [
     '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261120-1',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261120-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
-    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261119-4',
+    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
+    '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261120-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
+    '/codesamplecaps/SHARED/modal/css/modal-scroll-lock.css?v=20261120-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
@@ -2127,10 +2129,10 @@ require __DIR__ . '/../layout/header.php';
                                 <summary>Cost Estimate</summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($materialCostItems as $itemIndex => $item): ?>
-                                    <div class="costing-row" data-material-suggestion-scope>
+                                    <div class="costing-row shared-material-cost-row" data-material-suggestion-scope>
                                         <strong class="costing-row__number" data-costing-row-number>Material <?php echo $itemIndex + 1; ?></strong>
                                         <input type="hidden" name="item_type[]" value="material">
-                                        <label data-material-field>
+                                        <label class="shared-material-cost-row__reference" data-material-field>
                                             <span>Material Reference</span>
                                             <input type="hidden" name="inventory_id[]" value="<?php echo (int)($item['inventory_id'] ?? 0); ?>">
                                             <?php if (!$canEditCosting): ?>
@@ -2162,7 +2164,7 @@ require __DIR__ . '/../layout/header.php';
                                             <small class="material-stock-feedback" data-material-stock-feedback hidden></small>
                                             <?php endif; ?>
                                         </label>
-                                        <div class="material-name-field" data-item-name-field<?php echo !$canEditCosting || (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
+                                        <div class="material-name-field shared-material-cost-row__name" data-item-name-field<?php echo !$canEditCosting || (int)($item['material_id'] ?? 0) > 0 ? ' hidden' : ''; ?>>
                                             <label>
                                                 <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
                                                 <div class="shared-material-suggestion-field" data-material-suggestion-field>
@@ -2177,6 +2179,10 @@ require __DIR__ . '/../layout/header.php';
                                                     <button type="button" data-keep-non-stock>Keep as Non-stock</button>
                                                 </span>
                                             </span>
+                                            <label>
+                                                <span data-material-notes-label>Notes (Optional)</span>
+                                                <input type="text" name="notes[]" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            </label>
                                         </div>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
@@ -2196,12 +2202,14 @@ require __DIR__ . '/../layout/header.php';
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
                                             <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
-                                        <label>
-                                            <span data-material-notes-label>Notes (Optional)</span>
-                                            <input type="text" name="notes[]" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                        </label>
                                         <?php if ($canEditCosting): ?>
-                                            <button type="button" class="btn-remove-row" data-remove-costing-row>Remove</button>
+                                            <button type="button" class="btn-remove-row shared-material-cost-row__remove" data-remove-costing-row>Remove</button>
+                                        <?php endif; ?>
+                                        <?php if (!$canEditCosting && trim((string)($item['notes'] ?? '')) !== ''): ?>
+                                            <label>
+                                                <span>Notes</span>
+                                                <span class="costing-readonly-value"><?php echo htmlspecialchars((string)$item['notes'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                            </label>
                                         <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
@@ -2442,8 +2450,9 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261119-5',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261120-1',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
+    '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261120-6',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

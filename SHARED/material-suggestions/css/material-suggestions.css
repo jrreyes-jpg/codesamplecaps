@@ -111,6 +111,107 @@
     outline: none;
 }
 
+.shared-material-decision__selected {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 5px 8px;
+    border: 1px solid #f59e0b;
+    border-radius: 7px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.shared-material-decision__selected[hidden],
+.shared-material-decision__actions[hidden] {
+    display: none;
+}
+
+.shared-material-decision__selected button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #166534;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.is-shared-material-linked .material-combobox input,
+.is-shared-material-linked > select,
+.is-shared-material-linked > input {
+    border-color: #16a34a !important;
+    background-color: #f0fdf4 !important;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12) !important;
+}
+
+.shared-material-linked-feedback {
+    display: block;
+    margin-top: 4px;
+    color: #15803d !important;
+    font-size: .7rem !important;
+    font-weight: 800 !important;
+    line-height: 1.2;
+}
+
+.shared-material-merge {
+    display: grid;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px;
+    border: 1px solid #86efac;
+    border-radius: 9px;
+    background: #f0fdf4;
+}
+
+.shared-material-merge[hidden] {
+    display: none;
+}
+
+.shared-material-merge label {
+    display: grid;
+    gap: 4px;
+}
+
+.shared-material-merge input {
+    min-height: 38px !important;
+}
+
+.shared-material-merge__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.shared-material-merge__actions button {
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid #16a34a;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #166534;
+    font: inherit;
+    font-size: .72rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.shared-material-merge [data-stock-merge-error] {
+    color: #b91c1c;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.is-waiting-material-decision input:disabled,
+.is-waiting-material-decision select:disabled {
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
 .shared-material-note {
     display: grid;
     gap: 4px;
@@ -177,11 +278,24 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 9px;
-    height: 9px;
-    border-right: 2px solid #475569;
-    border-bottom: 2px solid #475569;
-    transform: translate(-50%, -70%) rotate(45deg);
+    width: 11px;
+    height: 11px;
+    border: 2px solid #475569;
+    border-radius: 50%;
+    transform: translate(-62%, -62%);
+}
+
+.material-combobox > button::after {
+    content: '';
+    position: absolute;
+    top: 57%;
+    left: 58%;
+    width: 7px;
+    height: 2px;
+    border-radius: 2px;
+    background: #475569;
+    transform: rotate(45deg);
+    transform-origin: left center;
 }
 
 .material-combobox__list {

@@ -487,7 +487,8 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/form-validation/css/form-validation.css?v=20261116-1',
-    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261119-4',
+    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
+    '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261120-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261119-7',
 ];
 $adminJsFiles = [
@@ -495,8 +496,8 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/form-validation/js/form-validation.js?v=20261116-1',
-    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261119-5',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261119-8',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261120-14',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -570,7 +571,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             $rowQuantity = (string)(int)round((float)$rowQuantity);
                         }
                         ?>
-                        <div class="quotation-create-item<?php echo $rowType === 'material' ? ' is-material-item' : ''; ?>" data-quotation-item data-material-suggestion-scope>
+                        <div class="quotation-create-item shared-material-cost-row<?php echo $rowType === 'material' ? ' is-material-item' : ''; ?>" data-quotation-item data-material-suggestion-scope>
                             <label class="quotation-create-item__type" hidden><span>Type</span><select name="item_type[]" required><option value="material" selected>Materials</option></select></label>
                             <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo $rowType !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><span class="material-combobox" data-material-combobox><input type="text" data-material-combobox-input placeholder="Search or select material" autocomplete="off" aria-label="Search or select material reference"><button type="button" data-material-combobox-toggle aria-label="Show material options"></button><span class="material-combobox__list" data-material-combobox-list></span></span><select class="material-picker-source" name="material_id[]" data-material-suggestion-source required tabindex="-1" aria-hidden="true">
                                     <option value="" disabled hidden<?php echo $rowMaterialId <= 0 && (string)($postedMaterialIds[$index] ?? '') !== 'manual' ? ' selected' : ''; ?>>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowMaterialId === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual" <?php echo (string)($postedMaterialIds[$index] ?? '') === 'manual' ? ' selected' : ''; ?>><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
@@ -591,7 +592,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </div>
 
                 <template data-quotation-item-template>
-                    <div class="quotation-create-item is-material-item" data-quotation-item data-material-suggestion-scope>
+                    <div class="quotation-create-item shared-material-cost-row is-material-item" data-quotation-item data-material-suggestion-scope>
                         <label class="quotation-create-item__type" hidden><span>Type</span><select name="item_type[]" required><option value="material" selected>Materials</option></select></label>
                         <label class="quotation-create-item__material-reference" data-quotation-material-reference><span>Material Reference</span><span class="material-combobox" data-material-combobox><input type="text" data-material-combobox-input placeholder="Search or select material" autocomplete="off" aria-label="Search or select material reference"><button type="button" data-material-combobox-toggle aria-label="Show material options"></button><span class="material-combobox__list" data-material-combobox-list></span></span><select class="material-picker-source" name="material_id[]" data-material-suggestion-source required tabindex="-1" aria-hidden="true">
                                 <option value="" selected disabled hidden>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual"><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>

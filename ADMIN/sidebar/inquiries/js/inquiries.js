@@ -3271,7 +3271,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (isDuplicate) {
                     isValid = false;
                     setMaterialReferenceMessage(row, showMessage ? 'Already added.' : '');
-                } else if (materialError?.textContent === 'This material is already added. Edit the existing row instead.') {
+                } else if (['Already added.', 'This material is already added. Edit the existing row instead.'].includes(materialError?.textContent || '')) {
                     setMaterialReferenceMessage(row, '');
                 }
             });
@@ -3574,6 +3574,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             materialSelect.value = String(event.detail.value);
             materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        items?.addEventListener('edge:non-stock-choice-reset', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (!row) return;
+            syncAdminNonStockMatch(row, false);
+            markQuotationDirty();
+            scheduleLocalQuotationDraftSave();
+        });
+
+        items?.addEventListener('edge:material-row-merged', function () {
+            validateDuplicateMaterialReferences(false);
+            updateQuotationPreview();
+            markQuotationDirty();
+            scheduleLocalQuotationDraftSave();
         });
 
         items?.addEventListener('input', function (event) {

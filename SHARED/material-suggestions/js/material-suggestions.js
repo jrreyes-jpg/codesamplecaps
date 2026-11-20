@@ -96,6 +96,8 @@
             const list = combobox.querySelector('[data-material-combobox-list]');
             if (!source || !input || !toggle || !list) return;
             boundComboboxes.add(combobox);
+            toggle.setAttribute('aria-label', 'Search materials');
+            toggle.setAttribute('title', 'Search materials');
 
             const syncText = function () {
                 const selected = source.selectedOptions[0];
@@ -184,6 +186,72 @@
         }) || null;
     };
 
+    const ensureSelectedDecision = function (decision) {
+        if (!decision) return null;
+        let selected = decision.querySelector('[data-non-stock-selected]');
+        if (selected) return selected;
+
+        selected = document.createElement('span');
+        selected.className = 'shared-material-decision__selected';
+        selected.setAttribute('data-non-stock-selected', '');
+        selected.hidden = true;
+
+        const text = document.createElement('span');
+        text.textContent = 'Kept as Non-stock';
+        selected.appendChild(text);
+
+        const change = document.createElement('button');
+        change.type = 'button';
+        change.textContent = 'Change';
+        change.setAttribute('data-change-non-stock', '');
+        selected.appendChild(change);
+        decision.appendChild(selected);
+        return selected;
+    };
+
+    const setRowDecisionLock = function (row, locked) {
+        row?.querySelectorAll('input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"], input[name="item_notes[]"]').forEach(function (field) {
+            field.disabled = locked;
+            field.setAttribute('aria-disabled', locked ? 'true' : 'false');
+        });
+        row?.classList.toggle('is-waiting-material-decision', locked);
+    };
+
+    const ensureMergePrompt = function (decision) {
+        if (!decision) return null;
+        let prompt = decision.querySelector('[data-stock-merge-prompt]');
+        if (prompt) return prompt;
+
+        prompt = document.createElement('span');
+        prompt.className = 'shared-material-merge';
+        prompt.setAttribute('data-stock-merge-prompt', '');
+        prompt.hidden = true;
+        prompt.innerHTML = '<label><span>Qty to add (Optional)</span><input type="text" inputmode="decimal" data-stock-merge-quantity placeholder="No quantity change"></label><span class="shared-material-merge__actions"><button type="button" data-stock-merge-apply>Apply to existing row</button><button type="button" data-stock-merge-back>Back</button></span><small data-stock-merge-error></small>';
+        decision.appendChild(prompt);
+        return prompt;
+    };
+
+    const showLinkedMaterialFeedback = function (row, message) {
+        const reference = row?.querySelector('[data-material-field], [data-quotation-material-reference]');
+        if (!reference) return;
+        reference.classList.add('is-shared-material-linked');
+
+        let feedback = reference.querySelector('[data-shared-material-linked-feedback]');
+        if (!feedback) {
+            feedback = document.createElement('small');
+            feedback.className = 'shared-material-linked-feedback';
+            feedback.setAttribute('data-shared-material-linked-feedback', '');
+            reference.appendChild(feedback);
+        }
+        feedback.textContent = message;
+        window.setTimeout(function () {
+            reference.classList.remove('is-shared-material-linked');
+        }, 1200);
+        window.setTimeout(function () {
+            feedback.remove();
+        }, 2600);
+    };
+
     const syncNonStockDecision = function (row, config) {
         const settings = config || {};
         const source = row?.querySelector('[data-material-suggestion-source]');
@@ -193,6 +261,9 @@
         const manualValues = settings.manualValues || ['', 'manual'];
         const isManual = source && manualValues.includes(source.value) && nameInput && !nameInput.disabled && !nameInput.readOnly;
         const exactOption = isManual ? findExactOption(source, nameInput.value) : null;
+        const actions = decision?.querySelector('.shared-material-decision__actions');
+        const selected = ensureSelectedDecision(decision);
+        const mergePrompt = ensureMergePrompt(decision);
 
         if (!exactOption) {
             if (choiceInput) choiceInput.value = '';
@@ -200,6 +271,10 @@
                 decision.hidden = true;
                 delete decision.dataset.materialId;
             }
+            if (actions) actions.hidden = false;
+            if (selected) selected.hidden = true;
+            if (mergePrompt) mergePrompt.hidden = true;
+            setRowDecisionLock(row, false);
             return { isManual: Boolean(isManual), exactOption: null, choice: '', valid: true };
         }
 
@@ -211,6 +286,11 @@
             decision.dataset.materialId = exactOption.value;
         }
         const choice = choiceInput?.value || '';
+        const isKept = choice === 'keep';
+        if (actions) actions.hidden = isKept || choice === 'merge';
+        if (selected) selected.hidden = !isKept;
+        if (mergePrompt && choice !== 'merge') mergePrompt.hidden = true;
+        setRowDecisionLock(row, choice === '' || choice === 'merge');
         return {
             isManual: true,
             exactOption: exactOption,
@@ -218,6 +298,114 @@
             valid: choice === 'keep' || choice === 'stock',
         };
     };
+
+    const duplicateStockRow = function (row, materialId) {
+        const scope = row?.closest('form') || document;
+        return Array.from(scope.querySelectorAll('[data-material-suggestion-scope]')).find(function (candidate) {
+            return candidate !== row
+                && candidate.querySelector('[data-material-suggestion-source]')?.value === materialId;
+        }) || null;
+    };
+
+    document.addEventListener('click', function (event) {
+        const useStock = event.target.closest('[data-use-existing-material]');
+        if (useStock) {
+            const row = useStock.closest('[data-material-suggestion-scope]');
+            const decision = useStock.closest('[data-manual-material-decision], [data-non-stock-match]');
+            const materialId = decision?.dataset.materialId || '';
+            const existingRow = duplicateStockRow(row, materialId);
+            if (!existingRow) return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const choice = row.querySelector('[data-non-stock-choice]');
+            const actions = decision.querySelector('.shared-material-decision__actions');
+            const selected = decision.querySelector('[data-non-stock-selected]');
+            const prompt = ensureMergePrompt(decision);
+            if (choice) choice.value = 'merge';
+            if (actions) actions.hidden = true;
+            if (selected) selected.hidden = true;
+            if (prompt) {
+                prompt.hidden = false;
+                prompt.dataset.existingMaterialId = materialId;
+                const quantity = prompt.querySelector('[data-stock-merge-quantity]');
+                const error = prompt.querySelector('[data-stock-merge-error]');
+                if (quantity) quantity.value = '';
+                if (error) error.textContent = '';
+                quantity?.focus();
+            }
+            return;
+        }
+
+        const apply = event.target.closest('[data-stock-merge-apply]');
+        if (apply) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const row = apply.closest('[data-material-suggestion-scope]');
+            const prompt = apply.closest('[data-stock-merge-prompt]');
+            const quantity = prompt?.querySelector('[data-stock-merge-quantity]');
+            const error = prompt?.querySelector('[data-stock-merge-error]');
+            const raw = quantity?.value.trim() || '';
+            const amount = raw === '' ? 0 : Number(raw);
+            if (raw !== '' && (!/^\d+(?:\.\d{1,2})?$/.test(raw) || !Number.isFinite(amount) || amount <= 0)) {
+                if (error) error.textContent = 'Enter a valid quantity or leave it blank.';
+                quantity?.focus();
+                return;
+            }
+
+            const existingRow = duplicateStockRow(row, prompt?.dataset.existingMaterialId || '');
+            if (!existingRow) return;
+            const existingQuantity = existingRow.querySelector('input[name="quantity[]"]');
+            if (amount > 0 && existingQuantity) {
+                const oldAmount = Number(existingQuantity.value || 0);
+                const total = Math.round((oldAmount + amount) * 100) / 100;
+                existingQuantity.value = Number.isInteger(total) ? String(total) : total.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+            }
+            row.remove();
+            existingQuantity?.dispatchEvent(new Event('input', { bubbles: true }));
+            existingRow.dispatchEvent(new CustomEvent('edge:material-row-merged', { bubbles: true }));
+            showLinkedMaterialFeedback(existingRow, amount > 0
+                ? 'Quantity added to existing material row'
+                : 'Material already exists. Update its Qty if needed.');
+            return;
+        }
+
+        const back = event.target.closest('[data-stock-merge-back]');
+        if (back) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const row = back.closest('[data-material-suggestion-scope]');
+            const choice = row?.querySelector('[data-non-stock-choice]');
+            if (choice) choice.value = '';
+            syncNonStockDecision(row);
+        }
+    }, true);
+
+    document.addEventListener('click', function (event) {
+        const change = event.target.closest('[data-change-non-stock]');
+        if (change) {
+            const row = change.closest('[data-material-suggestion-scope]');
+            const choiceInput = row?.querySelector('[data-non-stock-choice]');
+            if (choiceInput) choiceInput.value = '';
+            syncNonStockDecision(row);
+            row?.dispatchEvent(new CustomEvent('edge:non-stock-choice-reset', { bubbles: true }));
+            return;
+        }
+
+        const useStock = event.target.closest('[data-use-existing-material]');
+        if (!useStock) return;
+        const row = useStock.closest('[data-material-suggestion-scope]');
+        window.setTimeout(function () {
+            if (!row?.isConnected) return;
+            showLinkedMaterialFeedback(row, 'Using existing stock material');
+        }, 0);
+    });
+
+    document.addEventListener('change', function (event) {
+        if (!event.target.matches('[data-material-suggestion-source]')) return;
+        const row = event.target.closest('[data-material-suggestion-scope]');
+        row?.querySelector('[data-shared-material-linked-feedback]')?.remove();
+    });
 
     window.EdgeMaterialSuggestions = {
         bind: bind,

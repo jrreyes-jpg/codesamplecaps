@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 unit: row.querySelector('select[name="unit[]"]')?.value || 'unit',
                 unit_cost: moneyRawText(row.querySelector('input[name="unit_cost[]"]')?.value || ''),
                 notes: row.querySelector('input[name="notes[]"]')?.value || '',
+                non_stock_choice: row.querySelector('[data-non-stock-choice]')?.value || '',
             };
         });
         const assetRequirements = Array.from(form.querySelectorAll('[data-asset-requirement-row]')).map(function (row) {
@@ -141,6 +142,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const payload = {
+            version: 2,
+            saved_at: Date.now(),
+            inspection_id: Number(form.querySelector('input[name="inspection_id"]')?.value || 0),
+            base_state: form.dataset.savedSnapshot || '',
             engineer_findings: form.querySelector('textarea[name="engineer_findings"]')?.value || '',
             risk_notes: form.querySelector('textarea[name="risk_notes"]')?.value || '',
             client_requests: form.querySelector('textarea[name="client_requests"]')?.value || '',
@@ -152,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
             asset_requirements: assetRequirements,
         };
 
-        window.localStorage.setItem(storageKeyForForm(form), JSON.stringify(payload));
+        window.SharedFormDraft?.save(storageKeyForForm(form), payload);
     };
 
     const normalizeText = function (value) {
@@ -254,6 +259,8 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelector('select[name="unit[]"]').value = data.unit || 'unit';
         row.querySelector('input[name="unit_cost[]"]').value = data.unit_cost || '';
         row.querySelector('input[name="notes[]"]').value = data.notes || '';
+        const nonStockChoice = row.querySelector('[data-non-stock-choice]');
+        if (nonStockChoice) nonStockChoice.value = data.non_stock_choice || '';
     };
 
     const updateAssetRequirementAvailability = function (row) {
@@ -520,18 +527,18 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const restoreFormDraft = function (form) {
-        const saved = window.localStorage.getItem(storageKeyForForm(form));
-        if (!saved) {
-            return;
-        }
-
-        let payload = null;
-        try {
-            payload = JSON.parse(saved);
-        } catch (error) {
-            window.localStorage.removeItem(storageKeyForForm(form));
-            return;
-        }
+        const inspectionId = Number(form.querySelector('input[name="inspection_id"]')?.value || 0);
+        const payload = window.SharedFormDraft?.read(storageKeyForForm(form), {
+            lifetime: 24 * 60 * 60 * 1000,
+            validate: function (draft) {
+                if (!draft || !Array.isArray(draft.rows)) return false;
+                if (draft.version === undefined) return true;
+                return draft.version === 2
+                    && Number(draft.inspection_id || 0) === inspectionId
+                    && String(draft.base_state || '') === String(form.dataset.savedSnapshot || '');
+            },
+        });
+        if (!payload) return false;
         form.querySelector('textarea[name="engineer_findings"]').value = payload.engineer_findings || '';
         form.querySelector('textarea[name="risk_notes"]').value = payload.risk_notes || '';
         form.querySelector('textarea[name="client_requests"]').value = payload.client_requests || '';
@@ -541,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const rowsBox = form.querySelector('[data-costing-rows]');
         const firstRow = rowsBox?.querySelector('.costing-row');
         if (!rowsBox || !firstRow || !Array.isArray(payload.rows)) {
-            return;
+            return false;
         }
 
         rowsBox.innerHTML = '';
@@ -580,6 +587,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 addAssetRequirementRow(form, assetRequirement);
             });
         }
+        return true;
     };
 
     const setFieldState = function (field, isInvalid) {
@@ -1768,7 +1776,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Huwag ipakita ang lumang browser draft sa locked report.
         if (form.classList.contains('inspection-costing-form--readonly')) {
-            window.localStorage.removeItem(storageKeyForForm(form));
+            window.SharedFormDraft?.remove(storageKeyForForm(form));
             syncTotal(form);
             return;
         }
@@ -1784,8 +1792,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Kunin muna ang saved server values bago mag-restore ng unsaved browser draft.
         form.dataset.savedSnapshot = formSnapshot(form);
-        restoreFormDraft(form);
+        const draftWasRestored = restoreFormDraft(form);
         updateCostEntryNumbers(form);
+        if (draftWasRestored) {
+            const restoreNoticeKey = storageKeyForForm(form) + '.restoreNotice';
+            if (window.sessionStorage.getItem(restoreNoticeKey) !== '1' && typeof window.showToast === 'function') {
+                window.showToast('Unsaved inspection draft restored.', 'info');
+                window.sessionStorage.setItem(restoreNoticeKey, '1');
+            }
+        }
 
         form.querySelectorAll('[data-direct-cost]').forEach(function (field) {
             field.addEventListener('input', function () {
@@ -1996,14 +2011,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionActionConfirmCancel = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-cancel]');
     const inspectionActionConfirmSubmit = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-submit]');
     let pendingInspectionActionConfirm = null;
+    const inspectionActionConfirmController = window.SharedModalController?.create({
+        modal: inspectionActionConfirmModal,
+        canClose: function () {
+            return inspectionActionConfirmModal?.dataset.submitting !== 'true';
+        },
+        onClose: function () {
+            pendingInspectionActionConfirm = null;
+        },
+    });
 
     const closeInspectionActionConfirm = function (returnFocus) {
         if (!inspectionActionConfirmModal || inspectionActionConfirmModal.dataset.submitting === 'true') return;
-        const trigger = pendingInspectionActionConfirm?.trigger;
-        inspectionActionConfirmModal.hidden = true;
-        window.SharedModalScrollLock?.unlock();
+        inspectionActionConfirmController?.close({ restoreFocus: returnFocus });
         pendingInspectionActionConfirm = null;
-        if (returnFocus) trigger?.focus();
     };
 
     const openInspectionActionConfirm = function (options) {
@@ -2033,9 +2054,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         inspectionActionConfirmSubmit.disabled = false;
         inspectionActionConfirmCancel.disabled = false;
-        inspectionActionConfirmModal.hidden = false;
-        window.SharedModalScrollLock?.lock();
-        (options.requiresReason ? inspectionActionConfirmReason : inspectionActionConfirmCancel)?.focus();
+        inspectionActionConfirmController?.open({
+            trigger: options.trigger,
+            focus: options.requiresReason ? inspectionActionConfirmReason : inspectionActionConfirmCancel,
+        });
     };
 
     inspectionActionConfirmCancel?.addEventListener('click', function () {
@@ -2043,9 +2065,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-close]')?.addEventListener('click', function () {
         closeInspectionActionConfirm(true);
-    });
-    inspectionActionConfirmModal?.addEventListener('click', function (event) {
-        if (event.target === inspectionActionConfirmModal) closeInspectionActionConfirm(true);
     });
     inspectionActionConfirmReason?.addEventListener('input', function () {
         inspectionActionConfirmReason.setAttribute('aria-invalid', 'false');
@@ -2075,8 +2094,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function () { return action.onConfirm(reason); })
             .then(function (success) {
                 if (success !== false) {
-                    inspectionActionConfirmModal.hidden = true;
-                    window.SharedModalScrollLock?.unlock();
+                    inspectionActionConfirmController?.close({ restoreFocus: false, force: true });
                     pendingInspectionActionConfirm = null;
                 }
             })
@@ -2088,22 +2106,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 inspectionActionConfirmModal.dataset.submitting = '';
             });
-    });
-
-    document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Tab' || !inspectionActionConfirmModal || inspectionActionConfirmModal.hidden) return;
-        const controls = Array.from(inspectionActionConfirmModal.querySelectorAll('button:not([disabled]), textarea:not([disabled])'))
-            .filter(function (control) { return !control.closest('[hidden]'); });
-        if (controls.length === 0) return;
-        const first = controls[0];
-        const last = controls[controls.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-        }
     });
 
     const parseInspectionJsonResponse = function (response, fallbackMessage) {
@@ -2305,7 +2307,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return refreshInspectionCard(String(payload.inspection_id || form.querySelector('input[name="inspection_id"]')?.value || ''), true)
                     .catch(function () { return null; })
                     .then(function () {
-                        window.localStorage.removeItem(storageKeyForForm(form));
+                        window.SharedFormDraft?.remove(storageKeyForForm(form));
+                        window.sessionStorage.removeItem(storageKeyForForm(form) + '.restoreNotice');
                         if (typeof window.showToast === 'function') {
                             window.showToast(payload.message || 'Costing submitted to Admin.', 'success', { duration: 4000 });
                         }
@@ -2338,12 +2341,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const completionConfirmButton = completionModal?.querySelector('[data-complete-inspection-confirm]');
     let pendingCompletionForm = null;
     let pendingCompletionButton = null;
+    const completionModalController = window.SharedModalController?.create({
+        modal: completionModal,
+        canClose: function () {
+            return completionModal?.dataset.isCompleting !== 'true';
+        },
+        onClose: function () {
+            pendingCompletionForm = null;
+            pendingCompletionButton = null;
+        },
+    });
 
     const closeCompletionModal = function () {
         if (!completionModal || completionModal.dataset.isCompleting === 'true') {
             return;
         }
-        completionModal.hidden = true;
+        completionModalController?.close();
         pendingCompletionForm = null;
         pendingCompletionButton = null;
     };
@@ -2354,16 +2367,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         pendingCompletionForm = form;
         pendingCompletionButton = button;
-        completionModal.hidden = false;
-        completionCancelButton?.focus();
+        completionModalController?.open({ trigger: button, focus: completionCancelButton });
     };
 
     completionCancelButton?.addEventListener('click', closeCompletionModal);
-    completionModal?.addEventListener('click', function (event) {
-        if (event.target === completionModal) {
-            closeCompletionModal();
-        }
-    });
 
     completionConfirmButton?.addEventListener('click', function () {
         if (!pendingCompletionForm || completionModal?.dataset.isCompleting === 'true') {
@@ -2379,7 +2386,7 @@ document.addEventListener('DOMContentLoaded', function () {
         pendingCompletionButton.innerHTML = '<span class="inspection-button-spinner" aria-hidden="true"></span> Submitting costing...';
         requestWorkflowTransition(pendingCompletionForm, pendingCompletionButton).then(function (success) {
             if (success) {
-                completionModal.hidden = true;
+                completionModalController?.close({ restoreFocus: false, force: true });
                 completionModal.dataset.isCompleting = '';
                 pendingCompletionForm = null;
                 pendingCompletionButton = null;
@@ -2710,11 +2717,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (completionModal && !completionModal.hidden) {
                 event.preventDefault();
                 closeCompletionModal();
-                return;
-            }
-            if (inspectionActionConfirmModal && !inspectionActionConfirmModal.hidden) {
-                event.preventDefault();
-                closeInspectionActionConfirm(true);
                 return;
             }
             document.querySelectorAll('.inspection-modal:not([hidden])').forEach(closeInspectionModal);

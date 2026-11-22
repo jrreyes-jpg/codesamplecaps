@@ -10,9 +10,14 @@
     const closeButton = modal?.querySelector('[data-stock-in-confirm-close]');
     const submitButton = modal?.querySelector('[data-stock-in-confirm-submit]');
     let confirmed = false;
-    let returnFocus = null;
 
     if (!form || !modal || !rowsContainer || !rowTemplate || !addButton || !formSubmitButton || !closeButton || !submitButton) return;
+
+    const modalController = window.SharedModalController?.create({
+        modal: modal,
+        onOpen: function () { document.body.classList.add('material-create-modal-open'); },
+        onClose: function () { document.body.classList.remove('material-create-modal-open'); },
+    });
 
     function updateSubmitState() {
         const deliveryReady = form.dataset.deliveryReady === 'true';
@@ -80,9 +85,7 @@
     form.addEventListener('change', updateSubmitState);
 
     function closeModal() {
-        modal.hidden = true;
-        document.body.classList.remove('material-create-modal-open');
-        returnFocus?.focus();
+        modalController?.close();
     }
 
     form.addEventListener('submit', function (event) {
@@ -97,22 +100,13 @@
         }
 
         event.preventDefault();
-        returnFocus = form.querySelector('button[type="submit"]');
-        modal.hidden = false;
-        document.body.classList.add('material-create-modal-open');
-        window.requestAnimationFrame(function () { closeButton.focus(); });
+        modalController?.open({
+            trigger: form.querySelector('button[type="submit"]'),
+            focus: closeButton,
+        });
     });
 
     closeButton.addEventListener('click', closeModal);
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) closeModal();
-    });
-    modal.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            closeModal();
-        }
-    });
     submitButton.addEventListener('click', function () {
         confirmed = true;
         form.requestSubmit();

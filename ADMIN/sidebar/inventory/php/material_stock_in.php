@@ -71,10 +71,13 @@ $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
     '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-4',
+    '/codesamplecaps/SHARED/modal/css/modal-scroll-lock.css?v=20261120-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/material_stock_in.js?v=20261117-2',
+    '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
+    '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/material_stock_in.js?v=20261120-1',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

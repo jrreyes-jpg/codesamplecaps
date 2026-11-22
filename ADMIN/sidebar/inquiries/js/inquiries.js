@@ -2775,14 +2775,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const markupError = form?.querySelector('[data-quotation-markup-error]');
         const saveDraftButton = form?.querySelector('[data-quotation-save-draft]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
-        const isInitialQuotation = form?.dataset.initialQuotation === 'true';
-        const canUseLocalDraft = isInitialQuotation && !isEditMode;
         const quotationInquiryId = Number.parseInt(form?.dataset.quotationInquiryId || '0', 10);
-        const localDraftKey = quotationInquiryId > 0
-            ? 'initial_quotation_draft:' + String(quotationInquiryId)
-            : '';
-        const localRestoreNoticeKey = quotationInquiryId > 0
-            ? 'initial_quotation_restore_notice:' + String(quotationInquiryId)
+        const quotationId = Number.parseInt(form?.dataset.quotationId || '0', 10);
+        const canUseLocalDraft = quotationInquiryId > 0 && (!isEditMode || quotationId > 0);
+        const localDraftKey = !canUseLocalDraft
+            ? ''
+            : (isEditMode
+                ? 'edit_quotation_draft:' + String(quotationId)
+                : 'initial_quotation_draft:' + String(quotationInquiryId));
+        const localRestoreNoticeKey = localDraftKey !== ''
+            ? localDraftKey + ':restore_notice'
             : '';
         const localDraftLifetime = 24 * 60 * 60 * 1000;
         const unitOptionsByType = {
@@ -2881,30 +2883,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 return null;
             }
 
-            try {
-                const rawDraft = window.localStorage.getItem(localDraftKey);
-                if (!rawDraft) {
-                    return null;
-                }
-
-                const draft = JSON.parse(rawDraft);
-                const savedAt = Number(draft?.saved_at || 0);
-                const isExpired = !Number.isFinite(savedAt) || Date.now() - savedAt > localDraftLifetime;
-                if (draft?.version !== 1
-                    || Number(draft?.inquiry_id || 0) !== quotationInquiryId
-                    || !Array.isArray(draft?.rows)
-                    || isExpired) {
-                    window.localStorage.removeItem(localDraftKey);
-                    if (localRestoreNoticeKey !== '') {
-                        window.sessionStorage.removeItem(localRestoreNoticeKey);
-                    }
-                    return null;
-                }
-
-                return draft;
-            } catch (error) {
-                return null;
-            }
+            return window.SharedFormDraft?.read(localDraftKey, {
+                lifetime: localDraftLifetime,
+                validate: function (draft) {
+                    if (!draft || !Array.isArray(draft.rows) || Number(draft.inquiry_id || 0) !== quotationInquiryId) return false;
+                    if (!isEditMode && draft.version === 1) return true;
+                    return draft.version === 2
+                        && Number(draft.quotation_id || 0) === quotationId
+                        && String(draft.base_state || '') === quotationSavedState;
+                },
+            }) || null;
         };
 
         const clearLocalQuotationDraft = function () {
@@ -2916,20 +2904,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            try {
-                window.localStorage.removeItem(localDraftKey);
-                if (localRestoreNoticeKey !== '') {
-                    window.sessionStorage.removeItem(localRestoreNoticeKey);
-                }
-            } catch (error) {
-                // Walang gagawin kapag hindi available ang browser storage.
-            }
+            window.SharedFormDraft?.remove(localDraftKey);
+            if (localRestoreNoticeKey !== '') window.sessionStorage.removeItem(localRestoreNoticeKey);
         };
 
         const buildLocalQuotationDraft = function () {
             return {
-                version: 1,
+                version: 2,
                 inquiry_id: quotationInquiryId,
+                quotation_id: quotationId,
+                base_state: quotationSavedState,
                 saved_at: Date.now(),
                 quotation_number: quotationNumberInput?.value || '',
                 markup_percent: marginInput?.value || '',
@@ -2942,6 +2926,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         unit: row.querySelector('select[name="unit[]"]')?.value || '',
                         unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
                         notes: row.querySelector('input[name="item_notes[]"]')?.value || '',
+                        non_stock_choice: row.querySelector('[data-non-stock-choice]')?.value || '',
                     };
                 }),
                 direct_costs: directCostInputs.map(function (input) {
@@ -2955,11 +2940,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            try {
-                window.localStorage.setItem(localDraftKey, JSON.stringify(buildLocalQuotationDraft()));
-            } catch (error) {
-                // Walang gagawin kapag puno o hindi available ang browser storage.
-            }
+            window.SharedFormDraft?.save(localDraftKey, buildLocalQuotationDraft());
         };
 
         const scheduleLocalQuotationDraftSave = function () {
@@ -3444,6 +3425,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const unitSelect = row?.querySelector('select[name="unit[]"]');
                 const unitCostInput = row?.querySelector('input[name="unit_cost[]"]');
                 const notesInput = row?.querySelector('input[name="item_notes[]"]');
+                const choiceInput = row?.querySelector('[data-non-stock-choice]');
                 const savedType = normalizeQuotationItemType(savedRow?.type || 'material');
                 const savedMaterialId = String(savedRow?.material_id || '');
                 const savedUnit = String(savedRow?.unit || '').toLowerCase();
@@ -3466,6 +3448,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (unitCostInput) unitCostInput.value = String(savedRow?.unit_cost || '');
                 if (notesInput) notesInput.value = String(savedRow?.notes || '');
+                if (choiceInput) choiceInput.value = String(savedRow?.non_stock_choice || '');
 
                 syncMaterialReference(row);
             });
@@ -3798,10 +3781,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (canUseLocalDraft) {
-                if (!quotationLeaveAccepted) {
-                    saveLocalQuotationDraft();
-                }
+            if (canUseLocalDraft && !quotationLeaveAccepted) {
+                saveLocalQuotationDraft();
+                return;
             }
 
             event.preventDefault();
@@ -3809,7 +3791,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         window.addEventListener('pagehide', function () {
-            if (canUseLocalDraft && !quotationSubmitAccepted && !quotationLeaveAccepted) {
+            if (quotationSubmitAccepted) {
+                clearLocalQuotationDraft();
+            } else if (canUseLocalDraft && !quotationLeaveAccepted) {
                 saveLocalQuotationDraft();
             }
         });

@@ -2451,8 +2451,10 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
+    '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261120-6',
+    '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261122-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

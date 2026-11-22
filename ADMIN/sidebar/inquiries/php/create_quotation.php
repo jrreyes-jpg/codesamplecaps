@@ -496,8 +496,9 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/toast/js/toast.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/form-validation/js/form-validation.js?v=20261116-1',
+    '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261120-14',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261122-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -543,7 +544,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
             </details>
 
-            <form id="quotationCreateForm" method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>" data-quotation-client-email="<?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?>">
+            <form id="quotationCreateForm" method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-id="<?php echo $editId; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>" data-quotation-client-email="<?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
                 <input type="hidden" name="quotation_submit_action" value="save_draft" data-quotation-submit-action>

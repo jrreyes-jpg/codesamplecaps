@@ -126,6 +126,34 @@
 .shared-workflow-card__info span { color: #64748b; font-size: 0.72rem; font-weight: 700; }
 .shared-workflow-card__info strong { color: #1e293b; font-size: 0.86rem; line-height: 1.35; overflow-wrap: anywhere; }
 
+.shared-workflow-state[data-schedule-state="overdue_not_started"] {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+}
+
+.shared-workflow-state[data-schedule-state="scheduled_today"] {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.shared-workflow-notice {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.shared-workflow-notice[data-tone="danger"] {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
 /* Shared status filter. Data lang ang nagdidikta ng kulay. */
 .shared-filter-chip {
     display: inline-flex;

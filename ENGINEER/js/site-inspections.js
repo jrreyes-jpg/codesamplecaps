@@ -2765,6 +2765,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const query = String(inspectionSearchInput?.value || '').trim().toLowerCase();
         const sortDirection = inspectionSortInput?.value === 'oldest' ? 1 : -1;
         const sortedCards = cards.slice().sort(function (left, right) {
+            const priorityDifference = Number(left.dataset.listPriority || 3) - Number(right.dataset.listPriority || 3);
+            if (priorityDifference !== 0) return priorityDifference;
             return (Number(left.dataset.listSort) - Number(right.dataset.listSort)) * sortDirection;
         });
         const orderChanged = sortedCards.some(function (card, index) { return cards[index] !== card; });

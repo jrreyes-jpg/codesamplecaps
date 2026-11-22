@@ -12,7 +12,7 @@ if (!is_array($adminCssFiles)) {
 $sharedCssFiles = [
     '/codesamplecaps/SHARED/header/core/header.css?v=20261103-1',
     '/codesamplecaps/SHARED/sidebar/css/sidebar.css',
-    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261120-1',
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261122-1',
     '/codesamplecaps/SHARED/toast/css/toast.css',
 ];
 

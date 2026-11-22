@@ -177,6 +177,68 @@ if (!function_exists('site_inspection_statuses')) {
     }
 }
 
+if (!function_exists('site_inspection_schedule_state')) {
+    function site_inspection_schedule_state(
+        ?string $scheduledAt,
+        string $status,
+        ?string $startedAt = null,
+        ?DateTimeImmutable $now = null
+    ): string {
+        if (!in_array($status, ['Assigned', 'Acknowledged'], true)
+            || trim((string)$scheduledAt) === ''
+            || trim((string)$startedAt) !== '') {
+            return '';
+        }
+
+        try {
+            $timezone = site_inspection_timezone();
+            $today = ($now ?: new DateTimeImmutable('now', $timezone))
+                ->setTimezone($timezone)
+                ->format('Y-m-d');
+            $scheduleDate = (new DateTimeImmutable((string)$scheduledAt, $timezone))->format('Y-m-d');
+
+            if ($scheduleDate < $today) {
+                return 'overdue_not_started';
+            }
+
+            return $scheduleDate === $today ? 'scheduled_today' : '';
+        } catch (Throwable $exception) {
+            return '';
+        }
+    }
+}
+
+if (!function_exists('site_inspection_schedule_state_label')) {
+    function site_inspection_schedule_state_label(string $state, string $audience = 'engineer'): string
+    {
+        return match ($state) {
+            'overdue_not_started' => $audience === 'admin' ? 'Inspection Overdue' : 'Overdue - Not Started',
+            'scheduled_today' => 'Scheduled Today',
+            default => '',
+        };
+    }
+}
+
+if (!function_exists('site_inspection_list_priority')) {
+    function site_inspection_list_priority(array $inspection): int
+    {
+        $status = (string)($inspection['status'] ?? 'Assigned');
+        if (in_array($status, ['Ongoing', 'On Hold'], true)) {
+            return 0;
+        }
+
+        return match (site_inspection_schedule_state(
+            $inspection['scheduled_at'] ?? null,
+            $status,
+            $inspection['started_at'] ?? null
+        )) {
+            'overdue_not_started' => 1,
+            'scheduled_today' => 2,
+            default => 3,
+        };
+    }
+}
+
 if (!function_exists('site_inspection_schedule_is_confirmation_locked')) {
     function site_inspection_schedule_is_confirmation_locked(?array $inspection): bool
     {

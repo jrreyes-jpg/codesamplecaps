@@ -1503,6 +1503,16 @@ if ($stmt) {
     }
 }
 
+usort($inspections, static function (array $left, array $right): int {
+    $priority = site_inspection_list_priority($left) <=> site_inspection_list_priority($right);
+    if ($priority !== 0) {
+        return $priority;
+    }
+
+    return (strtotime((string)($left['scheduled_at'] ?? '')) ?: 0)
+        <=> (strtotime((string)($right['scheduled_at'] ?? '')) ?: 0);
+});
+
 if ($requestedInspectionId !== false && $error === '') {
     $requestedInspectionFound = false;
     foreach ($inspections as $inspection) {
@@ -1570,7 +1580,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
     '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261120-1',
-    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261120-1',
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261122-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
     '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261120-1',
@@ -1701,6 +1711,15 @@ require __DIR__ . '/../layout/header.php';
                     $isLegacyCompletedPending = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Pending';
                     $isScheduleDateReached = engineer_inspection_schedule_date_is_reached($inspection['scheduled_at'] ?? null);
                     $isInspectionStarted = in_array($inspectionStatus, ['Ongoing', 'On Hold', 'Completed', 'Submitted'], true);
+                    $scheduleState = site_inspection_schedule_state(
+                        $inspection['scheduled_at'] ?? null,
+                        $inspectionStatus,
+                        $inspection['started_at'] ?? null
+                    );
+                    $scheduleStateLabel = site_inspection_schedule_state_label($scheduleState, 'engineer');
+                    if ($scheduleStateLabel !== '') {
+                        $displayInspectionStatus = $scheduleStateLabel;
+                    }
                     $canOpenInspectionReport = $isScheduleDateReached && $isInspectionStarted;
                     $showReportRequiredBadge = $isInspectionStarted && !$isSubmittedToAdmin;
                     $canEditCosting = $inspectionStatus === 'Ongoing' || $isReturnedForRevision || $isLegacyCompletedPending;
@@ -1791,6 +1810,7 @@ require __DIR__ . '/../layout/header.php';
                         $displayInspectionStatus,
                     ]), 'UTF-8');
                     $inspectionSortTime = strtotime((string)($inspection['scheduled_at'] ?? '')) ?: 0;
+                    $inspectionListPriority = site_inspection_list_priority($inspection);
                     $scheduleSyncKey = hash('sha256', implode('|', [
                         (string)($inspection['scheduled_at'] ?? ''),
                         (string)($inspection['engineer_id'] ?? ''),
@@ -1805,7 +1825,7 @@ require __DIR__ . '/../layout/header.php';
                         (string)($inspection['admin_remarks'] ?? ''),
                     ]));
                     ?>
-                    <article class="inspection-card shared-workflow-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-list-search="<?php echo htmlspecialchars($inspectionSearchText, ENT_QUOTES, 'UTF-8'); ?>" data-list-sort="<?php echo $inspectionSortTime; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes, $reviewSyncKey])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-key="<?php echo htmlspecialchars($reviewSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                    <article class="inspection-card shared-workflow-card <?php echo $unreadInspectionNotificationId > 0 ? 'is-unviewed' : 'is-viewed'; ?>" data-inspection-card-id="<?php echo $inspectionId; ?>" data-list-search="<?php echo htmlspecialchars($inspectionSearchText, ENT_QUOTES, 'UTF-8'); ?>" data-list-sort="<?php echo $inspectionSortTime; ?>" data-list-priority="<?php echo $inspectionListPriority; ?>" data-inspection-sync-key="<?php echo htmlspecialchars(hash('sha256', implode('|', [(string)($inspection['scheduled_at'] ?? ''), (string)($inspection['engineer_id'] ?? ''), (string)($inspection['status'] ?? ''), (string)($inspection['client_schedule_response'] ?? ''), (string)($inspection['engineer_schedule_response'] ?? ''), (string)$unreadInspectionNotificationId, $currentScheduleReason, $visibleSiteNotes, $reviewSyncKey])), ENT_QUOTES, 'UTF-8'); ?>" data-inspection-schedule-key="<?php echo htmlspecialchars($scheduleSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-key="<?php echo htmlspecialchars($reviewSyncKey, ENT_QUOTES, 'UTF-8'); ?>" data-inspection-review-status="<?php echo htmlspecialchars($adminReviewStatus, ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inspection-card__head shared-workflow-card__head">
                             <div class="inspection-card__identity shared-workflow-card__identity">
                                 <?php if ($unreadInspectionNotificationId > 0): ?>
@@ -1816,7 +1836,7 @@ require __DIR__ . '/../layout/header.php';
                                 <span class="inspection-card__eyebrow shared-workflow-card__eyebrow">Client - Site Inspection</span>
                                 <h2 class="shared-workflow-card__title"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             </div>
-                            <span class="inspection-status" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="inspection-status shared-workflow-state" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>" data-schedule-state="<?php echo htmlspecialchars($scheduleState, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
                         <div class="inspection-card__summary shared-workflow-card__summary">
@@ -1920,6 +1940,11 @@ require __DIR__ . '/../layout/header.php';
                                 </div>
 
                                 <section class="inspection-tab-panel" id="inspectionDetails<?php echo $inspectionId; ?>" role="tabpanel" aria-labelledby="inspectionDetailsTab<?php echo $inspectionId; ?>" data-inspection-tab-panel="details">
+                                <?php if ($scheduleState === 'overdue_not_started'): ?>
+                                    <p class="shared-workflow-notice" data-tone="danger" role="alert">The inspection date has passed. Start the inspection or ask Admin to change the schedule.</p>
+                                <?php elseif ($scheduleState === 'scheduled_today'): ?>
+                                    <p class="shared-workflow-notice" data-tone="info" role="status">This inspection is scheduled today.</p>
+                                <?php endif; ?>
                                 <?php if (!$isInspectionStarted && !$isScheduleDateReached): ?>
                                     <p class="inspection-schedule-waiting" role="status">This inspection starts on <?php echo htmlspecialchars(site_inspection_format_date($inspection['scheduled_at'] ?? null), ENT_QUOTES, 'UTF-8'); ?>. Details are available now.</p>
                                 <?php endif; ?>
@@ -2454,7 +2479,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261122-1',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261122-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

@@ -2359,6 +2359,22 @@ if ($inspectionResult) {
     }
 }
 
+$inquiryOriginalOrder = array_flip(array_map(
+    static fn(array $inquiry): int => (int)($inquiry['id'] ?? 0),
+    $inquiryRows
+));
+usort($inquiryRows, static function (array $left, array $right) use ($inspectionByInquiry, $inquiryOriginalOrder): int {
+    $leftInspection = $inspectionByInquiry[(int)($left['id'] ?? 0)] ?? [];
+    $rightInspection = $inspectionByInquiry[(int)($right['id'] ?? 0)] ?? [];
+    $priority = site_inspection_list_priority($leftInspection) <=> site_inspection_list_priority($rightInspection);
+    if ($priority !== 0) {
+        return $priority;
+    }
+
+    return ($inquiryOriginalOrder[(int)($left['id'] ?? 0)] ?? 0)
+        <=> ($inquiryOriginalOrder[(int)($right['id'] ?? 0)] ?? 0);
+});
+
 $costItemsByInspection = [];
 $inspectionCostingHasMaterials = inquiry_center_has_table($conn, 'materials');
 $inspectionCostingMaterialSelect = $inspectionCostingHasMaterials
@@ -2741,6 +2757,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 $displayStatus = 'Inspection Submitted';
                             }
                         }
+                        $inspectionScheduleState = $latestInspection
+                            ? site_inspection_schedule_state(
+                                $latestInspection['scheduled_at'] ?? null,
+                                $latestInspectionStatus,
+                                $latestInspection['started_at'] ?? null
+                            )
+                            : '';
+                        $inspectionScheduleStateLabel = site_inspection_schedule_state_label($inspectionScheduleState, 'admin');
+                        if (!$isConvertedToProject && $displayStatus === 'For Inspection' && $inspectionScheduleStateLabel !== '') {
+                            $displayStatus = $inspectionScheduleStateLabel;
+                        }
                     ?>
                     <?php $displayStatusLabel = $displayStatus === 'Inspection Submitted'
                         ? $displayStatus
@@ -2814,7 +2841,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <h2 class="shared-workflow-card__title"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                 <span class="inquiry-card__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
-                            <span class="inquiry-status" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="inquiry-status shared-workflow-state" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>" data-schedule-state="<?php echo htmlspecialchars($inspectionScheduleState, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
                         <div class="inquiry-card__summary shared-workflow-card__summary">
@@ -2827,7 +2854,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <strong><?php echo htmlspecialchars($cardLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                             <div class="inquiry-card__info shared-workflow-card__info">
-                                <?php if (in_array($displayStatus, ['For Inspection', 'Inspection Submitted'], true) && !empty($latestInspection['scheduled_at'])): ?>
+                                <?php if (($inspectionScheduleState !== '' || in_array($displayStatus, ['For Inspection', 'Inspection Submitted'], true)) && !empty($latestInspection['scheduled_at'])): ?>
                                     <span>Inspection Schedule</span>
                                     <strong><?php echo htmlspecialchars(site_inspection_format_date($latestInspection['scheduled_at']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <?php else: ?>
@@ -2848,6 +2875,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             >
                                 <?php echo htmlspecialchars($nextActionLabel, ENT_QUOTES, 'UTF-8'); ?>
                             </a>
+                        <?php endif; ?>
+
+                        <?php if ($inspectionScheduleState === 'overdue_not_started'): ?>
+                            <p class="shared-workflow-notice" data-tone="danger" role="alert">The Engineer has not started this inspection. Check the schedule or contact the Engineer.</p>
+                        <?php elseif ($inspectionScheduleState === 'scheduled_today'): ?>
+                            <p class="shared-workflow-notice" data-tone="info" role="status">This inspection is scheduled today.</p>
                         <?php endif; ?>
 
                         <?php
@@ -2888,7 +2921,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <h2 id="inquiryModalTitle<?php echo (int)$inquiry['id']; ?>"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
                                         <div class="inquiry-modal__meta">
                                             <span class="inquiry-modal__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <span class="inquiry-status inquiry-status--modal" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <span class="inquiry-status inquiry-status--modal shared-workflow-state" data-modal-status-chip data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>" data-schedule-state="<?php echo htmlspecialchars($inspectionScheduleState, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </span>
                                         </div>

@@ -146,18 +146,9 @@
     padding-bottom: 4px;
 }
 
-.admin-quotation-filters a {
+.admin-quotation-filters .shared-filter-chip {
     flex: 0 0 auto;
-    padding: 8px 13px;
-    border: 1px solid #d2deea;
-    border-radius: 999px;
-    background: #fff;
-    color: #314158;
-    font-weight: 700;
-    text-decoration: none;
 }
-
-.admin-quotation-filters a.is-selected { background: #126c37; border-color: #126c37; color: #fff; }
 
 .admin-quotation-layout {
     display: grid;

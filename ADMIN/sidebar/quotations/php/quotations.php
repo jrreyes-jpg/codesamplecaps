@@ -139,6 +139,14 @@ $statusLabels = [
     'accepted' => 'Accepted',
     'rejected' => 'Rejected',
 ];
+$statusTones = [
+    'all' => 'green',
+    'draft' => 'gray',
+    'sent' => 'blue',
+    'revision_requested' => 'orange',
+    'accepted' => 'green',
+    'rejected' => 'red',
+];
 
 $adminPageTitle = 'Quotations - Edge Automation';
 $adminBodyClass = 'admin-light-page';
@@ -146,7 +154,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/quotation-project-confirm/css/modal.css?v=20261123-1',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261123-2',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261123-3',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -184,8 +192,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php else: ?>
             <nav class="admin-quotation-filters" aria-label="Quotation status filters">
                 <?php foreach ($statusLabels as $value => $label): ?>
-                    <a class="<?php echo $activeStatus === $value ? 'is-selected' : ''; ?>" href="<?php echo admin_quote_e(admin_quote_page_url(['status' => $value, 'page' => 1, 'id' => null])); ?>">
-                        <?php echo admin_quote_e($label); ?> <span><?php echo (int)$counts[$value]; ?></span>
+                    <a class="shared-filter-chip <?php echo $activeStatus === $value ? 'is-active' : ''; ?>" data-tone="<?php echo admin_quote_e($statusTones[$value]); ?>" href="<?php echo admin_quote_e(admin_quote_page_url(['status' => $value, 'page' => 1, 'id' => null])); ?>">
+                        <span><?php echo admin_quote_e($label); ?></span>
+                        <span class="shared-filter-chip__count"><?php echo (int)$counts[$value]; ?></span>
                     </a>
                 <?php endforeach; ?>
             </nav>

@@ -37,12 +37,24 @@
         const materialSelect = row.querySelector('[data-stock-in-material]');
         const quantityInput = row.querySelector('[data-stock-in-quantity]');
         const unitText = row.querySelector('[data-stock-in-unit]');
+        const warning = row.querySelector('[data-stock-limit-warning]');
         const option = materialSelect?.options[materialSelect.selectedIndex];
         const unit = option?.dataset.materialUnit || 'Unit';
         const wholeNumber = option?.dataset.wholeNumber === 'true';
 
         if (unitText) unitText.textContent = unit;
         if (quantityInput) quantityInput.step = wholeNumber ? '1' : '0.01';
+        if (warning) {
+            const current = Number(option?.dataset.currentStock || 0);
+            const maximum = Number(option?.dataset.maximumStock || 0);
+            const delivery = Number(quantityInput?.value || 0);
+            const projected = current + delivery;
+            const overLimit = maximum > 0 && delivery > 0 && projected > maximum;
+            warning.hidden = !overLimit;
+            warning.textContent = overLimit
+                ? 'Warning: projected stock is ' + projected.toLocaleString() + ' ' + unit + ', above the ' + maximum.toLocaleString() + ' maximum.'
+                : '';
+        }
     }
 
     function refreshRemoveButtons() {
@@ -81,7 +93,11 @@
         updateSubmitState();
     });
 
-    form.addEventListener('input', updateSubmitState);
+    form.addEventListener('input', function (event) {
+        const row = event.target.closest('[data-stock-in-row]');
+        if (row) updateRow(row);
+        updateSubmitState();
+    });
     form.addEventListener('change', updateSubmitState);
 
     function closeModal() {

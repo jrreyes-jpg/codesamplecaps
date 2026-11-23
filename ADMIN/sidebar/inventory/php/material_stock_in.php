@@ -131,7 +131,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <select id="material_id_<?php echo $rowIndex; ?>" name="material_ids[]" data-stock-in-material required>
                                 <option value="" disabled<?php echo (int)($row['material_id'] ?? 0) === 0 ? ' selected' : ''; ?>>Select material</option>
                             <?php foreach ($materials as $material): ?>
-                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>"<?php echo (int)($row['material_id'] ?? 0) === (int)$material['id'] ? ' selected' : ''; ?>>
+                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>" data-current-stock="<?php echo htmlspecialchars((string)($material['physical_quantity'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-maximum-stock="<?php echo htmlspecialchars((string)($material['maximum_stock_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"<?php echo (int)($row['material_id'] ?? 0) === (int)$material['id'] ? ' selected' : ''; ?>>
                                     <?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -143,6 +143,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <input id="quantity_<?php echo $rowIndex; ?>" name="expected_quantities[]" type="number" min="0.01" step="0.01" inputmode="decimal" data-stock-in-quantity required value="<?php echo htmlspecialchars((string)($row['expected_quantity'] ?? '')); ?>">
                                 <span data-stock-in-unit>Unit</span>
                             </div>
+                            <small class="material-stock-limit-warning" data-stock-limit-warning hidden></small>
                         </div>
                         <button type="button" class="material-row-remove" data-stock-in-row-remove aria-label="Remove material"<?php echo count($materialRows) === 1 ? ' disabled' : ''; ?>>&times;</button>
                     </div>
@@ -156,7 +157,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <select name="material_ids[]" data-stock-in-material required>
                                 <option value="" disabled selected>Select material</option>
                                 <?php foreach ($materials as $material): ?>
-                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>"><?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?></option>
+                                <option value="<?php echo (int)$material['id']; ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-whole-number="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? 'true' : 'false'; ?>" data-current-stock="<?php echo htmlspecialchars((string)($material['physical_quantity'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" data-maximum-stock="<?php echo htmlspecialchars((string)($material['maximum_stock_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ' | ' . (string)$material['unit']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -166,6 +167,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <input name="expected_quantities[]" type="number" min="0.01" step="0.01" inputmode="decimal" data-stock-in-quantity required>
                                 <span data-stock-in-unit>Unit</span>
                             </div>
+                            <small class="material-stock-limit-warning" data-stock-limit-warning hidden></small>
                         </div>
                         <button type="button" class="material-row-remove" data-stock-in-row-remove aria-label="Remove material">&times;</button>
                     </div>

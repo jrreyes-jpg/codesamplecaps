@@ -24,20 +24,6 @@
         });
     }
 
-    const materialToast = document.querySelector('[data-material-toast]');
-    const materialToastClose = materialToast ? materialToast.querySelector('[data-material-toast-close]') : null;
-
-    function closeMaterialToast() {
-        if (!materialToast) return;
-        materialToast.classList.add('is-hiding');
-        window.setTimeout(function () { materialToast.remove(); }, 180);
-    }
-
-    materialToastClose?.addEventListener('click', closeMaterialToast);
-    if (materialToast?.dataset.autoHide === 'true') {
-        window.setTimeout(closeMaterialToast, 4500);
-    }
-
     const descriptionModal = document.querySelector('[data-material-description-modal]');
     const descriptionPanel = descriptionModal ? descriptionModal.querySelector('[role="dialog"]') : null;
     const descriptionTitle = descriptionModal ? descriptionModal.querySelector('[data-material-description-title]') : null;
@@ -323,8 +309,9 @@
     const form = modal.querySelector('[data-material-create-form]');
     const submitButton = modal.querySelector('[data-material-submit]');
     const generalError = modal.querySelector('[data-material-general-error]');
-    const aiSuggestButton = modal.querySelector('[data-material-ai-suggest]');
-    const aiSuggestFeedback = modal.querySelector('[data-material-ai-feedback]');
+    const discardModal = document.querySelector('[data-material-discard-modal]');
+    const discardContinue = discardModal?.querySelector('[data-material-discard-continue]');
+    const discardConfirm = discardModal?.querySelector('[data-material-discard-confirm]');
     const modalTitle = modal.querySelector('#materialCreateModalTitle');
     const formAction = form ? form.querySelector('[data-material-form-action]') : null;
     const formId = form ? form.querySelector('[data-material-form-id]') : null;
@@ -340,6 +327,7 @@
         specific_category: form.querySelector('#specific_category'),
         unit: form.querySelector('#unit'),
         reorder_level: form.querySelector('#reorder_level'),
+        maximum_stock_level: form.querySelector('#maximum_stock_level'),
         description: form.querySelector('#description')
     } : {};
     const fieldErrors = {};
@@ -350,11 +338,18 @@
     let isSubmitting = false;
 
     const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
-    const addDraftFieldNames = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'description'];
+    const addDraftFieldNames = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'maximum_stock_level', 'description'];
     const draftScope = String(modal.dataset.draftScope || 'unknown');
     const draftKeyPrefix = 'edge:admin:add-material-draft:';
     const draftScopeMarker = 'edge:admin:add-material-draft-scope';
     const addDraftKey = draftKeyPrefix + draftScope;
+    let materialNameIndex = [];
+    try {
+        const parsedIndex = JSON.parse(modal.dataset.materialNameIndex || '[]');
+        materialNameIndex = Array.isArray(parsedIndex) ? parsedIndex : [];
+    } catch (error) {
+        materialNameIndex = [];
+    }
 
     function isAddMode() {
         return Boolean(formAction && formAction.value === 'create');
@@ -439,6 +434,20 @@
         return Boolean(option && option.dataset.wholeNumber === 'true');
     }
 
+    function normalizeMaterialName(value) {
+        return value.trim().replace(/\s+/gu, ' ').toLocaleLowerCase();
+    }
+
+    function findDuplicateMaterial(value) {
+        const identity = normalizeMaterialName(value);
+        const currentId = Number(formId?.value || 0);
+        if (identity === '') return null;
+        return materialNameIndex.find(function (material) {
+            return Number(material.id || 0) !== currentId
+                && normalizeMaterialName(String(material.name || '')) === identity;
+        }) || null;
+    }
+
     function validateField(name) {
         const field = fields[name];
         if (!field) return true;
@@ -453,6 +462,16 @@
                 message = 'Material name must be 180 characters or less.';
             } else if (!/[\p{L}\p{N}]/u.test(normalized) || /\p{C}/u.test(normalized)) {
                 message = 'Enter a valid material name.';
+            } else {
+                const duplicate = findDuplicateMaterial(normalized);
+                if (duplicate) {
+                    const detail = [duplicate.category, duplicate.unit].filter(Boolean).join(' • ');
+                    message = 'Material already exists: ' + duplicate.name
+                        + (detail ? ' (' + detail + ')' : '')
+                        + (duplicate.status === 'inactive'
+                            ? '. Restore the archived material.'
+                            : '. Edit it or log a delivery receipt.');
+                }
             }
         } else if (name === 'category') {
             const valid = Array.from(field.options).some(function (option) {
@@ -475,9 +494,11 @@
                 return !option.disabled && option.value === value;
             });
             if (!valid) message = 'Select a unit.';
-        } else if (name === 'reorder_level') {
+        } else if (name === 'reorder_level' || name === 'maximum_stock_level') {
             if (value === '' || /^-/.test(value)) {
-                message = 'Enter zero or a positive number.';
+                message = name === 'maximum_stock_level'
+                    ? 'Enter a maximum stock level greater than zero.'
+                    : 'Enter zero or a positive number.';
             } else if (!/^\d+(?:\.\d+)?$/.test(value)) {
                 message = 'Enter a valid number.';
             } else {
@@ -492,6 +513,10 @@
                 } else if (integer.length > 10 || (integer.length === 10 && integer > '9999999999')) {
                     const maximum = selectedUnitNeedsWholeNumber() ? '9,999,999,999' : '9,999,999,999.99';
                     message = 'Maximum allowed value is ' + maximum + ' ' + unit + '.';
+                } else if (name === 'maximum_stock_level' && Number(value) <= 0) {
+                    message = 'Enter a maximum stock level greater than zero.';
+                } else if (name === 'maximum_stock_level' && Number(value) <= Number(fields.reorder_level.value || 0)) {
+                    message = 'Maximum stock must be greater than the low stock alert level.';
                 }
             }
         } else if (name === 'description') {
@@ -503,11 +528,14 @@
         }
 
         setFieldError(name, message);
+        if (name === 'material_name' && submitButton) {
+            submitButton.disabled = Boolean(findDuplicateMaterial(value));
+        }
         return message === '';
     }
 
     function validateForm() {
-        const order = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'description'];
+        const order = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'maximum_stock_level', 'description'];
         let firstInvalid = null;
         order.forEach(function (name) {
             if (!validateField(name) && !firstInvalid) firstInvalid = fields[name];
@@ -515,82 +543,15 @@
         return firstInvalid;
     }
 
-    function showAiSuggestionFeedback(message, state) {
-        if (!aiSuggestFeedback) return;
-        aiSuggestFeedback.textContent = message;
-        aiSuggestFeedback.classList.toggle('is-success', state === 'success');
-        aiSuggestFeedback.classList.toggle('is-warning', state === 'warning');
-        aiSuggestFeedback.classList.toggle('is-error', state === 'error');
-    }
-
-    async function suggestMaterialDetails() {
-        if (!aiSuggestButton || !form || !fields.material_name) return;
-        if (!validateField('material_name')) {
-            fields.material_name.focus();
-            return;
-        }
-
-        const defaultText = aiSuggestButton.textContent;
-        const csrfToken = form.querySelector('input[name="csrf_token"]')?.value || '';
-        aiSuggestButton.disabled = true;
-        aiSuggestButton.textContent = 'Suggesting...';
-        showAiSuggestionFeedback('', '');
-
-        try {
-            const response = await fetch('/codesamplecaps/ADMIN/sidebar/inventory/php/suggest_material_details.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: new URLSearchParams({
-                    material_name: fields.material_name.value.trim(),
-                    csrf_token: csrfToken
-                })
-            });
-            const result = await response.json();
-            if (!response.ok || !result.success) throw new Error('Suggestion unavailable');
-            if (result.asset_like) {
-                showAiSuggestionFeedback('This looks like a reusable asset. Check it before adding as a material.', 'warning');
-                return;
-            }
-
-            const categoryExists = Array.from(fields.category.options).some(function (option) {
-                return option.value === result.category;
-            });
-            const unitExists = Array.from(fields.unit.options).some(function (option) {
-                return option.value === result.unit;
-            });
-            if (!categoryExists || !unitExists || typeof result.description !== 'string') {
-                throw new Error('Invalid suggestion');
-            }
-
-            fields.category.value = result.category;
-            fields.specific_category.value = typeof result.specific_category === 'string' ? result.specific_category : '';
-            fields.unit.value = result.unit;
-            fields.description.value = result.description;
-            updateSpecificCategoryField();
-            ['category', 'specific_category', 'unit', 'description'].forEach(function (name) {
-                fields[name].dataset.materialDirty = 'true';
-                validateField(name);
-            });
-            updateReorderStep();
-            saveAddDraft();
-            showAiSuggestionFeedback('Suggestion added. Review before saving.', 'success');
-        } catch (error) {
-            showAiSuggestionFeedback('AI suggestion is unavailable. Enter details manually.', 'error');
-        } finally {
-            aiSuggestButton.disabled = false;
-            aiSuggestButton.textContent = defaultText;
-        }
-    }
-
     function updateReorderStep() {
-        if (fields.reorder_level) {
-            const wholeNumber = selectedUnitNeedsWholeNumber();
-            fields.reorder_level.step = wholeNumber ? '1' : '0.01';
-            fields.reorder_level.max = wholeNumber ? '9999999999' : '9999999999.99';
-        }
+        const wholeNumber = selectedUnitNeedsWholeNumber();
+        ['reorder_level', 'maximum_stock_level'].forEach(function (name) {
+            if (fields[name]) {
+                const field = fields[name];
+                field.step = wholeNumber ? '1' : '0.01';
+                field.max = wholeNumber ? '9999999999' : '9999999999.99';
+            }
+        });
     }
 
     function updateSpecificCategoryField() {
@@ -672,6 +633,7 @@
             fields.specific_category.value = data.materialSpecificCategory || '';
             fields.unit.value = data.materialUnit || '';
             fields.reorder_level.value = data.materialReorder || '';
+            fields.maximum_stock_level.value = data.materialMaximum || '';
             configureUnitLock(data.unitEditable === 'true');
         } else {
             configureUnitLock(true);
@@ -682,7 +644,7 @@
 
     function clearAddForm(clearDraft) {
         if (!form) return;
-        ['material_name', 'specific_category', 'description'].forEach(function (name) {
+        ['material_name', 'specific_category', 'maximum_stock_level', 'description'].forEach(function (name) {
             if (fields[name]) fields[name].value = '';
         });
         if (fields.reorder_level) fields.reorder_level.value = '0';
@@ -705,7 +667,7 @@
         const draft = readAddDraft();
         if (!draft) return;
 
-        ['material_name', 'specific_category', 'reorder_level', 'description'].forEach(function (name) {
+        ['material_name', 'specific_category', 'reorder_level', 'maximum_stock_level', 'description'].forEach(function (name) {
             if (fields[name] && typeof draft[name] === 'string') fields[name].value = draft[name];
         });
         ['category', 'unit'].forEach(function (name) {
@@ -727,7 +689,6 @@
     function resetMaterialForm() {
         if (!form) return;
         form.reset();
-        showAiSuggestionFeedback('', '');
         clearAddForm(false);
         closeButtons.forEach(function (button) { button.disabled = false; });
         if (submitButton) submitButton.disabled = false;
@@ -750,18 +711,35 @@
         });
     }
 
-    function closeModal() {
+    function hasUnsavedAddValues() {
+        if (!isAddMode()) return false;
+        return addDraftFieldNames.some(function (name) {
+            const value = fields[name] ? fields[name].value.trim() : '';
+            return name === 'reorder_level' ? value !== '' && value !== '0' : value !== '';
+        });
+    }
+
+    function finishCloseModal(discardAddValues) {
         if (isSubmitting) {
             return;
         }
         const wasAddMode = isAddMode();
-        if (wasAddMode) saveAddDraft();
+        if (wasAddMode && discardAddValues) clearAddForm(true);
         modal.hidden = true;
         document.body.classList.remove('material-create-modal-open');
         if (!wasAddMode) resetMaterialForm();
         if (returnFocus && typeof returnFocus.focus === 'function') {
             returnFocus.focus();
         }
+    }
+
+    function closeModal() {
+        if (hasUnsavedAddValues() && discardModal && discardContinue && discardConfirm) {
+            discardModal.hidden = false;
+            discardContinue.focus();
+            return;
+        }
+        finishCloseModal(false);
     }
 
     openButton.addEventListener('click', function () {
@@ -781,7 +759,14 @@
     closeButtons.forEach(function (button) {
         button.addEventListener('click', closeModal);
     });
-    aiSuggestButton?.addEventListener('click', suggestMaterialDetails);
+    discardContinue?.addEventListener('click', function () {
+        discardModal.hidden = true;
+        panel?.focus();
+    });
+    discardConfirm?.addEventListener('click', function () {
+        discardModal.hidden = true;
+        finishCloseModal(true);
+    });
 
     modal.addEventListener('click', function (event) {
         if (event.target === modal) {
@@ -831,13 +816,16 @@
                 if (name === 'unit') {
                     updateReorderStep();
                     fields.reorder_level.dataset.materialDirty = 'true';
+                    fields.maximum_stock_level.dataset.materialDirty = 'true';
                     validateField('reorder_level');
+                    validateField('maximum_stock_level');
                 }
                 if (name === 'category') {
                     updateSpecificCategoryField();
                     if (fields.category.value === 'Other') validateField('specific_category');
                 }
                 validateField(name);
+                if (name === 'reorder_level') validateField('maximum_stock_level');
                 saveAddDraft();
             });
             field.addEventListener('blur', function () {
@@ -865,6 +853,12 @@
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.textContent = 'Saving...';
+            }
+            if (window.edgeActionLoading) {
+                window.edgeActionLoading.show({
+                    title: isAddMode() ? 'Adding material...' : 'Saving material...',
+                    message: 'Please wait while the inventory is updated.'
+                });
             }
         });
     }
@@ -918,11 +912,9 @@
     prepareDraftStorage();
     if (modal.dataset.createSucceeded === 'true') clearStoredAddDraft();
     updateReorderStep();
+    if (fields.material_name?.value.trim() !== '') validateField('material_name');
     if (modal.dataset.autoOpen === 'true') {
         if (modal.dataset.autoMode === 'add') saveAddDraft();
         openModal(true);
-    } else if (isAddMode() && readAddDraft()) {
-        restoreAddDraft();
-        openModal(false);
     }
 })();

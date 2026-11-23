@@ -289,7 +289,7 @@ if (!function_exists('material_stock_fetch_materials')) {
             default => "WHERE status = 'active'",
         };
         $result = $conn->query(
-            "SELECT id, material_code, material_name, description, category, unit, physical_quantity, reserved_quantity, reorder_level, status,
+            "SELECT id, material_code, material_name, description, category, specific_category, unit, physical_quantity, reserved_quantity, reorder_level, maximum_stock_level, status,
                     GREATEST(physical_quantity - reserved_quantity, 0) AS available_quantity
              FROM materials
              {$where}
@@ -603,7 +603,7 @@ if (!function_exists('material_stock_permanently_delete_material')) {
 }
 
 if (!function_exists('material_stock_create_material')) {
-    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $specificCategory, string $unit, ?float $reorderLevel, ?string $description = null): string
+    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $specificCategory, string $unit, ?float $reorderLevel, ?float $maximumStockLevel, ?string $description = null): string
     {
         $name = trim($name);
         $category = trim((string)$category);
@@ -618,20 +618,27 @@ if (!function_exists('material_stock_create_material')) {
         if ($reorderLevel !== null && $reorderLevel < 0) {
             throw new RuntimeException('Reorder level cannot be negative.');
         }
+        if ($maximumStockLevel !== null && $maximumStockLevel <= 0) {
+            throw new RuntimeException('Maximum stock level must be greater than zero.');
+        }
+        if ($maximumStockLevel !== null && $reorderLevel !== null && $maximumStockLevel <= $reorderLevel) {
+            throw new RuntimeException('Maximum stock level must be greater than the low stock alert level.');
+        }
 
         $conn->begin_transaction();
         try {
             // Temporary code lang ito habang kumukuha ng auto-increment ID.
             $temporaryCode = 'MAT-TEMP-' . bin2hex(random_bytes(12));
             $reorderValue = $reorderLevel === null ? '' : (string)$reorderLevel;
+            $maximumValue = $maximumStockLevel === null ? '' : (string)$maximumStockLevel;
             $insert = $conn->prepare(
-                'INSERT INTO materials (material_code, material_name, description, category, specific_category, unit, reorder_level)
-                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'))'
+                'INSERT INTO materials (material_code, material_name, description, category, specific_category, unit, reorder_level, maximum_stock_level)
+                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'), NULLIF(?, \'\'))'
             );
             if (!$insert) {
                 throw new RuntimeException('Unable to create material.');
             }
-            $insert->bind_param('sssssss', $temporaryCode, $name, $description, $category, $specificCategory, $unit, $reorderValue);
+            $insert->bind_param('ssssssss', $temporaryCode, $name, $description, $category, $specificCategory, $unit, $reorderValue, $maximumValue);
             if (!$insert->execute()) {
                 throw new RuntimeException('Unable to create material.');
             }
@@ -669,6 +676,7 @@ if (!function_exists('material_stock_update_material')) {
         string $specificCategory,
         string $unit,
         float $reorderLevel,
+        ?float $maximumStockLevel,
         string $description,
         int $userId
     ): void {
@@ -679,7 +687,7 @@ if (!function_exists('material_stock_update_material')) {
         $conn->begin_transaction();
         try {
             $lock = $conn->prepare(
-                "SELECT id, material_name, description, category, specific_category, unit, reorder_level, physical_quantity, reserved_quantity
+                "SELECT id, material_name, description, category, specific_category, unit, reorder_level, maximum_stock_level, physical_quantity, reserved_quantity
                  FROM materials
                  WHERE id = ? AND status = 'active'
                  FOR UPDATE"
@@ -700,16 +708,19 @@ if (!function_exists('material_stock_update_material')) {
                     || material_stock_has_usage_reference($conn, $materialId, true))) {
                 throw new RuntimeException('Unit cannot be changed because this material has stock or history.');
             }
+            if ($maximumStockLevel !== null && $maximumStockLevel <= $reorderLevel) {
+                throw new RuntimeException('Maximum stock level must be greater than the low stock alert level.');
+            }
 
             $update = $conn->prepare(
                 'UPDATE materials
-                 SET material_name = ?, description = NULLIF(?, \'\'), category = ?, specific_category = NULLIF(?, \'\'), unit = ?, reorder_level = ?
+                 SET material_name = ?, description = NULLIF(?, \'\'), category = ?, specific_category = NULLIF(?, \'\'), unit = ?, reorder_level = ?, maximum_stock_level = ?
                  WHERE id = ? AND status = \'active\''
             );
             if (!$update) {
                 throw new RuntimeException('Unable to update the material.');
             }
-            $update->bind_param('sssssdi', $name, $description, $category, $specificCategory, $unit, $reorderLevel, $materialId);
+            $update->bind_param('sssssddi', $name, $description, $category, $specificCategory, $unit, $reorderLevel, $maximumStockLevel, $materialId);
             if (!$update->execute()) {
                 throw new RuntimeException('Unable to update the material.');
             }
@@ -721,6 +732,7 @@ if (!function_exists('material_stock_update_material')) {
                 'specific_category' => (string)($current['specific_category'] ?? ''),
                 'unit' => (string)$current['unit'],
                 'reorder_level' => (string)($current['reorder_level'] ?? ''),
+                'maximum_stock_level' => (string)($current['maximum_stock_level'] ?? ''),
             ];
             $newValues = [
                 'material_name' => $name,
@@ -729,6 +741,7 @@ if (!function_exists('material_stock_update_material')) {
                 'specific_category' => $specificCategory,
                 'unit' => $unit,
                 'reorder_level' => $reorderLevel,
+                'maximum_stock_level' => $maximumStockLevel,
             ];
             if ($oldValues != $newValues) {
                 audit_log_event($conn, $userId, 'material_updated', 'material', $materialId, $oldValues, $newValues);

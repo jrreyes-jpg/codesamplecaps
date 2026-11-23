@@ -66,6 +66,7 @@ $validateMaterialValues = static function (array $values) use (
     $specificCategory = material_detail_normalize_name((string)($values['specific_category'] ?? ''));
     $unit = trim((string)$values['unit']);
     $reorderRaw = trim((string)$values['reorder_level']);
+    $maximumRaw = trim((string)($values['maximum_stock_level'] ?? ''));
     $fieldErrors = [];
 
     if ($name === '') {
@@ -98,6 +99,12 @@ $validateMaterialValues = static function (array $values) use (
     if ($thresholdError !== null) {
         $fieldErrors['reorder_level'] = $thresholdError;
     }
+    $maximumError = material_stock_threshold_error($maximumRaw, $thresholdUnit);
+    if ($maximumError !== null || (float)$maximumRaw <= 0) {
+        $fieldErrors['maximum_stock_level'] = 'Enter a maximum stock level greater than zero.';
+    } elseif ($thresholdError === null && (float)$maximumRaw <= (float)$reorderRaw) {
+        $fieldErrors['maximum_stock_level'] = 'Maximum stock must be greater than the low stock alert level.';
+    }
 
     if ($materialTextLength($description) > $materialDescriptionMaxLength) {
         $fieldErrors['description'] = 'Description must be 255 characters or less.';
@@ -115,6 +122,7 @@ $validateMaterialValues = static function (array $values) use (
         'specific_category' => $specificCategory,
         'unit' => $unit,
         'reorder' => $thresholdError === null ? (float)$reorderRaw : null,
+        'maximum_stock_level' => $maximumError === null && (float)$maximumRaw > 0 ? (float)$maximumRaw : null,
         'errors' => $fieldErrors,
     ];
 };
@@ -145,6 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'specific_category' => $materialPostText($_POST['specific_category'] ?? ''),
                 'unit' => $materialPostText($_POST['unit'] ?? ($_POST['locked_unit'] ?? '')),
                 'reorder_level' => $materialPostText($_POST['reorder_level'] ?? ''),
+                'maximum_stock_level' => $materialPostText($_POST['maximum_stock_level'] ?? ''),
                 'description' => $materialPostText($_POST['description'] ?? ''),
             ];
             $validated = $validateMaterialValues($submittedMaterialValues);
@@ -178,6 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $validated['specific_category'],
                     $validated['unit'],
                     (float)$validated['reorder'],
+                    $validated['maximum_stock_level'],
                     $validated['description'],
                     (int)$_SESSION['user_id']
                 );
@@ -190,6 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $validated['specific_category'],
                     $validated['unit'],
                     (float)$validated['reorder'],
+                    $validated['maximum_stock_level'],
                     $validated['description']
                 );
                 $_SESSION[$materialFlashKey] = ['type' => 'success', 'action' => 'create', 'message' => 'Material ' . $code . ' created.'];
@@ -272,6 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'specific_category' => $materialPostText($_POST['specific_category'] ?? ''),
                     'unit' => $materialPostText($_POST['unit'] ?? ($_POST['locked_unit'] ?? '')),
                     'reorder_level' => $materialPostText($_POST['reorder_level'] ?? ''),
+                    'maximum_stock_level' => $materialPostText($_POST['maximum_stock_level'] ?? ''),
                     'description' => $materialPostText($_POST['description'] ?? ''),
                 ],
             ];
@@ -296,6 +308,17 @@ $materialCreateRequestToken = material_stock_issue_once_token('admin_material_cr
 $materialUpdateRequestToken = material_stock_issue_once_token('admin_material_update');
 $materialBulkArchiveRequestToken = material_stock_issue_once_token('admin_material_bulk_archive');
 $materials = material_stock_fetch_materials($conn, $materialFilter);
+$materialNameIndex = array_map(
+    static fn(array $material): array => [
+        'id' => (int)$material['id'],
+        'name' => (string)$material['material_name'],
+        'code' => (string)$material['material_code'],
+        'category' => trim((string)($material['specific_category'] ?: $material['category'] ?? '')),
+        'unit' => (string)$material['unit'],
+        'status' => (string)$material['status'],
+    ],
+    material_stock_fetch_materials($conn, 'all')
+);
 $archiveBlockReasons = $materialFilter === 'active'
     ? material_stock_fetch_archive_block_reasons($conn, $materials)
     : [];
@@ -309,11 +332,13 @@ $adminPageTitle = 'Consumable Material Master - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-3',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261123-4',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261103-6',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261123-4',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -321,10 +346,10 @@ include __DIR__ . '/../../../admin_sidebar.php';
 <main class="main-content inventory-main-content inventory-light-main">
     <div class="shared-page-container page-stack inventory-page-stack material-master-page">
         <?php if ($materialFlash): ?>
-            <div class="material-toast material-toast--<?php echo $materialFlash['type'] === 'success' ? 'success' : 'error'; ?>" role="<?php echo $materialFlash['type'] === 'success' ? 'status' : 'alert'; ?>" data-material-toast data-auto-hide="<?php echo $materialFlash['type'] === 'success' ? 'true' : 'false'; ?>">
-                <span aria-hidden="true"><?php echo $materialFlash['type'] === 'success' ? '&#10003;' : '!'; ?></span>
-                <p><?php echo htmlspecialchars((string)$materialFlash['message']); ?></p>
-                <button type="button" data-material-toast-close aria-label="Close notification">&times;</button>
+            <div class="shared-toast shared-toast--<?php echo $materialFlash['type'] === 'success' ? 'success' : 'error'; ?>" role="<?php echo $materialFlash['type'] === 'success' ? 'status' : 'alert'; ?>" data-shared-toast>
+                <span><?php echo htmlspecialchars((string)$materialFlash['message']); ?></span>
+                <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+                <span class="shared-toast__progress" aria-hidden="true"></span>
             </div>
         <?php endif; ?>
 
@@ -433,6 +458,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 data-material-specific-category="<?php echo htmlspecialchars((string)($material['specific_category'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-material-maximum="<?php echo htmlspecialchars((string)($material['maximum_stock_level'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-unit-editable="<?php echo isset($deletableMaterialIds[(int)$material['id']]) ? 'true' : 'false'; ?>"
                                                 role="menuitem"
                                             >Edit</button>
@@ -502,7 +528,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </section>
         </div>
 
-        <div class="material-create-modal" data-material-modal data-draft-scope="<?php echo (int)$_SESSION['user_id'] . ':' . (int)($_SESSION['logged_in_at'] ?? 0); ?>" data-create-token="<?php echo htmlspecialchars($materialCreateRequestToken); ?>" data-update-token="<?php echo htmlspecialchars($materialUpdateRequestToken); ?>" data-auto-mode="<?php echo htmlspecialchars($materialFormMode); ?>" data-auto-material-id="<?php echo $materialFormMaterialId; ?>" data-create-succeeded="<?php echo $materialCreateSucceeded ? 'true' : 'false'; ?>" <?php echo $materialFormState ? 'data-auto-open="true"' : ''; ?> hidden>
+        <div class="material-create-modal" data-material-modal data-material-name-index="<?php echo htmlspecialchars((string)json_encode($materialNameIndex, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>" data-draft-scope="<?php echo (int)$_SESSION['user_id'] . ':' . (int)($_SESSION['logged_in_at'] ?? 0); ?>" data-create-token="<?php echo htmlspecialchars($materialCreateRequestToken); ?>" data-update-token="<?php echo htmlspecialchars($materialUpdateRequestToken); ?>" data-auto-mode="<?php echo htmlspecialchars($materialFormMode); ?>" data-auto-material-id="<?php echo $materialFormMaterialId; ?>" data-create-succeeded="<?php echo $materialCreateSucceeded ? 'true' : 'false'; ?>" <?php echo $materialFormState ? 'data-auto-open="true"' : ''; ?> hidden>
             <section class="material-create-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialCreateModalTitle" tabindex="-1">
                 <div class="material-create-modal__header">
                     <h2 id="materialCreateModalTitle"><?php echo $materialFormMode === 'edit' ? 'Edit Material' : 'Add Material'; ?></h2>
@@ -522,10 +548,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <label for="material_name">Material Name <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="material_name" name="material_name" maxlength="180" placeholder="e.g., CAT6 Cable or PVC Pipe 1/2&quot;" value="<?php echo htmlspecialchars((string)($materialFormValues['material_name'] ?? '')); ?>" <?php echo $materialFieldError('material_name') !== '' ? 'aria-invalid="true" aria-describedby="materialNameError"' : ''; ?> required>
                             <small id="materialNameError" class="material-form-error" data-material-field-error="material_name"<?php echo $materialFieldError('material_name') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('material_name')); ?></small>
-                            <div class="material-ai-suggestion">
-                                <button type="button" class="btn-secondary" data-material-ai-suggest>Suggest with AI</button>
-                                <small data-material-ai-feedback aria-live="polite"></small>
-                            </div>
                         </div>
                         <div class="input-group">
                             <label for="category">Category <span class="required-indicator" aria-hidden="true">*</span></label>
@@ -550,11 +572,22 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <label for="reorder_level">Low Stock Alert Level <span class="required-indicator" aria-hidden="true">*</span></label>
                                 <span class="material-field-info" data-material-tooltip>
                                     <button type="button" aria-label="About Low Stock Alert Level" aria-describedby="materialReorderTooltip" aria-expanded="false">i</button>
-                                    <span id="materialReorderTooltip" role="tooltip">0 means no low-stock warning. Out of Stock still applies.</span>
+                                    <span id="materialReorderTooltip" role="tooltip">You will receive an alert when stock reaches or falls below this level.</span>
                                 </span>
                             </div>
                             <input id="reorder_level" name="reorder_level" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '0')); ?>" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>
                             <small id="materialReorderError" class="material-form-error" data-material-field-error="reorder_level"<?php echo $materialFieldError('reorder_level') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('reorder_level')); ?></small>
+                        </div>
+                        <div class="input-group material-master-maximum">
+                            <div class="material-field-label-row">
+                                <label for="maximum_stock_level">Maximum Stock Level <span class="required-indicator" aria-hidden="true">*</span></label>
+                                <span class="material-field-info" data-material-tooltip>
+                                    <button type="button" aria-label="About Maximum Stock Level" aria-describedby="materialMaximumTooltip" aria-expanded="false">i</button>
+                                    <span id="materialMaximumTooltip" role="tooltip">You will receive a warning when a delivery exceeds this level.</span>
+                                </span>
+                            </div>
+                            <input id="maximum_stock_level" name="maximum_stock_level" type="number" min="0.01" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars((string)($materialFormValues['maximum_stock_level'] ?? '')); ?>" <?php echo $materialFieldError('maximum_stock_level') !== '' ? 'aria-invalid="true" aria-describedby="materialMaximumError"' : ''; ?> required>
+                            <small id="materialMaximumError" class="material-form-error" data-material-field-error="maximum_stock_level"<?php echo $materialFieldError('maximum_stock_level') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('maximum_stock_level')); ?></small>
                         </div>
                         <div class="input-group material-master-description">
                             <label for="description">Description (Optional)</label>
@@ -569,6 +602,17 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         </div>
                     </div>
                 </form>
+            </section>
+        </div>
+
+        <div class="material-remove-modal" data-material-discard-modal hidden>
+            <section class="material-remove-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialDiscardTitle" aria-describedby="materialDiscardMessage">
+                <h2 id="materialDiscardTitle">Discard unsaved material?</h2>
+                <p id="materialDiscardMessage">Your entered details will be removed.</p>
+                <div class="material-remove-modal__actions">
+                    <button type="button" class="btn-secondary" data-material-discard-continue>Continue Editing</button>
+                    <button type="button" class="btn-danger" data-material-discard-confirm>Discard</button>
+                </div>
             </section>
         </div>
 

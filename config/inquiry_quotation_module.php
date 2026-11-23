@@ -1676,6 +1676,17 @@ function inquiry_quote_create_project(mysqli $conn, int $draftId, int $adminId):
                 'site_inspection',
                 (int)($quotation['inspection_id'] ?? 0)
             );
+
+            user_notifications_create_if_missing(
+                $conn,
+                $engineerId,
+                'project_assignment',
+                $projectId,
+                'New Project Assignment',
+                'Project: ' . $projectName . ' • Code: ' . $projectCode,
+                '/codesamplecaps/ENGINEER/dashboards/projects.php',
+                'project_assignment:' . $engineerId . ':' . $projectId
+            );
         }
 
         $conn->commit();

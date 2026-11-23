@@ -257,6 +257,7 @@ CREATE TABLE `materials` (
   `physical_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
   `reserved_quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
   `reorder_level` decimal(12,2) DEFAULT NULL,
+  `maximum_stock_level` decimal(12,2) DEFAULT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),

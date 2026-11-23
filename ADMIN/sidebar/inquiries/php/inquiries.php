@@ -1513,6 +1513,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $inspectionId,
                         'inspection_returned:' . $inspectionId . ':' . hash('sha256', (string)($inspectionBeforeReview['submitted_at'] ?? '') . '|' . $remarksToStore)
                     );
+                } elseif ($targetReviewStatus === 'Approved') {
+                    $engineerId = (int)($inspectionBeforeReview['engineer_id'] ?? 0);
+                    user_notifications_create_if_missing(
+                        $conn,
+                        $engineerId,
+                        'inspection_costing_approved',
+                        $inspectionId,
+                        'Inspection Costing Approved',
+                        'Admin approved your inspection costing.',
+                        '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $inspectionId,
+                        'inspection_costing_approved:' . $inspectionId . ':' . hash('sha256', (string)($inspectionBeforeReview['submitted_at'] ?? ''))
+                    );
                 }
 
                 audit_log_event(
@@ -1939,15 +1951,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     if ($isScheduleUpdate && $notificationEngineer && $notificationInquiry) {
+                        $isEngineerRescheduleApproval = (string)($existingInspection['engineer_schedule_response'] ?? '') === 'reschedule_requested'
+                            && (int)($existingInspection['engineer_id'] ?? 0) === $engineerId;
+                        $notificationType = $isEngineerRescheduleApproval
+                            ? 'engineer_reschedule_approved'
+                            : 'site_inspection_schedule_updated';
+                        $notificationTitle = $isEngineerRescheduleApproval
+                            ? 'Reschedule Request Approved'
+                            : 'Inspection Schedule Updated';
+                        $notificationMessage = $isEngineerRescheduleApproval
+                            ? 'Admin approved your request. New schedule: ' . $scheduleForEmail
+                            : 'Client: ' . ($clientName !== '' ? $clientName : 'Client') . ' • New schedule: ' . $scheduleForEmail . ($siteNotes !== '' ? ' • Notes: ' . mb_strimwidth($siteNotes, 0, 80, '…') : '');
                         user_notifications_create_if_missing(
                             $conn,
                             $engineerId,
-                            'site_inspection_schedule_updated',
+                            $notificationType,
                             $savedInspectionId,
-                            'Inspection Schedule Updated',
-                            'Client: ' . ($clientName !== '' ? $clientName : 'Client') . ' • New schedule: ' . $scheduleForEmail . ($siteNotes !== '' ? ' • Notes: ' . mb_strimwidth($siteNotes, 0, 80, '…') : ''),
+                            $notificationTitle,
+                            $notificationMessage,
                             '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $savedInspectionId,
-                            'site_inspection_schedule_updated:' . $engineerId . ':' . $savedInspectionId . ':' . $notificationHash
+                            $notificationType . ':' . $engineerId . ':' . $savedInspectionId . ':' . $notificationHash
                         );
                     }
 

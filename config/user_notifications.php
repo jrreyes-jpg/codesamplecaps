@@ -60,7 +60,8 @@ if (!function_exists('user_notifications_active_target_condition')) {
         }
 
         $inspectionTypes = "'site_inspection_assignment', 'site_inspection_schedule_updated', "
-            . "'client_inspection_reschedule_requested', 'engineer_inspection_reschedule_requested'";
+            . "'client_inspection_reschedule_requested', 'engineer_inspection_reschedule_requested', "
+            . "'engineer_reschedule_approved', 'inspection_returned_for_revision', 'inspection_costing_approved'";
 
         return "(
             {$alias}.type NOT IN ({$inspectionTypes}, 'client_quotation_response', 'client_inquiry_review')
@@ -114,7 +115,10 @@ if (!function_exists('user_notifications_retire_for_inquiry')) {
                     'site_inspection_assignment',
                     'site_inspection_schedule_updated',
                     'client_inspection_reschedule_requested',
-                    'engineer_inspection_reschedule_requested'
+                    'engineer_inspection_reschedule_requested',
+                    'engineer_reschedule_approved',
+                    'inspection_returned_for_revision',
+                    'inspection_costing_approved'
                 )
                 AND EXISTS (
                     SELECT 1
@@ -159,7 +163,10 @@ if (!function_exists('user_notifications_delete_for_inquiry')) {
                     'site_inspection_assignment',
                     'site_inspection_schedule_updated',
                     'client_inspection_reschedule_requested',
-                    'engineer_inspection_reschedule_requested'
+                    'engineer_inspection_reschedule_requested',
+                    'engineer_reschedule_approved',
+                    'inspection_returned_for_revision',
+                    'inspection_costing_approved'
                 )
                 AND EXISTS (
                     SELECT 1

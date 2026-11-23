@@ -62,9 +62,13 @@
 }
 
 .material-master-name,
-.material-master-reorder,
 .material-master-description {
     grid-column: 1 / -1;
+}
+
+.material-master-reorder,
+.material-master-maximum {
+    align-self: start;
 }
 
 .material-master-heading,
@@ -88,59 +92,6 @@
 
 .material-master-actions form {
     margin: 0;
-}
-
-.material-toast {
-    position: fixed;
-    z-index: 4400;
-    top: 92px;
-    right: 24px;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    width: min(390px, calc(100vw - 32px));
-    padding: 12px 14px;
-    gap: 10px;
-    border: 1px solid;
-    border-radius: 12px;
-    box-shadow: 0 14px 32px rgba(15, 23, 42, .18);
-    transition: opacity .18s ease, transform .18s ease;
-}
-
-.material-toast--success {
-    border-color: #86efac;
-    background: #f0fdf4;
-    color: #166534;
-}
-
-.material-toast--error {
-    border-color: #fecaca;
-    background: #fef2f2;
-    color: #991b1b;
-}
-
-.material-toast p {
-    margin: 0;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
-.material-toast > span {
-    font-weight: 800;
-}
-
-.material-toast button {
-    padding: 2px 6px;
-    border: 0;
-    background: transparent;
-    color: currentColor;
-    cursor: pointer;
-    font-size: 1.3rem;
-}
-
-.material-toast.is-hiding {
-    opacity: 0;
-    transform: translateY(-8px);
 }
 
 .material-description-view {
@@ -288,6 +239,15 @@
     padding: 0;
     border: 0;
     background: transparent;
+}
+
+.material-stock-limit-warning {
+    display: block;
+    margin-top: 6px;
+    color: #a45108;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .material-quantity-control {
@@ -921,8 +881,8 @@
 
 .material-field-info > button {
     display: inline-grid;
-    width: 32px;
-    height: 32px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     place-items: center;
     border: 1px solid #94a3b8;
@@ -931,7 +891,7 @@
     color: #475569;
     cursor: pointer;
     font: inherit;
-    font-size: .78rem;
+    font-size: .72rem;
     font-weight: 800;
     line-height: 1;
 }
@@ -942,7 +902,7 @@
     border-color: #15803d;
     background: #f0fdf4;
     color: #166534;
-    outline: 3px solid rgba(21, 128, 61, .14);
+    outline: 2px solid rgba(21, 128, 61, .14);
 }
 
 .material-field-info [role="tooltip"] {
@@ -1362,11 +1322,6 @@ body.material-create-modal-open {
 
     .material-create-modal {
         padding: 16px;
-    }
-
-    .material-toast {
-        top: 76px;
-        right: 16px;
     }
 
     .material-description-modal {

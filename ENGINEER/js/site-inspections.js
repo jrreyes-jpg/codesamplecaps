@@ -444,6 +444,10 @@ document.addEventListener('DOMContentLoaded', function () {
             sourceSelector: '[data-material-picker]',
             dependentSelector: 'input[name="item_name[]"], input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"]',
         });
+        const removeButton = row.querySelector('[data-remove-costing-row]');
+        if (removeButton) {
+            removeButton.disabled = String(picker?.value || '').trim() === '';
+        }
 
         const fieldDetails = {
             material: ['Material Name', 'Enter material name'],
@@ -970,12 +974,9 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('.costing-row').forEach(function (row, index) {
             const number = row.querySelector('[data-costing-row-number]');
             if (number) number.textContent = `Material ${index + 1}`;
+            const removeButton = row.querySelector('[data-remove-costing-row]');
+            if (removeButton) removeButton.hidden = false;
         });
-        window.EdgeMaterialSuggestions?.syncSingleRowRemoveButtons(
-            form.querySelector('[data-costing-rows]'),
-            '.costing-row',
-            '[data-remove-costing-row]'
-        );
     };
 
     const quantityErrorMessage = function (value, unit) {
@@ -1511,9 +1512,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelector('input[name="item_name[]"]')?.addEventListener('blur', function (event) {
-            if (window.EdgeMaterialSuggestions?.resetEmptyManualMaterial(row)) {
-                return;
-            }
             event.target.dataset.validationTouched = 'true';
             updateManualMaterialNameState(row, true);
             validateDuplicateMaterials(form, true);
@@ -1534,6 +1532,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.querySelectorAll('select').forEach(function (field) {
                         field.selectedIndex = 0;
                     });
+                    window.EdgeMaterialSuggestions?.syncMaterialSelectionState(row, {
+                        sourceSelector: '[data-material-picker]',
+                        dependentSelector: 'input[name="item_name[]"], input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"]',
+                    });
+                    const removeButton = row.querySelector('[data-remove-costing-row]');
+                    if (removeButton) removeButton.disabled = true;
                 } else {
                     row.remove();
                 }
@@ -2031,6 +2035,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.querySelectorAll('[data-inspection-tab-panel]').forEach(function (panel) {
             panel.hidden = panel.getAttribute('data-inspection-tab-panel') !== nextTab;
         });
+        modal.classList.remove('is-restoring-tab');
         modal.querySelectorAll('[data-inspection-report-actions]').forEach(function (actions) {
             actions.hidden = nextTab !== 'report';
         });
@@ -3170,6 +3175,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 activateInspectionTab(requestedModal, 'report');
             } else if (savedTab === 'details' || savedTab === 'report') {
                 activateInspectionTab(requestedModal, savedTab);
+            } else {
+                activateInspectionTab(requestedModal, 'details');
             }
             window.localStorage.removeItem(activeModalKey);
             document.body.classList.remove('inspection-modal-open');

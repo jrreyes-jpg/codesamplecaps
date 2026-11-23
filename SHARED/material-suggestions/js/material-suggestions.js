@@ -228,19 +228,6 @@
         });
     };
 
-    const resetEmptyManualMaterial = function (row, options) {
-        const source = row?.querySelector(options?.sourceSelector || '[data-material-suggestion-source]');
-        const name = row?.querySelector(options?.nameSelector || 'input[name="item_name[]"]');
-        const manualValue = options?.manualValue || 'manual';
-        if (!source || !name || source.value !== manualValue || name.value.trim() !== '') {
-            return false;
-        }
-
-        source.value = '';
-        source.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-    };
-
     const setRowDecisionLock = function (row, locked) {
         row?.querySelectorAll('input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"], input[name="item_notes[]"]').forEach(function (field) {
             field.disabled = locked;
@@ -447,7 +434,6 @@
         syncNonStockDecision: syncNonStockDecision,
         syncMaterialSelectionState: syncMaterialSelectionState,
         syncSingleRowRemoveButtons: syncSingleRowRemoveButtons,
-        resetEmptyManualMaterial: resetEmptyManualMaterial,
     };
     bind(document);
 }());

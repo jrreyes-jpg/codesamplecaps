@@ -1582,7 +1582,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261120-1',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261124-2',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
@@ -1779,7 +1779,7 @@ require __DIR__ . '/../layout/header.php';
                             'material_id' => '',
                             'item_name' => '',
                             'quantity' => 1,
-                            'unit' => 'unit',
+                            'unit' => '',
                             'unit_cost' => '',
                             'notes' => '',
                         ]];
@@ -1868,7 +1868,7 @@ require __DIR__ . '/../layout/header.php';
                             View Details
                         </a>
 
-                        <div class="inspection-modal<?php echo $isInspectionDetailsPage ? ' inspection-modal--page' : ''; ?>" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' hidden'; ?>>
+                        <div class="inspection-modal<?php echo $isInspectionDetailsPage ? ' inspection-modal--page is-restoring-tab' : ''; ?>" id="inspectionModal<?php echo $inspectionId; ?>" data-report-submitted="<?php echo $isSubmittedToAdmin ? 'true' : 'false'; ?>"<?php echo $isInspectionDetailsPage ? '' : ' hidden'; ?>>
                             <?php if ($isInspectionDetailsPage): ?>
                                 <div class="inspection-details-navigation">
                                     <a href="/codesamplecaps/ENGINEER/dashboards/site_inspections.php" class="inspection-details-back">&larr; Back to Site Inspections</a>
@@ -2223,8 +2223,9 @@ require __DIR__ . '/../layout/header.php';
                                         <label>
                                             <span>Unit <b aria-hidden="true">*</b></span>
                                             <select name="unit[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <option value="" disabled<?php echo trim((string)($item['unit'] ?? '')) === '' ? ' selected' : ''; ?>>Select unit</option>
                                                 <?php foreach (['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter'] as $unitOption): ?>
-                                                    <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? 'unit') === $unitOption ? 'selected' : ''; ?>>
+                                                    <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? '') === $unitOption ? 'selected' : ''; ?>>
                                                         <?php echo htmlspecialchars(ucfirst($unitOption), ENT_QUOTES, 'UTF-8'); ?>
                                                     </option>
                                                 <?php endforeach; ?>
@@ -2482,12 +2483,12 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-2',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-3',
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-3',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-10',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

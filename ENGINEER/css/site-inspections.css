@@ -1882,6 +1882,13 @@ body.inspection-modal-open {
     white-space: nowrap;
 }
 
+.btn-remove-row:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .inspection-costing-form .inspection-actions {
     align-items: flex-end;
     justify-content: flex-end;
@@ -2253,6 +2260,12 @@ body.inspection-is-submitting {
     padding: 0;
     background: transparent;
     backdrop-filter: none;
+}
+
+/* Itago muna ang tabs habang ibinabalik ang huling binuksan na tab. */
+.inspection-modal--page.is-restoring-tab .inspection-tab-toolbar,
+.inspection-modal--page.is-restoring-tab .inspection-tab-panel {
+    visibility: hidden;
 }
 
 .inspection-modal--page .inspection-modal__panel {

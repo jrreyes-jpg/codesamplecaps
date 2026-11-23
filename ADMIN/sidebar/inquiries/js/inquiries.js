@@ -2789,7 +2789,7 @@ document.addEventListener('DOMContentLoaded', function () {
             : '';
         const localDraftLifetime = 24 * 60 * 60 * 1000;
         const unitOptionsByType = {
-            material: ['pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
+            material: ['unit', 'pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
             labor: ['person', 'hour', 'day', 'lot'],
             misc_safety_temp: ['unit', 'pcs', 'set', 'lot', 'day'],
             transport: ['trip', 'day', 'lot'],
@@ -2988,11 +2988,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (totalOutput) totalOutput.textContent = (subtotal + profit).toFixed(2);
 
             const rows = items?.querySelectorAll('[data-quotation-item]') || [];
-            window.EdgeMaterialSuggestions?.syncSingleRowRemoveButtons(
-                items,
-                '[data-quotation-item]',
-                '[data-quotation-remove-item]'
-            );
+            rows.forEach(function (row) {
+                const removeButton = row.querySelector('[data-quotation-remove-item]');
+                const materialSource = row.querySelector('select[name="material_id[]"]');
+                if (!removeButton) return;
+                removeButton.hidden = false;
+                removeButton.disabled = String(materialSource?.value || '').trim() === '';
+            });
         };
 
         const setQuantityMessage = function (row, message) {
@@ -3306,10 +3308,20 @@ document.addEventListener('DOMContentLoaded', function () {
             const matchBox = row.querySelector('[data-non-stock-match]');
             const errorBox = row.querySelector('[data-non-stock-match-error]');
             const isNonStock = materialSelect?.value === 'manual';
+            const isNameBlank = isNonStock && (nameInput?.value.trim() || '') === '';
             const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
                 manualValues: ['manual'],
             });
             const exactOption = isNonStock ? decisionState?.exactOption : null;
+
+            if (isNameBlank) {
+                if (matchBox) matchBox.hidden = true;
+                if (choiceInput) choiceInput.value = '';
+                if (errorBox) errorBox.textContent = showError ? 'Material name is required.' : '';
+                nameInput?.setAttribute('aria-invalid', showError ? 'true' : 'false');
+                syncAdminMaterialNoteRequirement();
+                return false;
+            }
 
             if (!exactOption) {
                 if (matchBox) matchBox.hidden = true;
@@ -3382,8 +3394,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (isLinkedMaterial) {
                 setUnitOptions(row, [selectedOption?.dataset.materialUnit || 'unit'], selectedOption?.dataset.materialUnit || 'unit', true);
             } else if (isMaterial) {
-                const preserveManualUnit = !resetForMaterialChange && isManualMaterial && currentUnit !== '';
-                setUnitOptions(row, unitOptionsByType.material, preserveManualUnit ? currentUnit : '', false, !preserveManualUnit);
+                const preserveManualUnit = isManualMaterial
+                    && !resetForMaterialChange
+                    && currentUnit !== '';
+                const manualUnit = isManualMaterial && preserveManualUnit ? currentUnit : '';
+                setUnitOptions(row, unitOptionsByType.material, manualUnit, false, true);
             } else {
                 setUnitOptions(row, unitOptionsByType[typeSelect?.value] || ['unit', 'lot'], currentUnit, false);
             }
@@ -3402,6 +3417,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (resetForMaterialChange && isLinkedMaterial && quantityInput && quantityInput.value.trim() === '') {
+                quantityInput.value = '1';
+            }
+            if (resetForMaterialChange && isManualMaterial && quantityInput) {
                 quantityInput.value = '1';
             }
 
@@ -3509,6 +3527,16 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const removeQuotationItem = function (row) {
+            if (items.querySelectorAll('[data-quotation-item]').length <= 1) {
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                const comboboxInput = row.querySelector('[data-material-combobox-input]');
+                if (comboboxInput) comboboxInput.value = '';
+                if (materialSelect) {
+                    materialSelect.value = '';
+                    materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                return;
+            }
             row?.remove();
             validateDuplicateMaterialReferences(true);
             updateQuotationPreview();
@@ -3518,7 +3546,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         items?.addEventListener('click', function (event) {
             const removeButton = event.target.closest('[data-quotation-remove-item]');
-            if (!removeButton || items.querySelectorAll('[data-quotation-item]').length <= 1) {
+            if (!removeButton || removeButton.disabled) {
                 return;
             }
 
@@ -3592,9 +3620,6 @@ document.addEventListener('DOMContentLoaded', function () {
         items?.addEventListener('focusout', function (event) {
             const row = event.target.closest('[data-quotation-item]');
             if (row && event.target.matches('input[name="item_name[]"]')) {
-                if (window.EdgeMaterialSuggestions?.resetEmptyManualMaterial(row)) {
-                    return;
-                }
                 syncAdminNonStockMatch(row, true);
             }
         });

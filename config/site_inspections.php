@@ -170,6 +170,28 @@ if (!function_exists('site_inspection_format_date')) {
     }
 }
 
+if (!function_exists('site_inspection_is_whole_count_unit')) {
+    function site_inspection_is_whole_count_unit(string $unit): bool
+    {
+        return in_array(strtolower(trim($unit)), [
+            'unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot',
+            'bundle', 'sheet', 'pair', 'tube', 'person', 'trip',
+        ], true);
+    }
+}
+
+if (!function_exists('site_inspection_format_quantity')) {
+    function site_inspection_format_quantity(float $quantity, string $unit): string
+    {
+        if (site_inspection_is_whole_count_unit($unit)
+            && abs($quantity - round($quantity)) < 0.000001) {
+            return number_format($quantity, 0, '.', '');
+        }
+
+        return rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
+    }
+}
+
 if (!function_exists('site_inspection_statuses')) {
     function site_inspection_statuses(): array
     {

@@ -2839,7 +2839,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <?php endif; ?>
                                 <span class="inquiry-card__eyebrow shared-workflow-card__eyebrow"><?php echo (string)($inquiry['inquiry_source'] ?? 'online') === 'walk_in' ? 'Walk-in Inquiry' : 'Online Inquiry'; ?></span>
                                 <h2 class="shared-workflow-card__title"><?php echo htmlspecialchars((string)$inquiry['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
-                                <span class="inquiry-card__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="shared-workflow-card__reference"><?php echo htmlspecialchars(inquiry_reference_number((int)$inquiry['id']), ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <span class="inquiry-status shared-workflow-state" data-status="<?php echo htmlspecialchars($displayStatus, ENT_QUOTES, 'UTF-8'); ?>" data-schedule-state="<?php echo htmlspecialchars($inspectionScheduleState, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayStatusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>

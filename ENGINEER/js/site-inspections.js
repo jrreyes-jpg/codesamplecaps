@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelector('input[name="item_name[]"]').value = data.item_name || '';
         row.querySelector('input[name="quantity[]"]').value = data.quantity || '1';
         row.querySelector('select[name="unit[]"]').value = data.unit || 'unit';
-        row.querySelector('input[name="unit_cost[]"]').value = data.unit_cost || '';
+        row.querySelector('input[name="unit_cost[]"]').value = window.SharedCostingValues.editableUnitCost(data.unit_cost);
         row.querySelector('input[name="notes[]"]').value = data.notes || '';
         const nonStockChoice = row.querySelector('[data-non-stock-choice]');
         if (nonStockChoice) nonStockChoice.value = data.non_stock_choice || '';
@@ -831,6 +831,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(raw) && Number(raw) > 0;
     };
 
+    const isValidDraftCostText = function (value) {
+        const raw = moneyRawText(value);
+        return raw === '' || /^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(raw);
+    };
+
     const isValidDirectCostText = function (value) {
         const raw = moneyRawText(value);
         return raw === '' || (/^(?:0|[1-9]\d*)(\.\d{1,2})?$/.test(raw) && Number(raw) >= 0);
@@ -944,6 +949,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (field.value !== value) field.value = value;
+    };
+
+    const normalizeQuantityForUnit = function (field, unit) {
+        if (!field || !isWholeCountUnit(unit)) return;
+        const value = Number(field.value);
+        if (Number.isInteger(value) && value > 0) {
+            field.value = String(value);
+        }
     };
 
     const updateCostEntryNumbers = function (form) {
@@ -1075,7 +1088,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (isValidQuantityText(quantityText, unitValue) && isValidCostText(unitCostText)) {
+            const costIsValid = requireFinal
+                ? isValidCostText(unitCostText)
+                : isValidDraftCostText(unitCostText);
+            if (isValidQuantityText(quantityText, unitValue) && costIsValid) {
                 total += quantityValue * moneyNumber(unitCostText);
             }
 
@@ -1101,8 +1117,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 firstInvalid = firstInvalid || quantity;
             }
 
-            if (!isValidCostText(unitCostText)) {
-                setFieldError(unitCost, costErrorMessage(unitCostText));
+            if (!costIsValid) {
+                setFieldError(unitCost, requireFinal
+                    ? costErrorMessage(unitCostText)
+                    : 'Enter 0 or a valid amount with up to 2 decimal places.');
                 firstInvalid = firstInvalid || unitCost;
             }
 
@@ -1246,6 +1264,10 @@ document.addEventListener('DOMContentLoaded', function () {
         setLinkedMaterialState(row);
         updateMaterialAvailability(row);
         updateManualMaterialNameState(row, false);
+        normalizeQuantityForUnit(
+            row.querySelector('input[name="quantity[]"]'),
+            row.querySelector('select[name="unit[]"]')?.value || ''
+        );
 
         const materialPicker = row.querySelector('[data-material-picker]');
         const materialNameField = row.querySelector('input[name="item_name[]"]');
@@ -1352,10 +1374,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     clearFieldError(field);
                     if (removedInvalidText) {
                         setFieldError(field, 'Numbers only. Use up to 2 decimal places.');
-                    } else if (isValidCostText(value)) {
+                    } else if (isValidDraftCostText(value)) {
                         clearFieldError(field);
                     } else {
-                        setFieldError(field, costErrorMessage(value));
+                        setFieldError(field, 'Enter 0 or a valid amount with up to 2 decimal places.');
                     }
                 }
                 if (field.name !== 'unit_cost[]') clearFieldError(field);
@@ -1371,14 +1393,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 const value = field.value.trim();
                 const unit = row.querySelector('select[name="unit[]"]')?.value || '';
                 const valid = field.name === 'unit_cost[]'
-                    ? isValidCostText(value)
+                    ? isValidDraftCostText(value)
                     : isValidQuantityText(value, unit);
                 if (value !== '') {
                     if (valid) {
                         clearFieldError(field);
                     } else {
                         setFieldError(field, field.name === 'unit_cost[]'
-                            ? costErrorMessage(value)
+                            ? 'Enter 0 or a valid amount with up to 2 decimal places.'
                             : quantityErrorMessage(value, unit));
                     }
                 }
@@ -1404,6 +1426,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (unit && unitField && Array.from(unitField.options).some((optionItem) => optionItem.value === unit)) {
                 unitField.value = unit;
             }
+            normalizeQuantityForUnit(row.querySelector('input[name="quantity[]"]'), unitField?.value || '');
             if (!name) {
                 if (nameField) nameField.value = '';
                 if (unitField) unitField.selectedIndex = 0;
@@ -1424,6 +1447,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         row.querySelector('select[name="unit[]"]')?.addEventListener('change', function (event) {
             const quantity = row.querySelector('input[name="quantity[]"]');
+            normalizeQuantityForUnit(quantity, event.target.value);
             const value = quantity?.value.trim() || '';
             if (value !== '') {
                 if (isValidQuantityText(value, event.target.value)) {

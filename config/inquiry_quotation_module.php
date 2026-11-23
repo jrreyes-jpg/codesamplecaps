@@ -39,6 +39,16 @@ function inquiry_quote_item_type_label(?string $itemType): string
     return inquiry_quote_item_type_options()[$normalized] ?? 'Cost Item';
 }
 
+function inquiry_quote_editable_unit_cost(mixed $value): string
+{
+    $text = trim((string)$value);
+    if ($text === '' || (is_numeric($text) && abs((float)$text) < 0.000001)) {
+        return '';
+    }
+
+    return is_numeric($text) ? number_format((float)$text, 2, '.', '') : $text;
+}
+
 function inquiry_quote_table_exists(mysqli $conn, string $tableName): bool
 {
     $stmt = $conn->prepare(

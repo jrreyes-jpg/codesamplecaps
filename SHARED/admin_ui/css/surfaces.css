@@ -105,6 +105,13 @@
     overflow-wrap: anywhere;
 }
 
+.shared-workflow-card__reference {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
 .shared-workflow-card__summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

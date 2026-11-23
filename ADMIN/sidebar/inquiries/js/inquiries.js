@@ -3446,7 +3446,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (unitSelect && savedUnit !== '' && Array.from(unitSelect.options).some(function (option) { return option.value === savedUnit; })) {
                     unitSelect.value = savedUnit;
                 }
-                if (unitCostInput) unitCostInput.value = String(savedRow?.unit_cost || '');
+                if (unitCostInput) unitCostInput.value = window.SharedCostingValues.editableUnitCost(savedRow?.unit_cost);
                 if (notesInput) notesInput.value = String(savedRow?.notes || '');
                 if (choiceInput) choiceInput.value = String(savedRow?.non_stock_choice || '');
 

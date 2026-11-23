@@ -497,6 +497,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/form-validation/js/form-validation.js?v=20261116-1',
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
+    '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261122-1',
 ];
@@ -581,7 +582,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <input type="hidden" name="non_stock_choice[]" value="<?php echo htmlspecialchars((string)($postedNonStockChoices[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-non-stock-choice>
                             <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="<?php echo in_array(strtolower($rowUnit), $wholeCountUnits, true) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars($rowQuantity, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
                             <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
-                            <label class="quotation-create-item__cost"><span>Unit Cost</span><input type="number" name="unit_cost[]" min="<?php echo $rowType === 'material' ? '0.01' : '0'; ?>" step="0.01" value="<?php echo htmlspecialchars((string)($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
+                            <label class="quotation-create-item__cost"><span>Unit Cost</span><input type="number" name="unit_cost[]" min="<?php echo $rowType === 'material' ? '0.01' : '0'; ?>" step="0.01" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
                             <div class="quotation-create-item__line-total"><span>Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
                             <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                         </div>

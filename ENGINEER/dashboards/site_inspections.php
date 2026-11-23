@@ -20,6 +20,7 @@ require_once __DIR__ . '/../../config/user_notifications.php';
 require_once __DIR__ . '/../../config/material_stock.php';
 require_once __DIR__ . '/../../config/inquiry_budget.php';
 require_once __DIR__ . '/../../config/inspection_evidence.php';
+require_once __DIR__ . '/../../config/inquiry_reference.php';
 require_once __DIR__ . '/../../services/EmailService.php';
 require_once __DIR__ . '/../includes/engineer_helpers.php';
 
@@ -60,7 +61,7 @@ function engineer_format_money(float $amount): string
 
 function engineer_inspection_is_whole_count_unit(string $unit): bool
 {
-    return in_array($unit, ['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube'], true);
+    return site_inspection_is_whole_count_unit($unit);
 }
 
 function engineer_inspection_valid_quantity(string $value, string $unit): bool
@@ -918,7 +919,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
-            if (!engineer_inspection_valid_unit_cost($rawUnitCostText)) {
+            $draftCostIsValid = $costingAction === 'save_draft'
+                && ($rawUnitCostText === '' || preg_match('/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/', $rawUnitCostText) === 1);
+            if (!$draftCostIsValid && !engineer_inspection_valid_unit_cost($rawUnitCostText)) {
                 $error = 'Unit cost must be greater than 0.';
                 break;
             }
@@ -1580,7 +1583,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
     '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261120-1',
-    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261122-1',
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
     '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261120-1',
@@ -1803,7 +1806,9 @@ require __DIR__ . '/../layout/header.php';
                     if ($cardLocation === '') {
                         $cardLocation = trim((string)($inspection['province'] ?? '')) ?: 'Not set';
                     }
+                    $inquiryReference = inquiry_reference_number((int)($inspection['inquiry_id'] ?? 0));
                     $inspectionSearchText = mb_strtolower(implode(' ', [
+                        $inquiryReference,
                         (string)($inspection['client_name'] ?? ''),
                         $cardService,
                         $cardLocation,
@@ -1835,6 +1840,7 @@ require __DIR__ . '/../layout/header.php';
                                 <?php endif; ?>
                                 <span class="inspection-card__eyebrow shared-workflow-card__eyebrow">Client - Site Inspection</span>
                                 <h2 class="shared-workflow-card__title"><?php echo htmlspecialchars((string)$inspection['client_name'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                                <span class="shared-workflow-card__reference"><?php echo htmlspecialchars($inquiryReference, ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <span class="inspection-status shared-workflow-state" data-status="<?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?>" data-schedule-state="<?php echo htmlspecialchars($scheduleState, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($displayInspectionStatus, ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
@@ -2123,7 +2129,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <tr>
                                                     <td>Material</td>
                                                     <td><?php echo htmlspecialchars((string)($submittedItem['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?php echo htmlspecialchars((string)($submittedItem['quantity'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars(site_inspection_format_quantity((float)($submittedItem['quantity'] ?? 0), (string)($submittedItem['unit'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars((string)($submittedItem['unit'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars(engineer_format_money((float)($submittedItem['unit_cost'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars(engineer_format_money((float)($submittedItem['line_total'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
@@ -2211,7 +2217,7 @@ require __DIR__ . '/../layout/header.php';
                                         </div>
                                         <label>
                                             <span>Qty <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars((string)($item['quantity'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars(site_inspection_format_quantity((float)($item['quantity'] ?? 1), (string)($item['unit'] ?? 'unit')), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <label>
                                             <span>Unit <b aria-hidden="true">*</b></span>
@@ -2225,7 +2231,7 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label>
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars((string)($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
                                         <?php if ($canEditCosting): ?>
                                             <button type="button" class="btn-remove-row shared-material-cost-row__remove" data-remove-costing-row>Remove</button>
@@ -2477,9 +2483,10 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
+    '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261122-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261123-2',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

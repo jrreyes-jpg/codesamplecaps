@@ -16,6 +16,24 @@
         const list = root.querySelector('[data-engineer-notification-list]');
         let pollInProgress = false;
         const shownAssignmentNotificationIds = new Set();
+        const notificationUserId = root.dataset.engineerNotificationUser || '0';
+        const lastToastStorageKey = 'edge:engineer:' + notificationUserId + ':last-assignment-toast-id';
+
+        const getLastToastId = function () {
+            try {
+                return Number.parseInt(window.localStorage.getItem(lastToastStorageKey) || '0', 10) || 0;
+            } catch (error) {
+                return 0;
+            }
+        };
+
+        const saveLastToastId = function (notificationId) {
+            try {
+                window.localStorage.setItem(lastToastStorageKey, String(notificationId));
+            } catch (error) {
+                // Gagana pa rin ang bell kapag bawal ang browser storage.
+            }
+        };
 
         const formatRelativeTime = function (dateTime) {
             const timestamp = Date.parse(String(dateTime || '').replace(' ', 'T'));
@@ -80,15 +98,16 @@
             const newItems = Array.isArray(data.new_items) ? data.new_items : [];
             newItems.forEach(function (item) {
                 const notificationId = Number.parseInt(item.notification_id || '0', 10);
-                if (notificationId <= 0 || shownAssignmentNotificationIds.has(notificationId)) return;
+                if (notificationId <= getLastToastId() || shownAssignmentNotificationIds.has(notificationId)) return;
 
                 shownAssignmentNotificationIds.add(notificationId);
+                saveLastToastId(notificationId);
                 if (typeof window.showToast === 'function') {
                     const clientName = String(item.client_name || 'Client').trim() || 'Client';
                     const inspectionId = Number.parseInt(item.inspection_id || '0', 10);
                     const targetUrl = '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' + inspectionId;
                     window.showToast('New site inspection assigned: ' + clientName + '. Click to view.', 'success', {
-                        duration: 8000,
+                        duration: 5000,
                         onClick: function () {
                             markNotificationRead(notificationId, inspectionId).finally(function () {
                                 window.location.assign(targetUrl);
@@ -208,7 +227,7 @@
         });
 
         pollNotifications();
-        window.setInterval(pollNotifications, 10000);
+        window.setInterval(pollNotifications, 30000);
     }
 
     if (document.readyState === 'loading') {

@@ -2018,7 +2018,7 @@ require __DIR__ . '/../layout/header.php';
                                     <?php endif; ?>
                                 </div>
 
-                                <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form data-returned-revision="<?php echo $isReturnedForRevision ? 'true' : 'false'; ?>" data-revision-has-saved-changes="<?php echo $revisionHasSavedChanges ? 'true' : 'false'; ?>">
+                                <form method="POST" enctype="multipart/form-data" class="inspection-costing-form<?php echo !$canEditCosting ? ' inspection-costing-form--readonly' : ''; ?>" data-costing-form data-inspection-started-at="<?php echo !empty($inspection['started_at']) ? ((int)strtotime((string)$inspection['started_at']) * 1000) : 0; ?>" data-returned-revision="<?php echo $isReturnedForRevision ? 'true' : 'false'; ?>" data-revision-has-saved-changes="<?php echo $revisionHasSavedChanges ? 'true' : 'false'; ?>">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="inspection_id" value="<?php echo $inspectionId; ?>">
                             <?php if ($isLegacyCompletedPending): ?>
@@ -2172,12 +2172,13 @@ require __DIR__ . '/../layout/header.php';
                                                 </span>
                                             <?php else: ?>
                                             <span class="material-combobox" data-material-combobox>
-                                                <input type="text" data-material-combobox-input placeholder="Search or select material" autocomplete="off" aria-label="Search or select material reference" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <input type="text" data-material-combobox-input placeholder="Select Material" autocomplete="off" aria-label="Select material reference" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <button type="button" data-material-combobox-toggle aria-label="Show material options" <?php echo !$canEditCosting ? 'disabled' : ''; ?>></button>
                                                 <span class="material-combobox__list" data-material-combobox-list></span>
                                             </span>
                                             <select class="material-picker-source" name="material_id[]" data-material-picker data-material-suggestion-source tabindex="-1" aria-hidden="true" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
-                                                <option value=""><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
+                                                <option value="" disabled hidden<?php echo (int)($item['material_id'] ?? 0) <= 0 && trim((string)($item['item_name'] ?? '')) === '' ? ' selected' : ''; ?>>Select Material</option>
+                                                <option value="manual"<?php echo (int)($item['material_id'] ?? 0) <= 0 && trim((string)($item['item_name'] ?? '')) !== '' ? ' selected' : ''; ?>><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
                                                 <?php foreach ($materialOptions as $material): ?>
                                                     <option
                                                         value="<?php echo (int)$material['id']; ?>"
@@ -2481,12 +2482,12 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
-    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261120-13',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-2',
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261123-2',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-3',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

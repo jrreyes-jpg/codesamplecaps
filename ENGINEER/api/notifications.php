@@ -7,6 +7,60 @@ require_once __DIR__ . '/../../config/user_notifications.php';
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 
+function engineer_notification_backfill_assignments(mysqli $conn, int $userId): void
+{
+    if ($userId <= 0 || !user_notifications_table_exists($conn)) {
+        return;
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT si.id, si.scheduled_at, s.client_name
+         FROM site_inspections si
+         INNER JOIN service_inquiries s
+            ON s.id = si.inquiry_id
+           AND s.archived_at IS NULL
+         WHERE si.engineer_id = ?
+           AND si.status IN ('Assigned', 'Acknowledged', 'Ongoing', 'On Hold')
+           AND NOT EXISTS (
+                SELECT 1
+                FROM user_notifications un
+                WHERE un.user_id = si.engineer_id
+                  AND un.type = 'site_inspection_assignment'
+                  AND un.reference_id = si.id
+           )"
+    );
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $assignments = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    foreach ($assignments as $assignment) {
+        $inspectionId = (int)($assignment['id'] ?? 0);
+        if ($inspectionId <= 0) {
+            continue;
+        }
+
+        $clientName = trim((string)($assignment['client_name'] ?? '')) ?: 'Client';
+        $schedule = trim((string)($assignment['scheduled_at'] ?? ''));
+        $scheduleTimestamp = $schedule !== '' ? strtotime($schedule) : false;
+        $scheduleText = $scheduleTimestamp !== false ? date('M j, Y', $scheduleTimestamp) : 'Schedule pending';
+        user_notifications_create_if_missing(
+            $conn,
+            $userId,
+            'site_inspection_assignment',
+            $inspectionId,
+            'New Site Inspection Assignment',
+            'Client: ' . $clientName . ' | Schedule: ' . $scheduleText,
+            '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $inspectionId,
+            'site_inspection_assignment:' . $userId . ':' . $inspectionId
+        );
+    }
+}
+
 function engineer_notification_assignment_items(mysqli $conn, int $userId, int $limit = 20): array
 {
     if ($userId <= 0 || !user_notifications_table_exists($conn)) {
@@ -95,6 +149,8 @@ if ($userId <= 0) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized request.']);
     exit();
 }
+
+engineer_notification_backfill_assignments($conn, $userId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = json_decode((string)file_get_contents('php://input'), true);

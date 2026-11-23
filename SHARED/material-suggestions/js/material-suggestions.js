@@ -209,6 +209,38 @@
         return selected;
     };
 
+    // Parehong gamit ito ng Engineer Costing at Create Quotation.
+    const syncMaterialSelectionState = function (row, options) {
+        const source = row?.querySelector(options?.sourceSelector || '[data-material-suggestion-source]');
+        const hasSelection = String(source?.value || '').trim() !== '';
+        row?.querySelectorAll(options?.dependentSelector || '').forEach(function (field) {
+            field.disabled = !hasSelection;
+        });
+        row?.classList.toggle('is-awaiting-material-selection', !hasSelection);
+        return hasSelection;
+    };
+
+    const syncSingleRowRemoveButtons = function (scope, rowSelector, buttonSelector) {
+        const rows = Array.from(scope?.querySelectorAll(rowSelector) || []);
+        rows.forEach(function (row) {
+            const button = row.querySelector(buttonSelector);
+            if (button) button.hidden = rows.length <= 1;
+        });
+    };
+
+    const resetEmptyManualMaterial = function (row, options) {
+        const source = row?.querySelector(options?.sourceSelector || '[data-material-suggestion-source]');
+        const name = row?.querySelector(options?.nameSelector || 'input[name="item_name[]"]');
+        const manualValue = options?.manualValue || 'manual';
+        if (!source || !name || source.value !== manualValue || name.value.trim() !== '') {
+            return false;
+        }
+
+        source.value = '';
+        source.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+    };
+
     const setRowDecisionLock = function (row, locked) {
         row?.querySelectorAll('input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"], input[name="item_notes[]"]').forEach(function (field) {
             field.disabled = locked;
@@ -413,6 +445,9 @@
         normalize: normalize,
         findExactOption: findExactOption,
         syncNonStockDecision: syncNonStockDecision,
+        syncMaterialSelectionState: syncMaterialSelectionState,
+        syncSingleRowRemoveButtons: syncSingleRowRemoveButtons,
+        resetEmptyManualMaterial: resetEmptyManualMaterial,
     };
     bind(document);
 }());

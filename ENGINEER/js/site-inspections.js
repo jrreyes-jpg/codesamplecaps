@@ -440,6 +440,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const inventoryId = row.querySelector('input[name="inventory_id[]"]');
         const isMaterial = type === 'material';
 
+        window.EdgeMaterialSuggestions?.syncMaterialSelectionState(row, {
+            sourceSelector: '[data-material-picker]',
+            dependentSelector: 'input[name="item_name[]"], input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"]',
+        });
+
         const fieldDetails = {
             material: ['Material Name', 'Enter material name'],
             labor: ['Labor Description', 'Enter labor description'],
@@ -528,10 +533,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const restoreFormDraft = function (form) {
         const inspectionId = Number(form.querySelector('input[name="inspection_id"]')?.value || 0);
+        const inspectionStartedAt = Number(form.dataset.inspectionStartedAt || 0);
         const payload = window.SharedFormDraft?.read(storageKeyForForm(form), {
             lifetime: 24 * 60 * 60 * 1000,
             validate: function (draft) {
                 if (!draft || !Array.isArray(draft.rows)) return false;
+                if (inspectionStartedAt > 0 && Number(draft.saved_at || 0) < inspectionStartedAt) return false;
                 if (draft.version === undefined) return true;
                 return draft.version === 2
                     && Number(draft.inspection_id || 0) === inspectionId
@@ -667,7 +674,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const materialId = row.querySelector('[data-material-picker]')?.value || '';
             const name = normalizeMaterialName(row.querySelector('input[name="item_name[]"]')?.value);
             if (name === '') return;
-            const identity = materialId !== '' ? `stock:${materialId}` : `non-stock:${name}`;
+            const identity = /^[1-9]\d*$/.test(materialId) ? `stock:${materialId}` : `non-stock:${name}`;
             const rows = rowsByIdentity.get(identity) || [];
             rows.push(row);
             rowsByIdentity.set(identity, rows);
@@ -719,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const notesField = row.querySelector('input[name="notes[]"]');
         const choiceField = row.querySelector('[data-non-stock-choice]');
         const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
-            manualValues: [''],
+            manualValues: ['manual'],
         });
         const exactOption = decisionState?.exactOption || null;
 
@@ -772,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateManualMaterialNameState = function (row, showError) {
         const picker = row.querySelector('[data-material-picker]');
         const nameField = row.querySelector('input[name="item_name[]"]');
-        const isManual = picker && picker.value === '' && nameField && !nameField.disabled && !nameField.readOnly;
+        const isManual = picker && picker.value === 'manual' && nameField && !nameField.disabled && !nameField.readOnly;
 
         if (!isManual) {
             setMaterialNotesRequired(row, false);
@@ -964,6 +971,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const number = row.querySelector('[data-costing-row-number]');
             if (number) number.textContent = `Material ${index + 1}`;
         });
+        window.EdgeMaterialSuggestions?.syncSingleRowRemoveButtons(
+            form.querySelector('[data-costing-rows]'),
+            '.costing-row',
+            '[data-remove-costing-row]'
+        );
     };
 
     const quantityErrorMessage = function (value, unit) {
@@ -1279,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const suggestedUnit = String(event.detail?.unit || '').trim();
 
             // Pangalan lang muna. Engineer pa rin ang pipili kung stock o non-stock.
-            if (materialPicker) materialPicker.value = '';
+            if (materialPicker) materialPicker.value = 'manual';
             if (materialNameField) materialNameField.value = suggestedName;
             if (choiceField) choiceField.value = '';
             if (unitField && suggestedUnit && Array.from(unitField.options).some((option) => option.value === suggestedUnit)) {
@@ -1430,6 +1442,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!name) {
                 if (nameField) nameField.value = '';
                 if (unitField) unitField.selectedIndex = 0;
+                const quantityField = row.querySelector('input[name="quantity[]"]');
+                const costField = row.querySelector('input[name="unit_cost[]"]');
+                const notesField = row.querySelector('input[name="notes[]"]');
+                if (quantityField) quantityField.value = '1';
+                if (costField) costField.value = '';
+                if (notesField) notesField.value = '';
             }
             setLinkedMaterialState(row);
             if (nameField) {
@@ -1493,6 +1511,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         row.querySelector('input[name="item_name[]"]')?.addEventListener('blur', function (event) {
+            if (window.EdgeMaterialSuggestions?.resetEmptyManualMaterial(row)) {
+                return;
+            }
             event.target.dataset.validationTouched = 'true';
             updateManualMaterialNameState(row, true);
             validateDuplicateMaterials(form, true);
@@ -2240,6 +2261,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return parseInspectionJsonResponse(response, 'Unable to update the inspection. Please try again.');
             })
             .then(function (payload) {
+                const transitionedInspectionId = String(payload.inspection_id || form.elements.inspection_id?.value || '');
+                if (action === 'start' && transitionedInspectionId !== '') {
+                    const draftKey = `engineer.siteInspection.costing.${transitionedInspectionId}`;
+                    window.SharedFormDraft?.remove(draftKey);
+                    window.sessionStorage.removeItem(draftKey + '.restoreNotice');
+                }
                 return refreshInspectionCard(String(payload.inspection_id || form.elements.inspection_id?.value || ''), true)
                     .then(function (updatedCard) {
                         if (action === 'start') {

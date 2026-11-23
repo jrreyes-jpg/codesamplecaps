@@ -2988,10 +2988,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (totalOutput) totalOutput.textContent = (subtotal + profit).toFixed(2);
 
             const rows = items?.querySelectorAll('[data-quotation-item]') || [];
-            rows.forEach(function (row) {
-                const removeButton = row.querySelector('[data-quotation-remove-item]');
-                if (removeButton) removeButton.disabled = rows.length === 1;
-            });
+            window.EdgeMaterialSuggestions?.syncSingleRowRemoveButtons(
+                items,
+                '[data-quotation-item]',
+                '[data-quotation-remove-item]'
+            );
         };
 
         const setQuantityMessage = function (row, message) {
@@ -3346,6 +3347,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const quantityInput = row.querySelector('input[name="quantity[]"]');
             const unitCostInput = row.querySelector('input[name="unit_cost[]"]');
             window.EdgeMaterialSuggestions?.bind(row);
+            window.EdgeMaterialSuggestions?.syncMaterialSelectionState(row, {
+                sourceSelector: 'select[name="material_id[]"]',
+                dependentSelector: 'input[name="item_name[]"], input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="item_notes[]"]',
+            });
 
             row.classList.toggle('is-material-item', isMaterial);
             row.classList.toggle('has-linked-material', isLinkedMaterial);
@@ -3587,6 +3592,9 @@ document.addEventListener('DOMContentLoaded', function () {
         items?.addEventListener('focusout', function (event) {
             const row = event.target.closest('[data-quotation-item]');
             if (row && event.target.matches('input[name="item_name[]"]')) {
+                if (window.EdgeMaterialSuggestions?.resetEmptyManualMaterial(row)) {
+                    return;
+                }
                 syncAdminNonStockMatch(row, true);
             }
         });

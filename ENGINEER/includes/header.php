@@ -59,6 +59,7 @@ $operationsHeaderProfileHtml = ob_get_clean();
     data-notification-root
     data-engineer-notification-endpoint="/codesamplecaps/ENGINEER/api/notifications.php"
     data-engineer-notification-csrf="<?php echo htmlspecialchars($engineerHeaderNotificationCsrf, ENT_QUOTES, 'UTF-8'); ?>"
+    data-engineer-notification-user="<?php echo $engineerHeaderUserId; ?>"
 >
     <button
         id="topbarNotificationToggle"

@@ -8,6 +8,7 @@ require_role('admin');
 
 $selectedMaterialId = filter_input(INPUT_GET, 'material_id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
 $selectedType = is_string($_GET['type'] ?? null) ? trim((string)$_GET['type']) : '';
+$returnToDelivery = ($_GET['return'] ?? '') === 'delivery';
 if (!in_array($selectedType, material_stock_history_filter_types(), true)) {
     $selectedType = '';
 }
@@ -36,27 +37,31 @@ $adminPageTitle = 'Consumable Stock History - Admin';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261117-3',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261123-7',
 ];
 $adminJsFiles = ['/codesamplecaps/ADMIN/common/js/admin-common.js'];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
-<main class="main-content inventory-main-content inventory-light-main">
+<main class="main-content admin-dashboard-content inventory-main-content inventory-light-main shared-page-surface">
     <div class="shared-page-container page-stack inventory-page-stack material-history-page">
-        <section class="form-panel material-history-panel">
+        <?php if ($returnToDelivery): ?>
+            <a class="admin-sticky-back-button inventory-sticky-back" href="/codesamplecaps/ADMIN/sidebar/inventory/php/material_stock_in.php">&larr; Back to Delivery Receipt</a>
+        <?php endif; ?>
+        <section class="form-panel admin-flat-panel inventory-report-panel material-history-panel">
             <div class="inventory-report-heading material-history-heading">
                 <div><h1 class="section-title-inline">Consumable Stock History</h1></div>
                 <nav class="resource-page-tabs inventory-page-tabs inventory-report-tabs" aria-label="Inventory sections">
                     <a href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php">Consumables</a>
-                    <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
+                    <a class="is-active" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history<?php echo $returnToDelivery ? '&amp;return=delivery' : ''; ?>">Stock History</a>
                 </nav>
                 <div class="inventory-report-heading__actions">
-                    <?php if ($selectedMaterial || $selectedType !== ''): ?><a class="btn-secondary" href="?view=history">Clear Filter</a><?php endif; ?>
+                    <?php if ($selectedMaterial || $selectedType !== ''): ?><a class="btn-secondary" href="?view=history<?php echo $returnToDelivery ? '&amp;return=delivery' : ''; ?>">Clear Filter</a><?php endif; ?>
                 </div>
             </div>
             <form method="GET" class="form-grid material-history-filter">
                 <input type="hidden" name="view" value="history">
+                <?php if ($returnToDelivery): ?><input type="hidden" name="return" value="delivery"><?php endif; ?>
                 <div class="input-group"><label for="history_material_id">Material</label><select id="history_material_id" name="material_id"><option value="">All materials</option><?php foreach ($historyMaterials as $material): ?><option value="<?php echo (int)$material['id']; ?>"<?php echo (int)$material['id'] === $selectedMaterialId ? ' selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_code'] . ' | ' . (string)$material['material_name'] . ((string)$material['status'] === 'inactive' ? ' (Archived)' : '')); ?></option><?php endforeach; ?></select></div>
                 <div class="input-group"><label for="history_type">Type / Status</label><select id="history_type" name="type"><option value="">All</option><option value="stock_in"<?php echo $selectedType === 'stock_in' ? ' selected' : ''; ?>>Stock-In</option><option value="discrepancy"<?php echo $selectedType === 'discrepancy' ? ' selected' : ''; ?>>Discrepancy</option><option value="reserved"<?php echo $selectedType === 'reserved' ? ' selected' : ''; ?>>Reserved</option></select></div>
                 <div class="form-actions"><button type="submit" class="btn-secondary">Apply Filter</button></div>
@@ -75,17 +80,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <h2 class="material-history-subtitle">Clerk Physical Count History</h2>
             <div class="table-responsive">
                 <table class="data-table material-history-table mobile-card-table">
-                    <thead><tr><th>Date</th><th>Material</th><th>System Stock at Count</th><th>Clerk Count</th><th>Variance</th><th>Counted By</th><th>Remarks</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Material</th><th>System Stock at Count</th><th>Clerk Count</th><th>Variance</th><th>Review Status</th><th>Counted By</th><th>Remarks</th></tr></thead>
                     <tbody>
-                    <?php if ($physicalCounts === []): ?><tr><td colspan="7" class="empty-state">No Clerk physical count yet.</td></tr><?php endif; ?>
+                    <?php if ($physicalCounts === []): ?><tr><td colspan="8" class="empty-state">No Clerk physical count yet.</td></tr><?php endif; ?>
                     <?php foreach ($physicalCounts as $count): ?>
-                        <?php $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot']; ?>
+                        <?php $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot']; $countStatus = material_physical_count_status($count); ?>
                         <tr>
                             <td data-label="Date"><?php echo htmlspecialchars((string)$count['counted_at']); ?></td>
                             <td data-label="Material"><?php echo htmlspecialchars((string)$count['material_name']); ?></td>
                             <td data-label="System Stock at Count"><?php echo htmlspecialchars($displayQuantity((float)$count['total_quantity_snapshot']) . ' ' . (string)$count['unit']); ?></td>
                             <td data-label="Clerk Count"><?php echo htmlspecialchars($displayQuantity((float)$count['counted_quantity']) . ' ' . (string)$count['unit']); ?></td>
                             <td data-label="Variance"><?php echo htmlspecialchars(($variance > 0 ? '+' : '') . $displayQuantity($variance) . ' ' . (string)$count['unit']); ?></td>
+                            <td data-label="Review Status"><?php echo htmlspecialchars($countStatus['label']); ?></td>
                             <td data-label="Counted By"><?php echo htmlspecialchars(trim((string)$count['counted_by_name']) ?: 'Inventory Clerk'); ?></td>
                             <td data-label="Remarks"><?php echo htmlspecialchars(trim((string)$count['remarks']) ?: '—'); ?></td>
                         </tr>

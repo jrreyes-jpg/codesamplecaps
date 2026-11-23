@@ -75,6 +75,7 @@
     });
 
     const archiveModal = document.querySelector('[data-material-archive-modal]');
+    const archiveTitle = archiveModal ? archiveModal.querySelector('[data-material-confirm-title]') : null;
     const archiveMessage = archiveModal ? archiveModal.querySelector('[data-material-archive-message]') : null;
     const archiveClose = archiveModal ? archiveModal.querySelector('[data-material-archive-close]') : null;
     const archiveConfirm = archiveModal ? archiveModal.querySelector('[data-material-archive-confirm]') : null;
@@ -90,11 +91,13 @@
         if (archiveReturnFocus) archiveReturnFocus.focus();
     }
 
-    function openArchiveModal(form, message, returnFocus) {
+    function openArchiveModal(form, message, returnFocus, title, confirmLabel) {
         if (!archiveModal || !archiveMessage) return;
         pendingArchiveForm = form;
         archiveReturnFocus = returnFocus || document.activeElement;
         archiveMessage.textContent = message;
+        if (archiveTitle) archiveTitle.textContent = title || 'Archive material?';
+        if (archiveConfirm) archiveConfirm.textContent = confirmLabel || 'Archive';
         archiveModal.hidden = false;
         document.body.classList.add('material-create-modal-open');
         window.requestAnimationFrame(function () { archiveClose?.focus(); });
@@ -109,6 +112,22 @@
             event.preventDefault();
             const materialName = form.querySelector('[data-material-name]')?.dataset.materialName || 'this material';
             openArchiveModal(form, 'Archive ' + materialName + '? You can restore it later.', form.querySelector('[data-material-name]'));
+        });
+    });
+    document.querySelectorAll('[data-material-confirm-form]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (archiveConfirmed) {
+                archiveConfirmed = false;
+                return;
+            }
+            event.preventDefault();
+            openArchiveModal(
+                form,
+                form.dataset.confirmMessage || 'Continue with this action?',
+                form.querySelector('button[type="submit"]'),
+                form.dataset.confirmTitle || 'Confirm action?',
+                form.dataset.confirmLabel || 'Confirm'
+            );
         });
     });
     archiveClose?.addEventListener('click', closeArchiveModal);

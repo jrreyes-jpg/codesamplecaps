@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $_SESSION[$countFlashKey] = [
             'type' => 'success',
-            'message' => $savedCount . ($savedCount === 1 ? ' physical count was submitted.' : ' physical counts were submitted.'),
+            'message' => 'Physical count submitted for Admin review.',
         ];
     } catch (Throwable $exception) {
         $_SESSION[$countFlashKey] = ['type' => 'error', 'message' => $exception->getMessage()];
@@ -41,6 +41,17 @@ unset($_SESSION[$countFlashKey]);
 $countRequestToken = material_stock_issue_once_token('material_physical_count');
 $countStorageReady = material_physical_count_is_ready($conn) && audit_log_table_exists($conn);
 $materials = material_physical_count_fetch_clerk_materials($conn);
+$latestPhysicalCounts = material_physical_count_fetch_latest($conn);
+$recountNotice = null;
+$notificationState = user_notifications_fetch_unread_state($conn, (int)($_SESSION['user_id'] ?? 0), 20);
+foreach ($notificationState['items'] as $notification) {
+    if (($notification['type'] ?? '') !== 'material_physical_count_recount') {
+        continue;
+    }
+    $recountNotice = (string)($notification['message'] ?? 'Admin requested a physical recount.');
+    user_notifications_mark_read($conn, (int)$notification['id'], (int)($_SESSION['user_id'] ?? 0));
+    break;
+}
 if ($countStorageReady) {
     material_physical_count_store_cutoff($conn, $countRequestToken);
 }
@@ -50,13 +61,25 @@ inventory_clerk_render_page('Physical Count', function () use (
     $countCsrfToken,
     $countRequestToken,
     $countFlash,
-    $countStorageReady
+    $recountNotice,
+    $countStorageReady,
+    $latestPhysicalCounts
 ): void {
 ?>
 <div class="page-stack materials-page blind-audit-page">
     <?php if ($countFlash): ?>
-        <div class="alert <?php echo $countFlash['type'] === 'success' ? 'alert-success' : 'alert-error'; ?>" role="status">
-            <?php echo htmlspecialchars((string)$countFlash['message']); ?>
+        <?php $countToastType = $countFlash['type'] === 'success' ? 'success' : 'error'; ?>
+        <div class="shared-toast shared-toast--<?php echo $countToastType; ?>" data-shared-toast role="<?php echo $countToastType === 'error' ? 'alert' : 'status'; ?>">
+            <span><?php echo htmlspecialchars((string)$countFlash['message']); ?></span>
+            <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+            <span class="shared-toast__progress" aria-hidden="true"></span>
+        </div>
+    <?php endif; ?>
+    <?php if ($recountNotice && !$countFlash): ?>
+        <div class="shared-toast shared-toast--warning" data-shared-toast role="status">
+            <span><?php echo htmlspecialchars($recountNotice); ?></span>
+            <button type="button" class="shared-toast__close" data-shared-toast-close aria-label="Close notification">&times;</button>
+            <span class="shared-toast__progress" aria-hidden="true"></span>
         </div>
     <?php endif; ?>
 
@@ -72,29 +95,41 @@ inventory_clerk_render_page('Physical Count', function () use (
             <div class="alert alert-error" role="alert">Physical count storage is not ready. Please contact the administrator.</div>
         <?php endif; ?>
 
-        <form method="POST" class="blind-audit-form" autocomplete="off">
+        <form method="POST" class="blind-audit-form" data-physical-count-form autocomplete="off">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($countCsrfToken); ?>">
             <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($countRequestToken); ?>">
             <div class="table-responsive">
                 <table class="data-table materials-table blind-audit-table">
-                    <thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>Physical Count</th><th>Remarks</th></tr></thead>
+                    <thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>Status</th><th>Physical Count</th><th>Remarks</th></tr></thead>
                     <tbody>
                     <?php if ($materials === []): ?>
-                        <tr><td colspan="5" class="materials-empty">No active materials yet.</td></tr>
+                        <tr><td colspan="6" class="materials-empty">No active materials yet.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($materials as $material): ?>
-                        <?php $inputId = 'physical_count_' . (int)$material['id']; ?>
+                        <?php
+                        $inputId = 'physical_count_' . (int)$material['id'];
+                        $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
+                        $countStatus = material_physical_count_status($latestCount);
+                        $canCount = $countStorageReady && (!$latestCount || in_array($countStatus['key'], ['verified', 'recount'], true));
+                        $clerkStatusLabel = $latestCount && $countStatus['needs_review']
+                            ? 'Pending Admin Review'
+                            : ($latestCount ? $countStatus['label'] : 'Ready to Count');
+                        $clerkStatusTone = $latestCount && $countStatus['needs_review']
+                            ? 'warning'
+                            : ($latestCount ? $countStatus['tone'] : 'neutral');
+                        ?>
                         <tr>
                             <td data-label="Item"><strong class="materials-table__name"><?php echo htmlspecialchars((string)$material['material_name']); ?></strong></td>
                             <td data-label="Description"><?php echo htmlspecialchars(trim((string)$material['description']) ?: '—'); ?></td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
+                            <td data-label="Status"><span class="blind-audit-status blind-audit-status--<?php echo htmlspecialchars($clerkStatusTone); ?>"><?php echo htmlspecialchars($clerkStatusLabel); ?></span></td>
                             <td data-label="Physical Count">
                                 <label class="sr-only" for="<?php echo $inputId; ?>">Physical count for <?php echo htmlspecialchars((string)$material['material_name']); ?></label>
-                                <input id="<?php echo $inputId; ?>" class="blind-audit-count-input" name="physical_counts[<?php echo (int)$material['id']; ?>]" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_decimal_max()); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? '1' : '0.01'; ?>" inputmode="decimal" placeholder="Enter count" <?php echo $countStorageReady ? '' : 'disabled'; ?>>
+                                <input id="<?php echo $inputId; ?>" class="blind-audit-count-input" data-physical-count-input name="physical_counts[<?php echo (int)$material['id']; ?>]" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_decimal_max()); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? '1' : '0.01'; ?>" inputmode="decimal" placeholder="<?php echo $canCount ? 'Enter count' : 'Waiting for review'; ?>" <?php echo $canCount ? '' : 'disabled'; ?>>
                             </td>
                             <td data-label="Remarks">
                                 <label class="sr-only" for="count_remarks_<?php echo (int)$material['id']; ?>">Remarks for <?php echo htmlspecialchars((string)$material['material_name']); ?></label>
-                                <input id="count_remarks_<?php echo (int)$material['id']; ?>" class="blind-audit-remarks-input" name="count_remarks[<?php echo (int)$material['id']; ?>]" maxlength="255" placeholder="Optional note" <?php echo $countStorageReady ? '' : 'disabled'; ?>>
+                                <input id="count_remarks_<?php echo (int)$material['id']; ?>" class="blind-audit-remarks-input" name="count_remarks[<?php echo (int)$material['id']; ?>]" maxlength="255" placeholder="Optional note" <?php echo $canCount ? '' : 'disabled'; ?>>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -103,7 +138,7 @@ inventory_clerk_render_page('Physical Count', function () use (
             </div>
             <?php if ($materials !== []): ?>
                 <div class="form-actions blind-audit-actions">
-                    <button type="submit" class="btn-primary" <?php echo $countStorageReady ? '' : 'disabled'; ?>>Submit Physical Count</button>
+                    <button type="submit" class="btn-primary" data-physical-count-submit disabled>Submit Physical Count</button>
                 </div>
             <?php endif; ?>
         </form>
@@ -111,5 +146,9 @@ inventory_clerk_render_page('Physical Count', function () use (
 </div>
 <?php
 }, [
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css',
     '/codesamplecaps/INVENTORY_CLERK/css/materials.css',
-], '', [], true);
+], '', [
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js',
+    '/codesamplecaps/INVENTORY_CLERK/js/materials.js',
+], true);

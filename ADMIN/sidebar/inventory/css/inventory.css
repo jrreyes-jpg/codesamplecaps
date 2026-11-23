@@ -416,7 +416,8 @@
     margin-bottom: 12px;
 }
 
-.material-stock-in-back {
+.material-stock-in-back,
+.inventory-sticky-back {
     position: sticky;
     top: 88px;
     z-index: 12;
@@ -509,6 +510,7 @@
 .material-col-stock { width: 84px; }
 .material-col-count { width: 100px; }
 .material-col-variance { width: 70px; }
+.material-col-status { width: 150px; }
 .material-col-remarks { width: 105px; }
 .material-col-actions { width: 45px; }
 
@@ -1021,10 +1023,6 @@ body.material-create-modal-open {
     overflow: hidden;
 }
 
-.material-history-page .form-panel {
-    background: #fff;
-}
-
 .material-master-page .inventory-report-panel {
     box-sizing: border-box;
     padding: 8px;
@@ -1034,10 +1032,7 @@ body.material-create-modal-open {
 .material-history-page .material-history-panel {
     box-sizing: border-box;
     min-width: 0;
-    padding: 20px;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    box-shadow: none;
+    padding: 8px;
     overflow: visible;
 }
 
@@ -1208,6 +1203,69 @@ body.material-create-modal-open {
     color: #64748b;
     font-size: .78rem;
     font-weight: 650;
+}
+
+.material-count-status {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 750;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.material-count-status--success {
+    color: #166534;
+    background: #dcfce7;
+}
+
+.material-count-status--warning {
+    color: #9a4d00;
+    background: #fff4dd;
+}
+
+.material-count-status--danger {
+    color: #b91c1c;
+    background: #fee2e2;
+}
+
+.material-count-status--neutral {
+    color: #475569;
+    background: #e2e8f0;
+}
+
+.material-count-review__actions {
+    display: grid;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.material-count-review__actions form {
+    margin: 0;
+}
+
+.material-count-action {
+    width: 100%;
+    padding: 5px 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #334155;
+    cursor: pointer;
+    font: inherit;
+    font-size: .66rem;
+    font-weight: 700;
+}
+
+.material-count-action--accept {
+    border-color: #86efac;
+    color: #166534;
+}
+
+.material-count-action--recount {
+    border-color: #fdba74;
+    color: #9a4d00;
 }
 
 .material-audit-remark {

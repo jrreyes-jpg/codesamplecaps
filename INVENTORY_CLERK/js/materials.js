@@ -946,3 +946,42 @@ document.addEventListener('DOMContentLoaded', function () {
         window.setTimeout(closeToast, toastDelay);
     }
 });
+
+(function () {
+    'use strict';
+
+    var form = document.querySelector('[data-physical-count-form]');
+    if (!form) return;
+
+    var inputs = Array.prototype.slice.call(form.querySelectorAll('[data-physical-count-input]:not(:disabled)'));
+    var submitButton = form.querySelector('[data-physical-count-submit]');
+
+    function updateSubmitButton() {
+        if (!submitButton) return;
+        submitButton.disabled = !inputs.some(function (input) {
+            return input.value.trim() !== '' && input.checkValidity();
+        });
+    }
+
+    inputs.forEach(function (input) {
+        input.addEventListener('input', updateSubmitButton);
+        input.addEventListener('change', updateSubmitButton);
+    });
+
+    form.addEventListener('submit', function (event) {
+        updateSubmitButton();
+        if (!form.checkValidity() || !submitButton || submitButton.disabled) {
+            event.preventDefault();
+            form.reportValidity();
+            return;
+        }
+
+        submitButton.disabled = true;
+        window.edgeActionLoading?.show({
+            title: 'Submitting physical count...',
+            message: 'Please wait while the count is saved.'
+        });
+    });
+
+    updateSubmitButton();
+})();

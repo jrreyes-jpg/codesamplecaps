@@ -2,6 +2,34 @@
 
 require_once __DIR__ . '/audit_log.php';
 require_once __DIR__ . '/material_stock.php';
+require_once __DIR__ . '/user_notifications.php';
+
+if (!function_exists('material_physical_count_status')) {
+    function material_physical_count_status(?array $count): array
+    {
+        if (!$count) {
+            return ['key' => 'not_counted', 'label' => 'Not Yet Counted', 'tone' => 'neutral', 'needs_review' => false];
+        }
+
+        $reviewAction = (string)($count['review_action'] ?? '');
+        if ($reviewAction === 'physical_count_accepted') {
+            return ['key' => 'verified', 'label' => 'Verified', 'tone' => 'success', 'needs_review' => false];
+        }
+        if ($reviewAction === 'physical_count_recount_requested') {
+            return ['key' => 'recount', 'label' => 'Recount Requested', 'tone' => 'warning', 'needs_review' => false];
+        }
+
+        $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot'];
+        if (abs($variance) < 0.005) {
+            return ['key' => 'matched', 'label' => 'Matched', 'tone' => 'success', 'needs_review' => false];
+        }
+        if ($variance > 0) {
+            return ['key' => 'excess', 'label' => 'Excess', 'tone' => 'warning', 'needs_review' => true];
+        }
+
+        return ['key' => 'shortage', 'label' => 'Shortage', 'tone' => 'danger', 'needs_review' => true];
+    }
+}
 
 if (!function_exists('material_physical_count_is_ready')) {
     function material_physical_count_is_ready(mysqli $conn): bool
@@ -140,6 +168,38 @@ if (!function_exists('material_physical_count_submit')) {
                 if (!$material) {
                     throw new RuntimeException('One selected material is no longer active.');
                 }
+
+                $latestStmt = $conn->prepare(
+                    "SELECT pc.id, pc.counted_quantity, pc.total_quantity_snapshot,
+                            (SELECT review_log.action
+                             FROM audit_logs review_log
+                             WHERE review_log.entity_type = 'material_physical_count'
+                               AND review_log.entity_id = pc.id
+                               AND review_log.action IN ('physical_count_accepted', 'physical_count_recount_requested')
+                             ORDER BY review_log.id DESC LIMIT 1) AS review_action
+                     FROM material_physical_counts pc
+                     WHERE pc.material_id = ?
+                     ORDER BY pc.id DESC
+                     LIMIT 1
+                     FOR UPDATE"
+                );
+                if (!$latestStmt) {
+                    throw new RuntimeException('Unable to check the latest physical count.');
+                }
+                $latestStmt->bind_param('i', $materialId);
+                $latestStmt->execute();
+                $latestCount = $latestStmt->get_result()->fetch_assoc();
+                if ($latestCount) {
+                    $latestStatus = material_physical_count_status($latestCount);
+                    if (!in_array($latestStatus['key'], ['verified', 'recount'], true)) {
+                        throw new RuntimeException(
+                            $latestStatus['key'] === 'matched'
+                                ? 'This material already has a matched physical count.'
+                                : 'This material count is waiting for Admin review.'
+                        );
+                    }
+                }
+
                 $savedCutoff = $cutoff[$materialId] ?? null;
                 if (!is_array($savedCutoff)
                     || abs((float)$material['physical_quantity'] - (float)($savedCutoff['physical_quantity'] ?? -1)) > 0.0001
@@ -168,6 +228,7 @@ if (!function_exists('material_physical_count_submit')) {
                 if (!$insertStmt->execute()) {
                     throw new RuntimeException('Unable to save the physical count.');
                 }
+                $physicalCountId = (int)$insertStmt->insert_id;
 
                 $auditStmt = $conn->prepare(
                     'INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_values, new_values, ip_address)
@@ -178,7 +239,7 @@ if (!function_exists('material_physical_count_submit')) {
                 }
                 $action = 'physical_count_submitted';
                 $entityType = 'material_physical_count';
-                $entityId = (int)$insertStmt->insert_id;
+                $entityId = $physicalCountId;
                 $oldValues = null;
                 $newValues = json_encode([
                     'material_id' => $materialId,
@@ -191,6 +252,24 @@ if (!function_exists('material_physical_count_submit')) {
                 $auditStmt->bind_param('ississs', $userId, $action, $entityType, $entityId, $oldValues, $newValues, $ipAddress);
                 if (!$auditStmt->execute()) {
                     throw new RuntimeException('Unable to save the physical count remarks.');
+                }
+
+                $variance = $countedQuantity - $expectedQuantity;
+                if (abs($variance) >= 0.005) {
+                    $adminResult = $conn->query(
+                        "SELECT id FROM users WHERE role = 'admin' AND status = 'active' AND deleted_at IS NULL ORDER BY id ASC LIMIT 1"
+                    );
+                    $adminId = $adminResult instanceof mysqli_result ? (int)($adminResult->fetch_assoc()['id'] ?? 0) : 0;
+                    user_notifications_create_if_missing(
+                        $conn,
+                        $adminId,
+                        'material_physical_count_variance',
+                        $physicalCountId,
+                        'Inventory variance needs review',
+                        'A Clerk physical count does not match the system stock.',
+                        '/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=materials',
+                        'material-count-variance-' . $physicalCountId
+                    );
                 }
             }
 
@@ -211,9 +290,15 @@ if (!function_exists('material_physical_count_fetch_latest')) {
         }
 
         $result = $conn->query(
-            "SELECT pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot,
+            "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot,
                     pc.reserved_quantity_snapshot, pc.expected_quantity_snapshot,
-                    pc.counted_at, u.full_name AS counted_by_name, al.new_values AS audit_values
+                    pc.counted_at, u.full_name AS counted_by_name, al.new_values AS audit_values,
+                    (SELECT review_log.action
+                     FROM audit_logs review_log
+                     WHERE review_log.entity_type = 'material_physical_count'
+                       AND review_log.entity_id = pc.id
+                       AND review_log.action IN ('physical_count_accepted', 'physical_count_recount_requested')
+                     ORDER BY review_log.id DESC LIMIT 1) AS review_action
              FROM material_physical_counts pc
              INNER JOIN (
                  SELECT material_id, MAX(id) AS latest_id
@@ -250,6 +335,12 @@ if (!function_exists('material_physical_count_fetch_history')) {
 
         $sql = "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.counted_at,
                        m.material_name, m.unit, u.full_name AS counted_by_name, al.new_values AS audit_values
+                       ,(SELECT review_log.action
+                         FROM audit_logs review_log
+                         WHERE review_log.entity_type = 'material_physical_count'
+                           AND review_log.entity_id = pc.id
+                           AND review_log.action IN ('physical_count_accepted', 'physical_count_recount_requested')
+                         ORDER BY review_log.id DESC LIMIT 1) AS review_action
                 FROM material_physical_counts pc
                 INNER JOIN materials m ON m.id = pc.material_id
                 LEFT JOIN users u ON u.id = pc.counted_by
@@ -281,5 +372,137 @@ if (!function_exists('material_physical_count_fetch_history')) {
         unset($count);
 
         return $counts;
+    }
+}
+
+if (!function_exists('material_physical_count_review')) {
+    function material_physical_count_review(mysqli $conn, int $countId, string $decision, int $adminId): void
+    {
+        if ($countId <= 0 || !in_array($decision, ['accept', 'recount'], true)) {
+            throw new RuntimeException('Invalid physical count review.');
+        }
+
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare(
+                "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.counted_by,
+                        m.material_name, m.unit, m.physical_quantity, m.reserved_quantity,
+                        (SELECT review_log.action
+                         FROM audit_logs review_log
+                         WHERE review_log.entity_type = 'material_physical_count'
+                           AND review_log.entity_id = pc.id
+                           AND review_log.action IN ('physical_count_accepted', 'physical_count_recount_requested')
+                         ORDER BY review_log.id DESC LIMIT 1) AS review_action,
+                        (SELECT MAX(latest_pc.id) FROM material_physical_counts latest_pc WHERE latest_pc.material_id = pc.material_id) AS latest_id
+                 FROM material_physical_counts pc
+                 INNER JOIN materials m ON m.id = pc.material_id
+                 WHERE pc.id = ?
+                 FOR UPDATE"
+            );
+            if (!$stmt) {
+                throw new RuntimeException('Unable to review the physical count.');
+            }
+            $stmt->bind_param('i', $countId);
+            $stmt->execute();
+            $count = $stmt->get_result()->fetch_assoc();
+            if (!$count || (int)$count['latest_id'] !== $countId) {
+                throw new RuntimeException('Only the latest physical count can be reviewed.');
+            }
+            if (trim((string)($count['review_action'] ?? '')) !== '') {
+                throw new RuntimeException('This physical count was already reviewed.');
+            }
+
+            $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot'];
+            if (abs($variance) < 0.005) {
+                throw new RuntimeException('This physical count already matches the system stock.');
+            }
+
+            $action = $decision === 'accept' ? 'physical_count_accepted' : 'physical_count_recount_requested';
+            if ($decision === 'accept') {
+                $materialId = (int)$count['material_id'];
+                $deliveryTable = $conn->query("SHOW TABLES LIKE 'material_delivery_verifications'");
+                if ($deliveryTable instanceof mysqli_result && $deliveryTable->num_rows === 1) {
+                    $deliveryStmt = $conn->prepare(
+                        "SELECT id
+                         FROM material_delivery_verifications
+                         WHERE material_id = ? AND status = 'for_verification'
+                         LIMIT 1 FOR UPDATE"
+                    );
+                    if (!$deliveryStmt) {
+                        throw new RuntimeException('Unable to check pending deliveries.');
+                    }
+                    $deliveryStmt->bind_param('i', $materialId);
+                    $deliveryStmt->execute();
+                    if ($deliveryStmt->get_result()->fetch_assoc()) {
+                        throw new RuntimeException('Verify the pending delivery first to avoid adding the same stock twice.');
+                    }
+                }
+
+                $currentQuantity = (float)$count['physical_quantity'];
+                if (abs($currentQuantity - (float)$count['total_quantity_snapshot']) >= 0.005) {
+                    throw new RuntimeException('Stock changed after this count. Request a new count instead.');
+                }
+                $newQuantity = (float)$count['counted_quantity'];
+                if ($newQuantity + 0.0001 < (float)$count['reserved_quantity']) {
+                    throw new RuntimeException('The count is below reserved stock. Resolve the reservation first.');
+                }
+
+                $update = $conn->prepare('UPDATE materials SET physical_quantity = ? WHERE id = ?');
+                if (!$update) {
+                    throw new RuntimeException('Unable to update the system stock.');
+                }
+                $update->bind_param('di', $newQuantity, $materialId);
+                if (!$update->execute()) {
+                    throw new RuntimeException('Unable to update the system stock.');
+                }
+
+                material_stock_log_movement(
+                    $conn,
+                    $materialId,
+                    $variance > 0 ? 'adjustment_in' : 'adjustment_out',
+                    abs($variance),
+                    $currentQuantity,
+                    $newQuantity,
+                    'Accepted Clerk physical count #' . $countId,
+                    $adminId
+                );
+            }
+
+            $oldValues = ['system_stock' => (float)$count['total_quantity_snapshot']];
+            $newValues = ['clerk_count' => (float)$count['counted_quantity'], 'variance' => $variance, 'decision' => $decision];
+            $auditStmt = $conn->prepare(
+                'INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_values, new_values, ip_address)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+            );
+            if (!$auditStmt) {
+                throw new RuntimeException('Unable to save the physical count review.');
+            }
+            $entityType = 'material_physical_count';
+            $oldJson = json_encode($oldValues, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $newJson = json_encode($newValues, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+            $auditStmt->bind_param('ississs', $adminId, $action, $entityType, $countId, $oldJson, $newJson, $ipAddress);
+            if (!$auditStmt->execute()) {
+                throw new RuntimeException('Unable to save the physical count review.');
+            }
+
+            if ($decision === 'recount') {
+                user_notifications_create_if_missing(
+                    $conn,
+                    (int)$count['counted_by'],
+                    'material_physical_count_recount',
+                    $countId,
+                    'Physical recount requested',
+                    'Please count ' . (string)$count['material_name'] . ' again.',
+                    '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php',
+                    'material-count-recount-' . $countId
+                );
+            }
+
+            $conn->commit();
+        } catch (Throwable $exception) {
+            $conn->rollback();
+            throw $exception;
+        }
     }
 }

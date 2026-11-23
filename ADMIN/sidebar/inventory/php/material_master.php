@@ -207,7 +207,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             $materialId = filter_var($materialPostText($_POST['material_id'] ?? ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
-            if ($action === 'archive') {
+            $countId = filter_var($materialPostText($_POST['count_id'] ?? ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
+            if ($action === 'accept_physical_count' || $action === 'request_physical_recount') {
+                material_physical_count_review(
+                    $conn,
+                    $countId,
+                    $action === 'accept_physical_count' ? 'accept' : 'recount',
+                    (int)$_SESSION['user_id']
+                );
+                $_SESSION[$materialFlashKey] = [
+                    'type' => 'success',
+                    'message' => $action === 'accept_physical_count'
+                        ? 'Physical count accepted. System stock was updated.'
+                        : 'Recount request sent to the Inventory Clerk.',
+                ];
+            } elseif ($action === 'archive') {
                 material_stock_archive_material($conn, $materialId);
                 $_SESSION[$materialFlashKey] = ['type' => 'success', 'message' => 'Material archived.'];
             } elseif ($action === 'restore') {
@@ -302,12 +316,12 @@ $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261123-6',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261123-8',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261123-6',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261123-8',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -347,11 +361,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <div class="table-responsive">
                 <table class="data-table material-master-table mobile-card-table">
                     <colgroup>
-                        <col class="material-col-item"><col class="material-col-unit"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-count"><col class="material-col-variance"><col class="material-col-remarks"><col class="material-col-actions">
+                        <col class="material-col-item"><col class="material-col-unit"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-count"><col class="material-col-variance"><col class="material-col-status"><col class="material-col-remarks"><col class="material-col-actions">
                     </colgroup>
-                    <thead><tr><th>Item</th><th>Unit</th><th>On-Hand</th><th>Reserved</th><th>Available</th><th>Clerk Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
+                    <thead><tr><th>Item</th><th>Unit</th><th>On-Hand</th><th>Reserved</th><th>Available</th><th>Clerk Count</th><th>Variance</th><th>Count Status</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
                     <tbody>
-                    <?php if ($materials === []): ?><tr><td colspan="9" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
+                    <?php if ($materials === []): ?><tr><td colspan="10" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
                     <?php foreach ($materials as $material): ?>
                         <?php
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
@@ -364,6 +378,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $archiveHelpText = str_contains($archiveBlockReason, 'Clerk count is pending')
                             ? 'Complete the clerk count before archiving.'
                             : $archiveBlockReason;
+                        $countStatus = material_physical_count_status($latestCount);
                         $stockStatus = material_stock_alert_status($material);
                         $description = trim((string)$material['description']);
                         ?>
@@ -391,6 +406,27 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </td>
                             <td data-label="Variance" class="material-master-number material-variance<?php echo $isShortage ? ' material-variance--shortage' : ''; ?>">
                                 <?php echo $variance === null ? '&mdash;' : htmlspecialchars($displayMaterialQuantity($variance)); ?>
+                            </td>
+                            <td data-label="Count Status" class="material-count-review">
+                                <span class="material-count-status material-count-status--<?php echo htmlspecialchars($countStatus['tone'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($countStatus['label']); ?></span>
+                                <?php if ($latestCount && $countStatus['needs_review']): ?>
+                                    <div class="material-count-review__actions">
+                                        <form method="POST" data-material-confirm-form data-confirm-title="Accept physical count?" data-confirm-message="System stock will be changed to the Clerk count." data-confirm-label="Accept Count">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
+                                            <input type="hidden" name="material_action" value="accept_physical_count">
+                                            <input type="hidden" name="count_id" value="<?php echo (int)$latestCount['id']; ?>">
+                                            <input type="hidden" name="material_filter" value="active">
+                                            <button type="submit" class="material-count-action material-count-action--accept">Accept Count</button>
+                                        </form>
+                                        <form method="POST">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
+                                            <input type="hidden" name="material_action" value="request_physical_recount">
+                                            <input type="hidden" name="count_id" value="<?php echo (int)$latestCount['id']; ?>">
+                                            <input type="hidden" name="material_filter" value="active">
+                                            <button type="submit" class="material-count-action material-count-action--recount">Request Recount</button>
+                                        </form>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td data-label="Remarks" class="material-report-remarks">
                                 <?php echo $latestCount === null || trim((string)($latestCount['remarks'] ?? '')) === '' ? '&mdash;' : nl2br(htmlspecialchars((string)$latestCount['remarks'])); ?>
@@ -570,7 +606,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
         <div class="material-remove-modal" data-material-archive-modal hidden>
             <section class="material-remove-modal__panel" role="dialog" aria-modal="true" aria-labelledby="materialArchiveTitle" aria-describedby="materialArchiveMessage">
-                <h2 id="materialArchiveTitle">Archive material?</h2>
+                <h2 id="materialArchiveTitle" data-material-confirm-title>Archive material?</h2>
                 <p id="materialArchiveMessage" data-material-archive-message></p>
                 <div class="material-remove-modal__actions">
                     <button type="button" class="btn-secondary" data-material-archive-close>Cancel</button>

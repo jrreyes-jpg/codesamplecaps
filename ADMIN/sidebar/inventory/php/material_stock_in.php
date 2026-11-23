@@ -104,7 +104,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="material-stock-in-title">
                     <h1 class="section-title-inline">Log Delivery Receipt</h1>
                 </div>
-                <a class="btn-secondary material-stock-in-history" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history">Stock History</a>
+                <a class="btn-secondary material-stock-in-history" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=history&amp;return=delivery">Stock History</a>
             </div>
 
             <?php if (!$deliveryReady): ?>

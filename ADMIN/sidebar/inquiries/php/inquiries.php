@@ -124,7 +124,7 @@ function inquiry_center_status_label(string $status): string
     }
 
     if ($status === 'For Inspection') {
-        return 'Awaiting Engineer Costing';
+        return 'Engineer Inspection Scheduled';
     }
 
     return $status;
@@ -2813,10 +2813,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 $latestInspection['started_at'] ?? null
                             )
                             : '';
-                        $inspectionScheduleStateLabel = site_inspection_schedule_state_label($inspectionScheduleState, 'admin');
-                        if (!$isConvertedToProject && $displayStatus === 'For Inspection' && $inspectionScheduleStateLabel !== '') {
-                            $displayStatus = $inspectionScheduleStateLabel;
-                        }
                     ?>
                     <?php $displayStatusLabel = in_array($displayStatus, ['Inspection Submitted', 'For Quotation'], true)
                         ? $displayStatus

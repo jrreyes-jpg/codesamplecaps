@@ -247,6 +247,21 @@
     text-align: center;
 }
 
+.shared-workflow-action-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.shared-workflow-assignment {
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
 /* Parehong main action sa workflow cards. */
 .shared-workflow-action {
     display: inline-flex;

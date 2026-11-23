@@ -123,6 +123,10 @@ function inquiry_center_status_label(string $status): string
         return 'Pending Confirmation';
     }
 
+    if ($status === 'For Inspection') {
+        return 'Awaiting Engineer Costing';
+    }
+
     return $status;
 }
 
@@ -2850,6 +2854,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             && !$isScheduleConfirmed
                             && empty($inquiry['archived_at'])
                             && in_array($latestInspectionStatus, ['Assigned', 'Acknowledged'], true);
+                        $showEngineerCostingAssignment = !$isConvertedToProject
+                            && $currentStatus === 'For Inspection'
+                            && $latestInspection
+                            && !in_array($latestInspectionStatus, ['Submitted'], true);
+                        $engineerCostingState = in_array($latestInspectionStatus, ['Ongoing', 'On Hold', 'Completed'], true)
+                            ? 'Costing in Progress'
+                            : 'Pending Costing';
                     ?>
                     <article class="inquiry-card shared-list-card shared-workflow-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>" data-list-search="<?php echo htmlspecialchars(implode(' ', [inquiry_reference_number((int)$inquiry['id']), (string)$inquiry['client_name'], $cardService, $cardLocation]), ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inquiry-card__head shared-workflow-card__head">
@@ -2886,23 +2897,31 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </div>
                         </div>
 
-                        <?php if ($isConvertedToProject): ?>
-                            <a class="inquiry-next-action shared-workflow-action shared-strong-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
-                                Open Project
-                            </a>
-                        <?php else: ?>
-                            <a
-                                href="<?php echo htmlspecialchars(inquiry_center_filter_url(['details' => (int)$inquiry['id'], 'view' => !empty($inquiry['archived_at']) ? 'archive' : '', 'tab' => $nextActionTab]), ENT_QUOTES, 'UTF-8'); ?>"
-                                class="inquiry-next-action shared-workflow-action<?php echo $nextActionClass; ?>"
-                            >
-                                <?php echo htmlspecialchars($nextActionLabel, ENT_QUOTES, 'UTF-8'); ?>
-                            </a>
-                        <?php endif; ?>
+                        <div class="shared-workflow-action-row">
+                            <?php if ($isConvertedToProject): ?>
+                                <a class="inquiry-next-action shared-workflow-action shared-strong-action" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotationDraft['project_id']; ?>">
+                                    Open Project
+                                </a>
+                            <?php else: ?>
+                                <a
+                                    href="<?php echo htmlspecialchars(inquiry_center_filter_url(['details' => (int)$inquiry['id'], 'view' => !empty($inquiry['archived_at']) ? 'archive' : '', 'tab' => $nextActionTab]), ENT_QUOTES, 'UTF-8'); ?>"
+                                    class="inquiry-next-action shared-workflow-action<?php echo $nextActionClass; ?>"
+                                >
+                                    <?php echo htmlspecialchars($nextActionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                </a>
+                            <?php endif; ?>
+
+                            <?php if ($showEngineerCostingAssignment): ?>
+                                <span class="shared-workflow-assignment">
+                                    Assigned to: Engr. <?php echo htmlspecialchars((string)($latestInspection['engineer_name'] ?? 'Not assigned'), ENT_QUOTES, 'UTF-8'); ?>
+                                    <span aria-hidden="true">&bull;</span>
+                                    <?php echo htmlspecialchars($engineerCostingState, ENT_QUOTES, 'UTF-8'); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
 
                         <?php if ($inspectionScheduleState === 'overdue_not_started'): ?>
                             <p class="shared-workflow-notice" data-tone="danger" role="alert">The Engineer has not started this inspection. Check the schedule or contact the Engineer.</p>
-                        <?php elseif ($inspectionScheduleState === 'scheduled_today'): ?>
-                            <p class="shared-workflow-notice" data-tone="info" role="status">This inspection is scheduled today.</p>
                         <?php endif; ?>
 
                         <?php

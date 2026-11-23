@@ -52,6 +52,10 @@ if (!function_exists('material_delivery_verification_validate_quantity')) {
         if (material_stock_unit_requires_whole_number($unit) && $quantity !== floor($quantity)) {
             throw new RuntimeException('Use a whole ' . $unit . ' quantity.');
         }
+        if (!material_stock_unit_requires_whole_number($unit)
+            && abs(($quantity * 100) - round($quantity * 100)) > 0.000001) {
+            throw new RuntimeException('Use up to 2 decimal places.');
+        }
 
         return $quantity;
     }
@@ -295,7 +299,7 @@ if (!function_exists('material_delivery_verification_confirm')) {
             $isVerified = abs($verifiedQuantity - $expectedQuantity) < 0.005;
             $status = $isVerified ? 'verified' : 'discrepancy';
             $after = $isVerified ? $before + $verifiedQuantity : $before;
-            $clerkNotes = substr(trim($clerkNotes), 0, 500);
+            $clerkNotes = substr(trim($clerkNotes), 0, 255);
             $remarks = 'DR ' . (string)$delivery['delivery_receipt_no']
                 . ' | Expected: ' . material_delivery_verification_format_quantity((float)$delivery['expected_quantity'])
                 . ' | Verified: ' . material_delivery_verification_format_quantity($verifiedQuantity);

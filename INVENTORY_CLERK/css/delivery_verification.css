@@ -1,5 +1,38 @@
+.delivery-verification-panel {
+    min-width: 0;
+    padding: 24px;
+}
+
+.delivery-verification-panel .section-title-inline {
+    margin: 0 0 20px;
+}
+
+.delivery-verification-page .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .delivery-verification-table {
-    min-width: 980px;
+    min-width: 900px;
+    table-layout: fixed;
+}
+
+.delivery-verification-table th:nth-child(1) { width: 25%; }
+.delivery-verification-table th:nth-child(2) { width: 10%; }
+.delivery-verification-table th:nth-child(3) { width: 25%; }
+.delivery-verification-table th:nth-child(4) { width: 25%; }
+.delivery-verification-table th:nth-child(5) { width: 15%; }
+
+.delivery-verification-table th,
+.delivery-verification-table td {
+    vertical-align: top;
 }
 
 .delivery-verification-table small {
@@ -9,20 +42,105 @@
     font-size: 12px;
 }
 
-.delivery-verification-table td[data-label="Actual Count"] {
-    white-space: nowrap;
+.delivery-verification-unit {
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
 }
 
-.delivery-verification-input {
-    width: 104px;
-    min-height: 40px;
-}
-
+.delivery-verification-input,
 .delivery-verification-notes {
-    min-width: 175px;
-    min-height: 40px;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #172033;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+.delivery-verification-input:focus,
+.delivery-verification-notes:focus {
+    border-color: #0f766e;
+    outline: 3px solid rgba(15, 118, 110, .16);
+}
+
+.delivery-verification-input.is-invalid {
+    border-color: #dc2626;
+    outline-color: rgba(220, 38, 38, .14);
+}
+
+.delivery-verification-error {
+    display: block;
+    height: 18px;
+    margin-top: 4px;
+    overflow: hidden;
+    color: #b91c1c;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.delivery-verification-error:empty {
+    visibility: hidden;
 }
 
 .delivery-verification-table .btn-primary {
-    white-space: nowrap;
+    width: 100%;
+    min-height: 42px;
+    white-space: normal;
+    line-height: 1.2;
+}
+
+.delivery-verification-table .btn-primary:disabled {
+    background: #cbd5e1;
+    color: #64748b;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+@media (max-width: 768px) {
+    .delivery-verification-panel { padding: 18px; }
+
+    .delivery-verification-table { min-width: 0; }
+
+    .delivery-verification-table thead { display: none; }
+
+    .delivery-verification-table,
+    .delivery-verification-table tbody,
+    .delivery-verification-table tr,
+    .delivery-verification-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .delivery-verification-table tr {
+        padding: 14px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .delivery-verification-table td {
+        display: grid;
+        grid-template-columns: minmax(110px, 38%) minmax(0, 1fr);
+        gap: 12px;
+        padding: 8px 0;
+        border: 0;
+    }
+
+    .delivery-verification-table td::before {
+        content: attr(data-label);
+        color: #475569;
+        font-weight: 700;
+    }
+
+    .delivery-verification-table .delivery-verification-error {
+        grid-column: 2;
+    }
+
+    .delivery-verification-unit {
+        min-height: 0;
+    }
 }

@@ -228,7 +228,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <section class="form-panel admin-material-delivery-list">
             <div class="inventory-report-heading">
                 <div>
-                    <h2 class="section-title-inline">Pending Verification</h2>
+                    <h2 class="section-title-inline">Delivery Verification</h2>
                 </div>
             </div>
             <div class="table-responsive">
@@ -251,7 +251,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <summary>View Details</summary>
                                     <ul>
                                         <?php foreach ($delivery['items'] as $item): ?>
-                                            <li><?php echo htmlspecialchars((string)$item['material_name'] . ' - ' . material_delivery_verification_format_quantity((float)$item['expected_quantity']) . ' ' . (string)$item['unit']); ?></li>
+                                            <?php
+                                            $expected = (float)$item['expected_quantity'];
+                                            $counted = $item['verified_quantity'] !== null ? (float)$item['verified_quantity'] : null;
+                                            $difference = $counted !== null ? $counted - $expected : null;
+                                            ?>
+                                            <li>
+                                                <strong><?php echo htmlspecialchars((string)$item['material_name']); ?></strong>
+                                                <small>Expected: <?php echo htmlspecialchars(material_delivery_verification_format_quantity($expected) . ' ' . (string)$item['unit']); ?></small>
+                                                <?php if ($counted !== null): ?>
+                                                    <small>Counted: <?php echo htmlspecialchars(material_delivery_verification_format_quantity($counted) . ' ' . (string)$item['unit']); ?></small>
+                                                    <small>Difference: <?php echo htmlspecialchars(($difference > 0 ? '+' : '') . material_delivery_verification_format_quantity($difference) . ' ' . (string)$item['unit']); ?></small>
+                                                <?php else: ?>
+                                                    <small>Waiting for Clerk count</small>
+                                                <?php endif; ?>
+                                            </li>
                                         <?php endforeach; ?>
                                     </ul>
                                 </details>

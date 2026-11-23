@@ -32,9 +32,9 @@ function shared_navigation_items_for_role(string $role): array
         ],
         'inventory_clerk' => [
             ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Dash', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/INVENTORY_CLERK/dashboards/dashboard.php', '/INVENTORY_CLERK/dashboards/dashboard.php']],
-            ['module' => 'asset_reference', 'label' => 'Asset Reference', 'mini' => 'Assets', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php', 'icon' => 'assets', 'active' => ['/INVENTORY_CLERK/dashboards/inventory.php']],
+            ['module' => 'delivery_verification', 'label' => 'Delivery Count', 'mini' => 'Count', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/delivery_verification.php', 'icon' => 'check', 'active' => ['/INVENTORY_CLERK/dashboards/delivery_verification.php']],
             ['module' => 'materials', 'label' => 'Physical Count', 'mini' => 'Count', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php', 'icon' => 'inventory', 'active' => ['/INVENTORY_CLERK/dashboards/materials.php']],
-            ['module' => 'delivery_verification', 'label' => 'Pending Deliveries', 'mini' => 'Verify', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/delivery_verification.php', 'icon' => 'check', 'active' => ['/INVENTORY_CLERK/dashboards/delivery_verification.php']],
+            ['module' => 'asset_reference', 'label' => 'Asset Reference', 'mini' => 'Assets', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php', 'icon' => 'assets', 'active' => ['/INVENTORY_CLERK/dashboards/inventory.php']],
             ['module' => 'material_history', 'label' => 'Material History', 'mini' => 'Hist', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/material_stock_history.php', 'icon' => 'activity', 'active' => ['/INVENTORY_CLERK/dashboards/material_stock_history.php']],
         ],
         'client' => [

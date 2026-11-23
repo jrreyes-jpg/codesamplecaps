@@ -333,6 +333,7 @@
     const draftKeyPrefix = 'edge:admin:add-material-draft:';
     const draftScopeMarker = 'edge:admin:add-material-draft-scope';
     const addDraftKey = draftKeyPrefix + draftScope;
+    const addModalOpenKey = 'edge:admin:add-material-modal-open:' + draftScope;
     let materialNameIndex = [];
     try {
         const parsedIndex = JSON.parse(modal.dataset.materialNameIndex || '[]');
@@ -353,11 +354,29 @@
         }
     }
 
+    function setStoredModalOpen(isOpen) {
+        try {
+            if (isOpen) window.sessionStorage.setItem(addModalOpenKey, 'true');
+            else window.sessionStorage.removeItem(addModalOpenKey);
+        } catch (error) {
+            // Tuloy pa rin ang modal kapag hindi available ang browser storage.
+        }
+    }
+
+    function wasModalOpenBeforeReload() {
+        try {
+            return window.sessionStorage.getItem(addModalOpenKey) === 'true';
+        } catch (error) {
+            return false;
+        }
+    }
+
     function prepareDraftStorage() {
         try {
             const previousScope = window.sessionStorage.getItem(draftScopeMarker);
             if (previousScope && previousScope !== draftScope) {
                 window.sessionStorage.removeItem(draftKeyPrefix + previousScope);
+                window.sessionStorage.removeItem('edge:admin:add-material-modal-open:' + previousScope);
             }
             window.sessionStorage.setItem(draftScopeMarker, draftScope);
         } catch (error) {
@@ -488,7 +507,7 @@
             if (value === '' || /^-/.test(value)) {
                 message = name === 'maximum_stock_level'
                     ? 'Enter a maximum stock level greater than zero.'
-                    : 'Enter zero or a positive number.';
+                    : 'Enter a low stock alert level greater than zero.';
             } else if (!/^\d+(?:\.\d+)?$/.test(value)) {
                 message = 'Enter a valid number.';
             } else {
@@ -503,6 +522,8 @@
                 } else if (integer.length > 10 || (integer.length === 10 && integer > '9999999999')) {
                     const maximum = selectedUnitNeedsWholeNumber() ? '9,999,999,999' : '9,999,999,999.99';
                     message = 'Maximum allowed value is ' + maximum + ' ' + unit + '.';
+                } else if (name === 'reorder_level' && Number(value) <= 0) {
+                    message = 'Enter a low stock alert level greater than zero.';
                 } else if (name === 'maximum_stock_level' && Number(value) <= 0) {
                     message = 'Enter a maximum stock level greater than zero.';
                 } else if (name === 'maximum_stock_level' && Number(value) <= Number(fields.reorder_level.value || 0)) {
@@ -539,6 +560,7 @@
             if (fields[name]) {
                 const field = fields[name];
                 field.step = wholeNumber ? '1' : '0.01';
+                field.min = wholeNumber ? '1' : '0.01';
                 field.max = wholeNumber ? '9999999999' : '9999999999.99';
             }
         });
@@ -637,7 +659,7 @@
         ['material_name', 'specific_category', 'maximum_stock_level', 'description'].forEach(function (name) {
             if (fields[name]) fields[name].value = '';
         });
-        if (fields.reorder_level) fields.reorder_level.value = '0';
+        if (fields.reorder_level) fields.reorder_level.value = '';
         ['category', 'unit'].forEach(function (name) {
             if (fields[name]) fields[name].selectedIndex = 0;
         });
@@ -688,6 +710,7 @@
     function openModal(showServerError, preferredReturnFocus) {
         returnFocus = preferredReturnFocus || (document.activeElement instanceof HTMLElement ? document.activeElement : openButton);
         modal.hidden = false;
+        setStoredModalOpen(true);
         document.body.classList.add('material-create-modal-open');
         window.requestAnimationFrame(function () {
             const firstInvalid = showServerError ? form.querySelector('[aria-invalid="true"]') : null;
@@ -716,6 +739,7 @@
         const wasAddMode = isAddMode();
         if (wasAddMode && discardAddValues) clearAddForm(true);
         modal.hidden = true;
+        setStoredModalOpen(false);
         document.body.classList.remove('material-create-modal-open');
         if (!wasAddMode) resetMaterialForm();
         if (returnFocus && typeof returnFocus.focus === 'function') {
@@ -805,17 +829,28 @@
                 field.dataset.materialDirty = 'true';
                 if (name === 'unit') {
                     updateReorderStep();
-                    fields.reorder_level.dataset.materialDirty = 'true';
-                    fields.maximum_stock_level.dataset.materialDirty = 'true';
-                    validateField('reorder_level');
-                    validateField('maximum_stock_level');
+                    if (fields.reorder_level.value.trim() !== '') {
+                        validateField('reorder_level');
+                    }
+                    if (fields.maximum_stock_level.value.trim() !== '') {
+                        validateField('maximum_stock_level');
+                    } else if (fields.maximum_stock_level.dataset.materialDirty !== 'true') {
+                        setFieldError('maximum_stock_level', '');
+                    }
                 }
                 if (name === 'category') {
                     updateSpecificCategoryField();
                     if (fields.category.value === 'Other') validateField('specific_category');
                 }
                 validateField(name);
-                if (name === 'reorder_level') validateField('maximum_stock_level');
+                if (name === 'reorder_level') {
+                    if (fields.maximum_stock_level.value.trim() !== ''
+                        || fields.maximum_stock_level.dataset.materialDirty === 'true') {
+                        validateField('maximum_stock_level');
+                    } else {
+                        setFieldError('maximum_stock_level', '');
+                    }
+                }
                 saveAddDraft();
             });
             field.addEventListener('blur', function () {
@@ -892,6 +927,7 @@
     }, true);
     window.addEventListener('edge:logout-complete', function () {
         clearStoredAddDraft();
+        setStoredModalOpen(false);
         try {
             window.sessionStorage.removeItem(draftScopeMarker);
         } catch (error) {
@@ -900,11 +936,23 @@
     });
 
     prepareDraftStorage();
-    if (modal.dataset.createSucceeded === 'true') clearStoredAddDraft();
+    const navigationEntry = window.performance?.getEntriesByType?.('navigation')?.[0];
+    const isPageReload = navigationEntry?.type === 'reload';
+    const restoreOpenModal = isPageReload && wasModalOpenBeforeReload();
+    if (modal.dataset.createSucceeded === 'true') {
+        clearStoredAddDraft();
+        setStoredModalOpen(false);
+    }
     updateReorderStep();
     if (fields.material_name?.value.trim() !== '') validateField('material_name');
     if (modal.dataset.autoOpen === 'true') {
         if (modal.dataset.autoMode === 'add') saveAddDraft();
         openModal(true);
+    } else if (restoreOpenModal && modal.dataset.createSucceeded !== 'true') {
+        resetMaterialForm();
+        restoreAddDraft();
+        openModal(false);
+    } else {
+        setStoredModalOpen(false);
     }
 })();

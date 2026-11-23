@@ -2,42 +2,41 @@
 define('AUTH_REQUIRED_ROLE', 'inventory_clerk');
 require_once __DIR__ . '/../../config/auth_check.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/material_delivery_verification.php';
+require_once __DIR__ . '/../../config/material_physical_count.php';
 require_once __DIR__ . '/../includes/page_shell.php';
 
-$metricResult = $conn->query(
-    "SELECT
-        COUNT(*) AS inventory_items,
-        COALESCE(SUM(quantity), 0) AS total_units,
-        SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_items,
-        SUM(CASE WHEN status = 'low-stock' THEN 1 ELSE 0 END) AS low_stock_items,
-        SUM(CASE WHEN status = 'out-of-stock' THEN 1 ELSE 0 END) AS out_of_stock_items
-     FROM inventory"
-);
-$metrics = $metricResult ? $metricResult->fetch_assoc() : [];
-inventory_clerk_render_page('Inventory Overview', function () use ($metrics): void {
+$pendingDeliveries = material_delivery_verification_fetch($conn, 'for_verification');
+$latestCounts = material_physical_count_fetch_latest($conn);
+$waitingForReview = 0;
+foreach ($latestCounts as $count) {
+    if (material_physical_count_status($count)['needs_review']) {
+        $waitingForReview++;
+    }
+}
+
+inventory_clerk_render_page('Dashboard', function () use ($pendingDeliveries, $waitingForReview): void {
 ?>
-        <section class="dashboard-panel">
-            <div class="panel-heading">
-                <div>
-                    <h1 class="dashboard-section-title">Inventory Overview</h1>
-                    <p class="panel-copy">Monitor stock levels and update inventory records.</p>
-                </div>
-            </div>
+        <div class="shared-page-container dashboard-page">
+        <section class="shared-flat-panel dashboard-panel">
+            <h1 class="dashboard-section-title">Dashboard</h1>
             <section class="metrics-grid">
-                <div class="metric-card"><span>Inventory Items</span><strong><?php echo (int)($metrics['inventory_items'] ?? 0); ?></strong></div>
-                <div class="metric-card"><span>Total Units</span><strong><?php echo (int)($metrics['total_units'] ?? 0); ?></strong></div>
-                <div class="metric-card"><span>Available</span><strong><?php echo (int)($metrics['available_items'] ?? 0); ?></strong></div>
-                <div class="metric-card"><span>Low Stock</span><strong><?php echo (int)($metrics['low_stock_items'] ?? 0); ?></strong></div>
-                <div class="metric-card"><span>Out of Stock</span><strong><?php echo (int)($metrics['out_of_stock_items'] ?? 0); ?></strong></div>
+                <article class="metric-card metric-card--warning">
+                    <span>Deliveries to Count</span>
+                    <strong><?php echo count($pendingDeliveries); ?></strong>
+                </article>
+                <article class="metric-card metric-card--info">
+                    <span>Counts Waiting for Admin Review</span>
+                    <strong><?php echo $waitingForReview; ?></strong>
+                </article>
             </section>
             <div class="dashboard-actions">
-                <a class="action-chip active-chip" href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php">Open Inventory</a>
-                <a class="action-chip" href="/codesamplecaps/INVENTORY_CLERK/sidebar/inventory.php?status=attention">View Alerts</a>
+                <a class="btn-primary" href="/codesamplecaps/INVENTORY_CLERK/dashboards/delivery_verification.php">Open Delivery Count</a>
             </div>
         </section>
+        </div>
 <?php
 }, [
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css',
     '/codesamplecaps/INVENTORY_CLERK/css/dashboard.css',
-], '', [
-    '/codesamplecaps/INVENTORY_CLERK/js/dashboard.js',
-]);
+], 'shared-page-surface');

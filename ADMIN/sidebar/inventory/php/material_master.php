@@ -96,13 +96,13 @@ $validateMaterialValues = static function (array $values) use (
 
     $thresholdUnit = in_array($unit, $materialUnits, true) ? $unit : 'this unit';
     $thresholdError = material_stock_threshold_error($reorderRaw, $thresholdUnit);
-    if ($thresholdError !== null) {
-        $fieldErrors['reorder_level'] = $thresholdError;
+    if ($thresholdError !== null || (float)$reorderRaw <= 0) {
+        $fieldErrors['reorder_level'] = 'Enter a low stock alert level greater than zero.';
     }
     $maximumError = material_stock_threshold_error($maximumRaw, $thresholdUnit);
     if ($maximumError !== null || (float)$maximumRaw <= 0) {
         $fieldErrors['maximum_stock_level'] = 'Enter a maximum stock level greater than zero.';
-    } elseif ($thresholdError === null && (float)$maximumRaw <= (float)$reorderRaw) {
+    } elseif ($thresholdError === null && (float)$reorderRaw > 0 && (float)$maximumRaw <= (float)$reorderRaw) {
         $fieldErrors['maximum_stock_level'] = 'Maximum stock must be greater than the low stock alert level.';
     }
 
@@ -121,7 +121,7 @@ $validateMaterialValues = static function (array $values) use (
         'category' => $category,
         'specific_category' => $specificCategory,
         'unit' => $unit,
-        'reorder' => $thresholdError === null ? (float)$reorderRaw : null,
+        'reorder' => $thresholdError === null && (float)$reorderRaw > 0 ? (float)$reorderRaw : null,
         'maximum_stock_level' => $maximumError === null && (float)$maximumRaw > 0 ? (float)$maximumRaw : null,
         'errors' => $fieldErrors,
     ];
@@ -563,7 +563,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                     <span id="materialReorderTooltip" role="tooltip">You will receive an alert when stock reaches or falls below this level.</span>
                                 </span>
                             </div>
-                            <input id="reorder_level" name="reorder_level" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '0')); ?>" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>
+                            <input id="reorder_level" name="reorder_level" type="number" min="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars((string)($materialFormValues['reorder_level'] ?? '')); ?>" placeholder="Enter alert level" <?php echo $materialFieldError('reorder_level') !== '' ? 'aria-invalid="true" aria-describedby="materialReorderError"' : ''; ?> required>
                             <small id="materialReorderError" class="material-form-error" data-material-field-error="reorder_level"<?php echo $materialFieldError('reorder_level') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('reorder_level')); ?></small>
                         </div>
                         <div class="input-group material-master-maximum">

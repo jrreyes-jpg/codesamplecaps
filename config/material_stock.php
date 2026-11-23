@@ -289,7 +289,7 @@ if (!function_exists('material_stock_fetch_materials')) {
             default => "WHERE status = 'active'",
         };
         $result = $conn->query(
-            "SELECT id, material_code, material_name, description, category, specific_category, unit, physical_quantity, reserved_quantity, reorder_level, maximum_stock_level, status,
+            "SELECT id, material_code, material_name, description, category, specific_category, unit, physical_quantity, reserved_quantity, reorder_level, maximum_stock_level, stock_entry_type, opening_stock_expected, opening_stock_status, status,
                     GREATEST(physical_quantity - reserved_quantity, 0) AS available_quantity
              FROM materials
              {$where}
@@ -603,13 +603,14 @@ if (!function_exists('material_stock_permanently_delete_material')) {
 }
 
 if (!function_exists('material_stock_create_material')) {
-    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $specificCategory, string $unit, ?float $reorderLevel, ?float $maximumStockLevel, ?string $description = null): string
+    function material_stock_create_material(mysqli $conn, string $name, ?string $category, string $specificCategory, string $unit, ?float $reorderLevel, ?float $maximumStockLevel, ?string $description = null, string $stockEntryType = 'new', ?float $openingStockExpected = null): string
     {
         $name = trim($name);
         $category = trim((string)$category);
         $specificCategory = trim($specificCategory);
         $unit = trim($unit);
         $description = trim((string)$description);
+        $stockEntryType = $stockEntryType === 'existing' ? 'existing' : 'new';
 
         if ($name === '' || $unit === '') {
             throw new RuntimeException('Material name and unit are required.');
@@ -624,6 +625,12 @@ if (!function_exists('material_stock_create_material')) {
         if ($maximumStockLevel !== null && $reorderLevel !== null && $maximumStockLevel <= $reorderLevel) {
             throw new RuntimeException('Maximum stock level must be greater than the low stock alert level.');
         }
+        if ($stockEntryType === 'existing' && ($openingStockExpected === null || $openingStockExpected <= 0)) {
+            throw new RuntimeException('Expected opening stock must be greater than zero.');
+        }
+        if ($stockEntryType === 'existing' && $maximumStockLevel !== null && $openingStockExpected > $maximumStockLevel) {
+            throw new RuntimeException('Expected opening stock cannot exceed the maximum stock level.');
+        }
 
         $conn->begin_transaction();
         try {
@@ -631,14 +638,16 @@ if (!function_exists('material_stock_create_material')) {
             $temporaryCode = 'MAT-TEMP-' . bin2hex(random_bytes(12));
             $reorderValue = $reorderLevel === null ? '' : (string)$reorderLevel;
             $maximumValue = $maximumStockLevel === null ? '' : (string)$maximumStockLevel;
+            $openingValue = $stockEntryType === 'existing' ? (string)$openingStockExpected : '';
+            $openingStatus = $stockEntryType === 'existing' ? 'pending_count' : 'not_applicable';
             $insert = $conn->prepare(
-                'INSERT INTO materials (material_code, material_name, description, category, specific_category, unit, reorder_level, maximum_stock_level)
-                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'), NULLIF(?, \'\'))'
+                'INSERT INTO materials (material_code, material_name, description, category, specific_category, unit, reorder_level, maximum_stock_level, stock_entry_type, opening_stock_expected, opening_stock_status)
+                 VALUES (?, ?, NULLIF(?, \'\'), NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'), NULLIF(?, \'\'), ?, NULLIF(?, \'\'), ?)'
             );
             if (!$insert) {
                 throw new RuntimeException('Unable to create material.');
             }
-            $insert->bind_param('ssssssss', $temporaryCode, $name, $description, $category, $specificCategory, $unit, $reorderValue, $maximumValue);
+            $insert->bind_param('sssssssssss', $temporaryCode, $name, $description, $category, $specificCategory, $unit, $reorderValue, $maximumValue, $stockEntryType, $openingValue, $openingStatus);
             if (!$insert->execute()) {
                 throw new RuntimeException('Unable to create material.');
             }

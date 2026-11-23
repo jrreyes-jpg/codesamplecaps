@@ -67,6 +67,8 @@ $validateMaterialValues = static function (array $values) use (
     $unit = trim((string)$values['unit']);
     $reorderRaw = trim((string)$values['reorder_level']);
     $maximumRaw = trim((string)($values['maximum_stock_level'] ?? ''));
+    $stockEntryType = ($values['stock_entry_type'] ?? 'new') === 'existing' ? 'existing' : 'new';
+    $openingStockRaw = trim((string)($values['opening_stock_expected'] ?? ''));
     $fieldErrors = [];
 
     if ($name === '') {
@@ -115,6 +117,19 @@ $validateMaterialValues = static function (array $values) use (
         }
     }
 
+    $openingStockExpected = null;
+    if ($stockEntryType === 'existing') {
+        $openingStockExpected = is_numeric($openingStockRaw) ? (float)$openingStockRaw : null;
+        if ($openingStockExpected === null
+            || $openingStockExpected <= 0
+            || $openingStockExpected > (float)material_stock_decimal_max()
+            || (material_stock_unit_requires_whole_number($unit) && $openingStockExpected !== floor($openingStockExpected))) {
+            $fieldErrors['opening_stock_expected'] = 'Enter expected opening stock above zero.';
+        } elseif ($maximumError === null && (float)$maximumRaw > 0 && $openingStockExpected > (float)$maximumRaw) {
+            $fieldErrors['opening_stock_expected'] = 'Expected opening stock cannot exceed the maximum stock level.';
+        }
+    }
+
     return [
         'name' => $name,
         'description' => $description,
@@ -123,6 +138,8 @@ $validateMaterialValues = static function (array $values) use (
         'unit' => $unit,
         'reorder' => $thresholdError === null && (float)$reorderRaw > 0 ? (float)$reorderRaw : null,
         'maximum_stock_level' => $maximumError === null && (float)$maximumRaw > 0 ? (float)$maximumRaw : null,
+        'stock_entry_type' => $stockEntryType,
+        'opening_stock_expected' => $openingStockExpected,
         'errors' => $fieldErrors,
     ];
 };
@@ -155,6 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'reorder_level' => $materialPostText($_POST['reorder_level'] ?? ''),
                 'maximum_stock_level' => $materialPostText($_POST['maximum_stock_level'] ?? ''),
                 'description' => $materialPostText($_POST['description'] ?? ''),
+                'stock_entry_type' => $materialPostText($_POST['stock_entry_type'] ?? 'new'),
+                'opening_stock_expected' => $materialPostText($_POST['opening_stock_expected'] ?? ''),
             ];
             $validated = $validateMaterialValues($submittedMaterialValues);
             $fieldErrors = $validated['errors'];
@@ -201,7 +220,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $validated['unit'],
                     (float)$validated['reorder'],
                     $validated['maximum_stock_level'],
-                    $validated['description']
+                    $validated['description'],
+                    $validated['stock_entry_type'],
+                    $validated['opening_stock_expected']
                 );
                 $_SESSION[$materialFlashKey] = ['type' => 'success', 'action' => 'create', 'message' => 'Material ' . $code . ' created.'];
             }
@@ -269,6 +290,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'reorder_level' => $materialPostText($_POST['reorder_level'] ?? ''),
                     'maximum_stock_level' => $materialPostText($_POST['maximum_stock_level'] ?? ''),
                     'description' => $materialPostText($_POST['description'] ?? ''),
+                    'stock_entry_type' => $materialPostText($_POST['stock_entry_type'] ?? 'new'),
+                    'opening_stock_expected' => $materialPostText($_POST['opening_stock_expected'] ?? ''),
                 ],
             ];
         } else {
@@ -347,7 +370,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </nav>
                 <div class="inventory-report-heading__actions">
                     <a class="btn-secondary" href="/codesamplecaps/ADMIN/sidebar/inventory/php/material_stock_in.php">Log Delivery Receipt</a>
-                    <button type="button" class="btn-primary" data-material-modal-open>+ Add Material</button>
+                    <div class="material-add-menu" data-material-add-menu>
+                        <button type="button" class="btn-primary" data-material-modal-open aria-haspopup="menu" aria-expanded="false">+ Add Material</button>
+                        <div class="material-add-menu__options" data-material-add-options role="menu" hidden>
+                            <button type="button" role="menuitem" data-material-entry-select="new">
+                                <strong>New Material</strong>
+                                <span>No Current Stock</span>
+                            </button>
+                            <button type="button" role="menuitem" data-material-entry-select="existing">
+                                <strong>Existing Material</strong>
+                                <span>With Current Stock</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="inventory-report-search">
@@ -371,7 +406,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
                         $variance = $latestCount === null
                             ? null
-                            : (float)$latestCount['counted_quantity'] - (float)$latestCount['total_quantity_snapshot'];
+                            : (float)$latestCount['counted_quantity'] - (float)$latestCount['expected_quantity_snapshot'];
                         $isShortage = $variance !== null && $variance < -0.005;
                         $archiveBlockReason = $archiveBlockReasons[(int)$material['id']] ?? '';
                         $canArchive = $archiveBlockReason === '';
@@ -389,7 +424,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <?php if ($description !== ''): ?><button type="button" class="material-description-view" data-material-description-open data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-description="<?php echo htmlspecialchars($description, ENT_QUOTES, 'UTF-8'); ?>">View Description</button><?php endif; ?>
                             </td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
-                            <td data-label="On-Hand Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong></td>
+                            <td data-label="On-Hand Stock" class="material-master-number">
+                                <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong>
+                                <?php if (in_array((string)($material['opening_stock_status'] ?? ''), ['pending_count', 'pending_review', 'recount'], true)): ?>
+                                    <small>Expected opening: <?php echo htmlspecialchars($displayMaterialQuantity((float)$material['opening_stock_expected'])); ?></small>
+                                <?php endif; ?>
+                            </td>
                             <td data-label="Reserved Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['reserved_quantity'])); ?></strong></td>
                             <td data-label="Available Stock" class="material-master-number material-stock-cell">
                                 <strong><?php echo htmlspecialchars($displayMaterialQuantity(material_stock_available_quantity($material))); ?></strong>
@@ -525,11 +565,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <?php if (!empty($materialFormState['general_error'])): ?>
                     <div class="alert alert-error" role="alert" tabindex="-1" data-material-general-error><?php echo htmlspecialchars((string)$materialFormState['general_error']); ?></div>
                 <?php endif; ?>
-                <form method="POST" data-material-create-form novalidate>
+                <form method="POST" data-material-create-form<?php echo $materialFormMode === 'add' && !$materialFormState ? ' hidden' : ''; ?> novalidate>
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
                     <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($materialFormMode === 'edit' ? $materialUpdateRequestToken : $materialCreateRequestToken); ?>" data-material-request-token>
                     <input type="hidden" name="material_action" value="<?php echo $materialFormMode === 'edit' ? 'update' : 'create'; ?>" data-material-form-action>
                     <input type="hidden" name="material_id" value="<?php echo $materialFormMode === 'edit' ? $materialFormMaterialId : ''; ?>" data-material-form-id>
+                    <input type="hidden" name="stock_entry_type" value="<?php echo htmlspecialchars((string)($materialFormValues['stock_entry_type'] ?? 'new')); ?>" data-material-entry-type>
                     <input type="hidden" name="locked_unit" value="<?php echo htmlspecialchars((string)($materialFormValues['unit'] ?? '')); ?>" data-material-locked-unit <?php echo $materialFormUnitEditable ? 'disabled' : ''; ?>>
                     <div class="form-grid material-master-form-grid">
                         <div class="input-group material-master-name">
@@ -576,6 +617,11 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </div>
                             <input id="maximum_stock_level" name="maximum_stock_level" type="number" min="0.01" max="<?php echo htmlspecialchars(material_stock_threshold_max_for_unit((string)($materialFormValues['unit'] ?? ''))); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)($materialFormValues['unit'] ?? '')) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars((string)($materialFormValues['maximum_stock_level'] ?? '')); ?>" <?php echo $materialFieldError('maximum_stock_level') !== '' ? 'aria-invalid="true" aria-describedby="materialMaximumError"' : ''; ?> required>
                             <small id="materialMaximumError" class="material-form-error" data-material-field-error="maximum_stock_level"<?php echo $materialFieldError('maximum_stock_level') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('maximum_stock_level')); ?></small>
+                        </div>
+                        <div class="input-group material-opening-stock" data-material-opening-stock-field<?php echo ($materialFormValues['stock_entry_type'] ?? 'new') === 'existing' ? '' : ' hidden'; ?>>
+                            <label for="opening_stock_expected">Expected Opening Stock <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <input id="opening_stock_expected" name="opening_stock_expected" type="number" min="0.01" max="<?php echo htmlspecialchars(material_stock_decimal_max()); ?>" step="0.01" value="<?php echo htmlspecialchars((string)($materialFormValues['opening_stock_expected'] ?? '')); ?>" placeholder="Enter expected stock" <?php echo $materialFieldError('opening_stock_expected') !== '' ? 'aria-invalid="true" aria-describedby="materialOpeningStockError"' : ''; ?> <?php echo ($materialFormValues['stock_entry_type'] ?? 'new') === 'existing' ? 'required' : 'disabled'; ?>>
+                            <small id="materialOpeningStockError" class="material-form-error" data-material-field-error="opening_stock_expected"<?php echo $materialFieldError('opening_stock_expected') === '' ? ' hidden' : ''; ?>><?php echo htmlspecialchars($materialFieldError('opening_stock_expected')); ?></small>
                         </div>
                         <div class="input-group material-master-description">
                             <label for="description">Description (Optional)</label>

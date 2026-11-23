@@ -87,7 +87,6 @@ inventory_clerk_render_page('Physical Count', function () use (
         <div class="materials-master-list__heading">
             <div>
                 <h1 class="section-title-inline">Physical Count</h1>
-                <p class="blind-audit-note">Enter the actual quantity found. System stock is hidden.</p>
             </div>
         </div>
 

@@ -80,15 +80,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <h2 class="material-history-subtitle">Clerk Physical Count History</h2>
             <div class="table-responsive">
                 <table class="data-table material-history-table mobile-card-table">
-                    <thead><tr><th>Date</th><th>Material</th><th>System Stock at Count</th><th>Clerk Count</th><th>Variance</th><th>Review Status</th><th>Counted By</th><th>Remarks</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Material</th><th>Expected Stock</th><th>Clerk Count</th><th>Variance</th><th>Review Status</th><th>Counted By</th><th>Remarks</th></tr></thead>
                     <tbody>
                     <?php if ($physicalCounts === []): ?><tr><td colspan="8" class="empty-state">No Clerk physical count yet.</td></tr><?php endif; ?>
                     <?php foreach ($physicalCounts as $count): ?>
-                        <?php $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot']; $countStatus = material_physical_count_status($count); ?>
+                        <?php $variance = (float)$count['counted_quantity'] - (float)$count['expected_quantity_snapshot']; $countStatus = material_physical_count_status($count); ?>
                         <tr>
                             <td data-label="Date"><?php echo htmlspecialchars((string)$count['counted_at']); ?></td>
                             <td data-label="Material"><?php echo htmlspecialchars((string)$count['material_name']); ?></td>
-                            <td data-label="System Stock at Count"><?php echo htmlspecialchars($displayQuantity((float)$count['total_quantity_snapshot']) . ' ' . (string)$count['unit']); ?></td>
+                            <td data-label="Expected Stock"><?php echo htmlspecialchars($displayQuantity((float)$count['expected_quantity_snapshot']) . ' ' . (string)$count['unit']); ?></td>
                             <td data-label="Clerk Count"><?php echo htmlspecialchars($displayQuantity((float)$count['counted_quantity']) . ' ' . (string)$count['unit']); ?></td>
                             <td data-label="Variance"><?php echo htmlspecialchars(($variance > 0 ? '+' : '') . $displayQuantity($variance) . ' ' . (string)$count['unit']); ?></td>
                             <td data-label="Review Status"><?php echo htmlspecialchars($countStatus['label']); ?></td>

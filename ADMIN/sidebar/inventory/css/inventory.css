@@ -784,6 +784,58 @@
     margin: 0;
 }
 
+.material-add-menu {
+    position: relative;
+}
+
+.material-add-menu__options {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 8px);
+    right: 0;
+    display: grid;
+    width: min(280px, calc(100vw - 32px));
+    padding: 6px;
+    border: 1px solid #dbe4ee;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .12);
+}
+
+.material-add-menu__options[hidden] {
+    display: none;
+}
+
+.material-add-menu__options button {
+    display: grid;
+    gap: 2px;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0f172a;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.material-add-menu__options button:hover,
+.material-add-menu__options button:focus-visible {
+    background: #f0fdf4;
+    outline: 2px solid rgba(21, 128, 61, .18);
+}
+
+.material-add-menu__options span {
+    color: #64748b;
+    font-size: .82rem;
+}
+
+.material-create-modal form[hidden],
+.material-opening-stock[hidden] {
+    display: none;
+}
+
 .material-create-modal__header h2 {
     color: #0f172a;
     font-size: 1.25rem;

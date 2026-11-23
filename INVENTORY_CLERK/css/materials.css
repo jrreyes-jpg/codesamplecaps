@@ -808,6 +808,19 @@ body.materials-modal-open {
 .blind-audit-table th:nth-child(3) { width: 25%; }
 .blind-audit-table th:nth-child(4) { width: 30%; }
 
+/* Pareho ang laki nito sa Delivery Count table. */
+.blind-audit-table th,
+.blind-audit-table td {
+    padding: 12px 14px;
+    font-size: .9rem;
+    line-height: 1.4;
+    vertical-align: top;
+}
+
+.blind-audit-table th {
+    white-space: normal;
+}
+
 .blind-audit-table th:nth-child(1),
 .blind-audit-table td:nth-child(1),
 .blind-audit-table th:nth-child(2),

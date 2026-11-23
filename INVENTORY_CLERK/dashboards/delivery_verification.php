@@ -6,6 +6,14 @@ require_once __DIR__ . '/../../config/material_delivery_verification.php';
 $flashKey = 'inventory_clerk_delivery_verification_flash';
 $csrfToken = auth_csrf_token('inventory_clerk_delivery_verification');
 
+$clerkUserId = (int)($_SESSION['user_id'] ?? 0);
+$deliveryNoticeState = user_notifications_fetch_unread_state($conn, $clerkUserId, 20);
+foreach ($deliveryNoticeState['items'] as $notification) {
+    if (($notification['type'] ?? '') === 'material_delivery_count_ready') {
+        user_notifications_mark_read($conn, (int)$notification['id'], $clerkUserId);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!auth_is_valid_csrf($_POST['csrf_token'] ?? null, 'inventory_clerk_delivery_verification')) {

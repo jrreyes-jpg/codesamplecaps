@@ -1,6 +1,7 @@
 <?php
 // Admin expected delivery at Clerk actual count lang ang flow nito.
 require_once __DIR__ . '/material_stock.php';
+require_once __DIR__ . '/user_notifications.php';
 
 if (!function_exists('material_delivery_verification_is_ready')) {
     function material_delivery_verification_is_ready(mysqli $conn): bool
@@ -193,6 +194,7 @@ if (!function_exists('material_delivery_verification_create_batch')) {
                 throw new RuntimeException('Unable to save delivery records.');
             }
 
+            $firstDeliveryId = 0;
             foreach ($materialRows as $row) {
                 $materialId = (int)$row['material_id'];
                 $expectedQuantity = material_delivery_verification_validate_quantity(
@@ -202,6 +204,33 @@ if (!function_exists('material_delivery_verification_create_batch')) {
                 $insert->bind_param('idssssi', $materialId, $expectedQuantity, $supplierName, $receiptNo, $deliveryDate, $adminNotes, $adminUserId);
                 if (!$insert->execute()) {
                     throw new RuntimeException('Unable to save delivery records.');
+                }
+                if ($firstDeliveryId === 0) {
+                    $firstDeliveryId = (int)$insert->insert_id;
+                }
+            }
+
+            // Isang alert lang bawat DR kahit maraming material ang laman.
+            $clerkResult = $conn->query(
+                "SELECT id FROM users
+                 WHERE role = 'inventory_clerk'
+                   AND status = 'active'
+                   AND deleted_at IS NULL
+                 ORDER BY id ASC"
+            );
+            if ($clerkResult instanceof mysqli_result) {
+                foreach ($clerkResult->fetch_all(MYSQLI_ASSOC) as $clerk) {
+                    $clerkId = (int)($clerk['id'] ?? 0);
+                    user_notifications_create_if_missing(
+                        $conn,
+                        $clerkId,
+                        'material_delivery_count_ready',
+                        $firstDeliveryId,
+                        'New Delivery Count',
+                        'New delivery is ready for counting. ' . $receiptNo . '.',
+                        '/codesamplecaps/INVENTORY_CLERK/dashboards/delivery_verification.php',
+                        'delivery-count-ready-' . $firstDeliveryId . '-user-' . $clerkId
+                    );
                 }
             }
 

@@ -19,8 +19,11 @@ if (!function_exists('material_physical_count_status')) {
             return ['key' => 'recount', 'label' => 'Recount Requested', 'tone' => 'warning', 'needs_review' => false];
         }
 
-        $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot'];
+        $variance = (float)$count['counted_quantity'] - (float)$count['expected_quantity_snapshot'];
         if (abs($variance) < 0.005) {
+            if (($count['count_type'] ?? 'regular') === 'opening') {
+                return ['key' => 'opening_review', 'label' => 'Initial Count Review', 'tone' => 'warning', 'needs_review' => true];
+            }
             return ['key' => 'matched', 'label' => 'Matched', 'tone' => 'success', 'needs_review' => false];
         }
         if ($variance > 0) {
@@ -53,8 +56,13 @@ if (!function_exists('material_physical_count_fetch_clerk_materials')) {
         // Huwag isama ang system stock sa Clerk query.
         $result = $conn->query(
             "SELECT id, material_name, description, unit
-             FROM materials
-             WHERE status = 'active'
+             FROM materials m
+             WHERE m.status = 'active'
+               AND (
+                    m.opening_stock_status IN ('pending_count', 'recount', 'approved')
+                    OR m.physical_quantity > 0
+                    OR EXISTS (SELECT 1 FROM material_stock_movements sm WHERE sm.material_id = m.id)
+               )
              ORDER BY material_name ASC, id ASC"
         );
 
@@ -146,7 +154,7 @@ if (!function_exists('material_physical_count_submit')) {
 
         try {
             $materialStmt = $conn->prepare(
-                "SELECT id, unit, physical_quantity, reserved_quantity
+                "SELECT id, unit, physical_quantity, reserved_quantity, opening_stock_expected, opening_stock_status
                  FROM materials
                  WHERE id = ? AND status = 'active'
                  FOR UPDATE"
@@ -154,8 +162,8 @@ if (!function_exists('material_physical_count_submit')) {
             $insertStmt = $conn->prepare(
                 'INSERT INTO material_physical_counts
                     (material_id, counted_quantity, total_quantity_snapshot, reserved_quantity_snapshot,
-                     expected_quantity_snapshot, counted_by)
-                 VALUES (?, ?, ?, ?, ?, ?)'
+                     expected_quantity_snapshot, count_type, counted_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
             if (!$materialStmt || !$insertStmt) {
                 throw new RuntimeException('Unable to save the physical count.');
@@ -170,7 +178,7 @@ if (!function_exists('material_physical_count_submit')) {
                 }
 
                 $latestStmt = $conn->prepare(
-                    "SELECT pc.id, pc.counted_quantity, pc.total_quantity_snapshot,
+                    "SELECT pc.id, pc.counted_quantity, pc.total_quantity_snapshot, pc.expected_quantity_snapshot, pc.count_type,
                             (SELECT review_log.action
                              FROM audit_logs review_log
                              WHERE review_log.entity_type = 'material_physical_count'
@@ -215,18 +223,30 @@ if (!function_exists('material_physical_count_submit')) {
                 $totalQuantity = (float)$material['physical_quantity'];
                 $reservedQuantity = (float)$material['reserved_quantity'];
                 // Simple audit: ihambing ang bilang ng Clerk sa system stock.
-                $expectedQuantity = $totalQuantity;
+                $isOpeningCount = in_array((string)$material['opening_stock_status'], ['pending_count', 'recount'], true);
+                $expectedQuantity = $isOpeningCount
+                    ? (float)$material['opening_stock_expected']
+                    : $totalQuantity;
+                $countType = $isOpeningCount ? 'opening' : 'regular';
                 $insertStmt->bind_param(
-                    'iddddi',
+                    'iddddsi',
                     $materialId,
                     $countedQuantity,
                     $totalQuantity,
                     $reservedQuantity,
                     $expectedQuantity,
+                    $countType,
                     $userId
                 );
                 if (!$insertStmt->execute()) {
                     throw new RuntimeException('Unable to save the physical count.');
+                }
+                if ($isOpeningCount) {
+                    $openingUpdate = $conn->prepare("UPDATE materials SET opening_stock_status = 'pending_review' WHERE id = ?");
+                    $openingUpdate->bind_param('i', $materialId);
+                    if (!$openingUpdate->execute()) {
+                        throw new RuntimeException('Unable to update the initial count status.');
+                    }
                 }
                 $physicalCountId = (int)$insertStmt->insert_id;
 
@@ -291,7 +311,7 @@ if (!function_exists('material_physical_count_fetch_latest')) {
 
         $result = $conn->query(
             "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot,
-                    pc.reserved_quantity_snapshot, pc.expected_quantity_snapshot,
+                    pc.reserved_quantity_snapshot, pc.expected_quantity_snapshot, pc.count_type,
                     pc.counted_at, u.full_name AS counted_by_name, al.new_values AS audit_values,
                     (SELECT review_log.action
                      FROM audit_logs review_log
@@ -333,7 +353,7 @@ if (!function_exists('material_physical_count_fetch_history')) {
             return [];
         }
 
-        $sql = "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.counted_at,
+        $sql = "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.expected_quantity_snapshot, pc.count_type, pc.counted_at,
                        m.material_name, m.unit, u.full_name AS counted_by_name, al.new_values AS audit_values
                        ,(SELECT review_log.action
                          FROM audit_logs review_log
@@ -385,8 +405,8 @@ if (!function_exists('material_physical_count_review')) {
         $conn->begin_transaction();
         try {
             $stmt = $conn->prepare(
-                "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.counted_by,
-                        m.material_name, m.unit, m.physical_quantity, m.reserved_quantity,
+                "SELECT pc.id, pc.material_id, pc.counted_quantity, pc.total_quantity_snapshot, pc.expected_quantity_snapshot, pc.count_type, pc.counted_by,
+                        m.material_name, m.unit, m.physical_quantity, m.reserved_quantity, m.opening_stock_status,
                         (SELECT review_log.action
                          FROM audit_logs review_log
                          WHERE review_log.entity_type = 'material_physical_count'
@@ -412,8 +432,9 @@ if (!function_exists('material_physical_count_review')) {
                 throw new RuntimeException('This physical count was already reviewed.');
             }
 
-            $variance = (float)$count['counted_quantity'] - (float)$count['total_quantity_snapshot'];
-            if (abs($variance) < 0.005) {
+            $variance = (float)$count['counted_quantity'] - (float)$count['expected_quantity_snapshot'];
+            $isOpeningCount = (string)($count['count_type'] ?? 'regular') === 'opening';
+            if (!$isOpeningCount && abs($variance) < 0.005) {
                 throw new RuntimeException('This physical count already matches the system stock.');
             }
 
@@ -463,9 +484,17 @@ if (!function_exists('material_physical_count_review')) {
                     abs($variance),
                     $currentQuantity,
                     $newQuantity,
-                    'Accepted Clerk physical count #' . $countId,
+                    $isOpeningCount ? 'Accepted opening count #' . $countId : 'Accepted Clerk physical count #' . $countId,
                     $adminId
                 );
+
+                if ($isOpeningCount) {
+                    $openingStatusUpdate = $conn->prepare("UPDATE materials SET opening_stock_status = 'approved' WHERE id = ?");
+                    $openingStatusUpdate->bind_param('i', $materialId);
+                    if (!$openingStatusUpdate->execute()) {
+                        throw new RuntimeException('Unable to approve the opening stock.');
+                    }
+                }
             }
 
             $oldValues = ['system_stock' => (float)$count['total_quantity_snapshot']];
@@ -487,6 +516,14 @@ if (!function_exists('material_physical_count_review')) {
             }
 
             if ($decision === 'recount') {
+                if ($isOpeningCount) {
+                    $openingStatusUpdate = $conn->prepare("UPDATE materials SET opening_stock_status = 'recount' WHERE id = ?");
+                    $openingMaterialId = (int)$count['material_id'];
+                    $openingStatusUpdate->bind_param('i', $openingMaterialId);
+                    if (!$openingStatusUpdate->execute()) {
+                        throw new RuntimeException('Unable to request the opening stock recount.');
+                    }
+                }
                 user_notifications_create_if_missing(
                     $conn,
                     (int)$count['counted_by'],

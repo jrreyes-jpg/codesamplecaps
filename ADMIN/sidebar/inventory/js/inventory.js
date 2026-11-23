@@ -309,6 +309,11 @@
     const lockedUnit = form ? form.querySelector('[data-material-locked-unit]') : null;
     const unitLockReason = modal.querySelector('[data-material-unit-lock]');
     const specificCategoryGroup = modal.querySelector('[data-material-specific-category-field]');
+    const addMenu = document.querySelector('[data-material-add-menu]');
+    const addOptions = document.querySelector('[data-material-add-options]');
+    const entryChoiceButtons = Array.from(document.querySelectorAll('[data-material-entry-select]'));
+    const entryType = form ? form.querySelector('[data-material-entry-type]') : null;
+    const openingStockGroup = modal.querySelector('[data-material-opening-stock-field]');
     const editButtons = Array.from(document.querySelectorAll('[data-material-edit-open]'));
     const tooltipWrappers = Array.from(modal.querySelectorAll('[data-material-tooltip]'));
     const fields = form ? {
@@ -318,6 +323,7 @@
         unit: form.querySelector('#unit'),
         reorder_level: form.querySelector('#reorder_level'),
         maximum_stock_level: form.querySelector('#maximum_stock_level'),
+        opening_stock_expected: form.querySelector('#opening_stock_expected'),
         description: form.querySelector('#description')
     } : {};
     const fieldErrors = {};
@@ -328,7 +334,7 @@
     let isSubmitting = false;
 
     const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
-    const addDraftFieldNames = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'maximum_stock_level', 'description'];
+    const addDraftFieldNames = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'maximum_stock_level', 'opening_stock_expected', 'description'];
     const draftScope = String(modal.dataset.draftScope || 'unknown');
     const draftKeyPrefix = 'edge:admin:add-material-draft:';
     const draftScopeMarker = 'edge:admin:add-material-draft-scope';
@@ -344,6 +350,23 @@
 
     function isAddMode() {
         return Boolean(formAction && formAction.value === 'create');
+    }
+
+    function setEntryType(type) {
+        const isExisting = type === 'existing';
+        if (entryType) entryType.value = isExisting ? 'existing' : 'new';
+        if (openingStockGroup) openingStockGroup.hidden = !isExisting;
+        if (fields.opening_stock_expected) {
+            fields.opening_stock_expected.disabled = !isExisting;
+            fields.opening_stock_expected.required = isExisting;
+            if (!isExisting) {
+                fields.opening_stock_expected.value = '';
+                setFieldError('opening_stock_expected', '');
+            }
+        }
+        if (form) form.hidden = false;
+        fields.material_name?.focus();
+        saveAddDraft();
     }
 
     function clearStoredAddDraft() {
@@ -386,7 +409,7 @@
 
     function saveAddDraft() {
         if (!isAddMode()) return;
-        const draft = {};
+        const draft = { stock_entry_type: entryType?.value || 'new' };
         let hasValue = false;
         addDraftFieldNames.forEach(function (name) {
             const value = fields[name] ? fields[name].value : '';
@@ -503,11 +526,17 @@
                 return !option.disabled && option.value === value;
             });
             if (!valid) message = 'Select a unit.';
-        } else if (name === 'reorder_level' || name === 'maximum_stock_level') {
+        } else if (name === 'reorder_level' || name === 'maximum_stock_level' || name === 'opening_stock_expected') {
+            if (name === 'opening_stock_expected' && entryType?.value !== 'existing') {
+                setFieldError(name, '');
+                return true;
+            }
             if (value === '' || /^-/.test(value)) {
                 message = name === 'maximum_stock_level'
                     ? 'Enter a maximum stock level greater than zero.'
-                    : 'Enter a low stock alert level greater than zero.';
+                    : (name === 'opening_stock_expected'
+                        ? 'Enter expected opening stock above zero.'
+                        : 'Enter a low stock alert level greater than zero.');
             } else if (!/^\d+(?:\.\d+)?$/.test(value)) {
                 message = 'Enter a valid number.';
             } else {
@@ -526,6 +555,10 @@
                     message = 'Enter a low stock alert level greater than zero.';
                 } else if (name === 'maximum_stock_level' && Number(value) <= 0) {
                     message = 'Enter a maximum stock level greater than zero.';
+                } else if (name === 'opening_stock_expected' && Number(value) <= 0) {
+                    message = 'Enter expected opening stock above zero.';
+                } else if (name === 'opening_stock_expected' && Number(value) > Number(fields.maximum_stock_level.value || 0)) {
+                    message = 'Expected opening stock cannot exceed the maximum stock level.';
                 } else if (name === 'maximum_stock_level' && Number(value) <= Number(fields.reorder_level.value || 0)) {
                     message = 'Maximum stock must be greater than the low stock alert level.';
                 }
@@ -546,7 +579,9 @@
     }
 
     function validateForm() {
-        const order = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'maximum_stock_level', 'description'];
+        const order = ['material_name', 'category', 'specific_category', 'unit', 'reorder_level', 'maximum_stock_level'];
+        if (entryType?.value === 'existing') order.push('opening_stock_expected');
+        order.push('description');
         let firstInvalid = null;
         order.forEach(function (name) {
             if (!validateField(name) && !firstInvalid) firstInvalid = fields[name];
@@ -556,7 +591,7 @@
 
     function updateReorderStep() {
         const wholeNumber = selectedUnitNeedsWholeNumber();
-        ['reorder_level', 'maximum_stock_level'].forEach(function (name) {
+        ['reorder_level', 'maximum_stock_level', 'opening_stock_expected'].forEach(function (name) {
             if (fields[name]) {
                 const field = fields[name];
                 field.step = wholeNumber ? '1' : '0.01';
@@ -647,6 +682,8 @@
             fields.reorder_level.value = data.materialReorder || '';
             fields.maximum_stock_level.value = data.materialMaximum || '';
             configureUnitLock(data.unitEditable === 'true');
+            if (form) form.hidden = false;
+            setEntryType('new');
         } else {
             configureUnitLock(true);
         }
@@ -656,7 +693,7 @@
 
     function clearAddForm(clearDraft) {
         if (!form) return;
-        ['material_name', 'specific_category', 'maximum_stock_level', 'description'].forEach(function (name) {
+        ['material_name', 'specific_category', 'maximum_stock_level', 'opening_stock_expected', 'description'].forEach(function (name) {
             if (fields[name]) fields[name].value = '';
         });
         if (fields.reorder_level) fields.reorder_level.value = '';
@@ -672,6 +709,9 @@
         configureUnitLock(true);
         updateSpecificCategoryField();
         updateReorderStep();
+        if (entryType) entryType.value = 'new';
+        if (openingStockGroup) openingStockGroup.hidden = true;
+        if (fields.opening_stock_expected) fields.opening_stock_expected.disabled = true;
         if (clearDraft) clearStoredAddDraft();
     }
 
@@ -679,7 +719,7 @@
         const draft = readAddDraft();
         if (!draft) return;
 
-        ['material_name', 'specific_category', 'reorder_level', 'maximum_stock_level', 'description'].forEach(function (name) {
+        ['material_name', 'specific_category', 'reorder_level', 'maximum_stock_level', 'opening_stock_expected', 'description'].forEach(function (name) {
             if (fields[name] && typeof draft[name] === 'string') fields[name].value = draft[name];
         });
         ['category', 'unit'].forEach(function (name) {
@@ -691,6 +731,7 @@
         });
         updateSpecificCategoryField();
         updateReorderStep();
+        setEntryType(draft.stock_entry_type === 'existing' ? 'existing' : 'new');
         addDraftFieldNames.forEach(function (name) {
             if (!fields[name] || fields[name].value.trim() === '') return;
             fields[name].dataset.materialDirty = 'true';
@@ -757,9 +798,25 @@
     }
 
     openButton.addEventListener('click', function () {
-        resetMaterialForm();
-        restoreAddDraft();
-        openModal(false);
+        if (!addOptions) return;
+        const willOpen = addOptions.hidden;
+        addOptions.hidden = !willOpen;
+        openButton.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        if (willOpen) addOptions.querySelector('button')?.focus();
+    });
+    entryChoiceButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (addOptions) addOptions.hidden = true;
+            openButton.setAttribute('aria-expanded', 'false');
+            resetMaterialForm();
+            setEntryType(button.dataset.materialEntrySelect || 'new');
+            openModal(false, openButton);
+        });
+    });
+    document.addEventListener('click', function (event) {
+        if (!addMenu || !addOptions || addOptions.hidden || addMenu.contains(event.target)) return;
+        addOptions.hidden = true;
+        openButton.setAttribute('aria-expanded', 'false');
     });
     editButtons.forEach(function (button) {
         button.addEventListener('click', function () {

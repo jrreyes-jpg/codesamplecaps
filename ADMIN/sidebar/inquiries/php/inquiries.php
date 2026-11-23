@@ -2877,9 +2877,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             && $currentStatus === 'For Inspection'
                             && $latestInspection
                             && !in_array($latestInspectionStatus, ['Submitted'], true);
-                        $engineerCostingState = in_array($latestInspectionStatus, ['Ongoing', 'On Hold', 'Completed'], true)
-                            ? 'Costing in Progress'
-                            : 'Pending Costing';
                     ?>
                     <article class="inquiry-card shared-list-card shared-workflow-card <?php echo $isViewed ? 'is-viewed' : 'is-unviewed'; ?>" data-inquiry-card-id="<?php echo (int)$inquiry['id']; ?>" data-list-search="<?php echo htmlspecialchars(implode(' ', [inquiry_reference_number((int)$inquiry['id']), (string)$inquiry['client_name'], $cardService, $cardLocation]), ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="inquiry-card__head shared-workflow-card__head">
@@ -2933,8 +2930,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             <?php if ($showEngineerCostingAssignment): ?>
                                 <span class="shared-workflow-assignment">
                                     Assigned to: Engr. <?php echo htmlspecialchars((string)($latestInspection['engineer_name'] ?? 'Not assigned'), ENT_QUOTES, 'UTF-8'); ?>
-                                    <span aria-hidden="true">&bull;</span>
-                                    <?php echo htmlspecialchars($engineerCostingState, ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             <?php endif; ?>
                         </div>

@@ -958,8 +958,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $error = 'Choose Use from stock or Keep as Non-stock.';
                         break;
                     }
-                    if ($itemNotes === '') {
-                        $error = 'Please explain why this is kept as Non-stock.';
+                    $itemNotes = preg_replace('/\s+/u', ' ', $itemNotes) ?? $itemNotes;
+                    if (mb_strlen($itemNotes) < 5 || mb_strlen($itemNotes) > 200 || preg_match('/\p{L}/u', $itemNotes) !== 1) {
+                        $error = 'Enter a short reason for keeping this as Non-stock.';
                         break;
                     }
                 }
@@ -1582,7 +1583,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261124-2',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261124-3',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
@@ -2126,9 +2127,25 @@ require __DIR__ . '/../layout/header.php';
                                         <thead><tr><th>Type</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr></thead>
                                         <tbody>
                                             <?php foreach ($submittedMaterialCostItems as $submittedItem): ?>
+                                                <?php
+                                                $isNonStockSubmittedItem = (int)($submittedItem['material_id'] ?? 0) <= 0;
+                                                $submittedReason = trim((string)($submittedItem['notes'] ?? ''));
+                                                $showSubmittedReasonToggle = $isNonStockSubmittedItem && mb_strlen($submittedReason) > 90;
+                                                ?>
                                                 <tr>
-                                                    <td>Material</td>
-                                                    <td><?php echo htmlspecialchars((string)($submittedItem['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><span class="inspection-cost-type <?php echo $isNonStockSubmittedItem ? 'inspection-cost-type--non-stock' : 'inspection-cost-type--stock'; ?>"><?php echo $isNonStockSubmittedItem ? 'Non-stock Material' : 'Stock Material'; ?></span></td>
+                                                    <td>
+                                                        <strong class="inspection-submitted-item-name"><?php echo htmlspecialchars((string)($submittedItem['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                        <?php if ($isNonStockSubmittedItem && $submittedReason !== ''): ?>
+                                                            <div class="inspection-submitted-reason" data-submitted-nonstock-reason>
+                                                                <span class="inspection-submitted-reason__label">Reason:</span>
+                                                                <span class="inspection-submitted-reason__text"><?php echo htmlspecialchars($submittedReason, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            </div>
+                                                            <?php if ($showSubmittedReasonToggle): ?>
+                                                                <button type="button" class="inspection-submitted-reason__toggle" data-submitted-nonstock-toggle aria-expanded="false">View more</button>
+                                                            <?php endif; ?>
+                                                        <?php endif; ?>
+                                                    </td>
                                                     <td><?php echo htmlspecialchars(site_inspection_format_quantity((float)($submittedItem['quantity'] ?? 0), (string)($submittedItem['unit'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars((string)($submittedItem['unit'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars(engineer_format_money((float)($submittedItem['unit_cost'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
@@ -2213,7 +2230,7 @@ require __DIR__ . '/../layout/header.php';
                                             </span>
                                             <label>
                                                 <span data-material-notes-label>Notes (Optional)</span>
-                                                <input type="text" name="notes[]" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <input type="text" name="notes[]" maxlength="200" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                             </label>
                                         </div>
                                         <label>
@@ -2488,7 +2505,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-10',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-12',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

@@ -806,6 +806,79 @@
     white-space: nowrap;
 }
 
+.inspection-submitted-costs th:nth-child(5),
+.inspection-submitted-costs th:nth-child(6),
+.inspection-submitted-costs td:nth-child(5),
+.inspection-submitted-costs td:nth-child(6) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.inspection-cost-type {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    line-height: 1.15;
+}
+
+.inspection-cost-type--stock {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inspection-cost-type--non-stock {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.inspection-submitted-item-name {
+    display: block;
+    color: #1e293b;
+}
+
+.inspection-submitted-reason {
+    display: block;
+    max-width: 310px;
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 0.73rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.inspection-submitted-reason__label {
+    color: #475569;
+    font-weight: 800;
+}
+
+.inspection-submitted-reason__text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.inspection-submitted-reason.is-expanded .inspection-submitted-reason__text {
+    display: inline;
+}
+
+.inspection-submitted-reason__toggle {
+    margin-top: 3px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #166534;
+    font: inherit;
+    font-size: 0.73rem;
+    font-weight: 900;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .inspection-readonly-empty {
     color: #64748b;
     text-align: center;

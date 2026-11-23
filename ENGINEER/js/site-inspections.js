@@ -1,5 +1,14 @@
 // Costing rows para mabilis magdagdag ng materials, labor, at notes.
 document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-submitted-nonstock-toggle]');
+        if (!toggle) return;
+        const reason = toggle.previousElementSibling;
+        if (!reason?.matches('[data-submitted-nonstock-reason]')) return;
+        const isExpanded = reason.classList.toggle('is-expanded');
+        toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        toggle.textContent = isExpanded ? 'Show less' : 'View more';
+    });
     const activeModalKey = 'engineer.siteInspection.activeModal';
     const modalScrollKey = 'engineer.siteInspection.modalScroll';
     const activeTabKey = 'engineer.siteInspection.activeTab';
@@ -710,6 +719,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return name.length >= 2 && name.length <= 100 && /\p{L}/u.test(name);
     };
 
+    const isValidNonStockReason = function (value) {
+        const reason = String(value || '').trim().replace(/\s+/g, ' ');
+        return reason.length >= 5 && reason.length <= 200 && /\p{L}/u.test(reason);
+    };
+
     const findExactStockMaterialOption = function (row, value) {
         const sharedMatch = window.EdgeMaterialSuggestions?.findExactOption(
             row.querySelector('[data-material-picker]'),
@@ -741,13 +755,13 @@ document.addEventListener('DOMContentLoaded', function () {
         setMaterialNotesRequired(row, choiceField?.value === 'keep');
 
         if (choiceField?.value === 'keep') {
-            if (notesField?.value.trim()) {
+            if (isValidNonStockReason(notesField?.value)) {
                 clearFieldError(notesField);
                 clearFieldError(nameField);
                 return true;
             }
             clearFieldError(nameField);
-            if (showError) setFieldError(notesField, 'Please explain why this is kept as Non-stock.');
+            if (showError) setFieldError(notesField, 'Enter a short reason for keeping this as Non-stock.');
             return false;
         }
 

@@ -244,6 +244,9 @@
 }
 
 .admin-quotation-card__view {
+    border: 0;
+    font: inherit;
+    cursor: pointer;
     display: inline-flex;
     min-height: 42px;
     align-items: center;
@@ -265,6 +268,10 @@
     gap: 8px;
 }
 
+.admin-quotation-card__action-form {
+    margin: 0;
+}
+
 .admin-quotation-card__view.is-secondary {
     border: 1px solid #b8d7c7;
     background: #ffffff;
@@ -277,6 +284,8 @@
 
 .admin-quotation-card__view.is-complete-draft { background: #b45309; }
 .admin-quotation-card__view.is-complete-draft:hover { background: #92400e; }
+.admin-quotation-card__view.is-rejected-reason { background: #b42323; }
+.admin-quotation-card__view.is-rejected-reason:hover { background: #921b1b; }
 
 .admin-quotation-card:hover,
 .admin-quotation-card.is-selected { border-color: #86cfa8; background: #ffffff; }
@@ -367,6 +376,13 @@
     overflow-wrap: anywhere;
 }
 
+.admin-quotation-revision-note.is-rejected {
+    border-color: #f2aaaa;
+    background: #fff0f0;
+    color: #8f1d1d;
+    scroll-margin-top: 110px;
+}
+
 body.admin-quotation-send-open { overflow: hidden; }
 
 .admin-quotation-send-modal[hidden] { display: none; }
@@ -404,69 +420,6 @@ body.admin-quotation-send-open { overflow: hidden; }
 .admin-quotation-send-modal__card dt { color: #66758d; font-size: 12px; font-weight: 700; }
 .admin-quotation-send-modal__card dd { margin: 3px 0 0; font-weight: 800; overflow-wrap: anywhere; }
 .admin-quotation-send-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-
-.admin-quotation-project-modal .admin-quotation-send-modal__card {
-    width: min(100%, 500px);
-    padding: 0;
-    overflow: hidden;
-    border: 1px solid #dbe5ec;
-    border-radius: 18px;
-}
-
-.admin-quotation-project-modal__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 16px;
-    border-bottom: 1px solid #dbe5ec;
-}
-
-.admin-quotation-project-modal__head h2 {
-    margin: 0;
-}
-
-.admin-quotation-project-modal__close {
-    display: inline-grid;
-    flex: 0 0 auto;
-    width: 36px;
-    min-height: 36px;
-    padding: 0;
-    place-items: center;
-    border: 0;
-    border-radius: 50%;
-    background: #eef2f7;
-    color: #172033;
-    font: inherit;
-    font-size: 22px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.admin-quotation-project-modal__close:hover,
-.admin-quotation-project-modal__close:focus-visible {
-    background: #e2e8f0;
-    outline: 2px solid #94a3b8;
-    outline-offset: 2px;
-}
-
-.admin-quotation-project-modal__message {
-    margin: 0;
-    padding: 14px 16px 0;
-    color: #66758d;
-    line-height: 1.5;
-}
-
-.admin-quotation-project-modal .admin-quotation-send-modal__actions {
-    margin-top: 0;
-    padding: 14px 16px 16px;
-}
-
-.admin-quotation-project-modal .button-primary,
-.admin-quotation-project-modal .button-secondary {
-    min-height: 42px;
-    padding: 9px 16px;
-}
 
 @media (prefers-reduced-motion: reduce) {
     .button-primary {

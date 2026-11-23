@@ -2911,8 +2911,10 @@ input[data-inline-editable]:disabled {
     width: 100%;
     max-height: none;
     overflow: visible;
-    border-radius: 20px;
-    box-shadow: 0 16px 42px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 
 .project-create-page .project-create-header {
@@ -2921,7 +2923,14 @@ input[data-inline-editable]:disabled {
 
 .project-create-page .project-create-card {
     gap: 12px 16px;
-    padding: 16px;
+    padding: 16px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.project-create-page .engineer-picker__selected {
+    background: #ffffff;
 }
 
 .project-create-page-navigation {
@@ -2931,27 +2940,15 @@ input[data-inline-editable]:disabled {
     width: fit-content;
     margin: 0 0 8px 14px;
     border-radius: 10px;
-    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
+    box-shadow: none;
 }
 
 .project-create-page-back {
-    display: inline-flex;
-    width: fit-content;
-    align-items: center;
-    min-height: 40px;
-    padding: 8px 13px;
-    border-radius: 10px;
-    background: #064e3b;
-    color: #ffffff;
     font-size: 0.9rem;
-    font-weight: 700;
-    text-decoration: none;
 }
 
-.project-create-page-back:hover,
-.project-create-page-back:focus-visible {
-    background: #047857;
-    color: #ffffff;
+.main-content.projects-content.projects-create-main {
+    background: var(--shared-page-surface-bg);
 }
 
 .project-create-page-actions {

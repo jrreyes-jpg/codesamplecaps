@@ -1267,6 +1267,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'budget_notes' => $_POST['budget_notes'] ?? '',
         ];
 
+        if ($saveAsDraft && ($_POST['project_form_changed'] ?? '0') !== '1') {
+            clear_projects_old_input();
+            redirect_projects_page();
+        }
+
         if ($projectSource !== 'inquiry_quotation' || $quotationDraftId <= 0 || $sourceInquiryId <= 0) {
             // Project ay galing lang sa accepted quotation para tama ang client at budget.
             clear_projects_old_input();
@@ -2964,6 +2969,21 @@ if ($createProjectValues['project_source'] === 'inquiry_quotation' && (int)$crea
 }
 $isInquiryProjectSetup = $projectSourceReference !== null;
 
+if ($isInquiryProjectSetup) {
+    // Official quotation data lagi ang gamitin, kahit may lumang browser draft.
+    $projectRecipient = inquiry_quote_resolve_recipient($conn, (int)$createProjectValues['quotation_draft_id']);
+    $createProjectValues['client_id'] = !empty($projectRecipient['client_id']) ? (string)$projectRecipient['client_id'] : '';
+    $createProjectValues['contact_person'] = trim((string)($projectSourceReference['client_name'] ?? ''));
+    $createProjectValues['contact_number'] = trim((string)($projectSourceReference['contact_no'] ?? ''));
+    $createProjectValues['project_site'] = implode(' / ', array_filter([
+        trim((string)($projectSourceReference['province'] ?? '')),
+        trim((string)($projectSourceReference['city_municipality'] ?? '')),
+        trim((string)($projectSourceReference['barangay'] ?? '')),
+    ], static fn(string $value): bool => $value !== ''));
+    $createProjectValues['project_address'] = trim((string)($projectSourceReference['site_address'] ?? ''));
+    $createProjectValues['budget_amount'] = number_format((float)($projectSourceReference['grand_total'] ?? 0), 2, '.', '');
+}
+
 if ($isCreateProjectPage && !$isInquiryProjectSetup) {
     clear_projects_old_input();
     set_projects_flash('warning', 'Create a project from an accepted quotation.');
@@ -3229,22 +3249,22 @@ $portfolioRemainingBudget = $totalBudgetAmount - $totalTrackedCost;
 ?>
 <?php
 $adminPageTitle = $isCreateProjectPage ? 'Create Project - Admin' : 'Project Management - Admin';
-$adminBodyClass = !$isCreateProjectPage ? 'admin-light-page' : '';
+$adminBodyClass = 'admin-light-page';
 
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
-    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261112-7',
+    '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261123-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261112-6',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261123-2',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
 ?>
 
-    <main class="main-content projects-content<?php echo !$isCreateProjectPage ? ' projects-list-main shared-page-surface' : ''; ?>">
+    <main class="main-content projects-content shared-page-surface<?php echo $isCreateProjectPage ? ' projects-create-main' : ' projects-list-main'; ?>">
         <div class="page-stack<?php echo $isCreateProjectPage ? ' page-stack--project-create' : ''; ?>">
             <?php if ($flash): ?>
                 <?php $flashType = in_array((string)($flash['type'] ?? ''), ['success', 'warning', 'error'], true) ? (string)$flash['type'] : 'success'; ?>
@@ -3257,7 +3277,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
             <?php if ($isCreateProjectPage): ?>
                 <div class="project-create-page-navigation">
-                    <a class="project-create-page-back" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">&larr; Back</a>
+                    <a class="project-create-page-back shared-back-button" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">&larr; Back</a>
                 </div>
             <?php endif; ?>
 
@@ -3289,9 +3309,6 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <div>
                         <h6 class="section-title-inline project-create-title" id="create-project-title">Create Project</h6>
                     </div>
-                    <div class="project-create-header-actions">
-                        <button type="button" class="btn-secondary" id="create-project-clear-details">Clear Details</button>
-                    </div>
                 </div>
                 <form
                     method="POST"
@@ -3307,6 +3324,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 >
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                     <input type="hidden" name="action" value="create_project">
+                    <input type="hidden" name="project_form_changed" value="0" data-project-form-changed>
                     <input type="hidden" name="redirect_to" value="/codesamplecaps/ADMIN/sidebar/projects/php/create_project.php<?php echo $isInquiryProjectSetup ? '?quotation_id=' . (int)$createProjectValues['quotation_draft_id'] : ''; ?>">
                     <input type="hidden" name="project_source" value="<?php echo htmlspecialchars((string)($createProjectValues['project_source'] ?? 'walk_in'), ENT_QUOTES); ?>" data-project-source-input>
                     <input type="hidden" name="quotation_draft_id" value="<?php echo (int)$createProjectValues['quotation_draft_id']; ?>">
@@ -3371,14 +3389,16 @@ include __DIR__ . '/../../../admin_sidebar.php';
                             </div>
                         <?php endif; ?>
                         <?php if ($projectSourceReference): ?>
-                            <div class="project-create-section-heading">
-                                <span><?php echo $isInquiryProjectSetup ? 'Accepted Quotation' : 'Project Source / Reference'; ?></span>
-                            </div>
+                            <?php if (!$isInquiryProjectSetup): ?>
+                                <div class="project-create-section-heading">
+                                    <span>Project Source / Reference</span>
+                                </div>
+                            <?php endif; ?>
                             <div class="form-grid project-source-reference-grid<?php echo $isInquiryProjectSetup ? ' project-source-reference-grid--compact' : ''; ?>">
                                 <div class="input-group"><label>Client</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['client_name'] ?? 'Not set')); ?></div></div>
                                 <?php if ($isInquiryProjectSetup): ?>
                                     <div class="input-group"><label>Quotation No.</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)($projectSourceReference['quotation_no'] ?? 'Not set')); ?></div></div>
-                                    <div class="input-group"><label>Accepted Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars('PHP ' . number_format((float)($projectSourceReference['grand_total'] ?? 0), 2)); ?></div></div>
+                                    <div class="input-group"><label>Budget</label><div class="project-form-static-field"><?php echo htmlspecialchars('PHP ' . number_format((float)($projectSourceReference['grand_total'] ?? 0), 2)); ?></div></div>
                                     <div class="input-group"><label>Site Location</label><div class="project-form-static-field"><?php echo htmlspecialchars(implode(' / ', array_filter([(string)($projectSourceReference['city_municipality'] ?? ''), (string)($projectSourceReference['barangay'] ?? '')])) ?: 'Not set'); ?></div></div>
                                 <?php else: ?>
                                     <div class="input-group"><label>Project Title</label><div class="project-form-static-field"><?php echo htmlspecialchars((string)$createProjectValues['project_name']); ?></div></div>
@@ -3668,15 +3688,15 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <div class="form-actions project-create-page-actions">
                             <a class="btn-secondary" data-project-create-back href="<?php echo $isInquiryProjectSetup && (int)$createProjectValues['quotation_draft_id'] > 0 ? '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$createProjectValues['quotation_draft_id'] : '/codesamplecaps/ADMIN/sidebar/projects/php/projects.php'; ?>">Cancel</a>
                             <?php if ($isInquiryProjectSetup): ?>
-                                <button type="submit" name="save_mode" value="draft" class="btn-secondary" formnovalidate>Save Draft</button>
+                                <button type="submit" name="save_mode" value="draft" class="btn-secondary" data-project-save-draft formnovalidate disabled>Save Draft</button>
                             <?php endif; ?>
                             <button type="submit" name="save_mode" value="create" class="btn-primary" <?php echo (count($clients) === 0 || count($engineers) === 0) ? 'disabled' : ''; ?>>Create Project</button>
                         </div>
                     </form>
                     <section class="walk-in-confirm-modal admin-modal-backdrop" data-project-draft-confirm aria-hidden="true">
                         <div class="walk-in-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="project-draft-confirm-title" aria-describedby="project-draft-confirm-message">
-                            <h3 id="project-draft-confirm-title" data-project-draft-confirm-title>Leave and keep draft?</h3>
-                            <p id="project-draft-confirm-message" data-project-draft-confirm-message>Your entries will stay in this browser.</p>
+                            <h3 id="project-draft-confirm-title" data-project-draft-confirm-title>Leave without saving?</h3>
+                            <p id="project-draft-confirm-message" data-project-draft-confirm-message>Your latest changes will not be saved.</p>
                             <div class="walk-in-confirm-actions">
                                 <button type="button" class="btn-secondary" data-project-draft-confirm-cancel>Continue Editing</button>
                                 <button type="button" class="btn-primary" data-project-draft-confirm-accept>Leave &amp; Keep Draft</button>

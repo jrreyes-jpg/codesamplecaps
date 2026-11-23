@@ -848,13 +848,15 @@ function initProjectAdditionalInfoRows() {
 
 function initCreateProjectDraft() {
     const createProjectForm = document.getElementById('create-project-form');
-    const clearButton = document.getElementById('create-project-clear-details');
     const confirmModal = document.querySelector('[data-project-draft-confirm]');
     const confirmTitle = confirmModal?.querySelector('[data-project-draft-confirm-title]');
     const confirmMessage = confirmModal?.querySelector('[data-project-draft-confirm-message]');
     const confirmAccept = confirmModal?.querySelector('[data-project-draft-confirm-accept]');
     const confirmCancel = confirmModal?.querySelector('[data-project-draft-confirm-cancel]');
+    const formChangedInput = createProjectForm?.querySelector('[data-project-form-changed]');
+    const saveDraftButton = createProjectForm?.querySelector('[data-project-save-draft]');
     const hasServerDraft = createProjectForm?.dataset.hasServerDraft === 'true';
+    const isInquiryProjectSetup = createProjectForm?.classList.contains('is-inquiry-project-setup') === true;
     const shouldClearStoredDraft = createProjectForm?.dataset.shouldClearStoredDraft === 'true';
     const blankAdditionalInfo = JSON.parse(createProjectForm?.dataset.blankAdditionalInfo || '{}');
     const defaultDraft = {
@@ -886,7 +888,6 @@ function initCreateProjectDraft() {
     const draftStorageKey = 'codesamplecaps.admin.projects.createProjectDraft.v2.' + quotationId + '.' + sourceInquiryId;
     let pendingConfirmAction = null;
     let isSubmitting = false;
-    let pauseDraftSave = false;
 
     if (confirmModal && confirmModal.parentElement !== document.body) {
         document.body.appendChild(confirmModal);
@@ -991,8 +992,15 @@ function initCreateProjectDraft() {
         return JSON.stringify(collectDraft()) !== JSON.stringify(initialDraft);
     }
 
+    function syncChangedState() {
+        const changed = hasDraftChanges();
+        if (formChangedInput) formChangedInput.value = changed ? '1' : '0';
+        if (saveDraftButton) saveDraftButton.disabled = !changed;
+        return changed;
+    }
+
     function saveDraft() {
-        if (pauseDraftSave) return;
+        syncChangedState();
         try {
             window.localStorage.setItem(draftStorageKey, JSON.stringify(collectDraft()));
         } catch (error) {
@@ -1027,6 +1035,19 @@ function initCreateProjectDraft() {
 
         Object.keys(defaultDraft).forEach(function (fieldName) {
             if (fieldName === 'engineer_ids' || fieldName === 'additional_info' || fieldName === 'project_code') {
+                return;
+            }
+
+            // Galing sa accepted quotation ang fields na ito. Huwag palitan ng browser draft.
+            if (isInquiryProjectSetup && [
+                'client_id',
+                'contact_person',
+                'contact_number',
+                'project_site',
+                'budget_amount',
+                'description',
+                'project_address',
+            ].includes(fieldName)) {
                 return;
             }
 
@@ -1073,6 +1094,8 @@ function initCreateProjectDraft() {
         applyDraft(loadStoredDraft());
     }
 
+    syncChangedState();
+
     createProjectForm.addEventListener('input', saveDraft);
     createProjectForm.addEventListener('change', saveDraft);
 
@@ -1080,29 +1103,6 @@ function initCreateProjectDraft() {
     if (engineerInputsContainer) {
         const observer = new MutationObserver(saveDraft);
         observer.observe(engineerInputsContainer, { childList: true, subtree: true, attributes: true, attributeFilter: ['value'] });
-    }
-
-    if (clearButton) {
-        clearButton.addEventListener('click', function () {
-            if (!hasDraftChanges()) return;
-            showConfirm({
-                title: 'Clear entered details?',
-                message: 'Your changes will be removed. Quotation details will stay.',
-                accept: 'Clear Details',
-                cancel: 'Keep Editing',
-            }, function () {
-                pauseDraftSave = true;
-                applyDraft(initialDraft);
-                createProjectForm.querySelectorAll('.is-invalid-live').forEach(function (field) {
-                    field.classList.remove('is-invalid-live');
-                    field.setCustomValidity('');
-                });
-                clearStoredDraft();
-                window.setTimeout(function () {
-                    pauseDraftSave = false;
-                }, 0);
-            });
-        });
     }
 
     confirmCancel?.addEventListener('click', hideConfirm);
@@ -1119,14 +1119,14 @@ function initCreateProjectDraft() {
 
         event.preventDefault();
         event.stopImmediatePropagation();
-        saveDraft();
         showConfirm({
-            title: 'Leave and keep draft?',
-            message: 'Your entries will stay in this browser until you create or clear the project.',
-            accept: 'Leave & Keep Draft',
+            title: 'Leave without saving?',
+            message: 'Your latest changes will not be saved.',
+            accept: 'Discard Changes & Leave',
             cancel: 'Continue Editing',
         }, function () {
             isSubmitting = true;
+            clearStoredDraft();
             window.location.href = link.href;
         });
     }, true);

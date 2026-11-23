@@ -395,7 +395,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const inquiryModal = inspectionMonitorTrigger?.closest('.inquiry-modal');
         const inquiryCard = inquiryModal?.closest('.inquiry-card');
-        const visibleStatus = inspection.status === 'Submitted' ? 'Inspection Submitted'
+        const visibleStatus = inspection.status === 'Submitted'
+            ? (inspection.admin_review_status === 'Approved' ? 'For Quotation' : 'Inspection Submitted')
             : (inspection.status === 'Ongoing' ? 'Inspection Ongoing' : 'For Inspection');
         [
             inquiryModal?.querySelector('[data-modal-status-chip]'),

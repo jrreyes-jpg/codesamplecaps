@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../../SHARED/quotation-project-confirm/php/modal.php';
 
 require_role('admin');
 
@@ -98,12 +99,14 @@ $adminPageTitle = 'Quotation Details - Edge Automation';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-1',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261119-6',
+    '/codesamplecaps/SHARED/quotation-project-confirm/css/modal.css?v=20261123-1',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261123-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
-    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261112-2',
+    '/codesamplecaps/SHARED/quotation-project-confirm/js/modal.js?v=20261123-1',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotation-details.js?v=20261123-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -145,6 +148,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <strong>Client revision request</strong>
                     <p data-quotation-revision-note-text><?php echo admin_quote_details_e($quotation['client_decision_note'] ?? ''); ?></p>
                 </div>
+
+                <?php if ($selectedStatus === 'rejected' && trim((string)($quotation['client_decision_note'] ?? '')) !== ''): ?>
+                    <div class="admin-quotation-revision-note is-rejected" id="clientDecisionNote">
+                        <strong>Client rejection reason</strong>
+                        <p><?php echo nl2br(admin_quote_details_e($quotation['client_decision_note'])); ?></p>
+                    </div>
+                <?php endif; ?>
 
                 <div class="admin-quotation-section">
                     <h2>Quotation Items</h2>
@@ -258,21 +268,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 </section>
             </div>
 
-            <div class="admin-quotation-send-modal admin-quotation-project-modal" data-quotation-project-modal hidden>
-                <div class="admin-quotation-send-modal__backdrop admin-modal-backdrop" data-quotation-project-cancel></div>
-                <section class="admin-quotation-send-modal__card" role="dialog" aria-modal="true" aria-labelledby="quotationProjectTitle">
-                    <header class="admin-quotation-project-modal__head">
-                        <h2 id="quotationProjectTitle">Create Project?</h2>
-                        <button type="button" class="admin-quotation-project-modal__close" data-quotation-project-cancel aria-label="Close create project confirmation">&times;</button>
-                    </header>
-                    <p class="admin-quotation-project-modal__message">Create a project from this accepted quotation. The client, scope, items, and total will be copied.</p>
-                    <div class="admin-quotation-send-modal__actions">
-                        <button type="button" class="button-secondary" data-quotation-project-cancel>Cancel</button>
-                        <button type="button" class="button-primary" data-quotation-project-confirm>Create Project</button>
-                    </div>
-                </section>
-            </div>
         <?php endif; ?>
     </div>
 </main>
+<?php render_quotation_project_confirm_modal(); ?>
 <?php include __DIR__ . '/../../../layout/footer.php'; ?>

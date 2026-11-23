@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../config/auth_middleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/inquiry_quotation_module.php';
+require_once __DIR__ . '/../../../../SHARED/quotation-project-confirm/php/modal.php';
 
 require_role('admin');
 
@@ -65,6 +66,7 @@ if (!in_array($activeStatus, $allowedStatuses, true)) {
     $activeStatus = 'all';
 }
 $search = trim((string)($_GET['q'] ?? ''));
+$quotationActionCsrfToken = auth_csrf_token('admin_inquiries');
 $requestedId = (int)($_GET['id'] ?? 0);
 if ($requestedId > 0) {
     header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . $requestedId);
@@ -142,11 +144,15 @@ $adminPageTitle = 'Quotations - Edge Automation';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261119-6',
+    '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
+    '/codesamplecaps/SHARED/quotation-project-confirm/css/modal.css?v=20261123-1',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261123-2',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261103-1',
+    '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
+    '/codesamplecaps/SHARED/quotation-project-confirm/js/modal.js?v=20261123-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -215,6 +221,18 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                         <a class="admin-quotation-card__view" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo (int)$quotation['id']; ?>">Edit Quotation</a>
                                     <?php elseif ($displayStatus === 'revision_requested'): ?>
                                         <a class="admin-quotation-card__view is-complete-draft" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation">Revise Quotation</a>
+                                    <?php elseif ($displayStatus === 'accepted' && !empty($quotation['project_id'])): ?>
+                                        <a class="admin-quotation-card__view" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotation['project_id']; ?>">View Project</a>
+                                    <?php elseif ($displayStatus === 'accepted'): ?>
+                                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-card__action-form" data-quotation-create-project>
+                                            <input type="hidden" name="csrf_token" value="<?php echo admin_quote_e($quotationActionCsrfToken); ?>">
+                                            <input type="hidden" name="action" value="prepare_project_from_quote">
+                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
+                                            <input type="hidden" name="draft_id" value="<?php echo (int)$quotation['id']; ?>">
+                                            <button type="submit" class="admin-quotation-card__view">Create Project</button>
+                                        </form>
+                                    <?php elseif ($displayStatus === 'rejected' && trim((string)($quotation['client_decision_note'] ?? '')) !== ''): ?>
+                                        <a class="admin-quotation-card__view is-rejected-reason" href="<?php echo admin_quote_e($detailsUrl); ?>#clientDecisionNote">View Reason</a>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -237,4 +255,5 @@ include __DIR__ . '/../../../admin_sidebar.php';
         <?php endif; ?>
     </div>
 </main>
+<?php render_quotation_project_confirm_modal(); ?>
 <?php include __DIR__ . '/../../../layout/footer.php'; ?>

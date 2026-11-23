@@ -205,36 +205,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 $_SESSION[$materialFlashKey] = ['type' => 'success', 'action' => 'create', 'message' => 'Material ' . $code . ' created.'];
             }
-        } elseif ($action === 'bulk_archive') {
-            if (!material_stock_consume_once_token('admin_material_bulk_archive', $_POST['request_token'] ?? null)) {
-                throw new RuntimeException('This archive request was already sent. Please try again.');
-            }
-
-            $selectedIds = is_array($_POST['material_ids'] ?? null) ? $_POST['material_ids'] : [];
-            $selectedIds = array_values(array_unique(array_filter(array_map('intval', $selectedIds), static fn(int $id): bool => $id > 0)));
-            if ($selectedIds === []) {
-                throw new RuntimeException('Select at least one material to archive.');
-            }
-
-            $archivedCount = 0;
-            $failedMessages = [];
-            foreach ($selectedIds as $selectedId) {
-                try {
-                    material_stock_archive_material($conn, $selectedId);
-                    $archivedCount++;
-                } catch (Throwable $archiveError) {
-                    $failedMessages[] = $archiveError->getMessage();
-                }
-            }
-
-            if ($failedMessages !== []) {
-                $_SESSION[$materialFlashKey] = [
-                    'type' => 'error',
-                    'message' => $archivedCount . ' archived. ' . count($failedMessages) . ' not archived: ' . $failedMessages[0],
-                ];
-            } else {
-                $_SESSION[$materialFlashKey] = ['type' => 'success', 'message' => $archivedCount . ' material(s) archived.'];
-            }
         } else {
             $materialId = filter_var($materialPostText($_POST['material_id'] ?? ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
             if ($action === 'archive') {
@@ -306,7 +276,6 @@ $materialFormMode = ($materialFormState['mode'] ?? 'add') === 'edit' ? 'edit' : 
 $materialFormMaterialId = (int)($materialFormState['material_id'] ?? 0);
 $materialCreateRequestToken = material_stock_issue_once_token('admin_material_create');
 $materialUpdateRequestToken = material_stock_issue_once_token('admin_material_update');
-$materialBulkArchiveRequestToken = material_stock_issue_once_token('admin_material_bulk_archive');
 $materials = material_stock_fetch_materials($conn, $materialFilter);
 $materialNameIndex = array_map(
     static fn(array $material): array => [
@@ -333,12 +302,12 @@ $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-4',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css',
-    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261123-4',
+    '/codesamplecaps/ADMIN/sidebar/inventory/css/inventory.css?v=20261123-6',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js',
-    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261123-4',
+    '/codesamplecaps/ADMIN/sidebar/inventory/js/inventory.js?v=20261123-6',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';
@@ -375,25 +344,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <a class="action-chip<?php echo $materialFilter === 'active' ? ' active-chip' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=materials&amp;material_filter=active">Active</a>
                 <a class="action-chip<?php echo $materialFilter === 'inactive' ? ' active-chip' : ''; ?>" href="/codesamplecaps/ADMIN/sidebar/inventory/php/inventory.php?view=materials&amp;material_filter=inactive">Archived</a>
             </div>
-            <?php if ($materialFilter === 'active' && $materials !== []): ?>
-                <form id="materialBulkArchiveForm" method="POST" class="material-bulk-actions" data-material-bulk-archive-form>
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($materialCsrfToken); ?>">
-                    <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($materialBulkArchiveRequestToken); ?>">
-                    <input type="hidden" name="material_action" value="bulk_archive">
-                    <input type="hidden" name="material_filter" value="active">
-                    <span data-material-selected-count>0 selected</span>
-                    <button type="submit" class="btn-secondary" data-material-bulk-archive disabled>Archive Selected</button>
-                </form>
-            <?php endif; ?>
             <div class="table-responsive">
                 <table class="data-table material-master-table mobile-card-table">
                     <colgroup>
-                        <?php if ($materialFilter === 'active'): ?><col class="material-col-select"><?php endif; ?>
                         <col class="material-col-item"><col class="material-col-unit"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-stock"><col class="material-col-count"><col class="material-col-variance"><col class="material-col-remarks"><col class="material-col-actions">
                     </colgroup>
-                    <thead><tr><?php if ($materialFilter === 'active'): ?><th class="material-selection-cell"><input type="checkbox" data-material-select-all aria-label="Select all active materials"></th><?php endif; ?><th>Item</th><th>Unit</th><th>On-Hand</th><th>Reserved</th><th>Available</th><th>Clerk Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
+                    <thead><tr><th>Item</th><th>Unit</th><th>On-Hand</th><th>Reserved</th><th>Available</th><th>Clerk Count</th><th>Variance</th><th>Remarks</th><th><span class="sr-only">More actions</span></th></tr></thead>
                     <tbody>
-                    <?php if ($materials === []): ?><tr><td colspan="<?php echo $materialFilter === 'active' ? '10' : '9'; ?>" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
+                    <?php if ($materials === []): ?><tr><td colspan="9" class="empty-state"><?php echo $materialFilter === 'inactive' ? 'No archived materials.' : 'No active materials yet.'; ?></td></tr><?php endif; ?>
                     <?php foreach ($materials as $material): ?>
                         <?php
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
@@ -403,32 +361,27 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $isShortage = $variance !== null && $variance < -0.005;
                         $archiveBlockReason = $archiveBlockReasons[(int)$material['id']] ?? '';
                         $canArchive = $archiveBlockReason === '';
+                        $archiveHelpText = str_contains($archiveBlockReason, 'Clerk count is pending')
+                            ? 'Complete the clerk count before archiving.'
+                            : $archiveBlockReason;
                         $stockStatus = material_stock_alert_status($material);
                         $description = trim((string)$material['description']);
                         ?>
                         <tr class="<?php echo $isShortage ? 'material-master-row--shortage' : ''; ?>" data-inventory-report-row>
-                            <?php if ($materialFilter === 'active'): ?>
-                                <td data-label="Archive" class="material-selection-cell">
-                                    <div class="material-selection-control">
-                                        <input type="checkbox" form="materialBulkArchiveForm" name="material_ids[]" value="<?php echo (int)$material['id']; ?>" data-material-select aria-label="Select <?php echo htmlspecialchars((string)$material['material_name']); ?>"<?php echo $canArchive ? '' : ' disabled title="' . htmlspecialchars($archiveBlockReason, ENT_QUOTES, 'UTF-8') . '"'; ?>>
-                                        <?php if (!$canArchive): ?><small><?php echo htmlspecialchars($archiveBlockReason); ?></small><?php endif; ?>
-                                    </div>
-                                </td>
-                            <?php endif; ?>
                             <td data-label="Item" class="material-item-cell">
                                 <strong><?php echo htmlspecialchars((string)$material['material_name']); ?></strong>
                                 <small><?php echo htmlspecialchars((string)$material['material_code']); ?></small>
                                 <?php if ($description !== ''): ?><button type="button" class="material-description-view" data-material-description-open data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-description="<?php echo htmlspecialchars($description, ENT_QUOTES, 'UTF-8'); ?>">View Description</button><?php endif; ?>
                             </td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
-                            <td data-label="On-Hand Stock" class="material-master-number material-stock-cell">
-                                <strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong>
+                            <td data-label="On-Hand Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['physical_quantity'])); ?></strong></td>
+                            <td data-label="Reserved Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['reserved_quantity'])); ?></strong></td>
+                            <td data-label="Available Stock" class="material-master-number material-stock-cell">
+                                <strong><?php echo htmlspecialchars($displayMaterialQuantity(material_stock_available_quantity($material))); ?></strong>
                                 <?php if ($stockStatus !== 'available'): ?>
                                     <span class="material-stock-status material-stock-status--<?php echo htmlspecialchars($stockStatus); ?>"><?php echo $stockStatus === 'out-of-stock' ? 'Out of Stock' : 'Low Stock'; ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td data-label="Reserved Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity((float)$material['reserved_quantity'])); ?></strong></td>
-                            <td data-label="Available Stock" class="material-master-number"><strong><?php echo htmlspecialchars($displayMaterialQuantity(material_stock_available_quantity($material))); ?></strong></td>
                             <td data-label="Clerk Physical Count" class="material-master-count">
                                 <?php if ($latestCount === null): ?>
                                     <span class="material-audit-pending">Not yet counted</span>
@@ -473,8 +426,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     <button type="submit" class="material-row-menu__archive" data-material-name="<?php echo htmlspecialchars((string)$material['material_name']); ?>" role="menuitem">Archive</button>
                                                 </form>
                                             <?php else: ?>
-                                                <button type="button" class="material-row-menu__archive" role="menuitem" disabled>Archive</button>
-                                                <small><?php echo htmlspecialchars($archiveBlockReason); ?></small>
+                                                <button type="button" class="material-row-menu__archive" role="menuitem" data-material-archive-blocked="<?php echo htmlspecialchars($archiveHelpText, ENT_QUOTES, 'UTF-8'); ?>">Archive</button>
                                             <?php endif; ?>
                                         <?php elseif (isset($deletableMaterialIds[(int)$material['id']])): ?>
                                             <form method="POST">

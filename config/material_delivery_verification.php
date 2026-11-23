@@ -16,6 +16,20 @@ if (!function_exists('material_delivery_verification_is_ready')) {
     }
 }
 
+if (!function_exists('material_delivery_verification_has_delivery_date')) {
+    function material_delivery_verification_has_delivery_date(mysqli $conn): bool
+    {
+        static $ready = null;
+        if ($ready !== null) {
+            return $ready;
+        }
+
+        $result = $conn->query("SHOW COLUMNS FROM material_delivery_verifications LIKE 'delivery_date'");
+        $ready = $result instanceof mysqli_result && $result->num_rows === 1;
+        return $ready;
+    }
+}
+
 if (!function_exists('material_delivery_verification_format_quantity')) {
     function material_delivery_verification_format_quantity(float $quantity): string
     {
@@ -32,6 +46,9 @@ if (!function_exists('material_delivery_verification_validate_quantity')) {
         }
 
         $quantity = (float)$raw;
+        if ($quantity > (float)material_stock_decimal_max()) {
+            throw new RuntimeException('Quantity is above the allowed limit.');
+        }
         if (material_stock_unit_requires_whole_number($unit) && $quantity !== floor($quantity)) {
             throw new RuntimeException('Use a whole ' . $unit . ' quantity.');
         }
@@ -56,7 +73,8 @@ if (!function_exists('material_delivery_verification_create')) {
             $supplierName,
             $receiptNo,
             $adminNotes,
-            $adminUserId
+            $adminUserId,
+            date('Y-m-d')
         );
     }
 }
@@ -68,7 +86,8 @@ if (!function_exists('material_delivery_verification_create_batch')) {
         string $supplierName,
         string $receiptNo,
         string $adminNotes,
-        int $adminUserId
+        int $adminUserId,
+        string $deliveryDate = ''
     ): int {
         if (!material_delivery_verification_is_ready($conn)) {
             throw new RuntimeException('Delivery verification setup is not ready.');
@@ -76,11 +95,37 @@ if (!function_exists('material_delivery_verification_create_batch')) {
 
         $supplierName = trim($supplierName);
         $receiptNo = trim($receiptNo);
+        $adminNotes = trim($adminNotes);
+        $textLength = static fn(string $value): int => function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
         if ($supplierName === '') {
             throw new RuntimeException('Enter supplier name.');
         }
+        if ($textLength($supplierName) > 180 || !preg_match('/^[\p{L}\p{N} &.,-]+$/u', $supplierName)) {
+            throw new RuntimeException('Supplier may use letters, numbers, spaces, &, period, dash, and comma only.');
+        }
         if ($receiptNo === '') {
             throw new RuntimeException('Enter delivery receipt number.');
+        }
+        if ($textLength($receiptNo) > 120 || !preg_match('/^[\p{L}\p{N}\/-]+$/u', $receiptNo)) {
+            throw new RuntimeException('DR number may use letters, numbers, dash, and slash only.');
+        }
+        if ($textLength($adminNotes) > 500 || preg_match('/\p{C}/u', $adminNotes)) {
+            throw new RuntimeException('Notes must be 500 characters or less and contain valid text only.');
+        }
+        $deliveryDate = trim($deliveryDate);
+        $parsedDeliveryDate = DateTimeImmutable::createFromFormat('!Y-m-d', $deliveryDate);
+        if (!$parsedDeliveryDate || $parsedDeliveryDate->format('Y-m-d') !== $deliveryDate) {
+            throw new RuntimeException('Enter a valid delivery date.');
+        }
+        if ($deliveryDate > date('Y-m-d')) {
+            throw new RuntimeException('Delivery date cannot be in the future.');
+        }
+        $earliestDeliveryDate = (new DateTimeImmutable('today'))->modify('-30 days')->format('Y-m-d');
+        if ($deliveryDate < $earliestDeliveryDate) {
+            throw new RuntimeException('Delivery date cannot be more than 30 days old.');
+        }
+        if (!material_delivery_verification_has_delivery_date($conn)) {
+            throw new RuntimeException('Delivery date setup is not ready. Run the latest database migration first.');
         }
         if ($materialRows === [] || count($materialRows) > 50) {
             throw new RuntimeException('Add 1 to 50 materials only.');
@@ -118,16 +163,27 @@ if (!function_exists('material_delivery_verification_create_batch')) {
             throw new RuntimeException('Pick active materials only.');
         }
 
-        $supplierName = substr($supplierName, 0, 180);
-        $receiptNo = substr($receiptNo, 0, 120);
-        $adminNotes = substr(trim($adminNotes), 0, 500);
+        $duplicate = $conn->prepare(
+            'SELECT id FROM material_delivery_verifications
+             WHERE LOWER(TRIM(supplier_name)) = LOWER(?)
+               AND LOWER(TRIM(delivery_receipt_no)) = LOWER(?)
+             LIMIT 1'
+        );
+        if (!$duplicate) {
+            throw new RuntimeException('Unable to check delivery receipt number.');
+        }
+        $duplicate->bind_param('ss', $supplierName, $receiptNo);
+        $duplicate->execute();
+        if ($duplicate->get_result()->fetch_assoc()) {
+            throw new RuntimeException('This DR number already exists for the selected supplier.');
+        }
 
         $conn->begin_transaction();
         try {
             $insert = $conn->prepare(
                 "INSERT INTO material_delivery_verifications
-                    (material_id, expected_quantity, supplier_name, delivery_receipt_no, admin_notes, status, created_by)
-                 VALUES (?, ?, NULLIF(?, ''), ?, NULLIF(?, ''), 'for_verification', ?)"
+                    (material_id, expected_quantity, supplier_name, delivery_receipt_no, delivery_date, admin_notes, status, created_by)
+                 VALUES (?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), 'for_verification', ?)"
             );
             if (!$insert) {
                 throw new RuntimeException('Unable to save delivery records.');
@@ -139,7 +195,7 @@ if (!function_exists('material_delivery_verification_create_batch')) {
                     $row['expected_quantity'] ?? '',
                     $units[$materialId]
                 );
-                $insert->bind_param('idsssi', $materialId, $expectedQuantity, $supplierName, $receiptNo, $adminNotes, $adminUserId);
+                $insert->bind_param('idssssi', $materialId, $expectedQuantity, $supplierName, $receiptNo, $deliveryDate, $adminNotes, $adminUserId);
                 if (!$insert->execute()) {
                     throw new RuntimeException('Unable to save delivery records.');
                 }
@@ -151,6 +207,34 @@ if (!function_exists('material_delivery_verification_create_batch')) {
             $conn->rollback();
             throw $exception;
         }
+    }
+}
+
+if (!function_exists('material_delivery_verification_summarize')) {
+    function material_delivery_verification_summarize(array $deliveries): array
+    {
+        $summaries = [];
+        foreach ($deliveries as $delivery) {
+            $key = (string)$delivery['supplier_name'] . '|' . (string)$delivery['delivery_receipt_no'] . '|' . (string)($delivery['delivery_date'] ?? '');
+            if (!isset($summaries[$key])) {
+                $summaries[$key] = [
+                    'delivery_receipt_no' => (string)$delivery['delivery_receipt_no'],
+                    'supplier_name' => (string)$delivery['supplier_name'],
+                    'delivery_date' => (string)($delivery['delivery_date'] ?? substr((string)$delivery['created_at'], 0, 10)),
+                    'status' => 'verified',
+                    'items' => [],
+                ];
+            }
+
+            $summaries[$key]['items'][] = $delivery;
+            if ((string)$delivery['status'] === 'for_verification') {
+                $summaries[$key]['status'] = 'for_verification';
+            } elseif ((string)$delivery['status'] === 'discrepancy' && $summaries[$key]['status'] !== 'for_verification') {
+                $summaries[$key]['status'] = 'discrepancy';
+            }
+        }
+
+        return array_values($summaries);
     }
 }
 

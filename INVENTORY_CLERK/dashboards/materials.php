@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $_SESSION[$countFlashKey] = [
             'type' => 'success',
-            'message' => 'Physical count submitted for Admin review.',
+            'message' => 'Physical count submitted.',
         ];
     } catch (Throwable $exception) {
         $_SESSION[$countFlashKey] = ['type' => 'error', 'message' => $exception->getMessage()];
@@ -66,7 +66,7 @@ inventory_clerk_render_page('Physical Count', function () use (
     $latestPhysicalCounts
 ): void {
 ?>
-<div class="page-stack materials-page blind-audit-page">
+<div class="shared-page-container page-stack materials-page blind-audit-page">
     <?php if ($countFlash): ?>
         <?php $countToastType = $countFlash['type'] === 'success' ? 'success' : 'error'; ?>
         <div class="shared-toast shared-toast--<?php echo $countToastType; ?>" data-shared-toast role="<?php echo $countToastType === 'error' ? 'alert' : 'status'; ?>">
@@ -83,11 +83,11 @@ inventory_clerk_render_page('Physical Count', function () use (
         </div>
     <?php endif; ?>
 
-    <section class="form-panel">
+    <section class="form-panel shared-flat-panel">
         <div class="materials-master-list__heading">
             <div>
                 <h1 class="section-title-inline">Physical Count</h1>
-                <p>Count each material you can see. System stock numbers are hidden for a fair audit.</p>
+                <p class="blind-audit-note">Enter the actual quantity found. System stock is hidden.</p>
             </div>
         </div>
 
@@ -100,10 +100,10 @@ inventory_clerk_render_page('Physical Count', function () use (
             <input type="hidden" name="request_token" value="<?php echo htmlspecialchars($countRequestToken); ?>">
             <div class="table-responsive">
                 <table class="data-table materials-table blind-audit-table">
-                    <thead><tr><th>Item</th><th>Description</th><th>Unit</th><th>Status</th><th>Physical Count</th><th>Remarks</th></tr></thead>
+                    <thead><tr><th>Item</th><th>Unit</th><th>Physical Count</th><th>Remarks (Optional)</th></tr></thead>
                     <tbody>
                     <?php if ($materials === []): ?>
-                        <tr><td colspan="6" class="materials-empty">No active materials yet.</td></tr>
+                        <tr><td colspan="4" class="materials-empty">No active materials yet.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($materials as $material): ?>
                         <?php
@@ -111,18 +111,10 @@ inventory_clerk_render_page('Physical Count', function () use (
                         $latestCount = $latestPhysicalCounts[(int)$material['id']] ?? null;
                         $countStatus = material_physical_count_status($latestCount);
                         $canCount = $countStorageReady && (!$latestCount || in_array($countStatus['key'], ['verified', 'recount'], true));
-                        $clerkStatusLabel = $latestCount && $countStatus['needs_review']
-                            ? 'Pending Admin Review'
-                            : ($latestCount ? $countStatus['label'] : 'Ready to Count');
-                        $clerkStatusTone = $latestCount && $countStatus['needs_review']
-                            ? 'warning'
-                            : ($latestCount ? $countStatus['tone'] : 'neutral');
                         ?>
                         <tr>
                             <td data-label="Item"><strong class="materials-table__name"><?php echo htmlspecialchars((string)$material['material_name']); ?></strong></td>
-                            <td data-label="Description"><?php echo htmlspecialchars(trim((string)$material['description']) ?: '—'); ?></td>
                             <td data-label="Unit"><?php echo htmlspecialchars((string)$material['unit']); ?></td>
-                            <td data-label="Status"><span class="blind-audit-status blind-audit-status--<?php echo htmlspecialchars($clerkStatusTone); ?>"><?php echo htmlspecialchars($clerkStatusLabel); ?></span></td>
                             <td data-label="Physical Count">
                                 <label class="sr-only" for="<?php echo $inputId; ?>">Physical count for <?php echo htmlspecialchars((string)$material['material_name']); ?></label>
                                 <input id="<?php echo $inputId; ?>" class="blind-audit-count-input" data-physical-count-input name="physical_counts[<?php echo (int)$material['id']; ?>]" type="number" min="0" max="<?php echo htmlspecialchars(material_stock_decimal_max()); ?>" step="<?php echo material_stock_unit_requires_whole_number((string)$material['unit']) ? '1' : '0.01'; ?>" inputmode="decimal" placeholder="<?php echo $canCount ? 'Enter count' : 'Waiting for review'; ?>" <?php echo $canCount ? '' : 'disabled'; ?>>
@@ -146,9 +138,10 @@ inventory_clerk_render_page('Physical Count', function () use (
 </div>
 <?php
 }, [
+    '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-4',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css',
-    '/codesamplecaps/INVENTORY_CLERK/css/materials.css',
-], '', [
+    '/codesamplecaps/INVENTORY_CLERK/css/materials.css?v=20261123-2',
+], 'shared-page-surface physical-count-main', [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js',
-    '/codesamplecaps/INVENTORY_CLERK/js/materials.js',
+    '/codesamplecaps/INVENTORY_CLERK/js/materials.js?v=20261123-2',
 ], true);

@@ -22,6 +22,15 @@
     padding-top: 16px;
 }
 
+/* Flat panel na puwedeng gamitin ng lahat ng role pages. */
+.shared-flat-panel {
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: none;
+}
+
 .shared-list-card {
     background: var(--shared-card-surface-bg);
     border: 1px solid var(--shared-card-surface-border);

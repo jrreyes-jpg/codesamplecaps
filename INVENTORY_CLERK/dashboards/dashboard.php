@@ -14,8 +14,18 @@ foreach ($latestCounts as $count) {
         $waitingForReview++;
     }
 }
+$physicalCountsToDo = 0;
+$physicalCountResult = $conn->query(
+    "SELECT COUNT(*) AS total
+     FROM materials
+     WHERE status = 'active'
+       AND opening_stock_status IN ('pending_count', 'recount')"
+);
+if ($physicalCountResult instanceof mysqli_result) {
+    $physicalCountsToDo = (int)($physicalCountResult->fetch_assoc()['total'] ?? 0);
+}
 
-inventory_clerk_render_page('Dashboard', function () use ($pendingDeliveries, $waitingForReview): void {
+inventory_clerk_render_page('Dashboard', function () use ($pendingDeliveries, $waitingForReview, $physicalCountsToDo): void {
 ?>
         <div class="shared-page-container dashboard-page">
         <section class="shared-flat-panel dashboard-panel">
@@ -29,9 +39,16 @@ inventory_clerk_render_page('Dashboard', function () use ($pendingDeliveries, $w
                     <span>Counts Waiting for Admin Review</span>
                     <strong><?php echo $waitingForReview; ?></strong>
                 </article>
+                <article class="metric-card metric-card--warning">
+                    <span>Physical Counts to Do</span>
+                    <strong><?php echo $physicalCountsToDo; ?></strong>
+                </article>
             </section>
             <div class="dashboard-actions">
                 <a class="btn-primary" href="/codesamplecaps/INVENTORY_CLERK/dashboards/delivery_verification.php">Open Delivery Count</a>
+                <?php if ($physicalCountsToDo > 0): ?>
+                    <a class="btn-secondary" href="/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php">Open Physical Count</a>
+                <?php endif; ?>
             </div>
         </section>
         </div>

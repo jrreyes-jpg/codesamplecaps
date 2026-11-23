@@ -45,12 +45,16 @@ $latestPhysicalCounts = material_physical_count_fetch_latest($conn);
 $recountNotice = null;
 $notificationState = user_notifications_fetch_unread_state($conn, (int)($_SESSION['user_id'] ?? 0), 20);
 foreach ($notificationState['items'] as $notification) {
-    if (($notification['type'] ?? '') !== 'material_physical_count_recount') {
+    if (!in_array((string)($notification['type'] ?? ''), [
+        'material_physical_count_ready',
+        'material_physical_count_recount',
+    ], true)) {
         continue;
     }
-    $recountNotice = (string)($notification['message'] ?? 'Admin requested a physical recount.');
+    if (($notification['type'] ?? '') === 'material_physical_count_recount') {
+        $recountNotice = (string)($notification['message'] ?? 'Admin requested a physical recount.');
+    }
     user_notifications_mark_read($conn, (int)$notification['id'], (int)($_SESSION['user_id'] ?? 0));
-    break;
 }
 if ($countStorageReady) {
     material_physical_count_store_cutoff($conn, $countRequestToken);

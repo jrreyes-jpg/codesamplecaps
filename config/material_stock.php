@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/audit_log.php';
+require_once __DIR__ . '/user_notifications.php';
 
 if (!function_exists('material_stock_non_stock_label')) {
     function material_stock_non_stock_label(): string
@@ -665,6 +666,31 @@ if (!function_exists('material_stock_create_material')) {
             $update->bind_param('sis', $materialCode, $materialId, $temporaryCode);
             if (!$update->execute() || $update->affected_rows !== 1) {
                 throw new RuntimeException('Unable to save material code.');
+            }
+
+            if ($stockEntryType === 'existing') {
+                $clerkResult = $conn->query(
+                    "SELECT id FROM users
+                     WHERE role = 'inventory_clerk'
+                       AND status = 'active'
+                       AND deleted_at IS NULL
+                     ORDER BY id ASC"
+                );
+                if ($clerkResult instanceof mysqli_result) {
+                    foreach ($clerkResult->fetch_all(MYSQLI_ASSOC) as $clerk) {
+                        $clerkId = (int)($clerk['id'] ?? 0);
+                        user_notifications_create_if_missing(
+                            $conn,
+                            $clerkId,
+                            'material_physical_count_ready',
+                            $materialId,
+                            'New Physical Count',
+                            'New physical count request: ' . $name . '.',
+                            '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php',
+                            'physical-count-ready-' . $materialId . '-user-' . $clerkId
+                        );
+                    }
+                }
             }
 
             $conn->commit();

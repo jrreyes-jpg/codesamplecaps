@@ -2,6 +2,7 @@
 // Iisang shell para shared ang header, sidebar, at page spacing ng Inventory Clerk.
 require_once __DIR__ . '/../../config/profile_photo_storage.php';
 require_once __DIR__ . '/../../config/user_notifications.php';
+require_once __DIR__ . '/../../config/material_physical_count.php';
 require_once __DIR__ . '/asset_inventory_display.php';
 
 if (!function_exists('inventory_clerk_render_header')) {
@@ -35,10 +36,15 @@ if (!function_exists('inventory_clerk_render_header')) {
         $notificationAlerts = [];
         $materialStockAlertCount = 0;
         $materialShortageCount = 0;
+        material_physical_count_ensure_ready_notifications($conn, $userId);
         $userNotificationState = user_notifications_fetch_unread_state($conn, $userId, 20);
-        $deliveryNotifications = array_values(array_filter(
+        $taskNotifications = array_values(array_filter(
             $userNotificationState['items'],
-            static fn(array $item): bool => ($item['type'] ?? '') === 'material_delivery_count_ready'
+            static fn(array $item): bool => in_array((string)($item['type'] ?? ''), [
+                'material_delivery_count_ready',
+                'material_physical_count_ready',
+                'material_physical_count_recount',
+            ], true)
         ));
 
         $assetAlertResult = $conn->query(
@@ -165,7 +171,7 @@ if (!function_exists('inventory_clerk_render_header')) {
         });
         $visibleNotificationAlerts = array_slice($notificationAlerts, 0, 5);
         $staticNotificationCount = count($notificationAlerts);
-        $notificationAlertCount = $staticNotificationCount + count($deliveryNotifications);
+        $notificationAlertCount = $staticNotificationCount + count($taskNotifications);
         $viewAllAlertsHref = ($materialStockAlertCount + $materialShortageCount) > 0
             ? '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php?material_filter=active'
             : '/codesamplecaps/INVENTORY_CLERK/dashboards/inventory.php?status=attention';
@@ -201,8 +207,8 @@ if (!function_exists('inventory_clerk_render_header')) {
                     </div>
                 </div>
                 <div class="topbar-notifications__empty" data-notification-empty<?php echo $notificationAlertCount > 0 ? ' hidden' : ''; ?>>No notifications right now.</div>
-                <div class="topbar-notifications__section" data-delivery-notification-list<?php echo $deliveryNotifications === [] ? ' hidden' : ''; ?>>
-                    <?php foreach ($deliveryNotifications as $notification): ?>
+                <div class="topbar-notifications__section" data-delivery-notification-list<?php echo $taskNotifications === [] ? ' hidden' : ''; ?>>
+                    <?php foreach ($taskNotifications as $notification): ?>
                         <a class="notification-item notification-item--info" href="<?php echo htmlspecialchars((string)$notification['target_url'] . '?notification_id=' . (int)$notification['id']); ?>">
                             <span class="notification-item__dot" aria-hidden="true"></span>
                             <span class="notification-item__copy">

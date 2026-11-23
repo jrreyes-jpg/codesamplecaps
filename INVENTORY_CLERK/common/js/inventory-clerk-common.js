@@ -9,6 +9,7 @@
     const list = root.querySelector('[data-delivery-notification-list]');
     const empty = root.querySelector('[data-notification-empty]');
     const staticCount = Number.parseInt(root.dataset.staticAlertCount || '0', 10) || 0;
+    const lastToastKey = 'edge:clerk:last-task-notification-toast';
 
     function escapeText(value) {
         const node = document.createElement('span');
@@ -33,6 +34,22 @@
         empty.hidden = total > 0;
         badge.hidden = total === 0;
         badge.textContent = total > 99 ? '99+' : String(total);
+
+        const newest = items.reduce(function (latest, item) {
+            return Number(item.id) > Number(latest?.id || 0) ? item : latest;
+        }, null);
+        const lastShownId = Number.parseInt(window.localStorage.getItem(lastToastKey) || '0', 10) || 0;
+        if (newest && Number(newest.id) > lastShownId) {
+            window.localStorage.setItem(lastToastKey, String(newest.id));
+            if (typeof window.showToast === 'function') {
+                window.showToast(newest.message, 'warning', {
+                    duration: 5000,
+                    onClick: function () {
+                        window.location.href = String(newest.target_url || '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php');
+                    }
+                });
+            }
+        }
     }
 
     function refreshNotifications() {
@@ -51,5 +68,6 @@
             });
     }
 
+    refreshNotifications();
     window.setInterval(refreshNotifications, 30000);
 }());

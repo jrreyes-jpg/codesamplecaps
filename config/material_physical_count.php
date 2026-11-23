@@ -4,6 +4,50 @@ require_once __DIR__ . '/audit_log.php';
 require_once __DIR__ . '/material_stock.php';
 require_once __DIR__ . '/user_notifications.php';
 
+if (!function_exists('material_physical_count_ensure_ready_notifications')) {
+    function material_physical_count_ensure_ready_notifications(mysqli $conn, int $clerkUserId): void
+    {
+        if ($clerkUserId <= 0) {
+            return;
+        }
+
+        $stmt = $conn->prepare(
+            "SELECT id, material_name
+             FROM materials m
+             WHERE m.status = 'active'
+               AND m.opening_stock_status = 'pending_count'
+               AND NOT EXISTS (
+                    SELECT 1
+                    FROM user_notifications un
+                    WHERE un.user_id = ?
+                      AND un.type = 'material_physical_count_ready'
+                      AND un.reference_id = m.id
+               )
+             ORDER BY m.id ASC"
+        );
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param('i', $clerkUserId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        foreach ($result->fetch_all(MYSQLI_ASSOC) as $material) {
+            $materialId = (int)($material['id'] ?? 0);
+            user_notifications_create_if_missing(
+                $conn,
+                $clerkUserId,
+                'material_physical_count_ready',
+                $materialId,
+                'New Physical Count',
+                'New physical count request: ' . (string)($material['material_name'] ?? 'Material') . '.',
+                '/codesamplecaps/INVENTORY_CLERK/dashboards/materials.php',
+                'physical-count-ready-' . $materialId . '-user-' . $clerkUserId
+            );
+        }
+    }
+}
+
 if (!function_exists('material_physical_count_status')) {
     function material_physical_count_status(?array $count): array
     {

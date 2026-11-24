@@ -2770,6 +2770,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const subtotalOutput = quotationCreate.querySelector('[data-quotation-subtotal]');
         const profitOutput = quotationCreate.querySelector('[data-quotation-profit]');
         const totalOutput = quotationCreate.querySelector('[data-quotation-total]');
+        const downPaymentOutput = quotationCreate.querySelector('[data-quotation-down-payment]');
+        const balanceOutput = quotationCreate.querySelector('[data-quotation-balance]');
         const quotationNumberInput = quotationCreate.querySelector('input[name="quotation_no"]');
         const quotationNumberError = quotationCreate.querySelector('[data-quotation-number-error]');
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
@@ -2788,6 +2790,21 @@ document.addEventListener('DOMContentLoaded', function () {
             ? localDraftKey + ':restore_notice'
             : '';
         const localDraftLifetime = 24 * 60 * 60 * 1000;
+
+        const findQuotationStockIssue = function () {
+            return Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                const selectedOption = materialSelect?.selectedOptions[0];
+                const materialId = materialSelect?.value || '';
+                const quantity = Number.parseFloat(row.querySelector('input[name="quantity[]"]')?.value || '0');
+                const available = Number.parseFloat(selectedOption?.dataset.materialAvailable || '0');
+
+                return /^[1-9]\d*$/.test(materialId)
+                    && Number.isFinite(quantity)
+                    && quantity > (Number.isFinite(available) ? available : 0);
+            }) || null;
+        };
+
         const unitOptionsByType = {
             material: ['unit', 'pcs', 'meter', 'roll', 'box', 'pack', 'set', 'kg', 'liter'],
             labor: ['person', 'hour', 'day', 'lot'],
@@ -2927,7 +2944,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         unit: row.querySelector('select[name="unit[]"]')?.value || '',
                         unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
                         notes: row.querySelector('input[name="item_notes[]"]')?.value || '',
-                        non_stock_choice: row.querySelector('[data-non-stock-choice]')?.value || '',
                     };
                 }),
                 direct_costs: directCostInputs.map(function (input) {
@@ -2968,10 +2984,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const lineTotal = isValidEstimatedUnitCost(unitCostInput?.value || '', !isMaterial)
                     ? Math.max(0, quantity) * unitCost
                     : 0;
-                const lineTotalOutput = item.querySelector('[data-quotation-line-total]');
-
                 subtotal += lineTotal;
-                if (lineTotalOutput) lineTotalOutput.textContent = lineTotal.toFixed(2);
             });
             directCostInputs.forEach(function (input) {
                 const directCost = Number.parseFloat(input.value || '0');
@@ -2985,7 +2998,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (subtotalOutput) subtotalOutput.textContent = subtotal.toFixed(2);
             if (profitOutput) profitOutput.textContent = profit.toFixed(2);
-            if (totalOutput) totalOutput.textContent = (subtotal + profit).toFixed(2);
+            const grandTotal = subtotal + profit;
+            const downPayment = grandTotal * 0.5;
+            if (totalOutput) totalOutput.textContent = grandTotal.toFixed(2);
+            if (downPaymentOutput) downPaymentOutput.textContent = downPayment.toFixed(2);
+            if (balanceOutput) balanceOutput.textContent = (grandTotal - downPayment).toFixed(2);
 
             const rows = items?.querySelectorAll('[data-quotation-item]') || [];
             rows.forEach(function (row) {
@@ -3291,55 +3308,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        const syncAdminMaterialNoteRequirement = function () {
-            items?.querySelectorAll('[data-quotation-item]').forEach(function (row) {
-                const keepNonStock = row.querySelector('[data-non-stock-choice]')?.value === 'keep';
-                const noteWrap = row.querySelector('[data-material-note-wrap]');
-                const noteInput = noteWrap?.querySelector('input[name="item_notes[]"]');
-                if (noteWrap) noteWrap.hidden = !keepNonStock;
-                if (noteInput) noteInput.required = keepNonStock;
-            });
-        };
-
-        const syncAdminNonStockMatch = function (row, showError = false) {
+        const syncQuotationNotesVisibility = function (row) {
+            const notesWrap = row.querySelector('[data-quotation-notes-wrap]');
             const materialSelect = row.querySelector('select[name="material_id[]"]');
-            const nameInput = row.querySelector('input[name="item_name[]"]');
-            const choiceInput = row.querySelector('[data-non-stock-choice]');
-            const matchBox = row.querySelector('[data-non-stock-match]');
-            const errorBox = row.querySelector('[data-non-stock-match-error]');
             const isNonStock = materialSelect?.value === 'manual';
-            const isNameBlank = isNonStock && (nameInput?.value.trim() || '') === '';
-            const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
-                manualValues: ['manual'],
-            });
-            const exactOption = isNonStock ? decisionState?.exactOption : null;
-
-            if (isNameBlank) {
-                if (matchBox) matchBox.hidden = true;
-                if (choiceInput) choiceInput.value = '';
-                if (errorBox) errorBox.textContent = showError ? 'Material name is required.' : '';
-                nameInput?.setAttribute('aria-invalid', showError ? 'true' : 'false');
-                syncAdminMaterialNoteRequirement();
-                return false;
-            }
-
-            if (!exactOption) {
-                if (matchBox) matchBox.hidden = true;
-                if (choiceInput) choiceInput.value = '';
-                if (errorBox) errorBox.textContent = '';
-                nameInput?.removeAttribute('aria-invalid');
-                syncAdminMaterialNoteRequirement();
-                return true;
-            }
-
-            if (matchBox) matchBox.dataset.materialId = exactOption.value;
-            const isKept = choiceInput?.value === 'keep';
-            const message = isKept ? '' : 'Choose Use from stock or Keep as Non-stock.';
-            if (errorBox) errorBox.textContent = showError ? message : '';
-            nameInput?.setAttribute('aria-invalid', message !== '' && showError ? 'true' : 'false');
-
-            syncAdminMaterialNoteRequirement();
-            return isKept;
+            if (notesWrap) notesWrap.hidden = !isNonStock;
         };
 
         const syncMaterialReference = function (row, resetForMaterialChange = false) {
@@ -3404,7 +3377,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             updateMaterialStockStatus(row);
-            syncAdminNonStockMatch(row, false);
 
             if (itemName) {
                 itemName.readOnly = isLinkedMaterial;
@@ -3425,7 +3397,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             validateQuotationQuantity(row, false, false);
             validateMaterialReference(row, false);
-            syncAdminMaterialNoteRequirement();
+            syncQuotationNotesVisibility(row);
         };
 
         const restoreLocalQuotationDraft = function (draft) {
@@ -3449,7 +3421,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const unitSelect = row?.querySelector('select[name="unit[]"]');
                 const unitCostInput = row?.querySelector('input[name="unit_cost[]"]');
                 const notesInput = row?.querySelector('input[name="item_notes[]"]');
-                const choiceInput = row?.querySelector('[data-non-stock-choice]');
                 const savedType = normalizeQuotationItemType(savedRow?.type || 'material');
                 const savedMaterialId = String(savedRow?.material_id || '');
                 const savedUnit = String(savedRow?.unit || '').toLowerCase();
@@ -3472,8 +3443,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (unitCostInput) unitCostInput.value = window.SharedCostingValues.editableUnitCost(savedRow?.unit_cost);
                 if (notesInput) notesInput.value = String(savedRow?.notes || '');
-                if (choiceInput) choiceInput.value = String(savedRow?.non_stock_choice || '');
-
                 syncMaterialReference(row);
             });
 
@@ -3585,20 +3554,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const unitSelect = row.querySelector('select[name="unit[]"]');
                 if (nameInput) nameInput.value = event.detail.name || '';
                 if (unitSelect && event.detail.unit) unitSelect.value = event.detail.unit;
-                syncAdminNonStockMatch(row, false);
+                syncQuotationNotesVisibility(row);
                 nameInput?.focus();
                 return;
             }
             materialSelect.value = String(event.detail.value);
             materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
-        items?.addEventListener('edge:non-stock-choice-reset', function (event) {
-            const row = event.target.closest('[data-quotation-item]');
-            if (!row) return;
-            syncAdminNonStockMatch(row, false);
-            markQuotationDirty();
-            scheduleLocalQuotationDraftSave();
         });
 
         items?.addEventListener('edge:material-row-merged', function () {
@@ -3610,39 +3571,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         items?.addEventListener('input', function (event) {
             const row = event.target.closest('[data-quotation-item]');
-            if (row && event.target.matches('input[name="item_name[]"]')) {
-                const choiceInput = row.querySelector('[data-non-stock-choice]');
-                if (choiceInput) choiceInput.value = '';
-                syncAdminNonStockMatch(row, false);
-            }
-        });
-
-        items?.addEventListener('focusout', function (event) {
-            const row = event.target.closest('[data-quotation-item]');
-            if (row && event.target.matches('input[name="item_name[]"]')) {
-                syncAdminNonStockMatch(row, true);
-            }
-        });
-
-        items?.addEventListener('click', function (event) {
-            const row = event.target.closest('[data-quotation-item]');
-            if (!row) return;
-            const materialSelect = row.querySelector('select[name="material_id[]"]');
-            const choiceInput = row.querySelector('[data-non-stock-choice]');
-            const matchBox = row.querySelector('[data-non-stock-match]');
-            if (event.target.closest('[data-use-existing-material]')) {
-                const materialId = matchBox?.dataset.materialId || '';
-                if (materialSelect && materialId) {
-                    materialSelect.value = materialId;
-                    if (choiceInput) choiceInput.value = '';
-                    materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
-            if (event.target.closest('[data-keep-non-stock]')) {
-                if (choiceInput) choiceInput.value = 'keep';
-                syncAdminNonStockMatch(row, false);
-                row.querySelector('[data-material-note-wrap] input[name="item_notes[]"]')?.focus();
-            }
+            if (row && event.target.matches('input[name="item_name[]"]')) syncQuotationNotesVisibility(row);
         });
 
         items?.addEventListener('change', function (event) {
@@ -3701,6 +3630,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            if (isSendAction) {
+                const stockIssueRow = findQuotationStockIssue();
+                if (stockIssueRow) {
+                    event.preventDefault();
+                    setMaterialReferenceMessage(stockIssueRow, 'Update stock or change this item to Non-stock before sending.');
+                    stockIssueRow.querySelector('select[name="material_id[]"]')?.focus();
+                    return;
+                }
+            }
+
             const invalidMaterialReferenceRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
                 return !validateMaterialReference(row, true);
             });
@@ -3713,15 +3652,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!validateDuplicateMaterialReferences(true)) {
                 event.preventDefault();
                 items?.querySelector('[data-quotation-material-error]:not(:empty)')?.closest('[data-quotation-material-reference]')?.querySelector('select[name="material_id[]"]')?.focus();
-                return;
-            }
-
-            const unresolvedNonStockRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
-                return !syncAdminNonStockMatch(row, true);
-            });
-            if (unresolvedNonStockRow) {
-                event.preventDefault();
-                unresolvedNonStockRow.querySelector('input[name="item_name[]"]')?.focus();
                 return;
             }
 
@@ -3752,13 +3682,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                 }).format(Number.isFinite(grandTotalValue) ? grandTotalValue : 0);
+                const downPaymentLabel = 'PHP ' + new Intl.NumberFormat('en-PH', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                }).format(Number.isFinite(grandTotalValue) ? grandTotalValue * 0.5 : 0);
                 showConfirm(
                     form,
                     'The latest quotation details will be saved first, then emailed to the client.',
                     [
                         { label: 'Quotation Number', value: quotationNumberInput?.value.trim() || '' },
                         { label: 'Client Email', value: form.dataset.quotationClientEmail || '' },
-                        { label: 'Grand Total', value: grandTotalLabel },
+                        { label: 'Quotation Total', value: grandTotalLabel },
+                        { label: '50% Down Payment', value: downPaymentLabel },
                     ],
                     {
                         title: 'Send quotation to client?',

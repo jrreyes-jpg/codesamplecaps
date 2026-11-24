@@ -18,6 +18,10 @@ $items = inquiry_quote_client_price_items($items, (float)($quotation['grand_tota
 $items = array_values(array_filter($items, static function (array $item): bool {
     return (float)($item['client_line_total'] ?? 0) > 0;
 }));
+$quotationTotal = (float)($quotation['grand_total'] ?? 0);
+$downPaymentPercent = (float)($quotation['down_payment_percent'] ?? 50);
+$downPaymentAmount = round($quotationTotal * ($downPaymentPercent / 100), 2);
+$remainingBalance = round($quotationTotal - $downPaymentAmount, 2);
 
 $quoteStatus = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
 $statusIndicator = inquiry_quote_status_indicator($quoteStatus, !empty($quotation['engineer_name']));
@@ -193,7 +197,9 @@ $validUntil = date('M j, Y', strtotime('+14 days', $quotationTimestamp));
         </section>
 
         <section class="public-quote-totals">
-            <div class="public-quote-grand-total"><span>Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money((float)$quotation['grand_total']), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <div class="public-quote-grand-total"><span>Quotation Total</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money($quotationTotal), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <div><span><?php echo htmlspecialchars(number_format($downPaymentPercent, 0), ENT_QUOTES, 'UTF-8'); ?>% Down Payment</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money($downPaymentAmount), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+            <div><span>Remaining Balance</span><strong><?php echo htmlspecialchars(inquiry_quote_format_money($remainingBalance), ENT_QUOTES, 'UTF-8'); ?></strong></div>
         </section>
 
         <footer class="public-quote-footer public-quote-footer--single">

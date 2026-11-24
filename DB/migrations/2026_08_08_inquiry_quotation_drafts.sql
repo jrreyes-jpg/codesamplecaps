@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS inquiry_quotation_drafts (
     profit_margin_percent DECIMAL(7,2) NOT NULL DEFAULT 0.00,
     profit_amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
     grand_total DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    down_payment_percent DECIMAL(5,2) NOT NULL DEFAULT 50.00,
     approved_by INT NULL,
     approved_at DATETIME NULL,
     sent_at DATETIME NULL,

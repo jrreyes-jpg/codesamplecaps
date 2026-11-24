@@ -12,7 +12,7 @@ $savedItems = [];
 
 if ($isEditMode) {
     $draftStmt = $conn->prepare(
-        'SELECT id, inquiry_id, parent_draft_id, revision_no, quotation_no, status, subtotal, profit_margin_percent, profit_amount, grand_total
+        'SELECT id, inquiry_id, parent_draft_id, revision_no, quotation_no, status, subtotal, profit_margin_percent, profit_amount, grand_total, down_payment_percent
          FROM inquiry_quotation_drafts
          WHERE id = ? LIMIT 1'
     );
@@ -96,9 +96,11 @@ $wholeCountUnits = ['pcs', 'roll', 'box', 'pack', 'set', 'lot', 'person', 'unit'
 $materialOptions = material_stock_fetch_active_materials($conn);
 $materialUnitsById = [];
 $materialNamesById = [];
+$materialAvailableById = [];
 foreach ($materialOptions as $materialOption) {
     $materialUnitsById[(int)$materialOption['id']] = (string)$materialOption['unit'];
     $materialNamesById[(int)$materialOption['id']] = (string)$materialOption['material_name'];
+    $materialAvailableById[(int)$materialOption['id']] = material_stock_available_quantity($materialOption);
 }
 
 function inquiry_quote_render_unit_options(array $unitOptionsByType, array $materialUnitsById, string $itemType, int $materialId, string $currentUnit): void
@@ -145,9 +147,6 @@ $postedQuantities = is_array($_POST['quantity'] ?? null) ? $_POST['quantity'] : 
 $postedUnits = is_array($_POST['unit'] ?? null) ? $_POST['unit'] : array_column($defaultItems, 'unit');
 $postedUnitCosts = is_array($_POST['unit_cost'] ?? null) ? $_POST['unit_cost'] : array_column($defaultItems, 'unit_cost');
 $postedNotes = is_array($_POST['item_notes'] ?? null) ? $_POST['item_notes'] : array_column($defaultItems, 'notes');
-$postedNonStockChoices = is_array($_POST['non_stock_choice'] ?? null)
-    ? $_POST['non_stock_choice']
-    : array_fill(0, count($postedNames), '');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     foreach ($postedTypes as $postedIndex => $postedType) {
         $hasFreeTextMaterial = inquiry_quote_normalize_item_type((string)$postedType) === 'material'
@@ -217,6 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowedTypes = array_keys(inquiry_quote_item_type_options());
         $quotationItems = [];
         $subtotal = 0.0;
+        $stockBlockedItems = [];
 
         $seenMaterialIds = [];
         foreach ($postedNames as $index => $postedName) {
@@ -233,15 +233,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notes = trim((string)($postedNotes[$index] ?? ''));
             $materialReference = trim((string)($postedMaterialIds[$index] ?? ''));
             $materialId = $itemType === 'material' ? (int)$materialReference : 0;
-            $nonStockChoice = trim((string)($postedNonStockChoices[$index] ?? ''));
-            $matchingStockId = 0;
-            if ($itemType === 'material' && $materialReference === 'manual') {
-                foreach ($materialNamesById as $stockId => $stockName) {
-                    if (mb_strtolower(trim($stockName), 'UTF-8') === mb_strtolower($itemName, 'UTF-8')) {
-                        $matchingStockId = (int)$stockId;
-                        break;
-                    }
-                }
+
+            // Notes ay para lang sa Non-stock material.
+            if ($itemType === 'material' && $materialId > 0) {
+                $notes = '';
             }
 
             if (!in_array($itemType, $allowedTypes, true)) {
@@ -250,14 +245,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($itemType === 'material' && $materialReference !== 'manual' && $materialId <= 0) {
                 $error = 'Pick material.';
-                break;
-            }
-            if ($matchingStockId > 0 && $nonStockChoice !== 'keep') {
-                $error = 'Choose Use from stock or Keep as Non-stock.';
-                break;
-            }
-            if ($matchingStockId > 0 && $nonStockChoice === 'keep' && $notes === '') {
-                $error = 'Add a material note for the matched Non-stock item.';
                 break;
             }
             if (strlen($notes) > 500) {
@@ -319,6 +306,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $lineTotal = round($quantity * $unitCost, 2);
+            if ($shouldSendToClient && $itemType === 'material' && $materialId > 0
+                && $quantity > (float)($materialAvailableById[$materialId] ?? 0)) {
+                $stockBlockedItems[] = $itemName;
+            }
             $subtotal += $lineTotal;
             $quotationItems[] = [
                 'type' => $itemType,
@@ -334,6 +325,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($error === '' && $subtotal <= 0) {
             $error = 'Quotation total must be greater than zero.';
+        }
+
+        if ($error === '' && $stockBlockedItems !== []) {
+            $error = 'Cannot send yet. Update stock or change ' . implode(', ', array_unique($stockBlockedItems)) . ' to Non-stock.';
         }
 
         if ($error === '' && $quotationNo !== '') {
@@ -360,6 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $profitAmount = round($subtotal * ($marginPercent / 100), 2);
             $grandTotal = round($subtotal + $profitAmount, 2);
+            $downPaymentPercent = 50.0;
             $status = 'Draft';
             $adminId = (int)($_SESSION['user_id'] ?? 0);
             $draftWasSaved = false;
@@ -380,13 +376,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $stmt = $conn->prepare(
                         'UPDATE inquiry_quotation_drafts
-                         SET quotation_no = ?, subtotal = ?, profit_margin_percent = ?, profit_amount = ?, grand_total = ?
+                         SET quotation_no = ?, subtotal = ?, profit_margin_percent = ?, profit_amount = ?, grand_total = ?, down_payment_percent = ?
                          WHERE id = ?'
                     );
                     if (!$stmt) {
                         throw new RuntimeException('Unable to prepare quotation update.');
                     }
-                    $stmt->bind_param('sddddi', $storedQuotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $editId);
+                    $stmt->bind_param('sdddddi', $storedQuotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $downPaymentPercent, $editId);
                     $stmt->execute();
                     $draftId = $editId;
 
@@ -400,14 +396,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $stmt = $conn->prepare(
                         'INSERT INTO inquiry_quotation_drafts
-                         (inquiry_id, inspection_id, quotation_no, subtotal, profit_margin_percent, profit_amount, grand_total, status, created_by)
-                         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)'
+                         (inquiry_id, inspection_id, quotation_no, subtotal, profit_margin_percent, profit_amount, grand_total, down_payment_percent, status, created_by)
+                         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)'
                     );
                     if (!$stmt) {
                         throw new RuntimeException('Unable to prepare quotation.');
                     }
 
-                    $stmt->bind_param('isddddsi', $inquiryId, $storedQuotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $status, $adminId);
+                    $stmt->bind_param('isdddddsi', $inquiryId, $storedQuotationNo, $subtotal, $marginPercent, $profitAmount, $grandTotal, $downPaymentPercent, $status, $adminId);
                     $stmt->execute();
                     $draftId = (int)$conn->insert_id;
                 }
@@ -437,6 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'profit_margin_percent' => (float)$quotationDraft['profit_margin_percent'],
                     'profit_amount' => (float)$quotationDraft['profit_amount'],
                     'grand_total' => (float)$quotationDraft['grand_total'],
+                    'down_payment_percent' => (float)$quotationDraft['down_payment_percent'],
                 ] : null;
                 audit_log_event($conn, $adminId, $isEditMode ? 'update_inquiry_quotation_draft' : 'create_inquiry_quotation_direct', 'quotation', $draftId, $oldAuditData, [
                     'inquiry_id' => $inquiryId,
@@ -444,6 +441,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'subtotal' => $subtotal,
                     'profit_margin_percent' => $marginPercent,
                     'grand_total' => $grandTotal,
+                    'down_payment_percent' => $downPaymentPercent,
                 ]);
 
                 if ($shouldSendToClient) {
@@ -488,8 +486,9 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/form-validation/css/form-validation.css?v=20261116-1',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
-    '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261120-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261119-7',
+    '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261124-3',
+    '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-12',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -499,7 +498,8 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-3',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-7',
+    '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-2',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-9',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -540,10 +540,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="shared-info-card"><span class="shared-info-label">Location</span><strong><?php echo htmlspecialchars(trim((string)$inquiry['site_address'] . ', ' . (string)$inquiry['barangay'] . ', ' . (string)$inquiry['city_municipality'] . ', ' . (string)$inquiry['province'], ' ,'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
             </div>
 
-            <details class="quotation-create-scope">
-                <summary>Project Description</summary>
-                <p><?php echo nl2br(htmlspecialchars((string)($inquiry['description'] ?: 'No scope description provided.'), ENT_QUOTES, 'UTF-8')); ?></p>
-            </details>
+            <?php $projectDescription = trim((string)($inquiry['description'] ?? '')); ?>
+            <section class="quotation-create-scope" aria-labelledby="quotationProjectDescription">
+                <span id="quotationProjectDescription">Project Description</span>
+                <p><?php echo htmlspecialchars($projectDescription !== '' ? $projectDescription : 'No scope description provided.', ENT_QUOTES, 'UTF-8'); ?></p>
+                <?php if (mb_strlen($projectDescription, 'UTF-8') > 160): ?>
+                    <button type="button" class="quotation-create-scope__view" data-material-notes-open data-material-notes-title="Project Description" data-material-notes-hide-subject data-material-notes="<?php echo htmlspecialchars($projectDescription, ENT_QUOTES, 'UTF-8'); ?>">View Description</button>
+                <?php endif; ?>
+            </section>
 
             <form id="quotationCreateForm" method="POST" class="quotation-create-form" data-quotation-create-form data-quotation-edit-mode="<?php echo $isEditMode ? 'true' : 'false'; ?>" data-initial-quotation="<?php echo $isInitialQuotationDraft ? 'true' : 'false'; ?>" data-quotation-id="<?php echo $editId; ?>" data-quotation-inquiry-id="<?php echo $inquiryId; ?>" data-quotation-client-email="<?php echo htmlspecialchars((string)$inquiry['email'], ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -555,7 +559,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
                 <div class="quotation-create-section-head">
                     <div>
-                        <h2>Cost Breakdown</h2>
+                        <h2>Quotation Cost Breakdown</h2>
                     </div>
                 </div>
 
@@ -568,6 +572,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         $rowUnit = (string)($postedUnits[$index] ?? '');
                         $rowUnitLocked = $rowType === 'material' && $rowMaterialId > 0;
                         $rowNameLocked = $rowUnitLocked;
+                        $rowIsNonStock = (string)($postedMaterialIds[$index] ?? '') === 'manual';
                         $rowQuantity = (string)($postedQuantities[$index] ?? '1');
                         if (in_array(strtolower($rowUnit), $wholeCountUnits, true) && is_numeric($rowQuantity)) {
                             $rowQuantity = (string)(int)round((float)$rowQuantity);
@@ -575,16 +580,14 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         ?>
                         <div class="quotation-create-item shared-material-cost-row<?php echo $rowType === 'material' ? ' is-material-item' : ''; ?>" data-quotation-item data-material-suggestion-scope>
                             <label class="quotation-create-item__type" hidden><span>Type</span><select name="item_type[]" required><option value="material" selected>Materials</option></select></label>
-                            <label class="quotation-create-item__material-reference" data-quotation-material-reference<?php echo $rowType !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><span class="material-combobox" data-material-combobox><input type="text" data-material-combobox-input placeholder="Select Material" autocomplete="off" aria-label="Select material reference"><button type="button" data-material-combobox-toggle aria-label="Show material options"></button><span class="material-combobox__list" data-material-combobox-list></span></span><select class="material-picker-source" name="material_id[]" data-material-suggestion-source required tabindex="-1" aria-hidden="true">
+                            <label class="quotation-create-item__material-reference shared-material-cost-row__reference" data-quotation-material-reference<?php echo $rowType !== 'material' ? ' hidden' : ''; ?>><span>Material Reference</span><span class="material-combobox" data-material-combobox><input type="text" data-material-combobox-input placeholder="Select Material" autocomplete="off" aria-label="Select material reference"><button type="button" data-material-combobox-toggle aria-label="Show material options"></button><span class="material-combobox__list" data-material-combobox-list></span></span><select class="material-picker-source" name="material_id[]" data-material-suggestion-source required tabindex="-1" aria-hidden="true">
                                     <option value="" disabled hidden<?php echo $rowMaterialId <= 0 && (string)($postedMaterialIds[$index] ?? '') !== 'manual' ? ' selected' : ''; ?>>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $rowMaterialId === (int)$material['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual" <?php echo (string)($postedMaterialIds[$index] ?? '') === 'manual' ? ' selected' : ''; ?>><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
                                 </select><span class="quotation-create-item__material-feedback" data-quotation-material-feedback aria-live="polite" hidden></span><span class="quotation-create-item__material-error" data-quotation-material-error aria-live="polite"></span></label>
-                            <label class="quotation-create-item__name"><span>Material Name</span><div class="shared-material-suggestion-field" data-material-suggestion-field><input type="text" name="item_name[]" data-material-suggestion-input maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required<?php echo $rowNameLocked ? ' class="is-linked-material-name" readonly aria-readonly="true"' : ''; ?>><span class="shared-material-suggestions" data-material-suggestion-list hidden></span></div><span class="shared-material-decision" data-non-stock-match hidden><span class="shared-material-decision__actions"><button type="button" data-use-existing-material>Use from stock</button><button type="button" data-keep-non-stock>Keep as Non-stock</button></span></span><span class="shared-material-note" data-material-note-wrap hidden><span>Notes *</span><input type="text" name="item_notes[]" maxlength="500" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Explain why this stays Non-stock"></span><small class="quotation-create-item__match-error" data-non-stock-match-error></small></label>
-                            <input type="hidden" name="non_stock_choice[]" value="<?php echo htmlspecialchars((string)($postedNonStockChoices[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-non-stock-choice>
-                            <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="<?php echo in_array(strtolower($rowUnit), $wholeCountUnits, true) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars($rowQuantity, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
-                            <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
-                            <label class="quotation-create-item__cost"><span>Unit Cost</span><input type="number" name="unit_cost[]" min="<?php echo $rowType === 'material' ? '0.01' : '0'; ?>" step="0.01" placeholder="0.00" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
-                            <div class="quotation-create-item__line-total"><span>Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
-                            <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
+                            <div class="quotation-create-item__name shared-material-cost-row__name"><label><span>Material Name</span><div class="shared-material-suggestion-field" data-material-suggestion-field><input type="text" name="item_name[]" data-material-suggestion-input maxlength="180" value="<?php echo htmlspecialchars((string)$postedName, ENT_QUOTES, 'UTF-8'); ?>" required<?php echo $rowNameLocked ? ' class="is-linked-material-name" readonly aria-readonly="true"' : ''; ?>><span class="shared-material-suggestions" data-material-suggestion-list hidden></span></div></label><label class="quotation-create-item__notes shared-material-cost-row__notes" data-quotation-notes-wrap<?php echo !$rowIsNonStock ? ' hidden' : ''; ?>><span>Notes (Optional)</span><input type="text" name="item_notes[]" data-quotation-item-notes maxlength="500" value="<?php echo htmlspecialchars((string)($postedNotes[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Add a note if needed"></label></div>
+                            <label class="quotation-create-item__quantity shared-material-cost-row__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="<?php echo in_array(strtolower($rowUnit), $wholeCountUnits, true) ? '1' : '0.01'; ?>" value="<?php echo htmlspecialchars($rowQuantity, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
+                            <label class="quotation-create-item__unit shared-material-cost-row__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit class="<?php echo $rowUnitLocked ? 'is-locked' : ''; ?>" <?php echo $rowUnitLocked ? ' aria-readonly="true" tabindex="-1"' : ''; ?>><?php inquiry_quote_render_unit_options($unitOptionsByType, $materialUnitsById, $rowType, $rowMaterialId, $rowUnit); ?></select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
+                            <label class="quotation-create-item__cost shared-material-cost-row__cost"><span>Actual Unit Cost (PHP)</span><input type="number" name="unit_cost[]" min="<?php echo $rowType === 'material' ? '0.01' : '0'; ?>" step="0.01" placeholder="0.00" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($postedUnitCosts[$index] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
+                            <button type="button" class="quotation-create-remove shared-material-cost-row__remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -596,13 +599,12 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <template data-quotation-item-template>
                     <div class="quotation-create-item shared-material-cost-row is-material-item" data-quotation-item data-material-suggestion-scope>
                         <label class="quotation-create-item__type" hidden><span>Type</span><select name="item_type[]" required><option value="material" selected>Materials</option></select></label>
-                        <label class="quotation-create-item__material-reference" data-quotation-material-reference><span>Material Reference</span><span class="material-combobox" data-material-combobox><input type="text" data-material-combobox-input placeholder="Select Material" autocomplete="off" aria-label="Select material reference"><button type="button" data-material-combobox-toggle aria-label="Show material options"></button><span class="material-combobox__list" data-material-combobox-list></span></span><select class="material-picker-source" name="material_id[]" data-material-suggestion-source required tabindex="-1" aria-hidden="true">
+                        <label class="quotation-create-item__material-reference shared-material-cost-row__reference" data-quotation-material-reference><span>Material Reference</span><span class="material-combobox" data-material-combobox><input type="text" data-material-combobox-input placeholder="Select Material" autocomplete="off" aria-label="Select material reference"><button type="button" data-material-combobox-toggle aria-label="Show material options"></button><span class="material-combobox__list" data-material-combobox-list></span></span><select class="material-picker-source" name="material_id[]" data-material-suggestion-source required tabindex="-1" aria-hidden="true">
                                 <option value="" selected disabled hidden>Select material</option><?php foreach ($materialOptions as $material): ?><option value="<?php echo (int)$material['id']; ?>" data-material-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-name="<?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-suggestion-unit="<?php echo htmlspecialchars((string)$material['unit'], ENT_QUOTES, 'UTF-8'); ?>" data-material-available="<?php echo htmlspecialchars((string)material_stock_available_quantity($material), ENT_QUOTES, 'UTF-8'); ?>" data-material-reorder="<?php echo htmlspecialchars((string)($material['reorder_level'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$material['material_name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?><option value="manual"><?php echo htmlspecialchars(material_stock_non_stock_label(), ENT_QUOTES, 'UTF-8'); ?></option>
                             </select><span class="quotation-create-item__material-feedback" data-quotation-material-feedback aria-live="polite" hidden></span><span class="quotation-create-item__material-error" data-quotation-material-error aria-live="polite"></span></label>
-                        <label class="quotation-create-item__name"><span>Material Name</span><div class="shared-material-suggestion-field" data-material-suggestion-field><input type="text" name="item_name[]" data-material-suggestion-input maxlength="180" required><span class="shared-material-suggestions" data-material-suggestion-list hidden></span></div><span class="shared-material-decision" data-non-stock-match hidden><span class="shared-material-decision__actions"><button type="button" data-use-existing-material>Use from stock</button><button type="button" data-keep-non-stock>Keep as Non-stock</button></span></span><span class="shared-material-note" data-material-note-wrap hidden><span>Notes *</span><input type="text" name="item_notes[]" maxlength="500" placeholder="Explain why this stays Non-stock"></span><small class="quotation-create-item__match-error" data-non-stock-match-error></small></label>
-                        <input type="hidden" name="non_stock_choice[]" value="" data-non-stock-choice>
-                        <label class="quotation-create-item__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
-                        <label class="quotation-create-item__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit>
+                        <div class="quotation-create-item__name shared-material-cost-row__name"><label><span>Material Name</span><div class="shared-material-suggestion-field" data-material-suggestion-field><input type="text" name="item_name[]" data-material-suggestion-input maxlength="180" required><span class="shared-material-suggestions" data-material-suggestion-list hidden></span></div></label><label class="quotation-create-item__notes shared-material-cost-row__notes" data-quotation-notes-wrap hidden><span>Notes (Optional)</span><input type="text" name="item_notes[]" data-quotation-item-notes maxlength="500" placeholder="Add a note if needed"></label></div>
+                        <label class="quotation-create-item__quantity shared-material-cost-row__quantity"><span>Qty</span><input type="number" name="quantity[]" min="0.01" step="0.01" required><span class="quotation-create-item__quantity-error" data-quotation-quantity-error aria-live="polite"></span></label>
+                        <label class="quotation-create-item__unit shared-material-cost-row__unit"><span>Unit</span><select name="unit[]" required data-quotation-unit>
                                 <option value="" selected disabled>Select unit</option>
                                 <option value="pcs">pcs</option>
                                 <option value="meter">meter</option>
@@ -613,9 +615,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                 <option value="kg">kg</option>
                                 <option value="liter">liter</option>
                             </select><span class="quotation-create-item__unit-error" data-quotation-unit-error aria-live="polite"></span></label>
-                        <label class="quotation-create-item__cost"><span>Unit Cost</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" placeholder="0.00" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
-                        <div class="quotation-create-item__line-total"><span>Total</span><strong>PHP <span data-quotation-line-total>0.00</span></strong></div>
-                        <button type="button" class="quotation-create-remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
+                        <label class="quotation-create-item__cost shared-material-cost-row__cost"><span>Actual Unit Cost (PHP)</span><input type="number" name="unit_cost[]" min="0.01" step="0.01" placeholder="0.00" required><span class="quotation-create-item__cost-error" data-quotation-cost-error aria-live="polite"></span></label>
+                        <button type="button" class="quotation-create-remove shared-material-cost-row__remove" data-quotation-remove-item aria-label="Remove quotation item"><span class="quotation-create-remove__icon" aria-hidden="true">🗑</span><span>Remove</span></button>
                     </div>
                 </template>
 
@@ -645,7 +646,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <div class="quotation-create-summary">
                     <label><span>Markup (%)</span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($marginPercentRaw, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-summary__error" data-quotation-markup-error aria-live="polite"><?php echo htmlspecialchars($markupError, ENT_QUOTES, 'UTF-8'); ?></span></label>
                     <div><span>Subtotal</span><strong>PHP <span data-quotation-subtotal>0.00</span></strong></div>
-                    <div class="quotation-create-grand-total"><span>Grand Total</span><strong>PHP <span data-quotation-total>0.00</span></strong></div>
+                    <div class="quotation-create-grand-total"><span>Quotation Total</span><strong>PHP <span data-quotation-total>0.00</span></strong></div>
+                        <div><span>50% Down Payment</span><strong>PHP <span data-quotation-down-payment>0.00</span></strong></div>
+                        <div><span>Remaining Balance</span><strong>PHP <span data-quotation-balance>0.00</span></strong></div>
                 </div>
 
                 <div class="quotation-create-actions">

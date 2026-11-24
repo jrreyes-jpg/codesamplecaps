@@ -186,6 +186,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                         <p><span>Subtotal</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['subtotal'] ?? 0))); ?></strong></p>
                         <p><span>Markup (<?php echo admin_quote_details_e(number_format((float)($quotation['profit_margin_percent'] ?? 0), 2)); ?>%)</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['profit_amount'] ?? 0))); ?></strong></p>
                         <p class="is-total"><span>Grand Total</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></p>
+                        <p><span>50% Down Payment</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0) * 0.5)); ?></strong></p>
+                        <p><span>Remaining Balance</span><strong><?php echo admin_quote_details_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0) * 0.5)); ?></strong></p>
                     </div>
                 </div>
 

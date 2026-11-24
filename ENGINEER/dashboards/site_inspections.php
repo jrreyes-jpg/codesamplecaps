@@ -1588,7 +1588,7 @@ $engineerCssFiles = [
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
-    '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261120-1',
+    '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261124-3',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-2',
     '/codesamplecaps/SHARED/modal/css/modal-scroll-lock.css?v=20261120-1',
     '/codesamplecaps/SHARED/inspection-evidence/css/lightbox.css?v=20261102-1',
@@ -2222,16 +2222,16 @@ require __DIR__ . '/../layout/header.php';
                                                     <button type="button" data-keep-non-stock>Keep as Non-stock</button>
                                                 </span>
                                             </span>
-                                            <label>
+                                            <label class="shared-material-cost-row__notes">
                                                 <span data-material-notes-label>Notes (Optional)</span>
                                                 <input type="text" name="notes[]" maxlength="200" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                             </label>
                                         </div>
-                                        <label>
+                                        <label class="shared-material-cost-row__quantity">
                                             <span>Qty <b aria-hidden="true">*</b></span>
                                             <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars(site_inspection_format_quantity((float)($item['quantity'] ?? 1), (string)($item['unit'] ?? 'unit')), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>
-                                        <label>
+                                        <label class="shared-material-cost-row__unit">
                                             <span>Unit <b aria-hidden="true">*</b></span>
                                             <select name="unit[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                                 <option value="" disabled<?php echo trim((string)($item['unit'] ?? '')) === '' ? ' selected' : ''; ?>>Select unit</option>
@@ -2242,7 +2242,7 @@ require __DIR__ . '/../layout/header.php';
                                                 <?php endforeach; ?>
                                             </select>
                                         </label>
-                                        <label>
+                                        <label class="shared-material-cost-row__cost">
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
                                             <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
                                         </label>

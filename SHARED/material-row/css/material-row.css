@@ -14,6 +14,46 @@
     display: none;
 }
 
+/* Parehong field sizing para sa Admin at Engineer cost rows. */
+.shared-material-cost-row__reference,
+.shared-material-cost-row__name,
+.shared-material-cost-row__notes,
+.shared-material-cost-row__quantity,
+.shared-material-cost-row__unit,
+.shared-material-cost-row__cost,
+.shared-material-cost-row__line-total {
+    min-width: 0;
+}
+
+.shared-material-cost-row__notes[hidden] {
+    display: none !important;
+}
+
+/* Pareho ang field order sa Engineer costing at Admin quotation. */
+.shared-material-cost-row > .shared-material-cost-row__reference {
+    grid-column: 1;
+}
+
+.shared-material-cost-row > .shared-material-cost-row__name {
+    grid-column: 2;
+}
+
+.shared-material-cost-row > .shared-material-cost-row__quantity {
+    grid-column: 3;
+}
+
+.shared-material-cost-row > .shared-material-cost-row__unit {
+    grid-column: 4;
+}
+
+.shared-material-cost-row > .shared-material-cost-row__cost {
+    grid-column: 5;
+}
+
+.shared-material-cost-row > .shared-material-cost-row__remove {
+    grid-column: 6;
+}
+
 .shared-material-cost-row.has-linked-material .shared-material-cost-row__reference {
     grid-column: 1 / span 2;
 }
@@ -35,6 +75,15 @@
     }
 
     .shared-material-cost-row.has-linked-material .shared-material-cost-row__reference {
+        grid-column: auto;
+    }
+
+    .shared-material-cost-row > .shared-material-cost-row__reference,
+    .shared-material-cost-row > .shared-material-cost-row__name,
+    .shared-material-cost-row > .shared-material-cost-row__quantity,
+    .shared-material-cost-row > .shared-material-cost-row__unit,
+    .shared-material-cost-row > .shared-material-cost-row__cost,
+    .shared-material-cost-row > .shared-material-cost-row__remove {
         grid-column: auto;
     }
 

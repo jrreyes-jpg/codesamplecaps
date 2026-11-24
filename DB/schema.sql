@@ -224,6 +224,7 @@ CREATE TABLE `inquiry_quotation_drafts` (
   `profit_margin_percent` decimal(7,2) NOT NULL DEFAULT 0.00,
   `profit_amount` decimal(14,2) NOT NULL DEFAULT 0.00,
   `grand_total` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `down_payment_percent` decimal(5,2) NOT NULL DEFAULT 50.00,
   `approved_by` int(11) DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
   `sent_by` int(11) DEFAULT NULL,

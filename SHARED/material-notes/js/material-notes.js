@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
     modal.hidden = true;
     modal.innerHTML = [
         '<div class="shared-material-notes-modal__panel" role="dialog" aria-modal="true" aria-labelledby="sharedMaterialNotesTitle">',
-        '<h2 class="shared-material-notes-modal__title" id="sharedMaterialNotesTitle">Material Notes</h2>',
+        '<h2 class="shared-material-notes-modal__title" id="sharedMaterialNotesTitle" data-shared-material-notes-title>Material Notes</h2>',
         '<p class="shared-material-notes-modal__material" data-shared-material-notes-name></p>',
         '<p class="shared-material-notes-modal__text" data-shared-material-notes-text></p>',
         '<div class="shared-material-notes-modal__actions">',
@@ -26,9 +26,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const openButton = event.target.closest('[data-material-notes-open]');
         if (openButton) {
             trigger = openButton;
+            const title = modal.querySelector('[data-shared-material-notes-title]');
             const name = modal.querySelector('[data-shared-material-notes-name]');
             const notes = modal.querySelector('[data-shared-material-notes-text]');
-            if (name) name.textContent = openButton.dataset.materialName || 'Material';
+            if (title) title.textContent = openButton.dataset.materialNotesTitle || 'Material Notes';
+            if (name) {
+                name.hidden = openButton.hasAttribute('data-material-notes-hide-subject');
+                name.textContent = openButton.dataset.materialName || 'Material';
+            }
             if (notes) notes.textContent = openButton.dataset.materialNotes || 'No notes.';
             modal.hidden = false;
             modal.querySelector('[data-shared-material-notes-close]')?.focus();

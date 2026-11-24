@@ -74,7 +74,6 @@
 .quotation-create-number label,
 .quotation-create-scope > span,
 .quotation-create-item label > span,
-.quotation-create-item__line-total > span,
 .quotation-create-summary label > span,
 .quotation-create-summary div > span {
     display: block;
@@ -133,15 +132,33 @@
     margin-bottom: 16px;
 }
 
-.quotation-create-scope summary {
-    color: #52655c;
-    cursor: pointer;
-    font-size: .82rem;
-    font-weight: 700;
+.quotation-create-scope p {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
 }
 
-.quotation-create-scope[open] summary {
-    margin-bottom: 8px;
+.quotation-create-scope__view {
+    width: fit-content;
+    margin-top: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #116b3a;
+    cursor: pointer;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.quotation-create-scope__view:hover,
+.quotation-create-scope__view:focus-visible {
+    color: #0b4f2a;
+    outline: none;
 }
 
 .quotation-create-form {
@@ -156,7 +173,7 @@
 
 .quotation-create-item {
     display: grid;
-    grid-template-columns: minmax(190px, 1.25fr) minmax(180px, 1.1fr) minmax(70px, .4fr) minmax(90px, .55fr) minmax(110px, .7fr) minmax(105px, .65fr) minmax(95px, .55fr);
+    grid-template-columns: minmax(190px, 1.35fr) minmax(180px, 1.15fr) minmax(72px, .4fr) minmax(100px, .55fr) minmax(130px, .7fr) minmax(100px, .55fr);
     align-items: start;
     gap: 10px;
     padding: 10px;
@@ -178,6 +195,10 @@
 .quotation-create-item__name {
     position: relative;
     padding-bottom: 20px;
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    align-content: start;
 }
 
 .quotation-create-item__match-error {
@@ -255,27 +276,8 @@
     grid-column: 5;
 }
 
-.quotation-create-item__line-total {
-    grid-column: 6;
-    min-width: 0;
-    min-height: 42px;
-    padding: 9px 10px;
-    border: 1px solid #cfe3d8;
-    border-radius: 9px;
-    background: #f1f8f4;
-    margin-top: 26px;
-    margin-bottom: 0;
-}
-
-.quotation-create-item__line-total strong {
-    display: block;
-    overflow-wrap: anywhere;
-    color: #0f6847;
-    font-size: .94rem;
-}
-
 .quotation-create-item .quotation-create-remove {
-    grid-column: 7;
+    grid-column: 6;
     margin-bottom: 0;
     align-self: start;
     justify-self: stretch;
@@ -308,6 +310,16 @@
     background: #eef7f1;
     color: #2f5140;
     cursor: default;
+}
+
+.quotation-create-item > .quotation-create-item__notes {
+    display: block;
+    /* Katulad ng Engineer: Notes ay ilalim lang ng Material Name. */
+    grid-column: 2;
+}
+
+.quotation-create-item__notes[hidden] {
+    display: none;
 }
 
 .quotation-create-item:not(.is-material-item) .quotation-create-item__type {
@@ -611,10 +623,6 @@
     .quotation-create-item__quantity,
     .quotation-create-item__unit,
     .quotation-create-item__cost,
-    .quotation-create-item__line-total {
-        grid-column: span 1;
-    }
-
     .quotation-create-item .quotation-create-remove {
         grid-column: span 1;
     }
@@ -640,10 +648,10 @@
 
     .quotation-create-item__type,
     .quotation-create-item__material-reference,
+    .quotation-create-item > .quotation-create-item__notes,
     .quotation-create-item__quantity,
     .quotation-create-item__unit,
     .quotation-create-item__cost,
-    .quotation-create-item__line-total,
     .quotation-create-item:not(.is-material-item) .quotation-create-item__type,
     .quotation-create-item:not(.is-material-item) .quotation-create-item__name {
         grid-column: span 2;
@@ -713,10 +721,10 @@
     .quotation-create-item__name,
     .quotation-create-item__type,
     .quotation-create-item__material-reference,
+    .quotation-create-item__notes,
     .quotation-create-item__quantity,
     .quotation-create-item__unit,
     .quotation-create-item__cost,
-    .quotation-create-item__line-total,
     .quotation-create-item .quotation-create-remove {
         grid-column: auto;
     }

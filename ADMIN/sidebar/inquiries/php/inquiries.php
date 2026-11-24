@@ -2620,7 +2620,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-7',
     '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
@@ -2638,7 +2638,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261124-1',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

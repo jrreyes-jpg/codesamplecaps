@@ -22,13 +22,9 @@ function shared_navigation_items_for_role(string $role): array
             ['module' => 'audit_logs', 'label' => 'Audit Logs', 'mini' => 'Audit', 'href' => '/codesamplecaps/SUPERADMIN/sidebar/audit_logs.php', 'icon' => 'activity', 'active' => ['/SUPERADMIN/sidebar/audit_logs.php']],
         ],
         'foreman' => [
-            ['module' => 'overview', 'label' => 'Overview', 'mini' => 'Home', 'href' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php', 'icon' => 'dashboard', 'active' => ['/FOREMAN/dashboards/foreman_dashboard.php']],
-            ['module' => 'scan_asset', 'label' => 'Scan Asset', 'mini' => 'Scan', 'href' => '#', 'icon' => 'scan', 'type' => 'button', 'id' => 'qrScannerBtn', 'active' => []],
+            ['module' => 'overview', 'label' => 'Dashboard', 'mini' => 'Home', 'href' => '/codesamplecaps/FOREMAN/dashboards/foreman_dashboard.php', 'icon' => 'dashboard', 'active' => ['/FOREMAN/dashboards/foreman_dashboard.php']],
             ['module' => 'projects', 'label' => 'My Projects', 'mini' => 'Proj', 'href' => '/codesamplecaps/FOREMAN/dashboards/projects.php', 'icon' => 'projects', 'active' => ['/FOREMAN/dashboards/projects.php'], 'exclude_query' => ['view=trash', 'view=archive']],
-            ['module' => 'reports', 'label' => 'Reports', 'mini' => 'Rpt', 'href' => '/codesamplecaps/FOREMAN/dashboards/reports.php', 'icon' => 'reports', 'active' => ['/FOREMAN/dashboards/reports.php', '/FOREMAN/dashboards/report_list.php', '/FOREMAN/dashboards/report_detail.php']],
-            ['module' => 'asset_status', 'label' => 'Asset Status', 'mini' => 'Asset', 'href' => '/codesamplecaps/FOREMAN/dashboards/asset_status.php', 'icon' => 'assets', 'active' => ['/FOREMAN/dashboards/asset_status.php']],
-            ['module' => 'usage_logs', 'label' => 'Usage Logs', 'mini' => 'Logs', 'href' => '/codesamplecaps/FOREMAN/dashboards/usage_logs.php', 'icon' => 'activity', 'active' => ['/FOREMAN/dashboards/usage_logs.php']],
-            ['module' => 'worker_summary', 'label' => 'Worker Summary', 'mini' => 'Work', 'href' => '/codesamplecaps/FOREMAN/dashboards/worker_summary.php', 'icon' => 'user', 'active' => ['/FOREMAN/dashboards/worker_summary.php']],
+            ['module' => 'material_requests', 'label' => 'Material Requests', 'mini' => 'Req', 'href' => '/codesamplecaps/FOREMAN/dashboards/procurement.php', 'icon' => 'procurement', 'active' => ['/FOREMAN/dashboards/procurement.php']],
         ],
         'inventory_clerk' => [
             ['module' => 'dashboard', 'label' => 'Dashboard', 'mini' => 'Dash', 'href' => '/codesamplecaps/INVENTORY_CLERK/dashboards/dashboard.php', 'icon' => 'dashboard', 'active' => ['/INVENTORY_CLERK/dashboards/dashboard.php', '/INVENTORY_CLERK/dashboards/dashboard.php']],

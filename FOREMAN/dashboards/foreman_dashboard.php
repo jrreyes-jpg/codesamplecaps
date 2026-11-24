@@ -46,6 +46,7 @@ $foremanNotifications = [
                 <div class="hero-actions">
                     <button class="btn-primary" type="button" data-open-qr-scanner>Scan Asset</button>
                     <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/asset_status.php">Asset Status</a>
+                    <a class="btn-secondary" href="/codesamplecaps/FOREMAN/dashboards/usage_logs.php">Usage Logs</a>
                 </div>
             </div>
         </section>

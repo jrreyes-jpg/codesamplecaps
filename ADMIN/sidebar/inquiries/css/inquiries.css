@@ -171,17 +171,6 @@
     gap: 8px;
 }
 
-.quotation-create-item {
-    display: grid;
-    grid-template-columns: minmax(190px, 1.35fr) minmax(180px, 1.15fr) minmax(72px, .4fr) minmax(100px, .55fr) minmax(130px, .7fr) minmax(100px, .55fr);
-    align-items: start;
-    gap: 10px;
-    padding: 10px;
-    border: 1px solid #dce8e3;
-    border-radius: 14px;
-    background: #fbfdfc;
-}
-
 .quotation-create-item__type {
     position: relative;
     padding-bottom: 20px;
@@ -272,25 +261,9 @@
     outline: none;
 }
 
-.quotation-create-item__cost {
-    grid-column: 5;
-}
-
 .quotation-create-item .quotation-create-remove {
-    grid-column: 6;
     margin-bottom: 0;
-    align-self: start;
     justify-self: stretch;
-    min-height: 42px;
-    margin-top: 26px;
-}
-
-.quotation-create-item.is-material-item.has-linked-material .quotation-create-item__material-reference {
-    grid-column: 1 / span 2;
-}
-
-.quotation-create-item.is-material-item.has-linked-material .quotation-create-item__name {
-    display: none;
 }
 
 .quotation-create-materials-note[hidden] {
@@ -310,12 +283,6 @@
     background: #eef7f1;
     color: #2f5140;
     cursor: default;
-}
-
-.quotation-create-item > .quotation-create-item__notes {
-    display: block;
-    /* Katulad ng Engineer: Notes ay ilalim lang ng Material Name. */
-    grid-column: 2;
 }
 
 .quotation-create-item__notes[hidden] {
@@ -603,66 +570,9 @@
     text-decoration: none;
 }
 
-@media (max-width: 1180px) {
-    .quotation-create-item {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .quotation-create-item__type {
-        grid-column: span 1;
-    }
-
-    .quotation-create-item__material-reference {
-        grid-column: span 1;
-    }
-
-    .quotation-create-item__name {
-        grid-column: span 1;
-    }
-
-    .quotation-create-item__quantity,
-    .quotation-create-item__unit,
-    .quotation-create-item__cost,
-    .quotation-create-item .quotation-create-remove {
-        grid-column: span 1;
-    }
-
-    .quotation-create-item:not(.is-material-item) .quotation-create-item__type {
-        grid-column: span 1;
-    }
-
-    .quotation-create-item:not(.is-material-item) .quotation-create-item__name {
-        grid-column: span 3;
-    }
-
-}
-
 @media (max-width: 900px) {
     .quotation-create-direct-costs__grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .quotation-create-item {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .quotation-create-item__type,
-    .quotation-create-item__material-reference,
-    .quotation-create-item > .quotation-create-item__notes,
-    .quotation-create-item__quantity,
-    .quotation-create-item__unit,
-    .quotation-create-item__cost,
-    .quotation-create-item:not(.is-material-item) .quotation-create-item__type,
-    .quotation-create-item:not(.is-material-item) .quotation-create-item__name {
-        grid-column: span 2;
-    }
-
-    .quotation-create-item__name {
-        grid-column: span 2;
-    }
-
-    .quotation-create-item .quotation-create-remove {
-        grid-column: 2;
     }
 
     .quotation-create-summary {
@@ -697,13 +607,8 @@
         min-width: 0;
     }
 
-    .quotation-create-item,
     .quotation-create-summary {
         grid-template-columns: 1fr;
-    }
-
-    .quotation-create-item {
-        gap: 12px;
     }
 
     .quotation-create-summary .quotation-create-grand-total {
@@ -716,17 +621,6 @@
     .quotation-create-summary input {
         box-sizing: border-box;
         max-width: 100%;
-    }
-
-    .quotation-create-item__name,
-    .quotation-create-item__type,
-    .quotation-create-item__material-reference,
-    .quotation-create-item__notes,
-    .quotation-create-item__quantity,
-    .quotation-create-item__unit,
-    .quotation-create-item__cost,
-    .quotation-create-item .quotation-create-remove {
-        grid-column: auto;
     }
 
     .quotation-create-item .quotation-create-remove {
@@ -1082,8 +976,48 @@
 }
 
 .inquiry-status[data-status="Inspection Submitted"] {
+    background: #bfdbfe !important;
+    color: #1e40af !important;
+}
+
+.inquiry-status[data-status="For Quotation"] {
     background: #dcfce7 !important;
     color: #166534 !important;
+}
+
+/* Scheduled ay light blue; submitted ay mas dark blue habang Admin review. */
+.inquiry-status-link.inquiry-lifecycle-filter[data-status="For Inspection"]:not(.is-active) {
+    border-color: #bfdbfe;
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.inquiry-status-link.inquiry-lifecycle-filter[data-status="For Inspection"]:not(.is-active) .inquiry-quotation-filter__count {
+    background: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.inquiry-status-link.inquiry-lifecycle-filter[data-status="Inspection Submitted"]:not(.is-active) {
+    border-color: #93c5fd;
+    background: #bfdbfe;
+    color: #1e40af;
+}
+
+.inquiry-status-link.inquiry-lifecycle-filter[data-status="Inspection Submitted"]:not(.is-active) .inquiry-quotation-filter__count {
+    background: #93c5fd;
+    color: #1e3a8a;
+}
+
+/* Parehong green ang card badge at filter kapag handa na sa quotation. */
+.inquiry-status-link.inquiry-lifecycle-filter[data-status="For Quotation"]:not(.is-active) {
+    border-color: #bbf7d0;
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inquiry-status-link.inquiry-lifecycle-filter[data-status="For Quotation"]:not(.is-active) .inquiry-quotation-filter__count {
+    background: #bbf7d0;
+    color: #166534;
 }
 
 .inquiry-status[data-status="Quotation Draft"] {

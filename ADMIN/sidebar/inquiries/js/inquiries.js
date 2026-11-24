@@ -3312,26 +3312,58 @@ document.addEventListener('DOMContentLoaded', function () {
         const syncQuotationNotesVisibility = function (row) {
             const notesWrap = row.querySelector('[data-quotation-notes-wrap]');
             const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const notesInput = row.querySelector('input[name="item_notes[]"]');
             const isNonStock = materialSelect?.value === 'manual';
             if (notesWrap) notesWrap.hidden = !isNonStock;
+            if (!isNonStock && notesInput) {
+                notesInput.value = '';
+                notesInput.required = false;
+                notesInput.setCustomValidity('');
+                notesInput.removeAttribute('aria-invalid');
+            }
+        };
+
+        const setQuotationNotesRequired = function (row, isRequired) {
+            const notesLabel = row.querySelector('[data-quotation-notes-label]');
+            const notesInput = row.querySelector('input[name="item_notes[]"]');
+            if (notesLabel) notesLabel.textContent = isRequired ? 'Notes *' : 'Notes (Optional)';
+            if (notesInput) notesInput.required = isRequired;
+        };
+
+        const isValidQuotationNonStockReason = function (value) {
+            const reason = String(value || '').trim().replace(/\s+/g, ' ');
+            return reason.length >= 5 && reason.length <= 200 && /\p{L}/u.test(reason);
         };
 
         const syncQuotationNonStockDecision = function (row, showMessage) {
             const nameInput = row.querySelector('input[name="item_name[]"]');
             const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const notesInput = row.querySelector('input[name="item_notes[]"]');
+            const choiceInput = row.querySelector('[data-non-stock-choice]');
             const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
                 manualValues: ['manual'],
             });
-            const needsChoice = materialSelect?.value === 'manual' && decisionState?.exactOption;
-            const isValid = !needsChoice || decisionState?.valid === true;
-            const message = isValid ? '' : 'Choose Use from stock or Keep as Non-stock.';
+            const isManualMaterial = materialSelect?.value === 'manual';
+            const exactOption = isManualMaterial ? decisionState?.exactOption : null;
+            const isKeepingNonStock = Boolean(exactOption) && choiceInput?.value === 'keep';
+            const notesMessage = isKeepingNonStock && !isValidQuotationNonStockReason(notesInput?.value)
+                ? 'Enter a short reason for keeping this as Non-stock.'
+                : '';
+            const needsChoice = Boolean(exactOption) && !isKeepingNonStock;
+            const message = needsChoice ? 'Choose Use from stock or Keep as Non-stock.' : '';
+
+            setQuotationNotesRequired(row, isKeepingNonStock);
+            if (notesInput) {
+                notesInput.setCustomValidity(notesMessage);
+                notesInput.setAttribute('aria-invalid', notesMessage !== '' ? 'true' : 'false');
+            }
 
             if (nameInput) {
                 nameInput.setCustomValidity(message);
                 nameInput.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
             }
             setMaterialReferenceMessage(row, showMessage ? message : '');
-            return isValid;
+            return message === '' && notesMessage === '';
         };
 
         const syncMaterialReference = function (row, resetForMaterialChange = false) {
@@ -3602,6 +3634,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 syncQuotationNotesVisibility(row);
                 syncQuotationNonStockDecision(row, false);
             }
+            if (row && event.target.matches('input[name="item_notes[]"]')) {
+                syncQuotationNonStockDecision(row, false);
+            }
         });
 
         items?.addEventListener('click', function (event) {
@@ -3721,7 +3756,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             if (unresolvedNonStockRow) {
                 event.preventDefault();
-                unresolvedNonStockRow.querySelector('input[name="item_name[]"]')?.focus();
+                const choiceIsPending = unresolvedNonStockRow.querySelector('[data-non-stock-choice]')?.value !== 'keep';
+                (choiceIsPending
+                    ? unresolvedNonStockRow.querySelector('input[name="item_name[]"]')
+                    : unresolvedNonStockRow.querySelector('input[name="item_notes[]"]'))?.focus();
                 return;
             }
 

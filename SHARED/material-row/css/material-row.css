@@ -1,7 +1,7 @@
 /* Isang magaan na material row para sa Admin at Engineer. */
 .shared-material-cost-row {
     display: grid;
-    grid-template-columns: minmax(190px, 1.35fr) minmax(180px, 1.15fr) minmax(72px, .4fr) minmax(100px, .55fr) minmax(130px, .7fr) minmax(100px, .55fr);
+    grid-template-columns: minmax(210px, 1.35fr) minmax(180px, 1.15fr) minmax(72px, .4fr) minmax(100px, .55fr) minmax(178px, .85fr) minmax(112px, .55fr);
     align-items: start;
     gap: 10px;
     padding: 10px;

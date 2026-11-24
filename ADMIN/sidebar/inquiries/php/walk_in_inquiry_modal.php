@@ -156,7 +156,7 @@
             <div class="form-actions walk-in-inquiry-actions">
                 <button type="button" class="btn-secondary walk-in-clear-button shared-clear-action" data-walk-in-clear disabled>Clear Form</button>
                 <button type="button" class="btn-secondary" data-walk-in-inquiry-close>Cancel</button>
-                <button type="submit" class="btn-primary shared-ready-submit" value="pending" data-walk-in-submit-action disabled>Save as Pending</button>
+                <button type="submit" class="btn-primary shared-ready-submit" value="pending" data-walk-in-submit-action>Save as Pending</button>
             </div>
         </form>
     </div>

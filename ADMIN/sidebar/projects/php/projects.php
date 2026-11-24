@@ -3257,7 +3257,7 @@ $adminCssFiles = [
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261123-2',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261124-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';

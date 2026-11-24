@@ -2438,8 +2438,8 @@ function initWalkInInquiryPanel() {
             submitActionButton.textContent = hasConfirmedEngineer
                 ? 'Save Confirmed Inspection'
                 : 'Save as Pending';
-            submitActionButton.disabled = !isWalkInReady()
-                || (hasConfirmedEngineer && (engineerAvailabilityPending || engineerBusyOnDate || engineerAvailabilityFailed));
+            // Laging puwedeng pindutin para makita agad ang kulang na field.
+            submitActionButton.disabled = isSubmitting;
         }
         if (engineerHelp) {
             engineerHelp.textContent = hasConfirmedEngineer
@@ -2554,6 +2554,19 @@ function initWalkInInquiryPanel() {
         window.setTimeout(function () {
             sendOtpButton?.focus({ preventScroll: true });
         }, 350);
+    }
+
+    function focusWalkInField(field) {
+        if (!field) return;
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(function () {
+            field.focus({ preventScroll: true });
+        }, 250);
+    }
+
+    function focusFirstWalkInInvalidField() {
+        const firstInvalidField = form?.querySelector(':invalid:not(:disabled)');
+        focusWalkInField(firstInvalidField);
     }
 
     function syncOtherService() {
@@ -3025,7 +3038,8 @@ function initWalkInInquiryPanel() {
         if (nextActionInput) nextActionInput.value = nextAction;
         if (nextAction === 'confirmed' && (engineerAvailabilityPending || engineerBusyOnDate || engineerAvailabilityFailed)) {
             syncWalkInSaveAction();
-            engineerSelect?.focus();
+            engineerSelect?.classList.add('is-invalid-live');
+            focusWalkInField(engineerSelect);
             return;
         }
         const nameIsValid = validateName();
@@ -3051,10 +3065,12 @@ function initWalkInInquiryPanel() {
             && dateIsValid && otherServiceIsValid && locationsAreValid;
         if (!valid || !form.checkValidity()) {
             form.reportValidity();
+            focusFirstWalkInInvalidField();
             return;
         }
         if (!(await checkExistingContact())) {
             form.reportValidity();
+            focusFirstWalkInInvalidField();
             return;
         }
         if (!emailIsVerified) {

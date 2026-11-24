@@ -2944,6 +2944,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         unit: row.querySelector('select[name="unit[]"]')?.value || '',
                         unit_cost: row.querySelector('input[name="unit_cost[]"]')?.value || '',
                         notes: row.querySelector('input[name="item_notes[]"]')?.value || '',
+                        non_stock_choice: row.querySelector('[data-non-stock-choice]')?.value || '',
                     };
                 }),
                 direct_costs: directCostInputs.map(function (input) {
@@ -3315,6 +3316,24 @@ document.addEventListener('DOMContentLoaded', function () {
             if (notesWrap) notesWrap.hidden = !isNonStock;
         };
 
+        const syncQuotationNonStockDecision = function (row, showMessage) {
+            const nameInput = row.querySelector('input[name="item_name[]"]');
+            const materialSelect = row.querySelector('select[name="material_id[]"]');
+            const decisionState = window.EdgeMaterialSuggestions?.syncNonStockDecision(row, {
+                manualValues: ['manual'],
+            });
+            const needsChoice = materialSelect?.value === 'manual' && decisionState?.exactOption;
+            const isValid = !needsChoice || decisionState?.valid === true;
+            const message = isValid ? '' : 'Choose Use from stock or Keep as Non-stock.';
+
+            if (nameInput) {
+                nameInput.setCustomValidity(message);
+                nameInput.setAttribute('aria-invalid', message !== '' ? 'true' : 'false');
+            }
+            setMaterialReferenceMessage(row, showMessage ? message : '');
+            return isValid;
+        };
+
         const syncMaterialReference = function (row, resetForMaterialChange = false) {
             const typeSelect = row.querySelector('select[name="item_type[]"]');
             const materialReference = row.querySelector('[data-quotation-material-reference]');
@@ -3398,6 +3417,7 @@ document.addEventListener('DOMContentLoaded', function () {
             validateQuotationQuantity(row, false, false);
             validateMaterialReference(row, false);
             syncQuotationNotesVisibility(row);
+            syncQuotationNonStockDecision(row, false);
         };
 
         const restoreLocalQuotationDraft = function (draft) {
@@ -3421,6 +3441,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const unitSelect = row?.querySelector('select[name="unit[]"]');
                 const unitCostInput = row?.querySelector('input[name="unit_cost[]"]');
                 const notesInput = row?.querySelector('input[name="item_notes[]"]');
+                const choiceInput = row?.querySelector('[data-non-stock-choice]');
                 const savedType = normalizeQuotationItemType(savedRow?.type || 'material');
                 const savedMaterialId = String(savedRow?.material_id || '');
                 const savedUnit = String(savedRow?.unit || '').toLowerCase();
@@ -3443,6 +3464,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (unitCostInput) unitCostInput.value = window.SharedCostingValues.editableUnitCost(savedRow?.unit_cost);
                 if (notesInput) notesInput.value = String(savedRow?.notes || '');
+                if (choiceInput) choiceInput.value = String(savedRow?.non_stock_choice || '');
                 syncMaterialReference(row);
             });
 
@@ -3552,9 +3574,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (materialSelect.value === 'manual') {
                 const nameInput = row.querySelector('input[name="item_name[]"]');
                 const unitSelect = row.querySelector('select[name="unit[]"]');
+                const choiceInput = row.querySelector('[data-non-stock-choice]');
                 if (nameInput) nameInput.value = event.detail.name || '';
                 if (unitSelect && event.detail.unit) unitSelect.value = event.detail.unit;
+                if (choiceInput) choiceInput.value = '';
                 syncQuotationNotesVisibility(row);
+                syncQuotationNonStockDecision(row, false);
                 nameInput?.focus();
                 return;
             }
@@ -3571,7 +3596,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
         items?.addEventListener('input', function (event) {
             const row = event.target.closest('[data-quotation-item]');
-            if (row && event.target.matches('input[name="item_name[]"]')) syncQuotationNotesVisibility(row);
+            if (row && event.target.matches('input[name="item_name[]"]')) {
+                const choiceInput = row.querySelector('[data-non-stock-choice]');
+                if (choiceInput) choiceInput.value = '';
+                syncQuotationNotesVisibility(row);
+                syncQuotationNonStockDecision(row, false);
+            }
+        });
+
+        items?.addEventListener('click', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (!row) return;
+
+            const choiceInput = row.querySelector('[data-non-stock-choice]');
+            if (event.target.closest('[data-use-existing-material]')) {
+                const decision = row.querySelector('[data-manual-material-decision]');
+                const materialId = decision?.dataset.materialId || '';
+                const materialSelect = row.querySelector('select[name="material_id[]"]');
+                if (!materialSelect || !/^[1-9]\d*$/.test(materialId)) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+                if (choiceInput) choiceInput.value = '';
+                materialSelect.value = materialId;
+                materialSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                return;
+            }
+
+            if (event.target.closest('[data-keep-non-stock]')) {
+                event.preventDefault();
+                if (choiceInput) choiceInput.value = 'keep';
+                syncQuotationNonStockDecision(row, false);
+                row.querySelector('input[name="item_notes[]"]')?.focus();
+                markQuotationDirty();
+                scheduleLocalQuotationDraftSave();
+            }
+        });
+
+        items?.addEventListener('edge:non-stock-choice-reset', function (event) {
+            const row = event.target.closest('[data-quotation-item]');
+            if (!row) return;
+            syncQuotationNonStockDecision(row, false);
+            markQuotationDirty();
+            scheduleLocalQuotationDraftSave();
         });
 
         items?.addEventListener('change', function (event) {
@@ -3646,6 +3713,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (invalidMaterialReferenceRow) {
                 event.preventDefault();
                 invalidMaterialReferenceRow.querySelector('select[name="material_id[]"]')?.focus();
+                return;
+            }
+
+            const unresolvedNonStockRow = Array.from(items?.querySelectorAll('[data-quotation-item]') || []).find(function (row) {
+                return !syncQuotationNonStockDecision(row, true);
+            });
+            if (unresolvedNonStockRow) {
+                event.preventDefault();
+                unresolvedNonStockRow.querySelector('input[name="item_name[]"]')?.focus();
                 return;
             }
 

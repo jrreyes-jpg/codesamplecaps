@@ -840,33 +840,7 @@
     color: #1e293b;
 }
 
-.inspection-submitted-reason {
-    display: block;
-    max-width: 310px;
-    margin-top: 4px;
-    color: #64748b;
-    font-size: 0.73rem;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
-
-.inspection-submitted-reason__label {
-    color: #475569;
-    font-weight: 800;
-}
-
-.inspection-submitted-reason__text {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-}
-
-.inspection-submitted-reason.is-expanded .inspection-submitted-reason__text {
-    display: inline;
-}
-
-.inspection-submitted-reason__toggle {
+.inspection-submitted-notes-button {
     margin-top: 3px;
     padding: 0;
     border: 0;

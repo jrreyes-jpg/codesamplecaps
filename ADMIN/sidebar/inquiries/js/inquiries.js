@@ -173,8 +173,8 @@ document.addEventListener('DOMContentLoaded', function () {
     inspectionStockModal.hidden = true;
     inspectionStockModal.innerHTML = [
         '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="inspectionStockTitle">',
-        '<h3 id="inspectionStockTitle">Out of Stock Materials</h3>',
-        '<p>These materials need stock checking before the project starts.</p>',
+        '<h3 id="inspectionStockTitle">Stock Check Needed</h3>',
+        '<p>These materials are not available in stock. Check purchasing before the project starts.</p>',
         '<div class="inspection-stock-list" data-inspection-stock-list></div>',
         '<div class="inquiry-confirm__actions">',
         '<button type="button" class="btn-primary" data-inspection-stock-close>Close</button>',

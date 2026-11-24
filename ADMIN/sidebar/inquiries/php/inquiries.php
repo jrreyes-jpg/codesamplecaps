@@ -2620,7 +2620,8 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261120-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-4',
+    '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-verification/css/email-verification.css?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/css/email-verification.css') ?: 1)),
@@ -2635,7 +2636,8 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261123-1',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-4',
+    '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261117-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
@@ -3227,7 +3229,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                     </div>
                                                     <div class="submitted-inspection-report__states">
                                                         <?php if ($hasOutOfStockInspectionMaterial): ?>
-                                                            <button type="button" class="inspection-stock-alert inspection-stock-alert--button" data-inspection-stock-open data-stock-items="<?php echo htmlspecialchars((string)json_encode($outOfStockInspectionItems, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>">Stock Issue: <?php echo count($outOfStockInspectionItems); ?> Material<?php echo count($outOfStockInspectionItems) === 1 ? '' : 's'; ?></button>
+                                                            <button type="button" class="inspection-stock-alert inspection-stock-alert--button" data-inspection-stock-open data-stock-items="<?php echo htmlspecialchars((string)json_encode($outOfStockInspectionItems, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>">Stock Check Needed: <?php echo count($outOfStockInspectionItems); ?> Material<?php echo count($outOfStockInspectionItems) === 1 ? '' : 's'; ?></button>
                                                         <?php endif; ?>
                                                     </div>
                                                 </div>
@@ -3281,57 +3283,59 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                         $fixedCostTotals[$fixedCostType] += (float)($fixedCostItem['line_total'] ?? 0);
                                                     }
                                                 }
-                                                $showMaterialNotes = false;
-                                                foreach ($materialCostItems as $materialCostItem) {
-                                                    if (trim((string)($materialCostItem['notes'] ?? '')) !== '') {
-                                                        $showMaterialNotes = true;
-                                                        break;
-                                                    }
-                                                }
+                                                $visibleFixedCostTotals = array_filter(
+                                                    $fixedCostTotals,
+                                                    static fn(float $total): bool => $total > 0
+                                                );
                                                 ?>
                                                 <?php if ($materialCostItems): ?>
                                                 <div class="inquiry-costing-table submitted-inspection-costing">
-                                                    <div class="inquiry-costing-table__row submitted-inspection-costing__row<?php echo $showMaterialNotes ? '' : ' submitted-inspection-costing__row--no-notes'; ?> submitted-inspection-costing__row--head">
+                                                    <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--no-notes submitted-inspection-costing__row--head">
                                                         <span>Type</span>
                                                         <span>Material</span>
                                                         <span>Qty</span>
                                                         <span>Unit</span>
-                                                        <span>Unit Cost</span>
-                                                        <?php if ($showMaterialNotes): ?><span>Notes</span><?php endif; ?>
-                                                        <span>Line Total</span>
+                                                        <span class="submitted-cost-money">Unit Cost</span>
+                                                        <span class="submitted-cost-money">Line Total</span>
                                                     </div>
                                                     <?php foreach ($materialCostItems as $costItem): ?>
-                                                        <?php $isCostItemOutOfStock = (int)($costItem['material_id'] ?? 0) > 0
+                                                        <?php $isNonStockCostItem = (int)($costItem['material_id'] ?? 0) <= 0;
+                                                        $costItemNotes = trim((string)($costItem['notes'] ?? ''));
+                                                        $isCostItemOutOfStock = !$isNonStockCostItem
                                                             && ($costItem['material_available'] ?? null) !== null
                                                             && (float)$costItem['material_available'] <= 0; ?>
-                                                        <div class="inquiry-costing-table__row submitted-inspection-costing__row<?php echo $showMaterialNotes ? '' : ' submitted-inspection-costing__row--no-notes'; ?>">
-                                                            <span><?php echo htmlspecialchars(inquiry_quote_item_type_label((string)$costItem['item_type']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <div class="inquiry-costing-table__row submitted-inspection-costing__row submitted-inspection-costing__row--no-notes">
+                                                            <span><small class="submitted-cost-type<?php echo $isNonStockCostItem ? ' submitted-cost-type--nonstock' : ''; ?>"><?php echo $isNonStockCostItem ? 'Non-stock' : 'Stock'; ?></small></span>
                                                             <span class="submitted-material-name">
                                                                 <?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?>
                                                                 <?php if ($isCostItemOutOfStock): ?><small>Out of Stock</small><?php endif; ?>
+                                                                <?php if ($costItemNotes !== ''): ?>
+                                                                    <button type="button" class="submitted-material-note-toggle" data-material-notes-open data-material-name="<?php echo htmlspecialchars((string)$costItem['item_name'], ENT_QUOTES, 'UTF-8'); ?>" data-material-notes="<?php echo htmlspecialchars($costItemNotes, ENT_QUOTES, 'UTF-8'); ?>">View Notes</button>
+                                                                <?php endif; ?>
                                                             </span>
                                                             <span><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$costItem['quantity'], 2), '0'), '.'), ENT_QUOTES, 'UTF-8'); ?></span>
                                                             <span><?php echo htmlspecialchars((string)$costItem['unit'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            <?php if ($showMaterialNotes): ?><span><?php echo htmlspecialchars((string)($costItem['notes'] ?: 'No note'), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
-                                                            <span><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span class="submitted-cost-money"><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['unit_cost']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <span class="submitted-cost-money"><?php echo htmlspecialchars(inquiry_center_format_money((float)$costItem['line_total']), ENT_QUOTES, 'UTF-8'); ?></span>
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
                                                 <?php endif; ?>
 
+                                                <?php if ($visibleFixedCostTotals): ?>
                                                 <div class="submitted-fixed-costs" aria-label="Other cost categories">
                                                     <div class="submitted-fixed-costs__row submitted-fixed-costs__row--head">
                                                         <span>Cost Category</span>
                                                         <span>Amount</span>
                                                     </div>
-                                                    <?php foreach ($fixedCostTypes as $fixedCostType => $fixedCostLabel): ?>
+                                                    <?php foreach ($visibleFixedCostTotals as $fixedCostType => $fixedCostTotal): ?>
                                                         <div class="submitted-fixed-costs__row">
-                                                            <strong><?php echo htmlspecialchars($fixedCostLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                            <strong><?php echo htmlspecialchars(inquiry_center_format_money((float)($fixedCostTotals[$fixedCostType] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                            <strong><?php echo htmlspecialchars((string)($fixedCostTypes[$fixedCostType] ?? $fixedCostType), ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                            <strong><?php echo htmlspecialchars(inquiry_center_format_money((float)$fixedCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
                                                         </div>
                                                     <?php endforeach; ?>
                                                 </div>
+                                                <?php endif; ?>
                                                 <div class="submitted-inspection-report__total">
                                                     <span>Total Estimated Cost</span>
                                                     <strong><?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?></strong>

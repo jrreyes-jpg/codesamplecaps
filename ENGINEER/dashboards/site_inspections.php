@@ -1583,7 +1583,8 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261124-3',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261124-5',
+    '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-1',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
@@ -2130,20 +2131,13 @@ require __DIR__ . '/../layout/header.php';
                                                 <?php
                                                 $isNonStockSubmittedItem = (int)($submittedItem['material_id'] ?? 0) <= 0;
                                                 $submittedReason = trim((string)($submittedItem['notes'] ?? ''));
-                                                $showSubmittedReasonToggle = $isNonStockSubmittedItem && mb_strlen($submittedReason) > 90;
                                                 ?>
                                                 <tr>
                                                     <td><span class="inspection-cost-type <?php echo $isNonStockSubmittedItem ? 'inspection-cost-type--non-stock' : 'inspection-cost-type--stock'; ?>"><?php echo $isNonStockSubmittedItem ? 'Non-stock Material' : 'Stock Material'; ?></span></td>
                                                     <td>
                                                         <strong class="inspection-submitted-item-name"><?php echo htmlspecialchars((string)($submittedItem['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                        <?php if ($isNonStockSubmittedItem && $submittedReason !== ''): ?>
-                                                            <div class="inspection-submitted-reason" data-submitted-nonstock-reason>
-                                                                <span class="inspection-submitted-reason__label">Reason:</span>
-                                                                <span class="inspection-submitted-reason__text"><?php echo htmlspecialchars($submittedReason, ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            </div>
-                                                            <?php if ($showSubmittedReasonToggle): ?>
-                                                                <button type="button" class="inspection-submitted-reason__toggle" data-submitted-nonstock-toggle aria-expanded="false">View more</button>
-                                                            <?php endif; ?>
+                                                        <?php if ($submittedReason !== ''): ?>
+                                                            <button type="button" class="inspection-submitted-notes-button" data-material-notes-open data-material-name="<?php echo htmlspecialchars((string)($submittedItem['item_name'] ?? 'Material'), ENT_QUOTES, 'UTF-8'); ?>" data-material-notes="<?php echo htmlspecialchars($submittedReason, ENT_QUOTES, 'UTF-8'); ?>">View Notes</button>
                                                         <?php endif; ?>
                                                     </td>
                                                     <td><?php echo htmlspecialchars(site_inspection_format_quantity((float)($submittedItem['quantity'] ?? 0), (string)($submittedItem['unit'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
@@ -2505,7 +2499,8 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-12',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-14',
+    '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
 ];
 require __DIR__ . '/../layout/footer.php';
 ?>

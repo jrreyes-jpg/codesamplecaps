@@ -1,14 +1,5 @@
 // Costing rows para mabilis magdagdag ng materials, labor, at notes.
 document.addEventListener('DOMContentLoaded', function () {
-    document.addEventListener('click', function (event) {
-        const toggle = event.target.closest('[data-submitted-nonstock-toggle]');
-        if (!toggle) return;
-        const reason = toggle.previousElementSibling;
-        if (!reason?.matches('[data-submitted-nonstock-reason]')) return;
-        const isExpanded = reason.classList.toggle('is-expanded');
-        toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-        toggle.textContent = isExpanded ? 'Show less' : 'View more';
-    });
     const activeModalKey = 'engineer.siteInspection.activeModal';
     const modalScrollKey = 'engineer.siteInspection.modalScroll';
     const activeTabKey = 'engineer.siteInspection.activeTab';

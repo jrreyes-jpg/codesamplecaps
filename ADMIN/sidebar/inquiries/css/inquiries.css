@@ -343,7 +343,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    align-self: end;
+    /* Pantay sa input row kahit may Notes sa ilalim. */
+    align-self: start;
     gap: 5px;
     min-height: 34px;
     padding: 0 10px;

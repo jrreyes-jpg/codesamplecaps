@@ -111,33 +111,8 @@
     outline: none;
 }
 
-.shared-material-decision__selected {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-height: 30px;
-    padding: 5px 8px;
-    border: 1px solid #f59e0b;
-    border-radius: 7px;
-    background: #fffbeb;
-    color: #92400e;
-    font-size: .72rem;
-    font-weight: 800;
-}
-
-.shared-material-decision__selected[hidden],
 .shared-material-decision__actions[hidden] {
     display: none;
-}
-
-.shared-material-decision__selected button {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: #166534;
-    font: inherit;
-    text-decoration: underline;
-    cursor: pointer;
 }
 
 .is-shared-material-linked .material-combobox input,

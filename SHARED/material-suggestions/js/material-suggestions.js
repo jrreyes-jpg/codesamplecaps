@@ -186,29 +186,6 @@
         }) || null;
     };
 
-    const ensureSelectedDecision = function (decision) {
-        if (!decision) return null;
-        let selected = decision.querySelector('[data-non-stock-selected]');
-        if (selected) return selected;
-
-        selected = document.createElement('span');
-        selected.className = 'shared-material-decision__selected';
-        selected.setAttribute('data-non-stock-selected', '');
-        selected.hidden = true;
-
-        const text = document.createElement('span');
-        text.textContent = 'Kept as Non-stock';
-        selected.appendChild(text);
-
-        const change = document.createElement('button');
-        change.type = 'button';
-        change.textContent = 'Change';
-        change.setAttribute('data-change-non-stock', '');
-        selected.appendChild(change);
-        decision.appendChild(selected);
-        return selected;
-    };
-
     // Parehong gamit ito ng Engineer Costing at Create Quotation.
     const syncMaterialSelectionState = function (row, options) {
         const source = row?.querySelector(options?.sourceSelector || '[data-material-suggestion-source]');
@@ -281,7 +258,6 @@
         const isManual = source && manualValues.includes(source.value) && nameInput && !nameInput.disabled && !nameInput.readOnly;
         const exactOption = isManual ? findExactOption(source, nameInput.value) : null;
         const actions = decision?.querySelector('.shared-material-decision__actions');
-        const selected = ensureSelectedDecision(decision);
         const mergePrompt = ensureMergePrompt(decision);
 
         if (!exactOption) {
@@ -291,7 +267,6 @@
                 delete decision.dataset.materialId;
             }
             if (actions) actions.hidden = false;
-            if (selected) selected.hidden = true;
             if (mergePrompt) mergePrompt.hidden = true;
             setRowDecisionLock(row, false);
             return { isManual: Boolean(isManual), exactOption: null, choice: '', valid: true };
@@ -300,14 +275,13 @@
         if (decision?.dataset.materialId && decision.dataset.materialId !== exactOption.value && choiceInput) {
             choiceInput.value = '';
         }
-        if (decision) {
-            decision.hidden = false;
-            decision.dataset.materialId = exactOption.value;
-        }
         const choice = choiceInput?.value || '';
         const isKept = choice === 'keep';
+        if (decision) {
+            decision.hidden = isKept;
+            decision.dataset.materialId = exactOption.value;
+        }
         if (actions) actions.hidden = isKept || choice === 'merge';
-        if (selected) selected.hidden = !isKept;
         if (mergePrompt && choice !== 'merge') mergePrompt.hidden = true;
         setRowDecisionLock(row, choice === '' || choice === 'merge');
         return {
@@ -401,16 +375,6 @@
     }, true);
 
     document.addEventListener('click', function (event) {
-        const change = event.target.closest('[data-change-non-stock]');
-        if (change) {
-            const row = change.closest('[data-material-suggestion-scope]');
-            const choiceInput = row?.querySelector('[data-non-stock-choice]');
-            if (choiceInput) choiceInput.value = '';
-            syncNonStockDecision(row);
-            row?.dispatchEvent(new CustomEvent('edge:non-stock-choice-reset', { bubbles: true }));
-            return;
-        }
-
         const useStock = event.target.closest('[data-use-existing-material]');
         if (!useStock) return;
         const row = useStock.closest('[data-material-suggestion-scope]');

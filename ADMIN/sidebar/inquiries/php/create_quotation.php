@@ -512,10 +512,10 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/form-validation/css/form-validation.css?v=20261116-1',
-    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261120-12',
+    '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261124-13',
     '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-13',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-14',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -524,7 +524,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/form-validation/js/form-validation.js?v=20261116-1',
     '/codesamplecaps/SHARED/form-draft/js/form-draft.js?v=20261122-1',
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
-    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-3',
+    '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-2',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-11',
 ];

@@ -6,7 +6,7 @@ $sharedJsFiles = [
     '/codesamplecaps/SHARED/header/core/operations-header.js',
     '/codesamplecaps/ENGINEER/common/js/engineer-common.js',
     '/codesamplecaps/SHARED/toast/js/toast.js',
-    '/codesamplecaps/ENGINEER/common/js/engineer-notifications.js?v=20261125-1',
+    '/codesamplecaps/ENGINEER/common/js/engineer-notifications.js?v=20261125-2',
     '/codesamplecaps/SHARED/auth/js/session-timeout.js',
     '/codesamplecaps/SHARED/auth/js/logout-confirm.js?v=20261125-2',
 ];

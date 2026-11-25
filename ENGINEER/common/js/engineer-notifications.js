@@ -110,10 +110,19 @@
                     const inspectionId = Number.parseInt(item.inspection_id || '0', 10);
                     const targetUrl = String(item.target_url || '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' + inspectionId);
                     const isScheduleUpdate = item.type === 'site_inspection_schedule_updated' || item.type === 'engineer_reschedule_approved';
-                    const message = isScheduleUpdate
-                        ? 'Inspection schedule updated by Admin. Click to view.'
-                        : 'New site inspection assigned: ' + clientName + '. Click to view.';
-                    window.showToast(message, isScheduleUpdate ? 'info' : 'success', {
+                    let message = 'New site inspection assigned: ' + clientName + '. Click to view.';
+                    let toastType = 'success';
+
+                    if (item.type === 'inspection_costing_approved') {
+                        message = 'Inspection costing approved by Admin. Click to view.';
+                    } else if (item.type === 'inspection_returned_for_revision') {
+                        message = 'Inspection costing returned by Admin. Click to view.';
+                        toastType = 'error';
+                    } else if (isScheduleUpdate) {
+                        message = 'Inspection schedule updated by Admin. Click to view.';
+                        toastType = 'info';
+                    }
+                    window.showToast(message, toastType, {
                         duration: 5000,
                         onClick: function () {
                             markNotificationRead(notificationId, inspectionId).finally(function () {

@@ -2532,7 +2532,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261125-23',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261125-24',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
 ];
 require __DIR__ . '/../layout/footer.php';

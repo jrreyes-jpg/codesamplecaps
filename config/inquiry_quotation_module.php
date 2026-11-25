@@ -800,8 +800,8 @@ function inquiry_quote_create_from_inspection(mysqli $conn, int $inquiryId, int 
     if (!$inspection || (string)($inspection['status'] ?? '') !== 'Submitted') {
         throw new RuntimeException('Only submitted Engineer Costing can be used for a quotation.');
     }
-    if ((string)($inspection['admin_review_status'] ?? 'Pending') === 'Returned') {
-        throw new RuntimeException('Returned Engineer Costing must be submitted again first.');
+    if ((string)($inspection['admin_review_status'] ?? 'Pending') !== 'Approved') {
+        throw new RuntimeException('Approve the Engineer Costing before creating a quotation.');
     }
 
     $existingStmt = $conn->prepare(

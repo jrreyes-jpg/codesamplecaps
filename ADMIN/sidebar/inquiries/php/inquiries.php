@@ -2620,7 +2620,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-7',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-8',
     '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
@@ -2638,7 +2638,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
     '/codesamplecaps/SHARED/location-picker/js/location-selection.js?v=20261125-1',
     '/codesamplecaps/SHARED/form-validation/js/first-invalid-focus.js?v=20261125-1',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-4',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-5',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
     '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261125-2',
 ];
@@ -3363,13 +3363,13 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 <?php if (empty($inquiry['archived_at']) && $latestInspectionStatus === 'Submitted' && $inspectionReviewStatus === 'Pending' && !$quotationDraft): ?>
                                                     <div class="submitted-inspection-action-row">
                                                         <button type="button" class="inspection-return-button" data-return-costing-open>Return to Engineer</button>
-                                                        <form method="POST" class="submitted-inspection-create-quotation-form" data-engineer-costing-total="<?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <form method="POST" class="submitted-inspection-review-form">
                                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                                                            <input type="hidden" name="action" value="create_quotation_draft">
+                                                            <input type="hidden" name="action" value="review_inspection_report">
                                                             <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
                                                             <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
-                                                            <input type="hidden" name="profit_margin_percent" value="15">
-                                                            <button type="submit" class="btn-primary">Create Quotation</button>
+                                                            <input type="hidden" name="review_decision" value="" data-review-decision>
+                                                            <button type="submit" class="btn-primary" value="approve">Approve Costing</button>
                                                         </form>
                                                     </div>
 
@@ -3402,6 +3402,19 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                                 </div>
                                                             </form>
                                                         </div>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <?php if (empty($inquiry['archived_at']) && $latestInspectionStatus === 'Submitted' && $inspectionReviewStatus === 'Approved' && !$quotationDraft): ?>
+                                                    <div class="submitted-inspection-action-row">
+                                                        <form method="POST" class="submitted-inspection-create-quotation-form" data-engineer-costing-total="<?php echo htmlspecialchars(inquiry_center_format_money($latestCostTotal), ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <input type="hidden" name="action" value="create_quotation_draft">
+                                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$inquiry['id']; ?>">
+                                                            <input type="hidden" name="inspection_id" value="<?php echo (int)$latestInspection['id']; ?>">
+                                                            <input type="hidden" name="profit_margin_percent" value="15">
+                                                            <button type="submit" class="btn-primary">Create Quotation</button>
+                                                        </form>
                                                     </div>
                                                 <?php endif; ?>
                                             </section>
@@ -3694,7 +3707,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                                 </a>
                                             </div>
                                         <?php endif; ?>
-                                    <?php elseif ($costingReview && !empty($latestCostItems)): ?>
+                                    <?php elseif ($costingReview && !empty($latestCostItems) && $latestInspection && (int)($latestInspection['id'] ?? 0) === (int)($costingReview['id'] ?? 0) && (string)($latestInspection['admin_review_status'] ?? '') === 'Approved'): ?>
                                         <form method="POST" class="inquiry-quote-form">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="create_quotation_draft">

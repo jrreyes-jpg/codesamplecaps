@@ -107,7 +107,7 @@ function engineer_notification_toast_items(mysqli $conn, int $userId, int $limit
          LEFT JOIN service_inquiries s ON s.id = si.inquiry_id AND s.archived_at IS NULL
          WHERE un.user_id = ?
            AND un.read_at IS NULL
-           AND un.type IN ('site_inspection_assignment', 'site_inspection_schedule_updated', 'engineer_reschedule_approved')
+           AND un.type IN ('site_inspection_assignment', 'site_inspection_schedule_updated', 'engineer_reschedule_approved', 'inspection_costing_approved', 'inspection_returned_for_revision')
          ORDER BY un.id DESC
          LIMIT ?"
     );

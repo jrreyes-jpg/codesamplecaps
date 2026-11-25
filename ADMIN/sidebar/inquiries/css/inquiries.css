@@ -3690,7 +3690,8 @@ body.inquiry-modal-open {
     margin-top: 10px;
 }
 
-.submitted-inspection-create-quotation-form {
+.submitted-inspection-create-quotation-form,
+.submitted-inspection-review-form {
     display: flex;
 }
 
@@ -3833,7 +3834,9 @@ body.inquiry-modal-open {
 
     .inspection-return-button,
     .submitted-inspection-create-quotation-form,
-    .submitted-inspection-create-quotation-form .btn-primary {
+    .submitted-inspection-create-quotation-form .btn-primary,
+    .submitted-inspection-review-form,
+    .submitted-inspection-review-form .btn-primary {
         width: 100%;
     }
 

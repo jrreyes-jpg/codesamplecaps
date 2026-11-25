@@ -3261,8 +3261,9 @@ document.addEventListener('DOMContentLoaded', function () {
         toastItems.forEach(function (item) {
             const inspectionId = String(Number.parseInt(item?.inspection_id || '0', 10));
             const isScheduleUpdate = item?.type === 'site_inspection_schedule_updated' || item?.type === 'engineer_reschedule_approved';
+            const isCostingReviewUpdate = item?.type === 'inspection_costing_approved' || item?.type === 'inspection_returned_for_revision';
             const card = inspectionId === '0' ? null : document.querySelector('[data-inspection-card-id="' + CSS.escape(inspectionId) + '"]');
-            if (isScheduleUpdate && card) {
+            if ((isScheduleUpdate || isCostingReviewUpdate) && card) {
                 pollInspectionScheduleUpdates();
             }
         });

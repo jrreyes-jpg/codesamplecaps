@@ -3174,10 +3174,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateMaterialStockStatus = function (row) {
             const materialSelect = row.querySelector('select[name="material_id[]"]');
             const stockStatus = row.querySelector('[data-quotation-material-feedback]');
+            const materialError = row.querySelector('[data-quotation-material-error]');
             const typeSelect = row.querySelector('select[name="item_type[]"]');
             const selectedOption = materialSelect?.selectedOptions[0];
             const materialId = materialSelect?.value || '';
             if (!stockStatus) {
+                return;
+            }
+
+            // Error lang ang ipakita para hindi magpatong ang dalawang mensahe.
+            if ((materialError?.textContent || '').trim() !== '') {
+                stockStatus.hidden = true;
+                stockStatus.textContent = '';
                 return;
             }
 
@@ -3221,7 +3229,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 materialError.textContent = message;
             }
             if (message !== '') {
-                stockStatus && (stockStatus.hidden = true);
+                if (stockStatus) {
+                    stockStatus.hidden = true;
+                    stockStatus.textContent = '';
+                }
             } else {
                 updateMaterialStockStatus(row);
             }
@@ -3726,7 +3737,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (!validateMarkup(true, true)) {
+            if (!validateMarkup(true, isSendAction)) {
                 event.preventDefault();
                 marginInput?.focus();
                 return;
@@ -3920,7 +3931,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         marginInput?.addEventListener('blur', function () {
-            validateMarkup(true, true);
+            validateMarkup(true, false);
         });
         items?.addEventListener('focusout', function (event) {
             const row = event.target.closest('[data-quotation-item]');
@@ -3937,7 +3948,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         form?.addEventListener('invalid', function (event) {
             if (event.target === marginInput) {
-                validateMarkup(true, true);
+                validateMarkup(true, false);
                 return;
             }
 

@@ -192,6 +192,10 @@ $isQuotationPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 $quotationSubmitAction = (string)($_POST['quotation_submit_action'] ?? 'save_draft');
 $shouldSendToClient = $quotationSubmitAction === 'send_to_client';
 $marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
+// Kapag draft lang, blank markup ay 0% muna.
+if ($isQuotationPost && !$shouldSendToClient && $marginPercentRaw === '') {
+    $marginPercentRaw = '0';
+}
 $marginPercent = is_numeric($marginPercentRaw) ? (float)$marginPercentRaw : 0.0;
 $markupError = '';
 $quotationNonSpaceLength = strlen((string)preg_replace('/\s+/', '', $quotationNo));
@@ -515,7 +519,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/material-suggestions/css/material-suggestions.css?v=20261124-13',
     '/codesamplecaps/SHARED/material-row/css/material-row.css?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-14',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-18',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
@@ -526,7 +530,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-11',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-13',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -552,7 +556,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <span class="quotation-create-status">Draft</span>
                 </div>
                 <div class="quotation-create-number">
-                    <label for="quotationNumber">Quotation Number <span class="quotation-required-mark" aria-hidden="true">*</span></label>
+                    <label for="quotationNumber">Quotation No. <span class="quotation-required-mark" aria-hidden="true">*</span></label>
                     <input id="quotationNumber" form="quotationCreateForm" type="text" name="quotation_no" maxlength="80" value="<?php echo htmlspecialchars($quotationNo, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter official Edge number" autocomplete="off" aria-describedby="quotationNumberError"<?php echo !$isInitialQuotationDraft ? ' readonly aria-readonly="true"' : ''; ?>>
                     <span id="quotationNumberError" class="shared-field-error" data-quotation-number-error aria-live="polite" hidden></span>
                     <?php if (!$isInitialQuotationDraft): ?>
@@ -670,13 +674,21 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     </div>
                 </section>
 
-                <div class="quotation-create-summary">
-                    <label><span>Markup (%)</span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($marginPercentRaw, ENT_QUOTES, 'UTF-8'); ?>" required><span class="quotation-create-summary__error" data-quotation-markup-error aria-live="polite"><?php echo htmlspecialchars($markupError, ENT_QUOTES, 'UTF-8'); ?></span></label>
-                    <div><span>Subtotal</span><strong>PHP <span data-quotation-subtotal>0.00</span></strong></div>
-                    <div class="quotation-create-grand-total"><span>Quotation Total</span><strong>PHP <span data-quotation-total>0.00</span></strong></div>
-                        <div><span>50% Down Payment</span><strong>PHP <span data-quotation-down-payment>0.00</span></strong></div>
-                        <div><span>Remaining Balance</span><strong>PHP <span data-quotation-balance>0.00</span></strong></div>
-                </div>
+                <section class="quotation-create-summary" aria-label="Quotation summary">
+                    <div class="quotation-create-summary__group">
+                        <h3>Cost Summary</h3>
+                        <div class="quotation-create-summary__row"><span>Subtotal</span><strong>PHP <span data-quotation-subtotal>0.00</span></strong></div>
+                        <label class="quotation-create-summary__markup"><span>Markup (%) <small>Optional for draft</small></span><input type="number" name="profit_margin_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($marginPercentRaw, ENT_QUOTES, 'UTF-8'); ?>"><span class="quotation-create-summary__error" data-quotation-markup-error aria-live="polite"><?php echo htmlspecialchars($markupError, ENT_QUOTES, 'UTF-8'); ?></span></label>
+                        <div class="quotation-create-summary__row"><span>Markup Amount</span><strong>PHP <span data-quotation-profit>0.00</span></strong></div>
+                        <div class="quotation-create-summary__row quotation-create-grand-total"><span>Quotation Total</span><strong>PHP <span data-quotation-total>0.00</span></strong></div>
+                    </div>
+                    <div class="quotation-create-summary__group quotation-create-summary__group--payment">
+                        <h3>Payment Summary</h3>
+                        <div class="quotation-create-summary__terms"><span>Payment Terms</span><strong>50% Down Payment</strong></div>
+                        <div class="quotation-create-summary__row"><span>Down Payment</span><strong>PHP <span data-quotation-down-payment>0.00</span></strong></div>
+                        <div class="quotation-create-summary__row"><span>Remaining Balance</span><strong>PHP <span data-quotation-balance>0.00</span></strong></div>
+                    </div>
+                </section>
 
                 <div class="quotation-create-actions">
                     <div class="quotation-create-actions__primary">

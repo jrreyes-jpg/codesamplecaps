@@ -2636,9 +2636,11 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
+    '/codesamplecaps/SHARED/location-picker/js/location-selection.js?v=20261125-1',
+    '/codesamplecaps/SHARED/form-validation/js/first-invalid-focus.js?v=20261125-1',
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261125-1',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261125-2',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

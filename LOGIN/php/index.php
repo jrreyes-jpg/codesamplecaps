@@ -711,6 +711,8 @@ if (empty($_SESSION['inquiry_form_token'])) {
     <script src="../js/public-confirmation.js" defer></script>
     <script src="/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/action-loading/js/action-loading.js') ?: 1)); ?>" defer></script>
     <script src="/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=<?php echo rawurlencode((string)(filemtime(__DIR__ . '/../../SHARED/email-verification/js/email-verification.js') ?: 1)); ?>" defer></script>
+    <script src="/codesamplecaps/SHARED/location-picker/js/location-selection.js?v=20261125-1" defer></script>
+    <script src="/codesamplecaps/SHARED/form-validation/js/first-invalid-focus.js?v=20261125-1" defer></script>
     <script src="../js/index.js?v=<?php echo rawurlencode($inquiryFormScriptVersion); ?>" defer></script>
 
 </body>

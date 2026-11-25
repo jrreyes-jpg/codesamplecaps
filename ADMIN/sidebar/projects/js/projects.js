@@ -1721,16 +1721,24 @@ function initWalkInInquiryPanel() {
 
     function setSelectedLocation(input, value) {
         if (!input) return;
-        input.value = value;
-        input.dataset.selectedValue = value;
+        if (window.EdgeLocationSelection) {
+            window.EdgeLocationSelection.commit(input, value, 'selectedValue');
+        } else {
+            input.value = value;
+            input.dataset.selectedValue = value;
+        }
         const errorElement = input.closest('.input-group')?.querySelector('.walk-in-field-error');
         setValidation(input, errorElement, '');
     }
 
     function clearLocation(input, placeholder) {
         if (!input) return;
-        input.value = '';
-        delete input.dataset.selectedValue;
+        if (window.EdgeLocationSelection) {
+            window.EdgeLocationSelection.clear(input, 'selectedValue');
+        } else {
+            input.value = '';
+            delete input.dataset.selectedValue;
+        }
         input.placeholder = placeholder;
         const errorElement = input.closest('.input-group')?.querySelector('.walk-in-field-error');
         resetValidation(input, errorElement);
@@ -1778,12 +1786,12 @@ function initWalkInInquiryPanel() {
         box?.classList.add('is-open');
     }
 
-    function bindLocationCombobox(input, getOptions, onChanged, errorElement, label) {
+    function bindLocationCombobox(input, getOptions, errorElement) {
         if (!input) return;
         const toggle = input.closest('[data-walk-in-combobox]')?.querySelector('[data-walk-in-combobox-toggle]');
         input.addEventListener('input', function () {
             if (input.value !== (input.dataset.selectedValue || '')) delete input.dataset.selectedValue;
-            onChanged();
+            delete input.dataset.locationChanged;
             // Habang pumipili pa, neutral lang. Sa Save lang ang red error.
             resetValidation(input, errorElement);
             renderLocationOptions(input, getOptions());
@@ -2568,6 +2576,10 @@ function initWalkInInquiryPanel() {
 
     function focusWalkInField(field) {
         if (!field) return;
+        if (window.EdgeFormValidation) {
+            window.EdgeFormValidation.focus(field);
+            return;
+        }
         field.scrollIntoView({ behavior: 'smooth', block: 'center' });
         window.setTimeout(function () {
             field.focus({ preventScroll: true });
@@ -2575,6 +2587,10 @@ function initWalkInInquiryPanel() {
     }
 
     function focusFirstWalkInInvalidField() {
+        if (window.EdgeFormValidation) {
+            window.EdgeFormValidation.focusFirstInvalid(form);
+            return;
+        }
         const firstInvalidField = form?.querySelector(':invalid:not(:disabled)');
         focusWalkInField(firstInvalidField);
     }
@@ -3002,20 +3018,26 @@ function initWalkInInquiryPanel() {
     });
     dateInput?.addEventListener('blur', validateDate);
     engineerSelect?.addEventListener('change', loadWalkInEngineerAvailability);
-    bindLocationCombobox(regionSelect, getRegionOptions, function () { syncAreas(false); }, regionError, 'region');
-    bindLocationCombobox(areaSelect, getAreaOptions, function () { syncCities(false); }, areaError, 'province or area');
-    bindLocationCombobox(citySelect, getCityOptions, function () { syncBarangays(false); }, cityError, 'city or municipality');
-    bindLocationCombobox(barangaySelect, getBarangayOptions, function () {}, barangayError, 'barangay');
+    bindLocationCombobox(regionSelect, getRegionOptions, regionError);
+    bindLocationCombobox(areaSelect, getAreaOptions, areaError);
+    bindLocationCombobox(citySelect, getCityOptions, cityError);
+    bindLocationCombobox(barangaySelect, getBarangayOptions, barangayError);
     regionSelect?.addEventListener('change', function () {
-        syncAreas(false);
+        if (window.EdgeLocationSelection?.takeChange(regionSelect) ?? true) {
+            syncAreas(false);
+        }
         validateLocationSoftly(regionSelect, getRegionOptions(), regionError);
     });
     areaSelect?.addEventListener('change', function () {
-        syncCities(false);
+        if (window.EdgeLocationSelection?.takeChange(areaSelect) ?? true) {
+            syncCities(false);
+        }
         validateLocationSoftly(areaSelect, getAreaOptions(), areaError);
     });
     citySelect?.addEventListener('change', function () {
-        syncBarangays(false);
+        if (window.EdgeLocationSelection?.takeChange(citySelect) ?? true) {
+            syncBarangays(false);
+        }
         validateLocationSoftly(citySelect, getCityOptions(), cityError);
     });
     barangaySelect?.addEventListener('change', function () {

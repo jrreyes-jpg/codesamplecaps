@@ -1338,8 +1338,12 @@ const initInquiryForm = () => {
                 button.type = 'button';
                 button.textContent = option;
                 button.addEventListener('click', () => {
-                    input.dataset.comboboxSelectedValue = option;
-                    input.value = option;
+                    if (window.EdgeLocationSelection) {
+                        window.EdgeLocationSelection.commit(input, option, 'comboboxSelectedValue');
+                    } else {
+                        input.dataset.comboboxSelectedValue = option;
+                        input.value = option;
+                    }
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                     closeCombobox(input);
                 });
@@ -1501,7 +1505,8 @@ const initInquiryForm = () => {
 
         syncSubmitReadyState = () => {
             if (!submitButton || isSubmittingInquiry) return;
-            submitButton.disabled = !isInquiryReady();
+            // Laging puwedeng pindutin para makita agad ang kulang na field.
+            submitButton.disabled = false;
         };
 
         const hasInquiryContent = () => {
@@ -1625,8 +1630,12 @@ const initInquiryForm = () => {
             if (!input) {
                 return;
             }
-            input.value = '';
-            delete input.dataset.comboboxSelectedValue;
+            if (window.EdgeLocationSelection) {
+                window.EdgeLocationSelection.clear(input, 'comboboxSelectedValue');
+            } else {
+                input.value = '';
+                delete input.dataset.comboboxSelectedValue;
+            }
             resetFieldState(input);
             closeCombobox(input);
         };
@@ -1679,10 +1688,11 @@ const initInquiryForm = () => {
             if (regionSelect.value !== (regionSelect.dataset.comboboxSelectedValue || '')) {
                 delete regionSelect.dataset.comboboxSelectedValue;
             }
-            syncAreaOptions();
         });
         regionSelect?.addEventListener('change', () => {
-            syncAreaOptions();
+            if (window.EdgeLocationSelection?.takeChange(regionSelect) ?? true) {
+                syncAreaOptions();
+            }
             clearFieldError(regionSelect);
             if (areaSelect) clearFieldError(areaSelect);
             if (citySelect) clearFieldError(citySelect);
@@ -1693,10 +1703,11 @@ const initInquiryForm = () => {
             if (areaSelect.value !== (areaSelect.dataset.comboboxSelectedValue || '')) {
                 delete areaSelect.dataset.comboboxSelectedValue;
             }
-            syncCityOptions();
         });
         areaSelect?.addEventListener('change', () => {
-            syncCityOptions();
+            if (window.EdgeLocationSelection?.takeChange(areaSelect) ?? true) {
+                syncCityOptions();
+            }
             clearFieldError(areaSelect);
             if (citySelect) clearFieldError(citySelect);
             clearFormMessageIfReady();
@@ -1704,9 +1715,15 @@ const initInquiryForm = () => {
         syncAreaOptions();
         bindCombobox(citySelect, getCityOptions);
         bindCombobox(barangayInput, getBarangaySuggestions);
-        citySelect?.addEventListener('input', syncBarangayState);
+        citySelect?.addEventListener('input', () => {
+            if (citySelect.value !== (citySelect.dataset.comboboxSelectedValue || '')) {
+                delete citySelect.dataset.comboboxSelectedValue;
+            }
+        });
         citySelect?.addEventListener('change', () => {
-            syncBarangayState();
+            if (window.EdgeLocationSelection?.takeChange(citySelect) ?? true) {
+                syncBarangayState();
+            }
             clearFieldError(citySelect);
             if (barangayInput) clearFieldError(barangayInput);
             clearFormMessageIfReady();
@@ -2284,8 +2301,12 @@ const restoreInquiryDraft = () => {
                 event.preventDefault();
                 message.textContent = 'Please fix the highlighted fields.';
                 message.classList.add('is-error');
-                gentlyRevealField(firstInvalidField, true);
-                firstInvalidField.focus();
+                if (window.EdgeFormValidation) {
+                    window.EdgeFormValidation.focus(firstInvalidField);
+                } else {
+                    gentlyRevealField(firstInvalidField, true);
+                    firstInvalidField.focus();
+                }
                 return;
             }
 
@@ -2294,8 +2315,12 @@ const restoreInquiryDraft = () => {
                 setFieldWarning(emailInput, 'Verify your email before submitting.');
                 message.textContent = 'Please verify your email first.';
                 message.classList.add('is-error');
-                gentlyRevealField(emailInput, true);
-                emailInput?.focus();
+                if (window.EdgeFormValidation) {
+                    window.EdgeFormValidation.focus(emailInput);
+                } else {
+                    gentlyRevealField(emailInput, true);
+                    emailInput?.focus();
+                }
                 return;
             }
 

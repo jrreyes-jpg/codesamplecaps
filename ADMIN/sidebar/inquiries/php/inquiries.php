@@ -2638,7 +2638,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
     '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
-    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261124-1',
+    '/codesamplecaps/ADMIN/sidebar/projects/js/projects.js?v=20261125-1',
 ];
 include __DIR__ . '/../../../layout/header.php';
 include __DIR__ . '/../../../admin_sidebar.php';

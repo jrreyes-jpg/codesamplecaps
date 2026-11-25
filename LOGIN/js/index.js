@@ -1394,7 +1394,8 @@ const initInquiryForm = () => {
                 const exactMatch = getOptions().find((option) => option.toLowerCase() === value.toLowerCase());
 
                 if (exactMatch && value !== (input.dataset.comboboxSelectedValue || '')) {
-                    setFieldError(input, `Please select ${exactMatch} from the list to continue.`);
+                    // Habang pumipili pa, neutral lang. Sa Submit lalabas ang error kung mali.
+                    resetFieldState(input);
                     return;
                 }
 
@@ -1576,6 +1577,25 @@ const initInquiryForm = () => {
 
             setFieldValid(field);
             return true;
+        };
+
+        // Location picker: walang red habang pumipili pa ang client.
+        const validateLocationFieldSoftly = (field) => {
+            if (!field || field.disabled) {
+                if (field) resetFieldState(field);
+                return;
+            }
+
+            const valid = (field === regionSelect && isValidRegion())
+                || (field === areaSelect && isValidArea())
+                || (field === citySelect && isValidCity())
+                || (field === barangayInput && isValidBarangay());
+
+            if (valid) {
+                setFieldValid(field);
+            } else {
+                resetFieldState(field);
+            }
         };
 
         const syncBarangayState = () => {
@@ -2035,6 +2055,8 @@ const restoreInquiryDraft = () => {
                 field.dataset.touched = '1';
                 if (field === emailInput) {
                     resetFieldState(field);
+                } else if ([regionSelect, areaSelect, citySelect, barangayInput].includes(field)) {
+                    validateLocationFieldSoftly(field);
                 } else {
                     validateLiveField(field, true);
                 }
@@ -2046,7 +2068,11 @@ const restoreInquiryDraft = () => {
             field.addEventListener('change', (event) => {
                 if (event.isTrusted) inquiryFormDirty = true;
                 field.dataset.touched = '1';
-                validateLiveField(field, true);
+                if ([regionSelect, areaSelect, citySelect, barangayInput].includes(field)) {
+                    validateLocationFieldSoftly(field);
+                } else {
+                    validateLiveField(field, true);
+                }
                 clearFormMessageIfReady();
                 saveInquiryDraft();
                 syncSubmitReadyState();
@@ -2054,7 +2080,11 @@ const restoreInquiryDraft = () => {
             });
             field.addEventListener('blur', () => {
                 field.dataset.touched = '1';
-                validateLiveField(field, true);
+                if ([regionSelect, areaSelect, citySelect, barangayInput].includes(field)) {
+                    validateLocationFieldSoftly(field);
+                } else {
+                    validateLiveField(field, true);
+                }
             });
         });
 

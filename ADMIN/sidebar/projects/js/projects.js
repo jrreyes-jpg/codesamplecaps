@@ -1784,7 +1784,8 @@ function initWalkInInquiryPanel() {
         input.addEventListener('input', function () {
             if (input.value !== (input.dataset.selectedValue || '')) delete input.dataset.selectedValue;
             onChanged();
-            validateLocation(input, getOptions(), errorElement, label);
+            // Habang pumipili pa, neutral lang. Sa Save lang ang red error.
+            resetValidation(input, errorElement);
             renderLocationOptions(input, getOptions());
         });
         input.addEventListener('focus', function () {
@@ -1792,7 +1793,7 @@ function initWalkInInquiryPanel() {
         });
         input.addEventListener('blur', function () {
             window.setTimeout(function () {
-                validateLocation(input, getOptions(), errorElement, label);
+                validateLocationSoftly(input, getOptions(), errorElement);
             }, 120);
         });
         toggle?.addEventListener('click', function () {
@@ -2429,6 +2430,15 @@ function initWalkInInquiryPanel() {
         return setValidation(input, errorElement, isSelectedLocation(input, options) ? '' : `Select a valid ${label} from the list.`);
     }
 
+    // Same light rule ng online inquiry: valid ay green, walang red habang pumipili.
+    function validateLocationSoftly(input, options, errorElement) {
+        if (isSelectedLocation(input, options)) {
+            return setValidation(input, errorElement, '');
+        }
+        resetValidation(input, errorElement);
+        return false;
+    }
+
     function syncWalkInSaveAction() {
         const hasConfirmedEngineer = Number(engineerSelect?.value || 0) > 0;
         const nextAction = hasConfirmedEngineer ? 'confirmed' : 'pending';
@@ -2998,18 +3008,18 @@ function initWalkInInquiryPanel() {
     bindLocationCombobox(barangaySelect, getBarangayOptions, function () {}, barangayError, 'barangay');
     regionSelect?.addEventListener('change', function () {
         syncAreas(false);
-        validateLocation(regionSelect, getRegionOptions(), regionError, 'region');
+        validateLocationSoftly(regionSelect, getRegionOptions(), regionError);
     });
     areaSelect?.addEventListener('change', function () {
         syncCities(false);
-        validateLocation(areaSelect, getAreaOptions(), areaError, 'province or area');
+        validateLocationSoftly(areaSelect, getAreaOptions(), areaError);
     });
     citySelect?.addEventListener('change', function () {
         syncBarangays(false);
-        validateLocation(citySelect, getCityOptions(), cityError, 'city or municipality');
+        validateLocationSoftly(citySelect, getCityOptions(), cityError);
     });
     barangaySelect?.addEventListener('change', function () {
-        validateLocation(barangaySelect, getBarangayOptions(), barangayError, 'barangay');
+        validateLocationSoftly(barangaySelect, getBarangayOptions(), barangayError);
     });
     form.addEventListener('input', function (event) {
         if (event.isTrusted) walkInFormDirty = true;

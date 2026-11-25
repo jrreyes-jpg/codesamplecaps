@@ -2,10 +2,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.querySelector('[data-project-confirm-modal]');
     const confirmButton = modal?.querySelector('[data-project-confirm-submit]');
     const cancelButtons = modal?.querySelectorAll('[data-project-confirm-cancel]') || [];
-    const forms = document.querySelectorAll('[data-quotation-create-project]');
     let pendingForm = null;
 
-    if (!modal || !confirmButton || forms.length === 0) return;
+    if (!modal || !confirmButton) return;
 
     if (modal.parentElement !== document.body) document.body.appendChild(modal);
 
@@ -17,14 +16,14 @@ document.addEventListener('DOMContentLoaded', function () {
         pendingForm = null;
     };
 
-    forms.forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-            pendingForm = form;
-            modal.hidden = false;
-            document.body.classList.add('shared-project-confirm-open');
-            confirmButton.focus();
-        });
+    document.addEventListener('submit', function (event) {
+        const form = event.target.closest('[data-quotation-create-project]');
+        if (!form) return;
+        event.preventDefault();
+        pendingForm = form;
+        modal.hidden = false;
+        document.body.classList.add('shared-project-confirm-open');
+        confirmButton.focus();
     });
 
     cancelButtons.forEach(function (button) {

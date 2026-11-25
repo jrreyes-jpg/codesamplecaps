@@ -148,19 +148,36 @@ $statusTones = [
     'rejected' => 'red',
 ];
 
+if (($_GET['ajax'] ?? '') === '1') {
+    ob_start();
+    include __DIR__ . '/quotation_list_results.php';
+    $resultsHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode([
+        'ok' => true,
+        'html' => $resultsHtml,
+        'status' => $activeStatus,
+        'status_label' => $activeStatus === 'all' ? 'Status' : 'Status: ' . ($statusLabels[$activeStatus] ?? 'Status'),
+        'counts' => $counts,
+    ]);
+    exit;
+}
+
 $adminPageTitle = 'Quotations - Edge Automation';
 $adminBodyClass = 'admin-light-page';
 $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/quotation-project-confirm/css/modal.css?v=20261123-1',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261123-3',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261125-7',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',
     '/codesamplecaps/ADMIN/common/js/search-clear.js?v=20261103-1',
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/quotation-project-confirm/js/modal.js?v=20261123-1',
+    '/codesamplecaps/ADMIN/sidebar/quotations/js/quotations.js?v=20261125-1',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -172,14 +189,30 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <div>
                 <h1>Quotations</h1>
             </div>
-            <form class="admin-quotation-search" method="get">
-                <input type="hidden" name="status" value="<?php echo admin_quote_e($activeStatus); ?>">
+            <form class="admin-quotation-search" method="get" data-quotation-live-filter data-shared-list-controls>
                 <div>
                     <div class="admin-quotation-search__field" data-search-field>
                         <input id="quotationSearch" name="q" type="search" value="<?php echo admin_quote_e($search); ?>" placeholder="Search client, inquiry, or quotation number" aria-label="Search client, inquiry, or quotation number">
                         <button type="button" class="admin-quotation-search__x" data-search-clear aria-label="Clear quotation search"<?php echo $search === '' ? ' hidden' : ''; ?>>&times;</button>
+                        <span class="admin-quotation-search__icon" aria-hidden="true"></span>
                     </div>
-                    <button type="submit">Search</button>
+                    <input type="hidden" name="status" value="<?php echo admin_quote_e($activeStatus); ?>" data-quotation-status-value>
+                    <div class="admin-quotation-status-menu" data-quotation-status-menu>
+                        <button type="button" class="admin-quotation-status-menu__toggle" data-quotation-status-toggle aria-haspopup="menu" aria-expanded="false">
+                            <span class="admin-quotation-status-menu__icon" aria-hidden="true"></span>
+                            <span data-quotation-status-label><?php echo $activeStatus === 'all' ? 'Status' : 'Status: ' . admin_quote_e($statusLabels[$activeStatus]); ?></span>
+                            <span class="admin-quotation-status-menu__arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="admin-quotation-status-menu__panel" data-quotation-status-panel role="menu" hidden>
+                            <?php foreach ($statusLabels as $value => $label): ?>
+                                <button type="button" class="admin-quotation-status-menu__option<?php echo $activeStatus === $value ? ' is-selected' : ''; ?>" data-quotation-status-option data-status-value="<?php echo admin_quote_e($value); ?>" data-status-label="<?php echo admin_quote_e($label); ?>" role="menuitemradio" aria-checked="<?php echo $activeStatus === $value ? 'true' : 'false'; ?>">
+                                    <span><?php echo admin_quote_e($value === 'all' ? 'All statuses' : $label); ?></span>
+                                    <small data-quotation-status-count="<?php echo admin_quote_e($value); ?>"><?php echo (int)$counts[$value]; ?></small>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <span class="admin-quotation-search__feedback" data-quotation-search-feedback role="status" aria-live="polite"></span>
                 </div>
             </form>
         </header>
@@ -190,76 +223,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <p>Please check the existing inquiry quotation migration.</p>
             </section>
         <?php else: ?>
-            <nav class="admin-quotation-filters" aria-label="Quotation status filters">
-                <?php foreach ($statusLabels as $value => $label): ?>
-                    <a class="shared-filter-chip <?php echo $activeStatus === $value ? 'is-active' : ''; ?>" data-tone="<?php echo admin_quote_e($statusTones[$value]); ?>" href="<?php echo admin_quote_e(admin_quote_page_url(['status' => $value, 'page' => 1, 'id' => null])); ?>">
-                        <span><?php echo admin_quote_e($label); ?></span>
-                        <span class="shared-filter-chip__count"><?php echo (int)$counts[$value]; ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
-
-            <div class="admin-quotation-layout is-list-only">
-                <aside class="admin-quotation-list" aria-label="Quotation list">
-                    <?php if (!$quotations): ?>
-                        <div class="admin-quotation-empty compact"><p>No quotation found.</p></div>
-                    <?php endif; ?>
-                    <?php foreach ($quotations as $quotation):
-                        $status = inquiry_quote_normalize_status((string)($quotation['status'] ?? 'draft'));
-                        $displayStatus = $status === 'approved' ? 'draft' : $status;
-                        $quotationNumber = trim((string)($quotation['quotation_no'] ?? ''));
-                        $isNumberMissing = $quotationNumber === '' || inquiry_quote_is_system_placeholder_number($quotationNumber);
-                        $quotationNumberLabel = $isNumberMissing
-                            ? 'Quotation number not assigned'
-                            : $quotationNumber;
-                        $detailsUrl = '/codesamplecaps/ADMIN/sidebar/quotations/php/quotation_details.php?id=' . (int)$quotation['id'];
-                    ?>
-                        <article class="admin-quotation-card">
-                            <div class="admin-quotation-card__main">
-                                <strong class="admin-quotation-card__number<?php echo $isNumberMissing ? ' has-warning' : ''; ?>"><?php echo admin_quote_e($quotationNumberLabel); ?></strong>
-                                <h2><?php echo admin_quote_e($quotation['client_name'] ?? 'Client'); ?></h2>
-                                <span class="admin-quotation-card__inquiry">INQ-<?php echo str_pad((string)(int)($quotation['inquiry_id'] ?? 0), 6, '0', STR_PAD_LEFT); ?></span>
-                                <span class="admin-quotation-card__updated">Updated <?php echo admin_quote_e(admin_quote_date($quotation['updated_at'] ?? '')); ?></span>
-                            </div>
-                            <div class="admin-quotation-card__side">
-                                <span class="quote-status <?php echo admin_quote_status_class($displayStatus); ?>"><?php echo admin_quote_e($statusLabels[$displayStatus] ?? inquiry_quote_status_label($displayStatus)); ?></span>
-                                <span class="admin-quotation-card__total"><small>Total</small><strong><?php echo admin_quote_e(inquiry_quote_format_money((float)($quotation['grand_total'] ?? 0))); ?></strong></span>
-                                <div class="admin-quotation-card__actions">
-                                    <a class="admin-quotation-card__view is-secondary" href="<?php echo admin_quote_e($detailsUrl); ?>">View Details</a>
-                                    <?php if ($displayStatus === 'draft'): ?>
-                                        <a class="admin-quotation-card__view" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/create_quotation.php?edit_id=<?php echo (int)$quotation['id']; ?>">Edit Quotation</a>
-                                    <?php elseif ($displayStatus === 'revision_requested'): ?>
-                                        <a class="admin-quotation-card__view is-complete-draft" href="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php?open=inquiryModal<?php echo (int)$quotation['inquiry_id']; ?>&amp;tab=quotation">Revise Quotation</a>
-                                    <?php elseif ($displayStatus === 'accepted' && !empty($quotation['project_id'])): ?>
-                                        <a class="admin-quotation-card__view" href="/codesamplecaps/ADMIN/sidebar/projects/php/project_details.php?id=<?php echo (int)$quotation['project_id']; ?>">View Project</a>
-                                    <?php elseif ($displayStatus === 'accepted'): ?>
-                                        <form method="POST" action="/codesamplecaps/ADMIN/sidebar/inquiries/php/inquiries.php" class="admin-quotation-card__action-form" data-quotation-create-project>
-                                            <input type="hidden" name="csrf_token" value="<?php echo admin_quote_e($quotationActionCsrfToken); ?>">
-                                            <input type="hidden" name="action" value="prepare_project_from_quote">
-                                            <input type="hidden" name="inquiry_id" value="<?php echo (int)$quotation['inquiry_id']; ?>">
-                                            <input type="hidden" name="draft_id" value="<?php echo (int)$quotation['id']; ?>">
-                                            <button type="submit" class="admin-quotation-card__view">Create Project</button>
-                                        </form>
-                                    <?php elseif ($displayStatus === 'rejected' && trim((string)($quotation['client_decision_note'] ?? '')) !== ''): ?>
-                                        <a class="admin-quotation-card__view is-rejected-reason" href="<?php echo admin_quote_e($detailsUrl); ?>#clientDecisionNote">View Reason</a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                    <?php if ($totalPages > 1): ?>
-                        <nav class="admin-quotation-pagination" aria-label="Quotation pages">
-                            <?php if ($currentPage > 1): ?>
-                                <a href="<?php echo admin_quote_e(admin_quote_page_url(['page' => $currentPage - 1, 'id' => null])); ?>">Previous</a>
-                            <?php endif; ?>
-                            <span>Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
-                            <?php if ($currentPage < $totalPages): ?>
-                                <a href="<?php echo admin_quote_e(admin_quote_page_url(['page' => $currentPage + 1, 'id' => null])); ?>">Next</a>
-                            <?php endif; ?>
-                        </nav>
-                    <?php endif; ?>
-                </aside>
-
+            <div data-quotation-results>
+                <?php include __DIR__ . '/quotation_list_results.php'; ?>
             </div>
         <?php endif; ?>
     </div>

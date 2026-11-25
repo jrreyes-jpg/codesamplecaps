@@ -2136,7 +2136,7 @@ $quotationFilter = trim((string)($_GET['quotation_filter'] ?? ''));
 $sourceFilter = trim((string)($_GET['source'] ?? ''));
 $search = '';
 $view = trim((string)($_GET['view'] ?? 'active'));
-$sortOrder = trim((string)($_GET['sort'] ?? 'oldest'));
+$sortOrder = trim((string)($_GET['sort'] ?? 'newest'));
 $detailsInquiryId = max(0, (int)($_GET['details'] ?? 0));
 $detailsReturnUrl = '';
 if ($detailsInquiryId > 0) {
@@ -2165,7 +2165,7 @@ if (!in_array($sourceFilter, ['online', 'walk_in'], true)) {
     $sourceFilter = '';
 }
 if (!in_array($sortOrder, ['oldest', 'newest'], true)) {
-    $sortOrder = 'oldest';
+    $sortOrder = 'newest';
 }
 
 $hasInquiryQuotationTable = inquiry_quote_table_exists($conn, 'inquiry_quotation_drafts');
@@ -2620,7 +2620,7 @@ $adminCssFiles = [
     '/codesamplecaps/SHARED/toast/css/toast.css',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/ADMIN/sidebar/projects/css/projects.css?v=20261117-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261124-8',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/css/inquiries.css?v=20261125-10',
     '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-1',
     '/codesamplecaps/SHARED/inquiry-form/css/inquiry-form.css?v=20261117-2',
     '/codesamplecaps/SHARED/email-otp/css/email-otp.css?v=20261117-2',
@@ -2676,8 +2676,9 @@ include __DIR__ . '/../../../admin_sidebar.php';
             <h1>Inquiries</h1>
             <form class="inquiry-header-search" role="search" data-shared-list-controls data-shared-live-only data-shared-search-param="search" data-shared-list-target="#adminInquiryList" data-shared-list-item="[data-inquiry-card-id]" data-shared-list-empty="#adminInquirySearchEmpty">
                 <div class="inquiry-search-field shared-list-search-field">
-                    <input type="search" placeholder="Search inquiries..." aria-label="Search inquiries" data-shared-list-search>
+                    <input type="search" placeholder="Search client, inquiry no., service, or location" aria-label="Search inquiries" data-shared-list-search>
                     <button type="button" class="shared-list-search-clear" data-shared-list-clear aria-label="Clear inquiry search" hidden>&times;</button>
+                    <span class="inquiry-search-icon" aria-hidden="true"></span>
                 </div>
             </form>
             <?php if ($view !== 'archive'): ?>
@@ -2687,36 +2688,39 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
         <?php include __DIR__ . '/walk_in_inquiry_modal.php'; ?>
 
-        <nav class="inquiry-status-strip inquiry-source-strip" aria-label="Inquiry source filters">
-            <a class="inquiry-view-link <?php echo $sourceFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">All Sources</a>
-            <a class="inquiry-view-link <?php echo $sourceFilter === 'online' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['source' => 'online', 'view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">Online</a>
-            <a class="inquiry-view-link <?php echo $sourceFilter === 'walk_in' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['source' => 'walk_in', 'view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">Walk-in</a>
-        </nav>
-
         <div class="inquiry-lifecycle-toolbar">
-        <nav class="inquiry-status-strip inquiry-status-strip--primary" aria-label="Inquiry lifecycle filters">
-            <a class="inquiry-view-link inquiry-lifecycle-filter shared-filter-chip <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" data-tone="green" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
-                <span>All</span>
-                <span class="inquiry-quotation-filter__count shared-filter-chip__count" data-inquiry-count-key="lifecycle:all"><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></span>
-            </a>
-            <?php foreach (['Pending Review', 'Needs Information', 'For Inspection', 'Inspection Submitted', 'For Quotation'] as $status): ?>
-                <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Needs Information' => 'needs_information', 'For Inspection' => 'for_inspection', 'Inspection Submitted' => 'inspection_submitted', 'For Quotation' => 'for_quotation' }; ?>
-                <?php $lifecycleTone = match ($status) { 'Pending Review' => 'yellow', 'Needs Information' => 'orange', 'For Inspection' => 'blue', 'Inspection Submitted' => 'blue', 'For Quotation' => 'green' }; ?>
-                <a class="inquiry-status inquiry-status-link inquiry-lifecycle-filter shared-filter-chip <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-tone="<?php echo $lifecycleTone; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
-                    <span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span>
-                    <span class="inquiry-quotation-filter__count shared-filter-chip__count" data-inquiry-count-key="lifecycle:<?php echo htmlspecialchars($lifecycleCountKey, ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></span>
-                </a>
-            <?php endforeach; ?>
-            <a class="inquiry-view-link inquiry-lifecycle-filter shared-filter-chip <?php echo $view === 'archive' ? 'is-active' : ''; ?>" data-tone="gray" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>">
-                <span>Archived</span>
-                <span class="inquiry-quotation-filter__count shared-filter-chip__count" data-inquiry-count-key="lifecycle:archived"><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></span>
-            </a>
-        </nav>
+            <details class="inquiry-filter-menu">
+                <summary>
+                    <span class="inquiry-filter-menu__icon" aria-hidden="true"></span>
+                    <span><?php echo $view === 'archive' ? 'Status: Archived' : ($statusFilter === '' ? 'Status' : 'Status: ' . htmlspecialchars(inquiry_center_status_label($statusFilter), ENT_QUOTES, 'UTF-8')); ?></span>
+                    <span class="inquiry-filter-menu__arrow" aria-hidden="true"></span>
+                </summary>
+                <nav class="inquiry-filter-menu__panel" aria-label="Inquiry status filters">
+                    <a class="inquiry-view-link <?php echo $view === 'active' && $statusFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span>All statuses</span><small><?php echo (int)($lifecycleFilterCounts['all'] ?? 0); ?></small></a>
+                    <?php foreach (['Pending Review', 'Needs Information', 'For Inspection', 'Inspection Submitted', 'For Quotation'] as $status): ?>
+                        <?php $lifecycleCountKey = match ($status) { 'Pending Review' => 'pending_review', 'Needs Information' => 'needs_information', 'For Inspection' => 'for_inspection', 'Inspection Submitted' => 'inspection_submitted', 'For Quotation' => 'for_quotation' }; ?>
+                        <a class="inquiry-status-link inquiry-view-link <?php echo $view === 'active' && $statusFilter === $status ? 'is-active' : ''; ?>" data-status="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['status' => $status, 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span><?php echo htmlspecialchars(inquiry_center_status_label($status), ENT_QUOTES, 'UTF-8'); ?></span><small><?php echo (int)($lifecycleFilterCounts[$lifecycleCountKey] ?? 0); ?></small></a>
+                    <?php endforeach; ?>
+                    <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span>Archived</span><small><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></small></a>
+                </nav>
+            </details>
+            <details class="inquiry-filter-menu">
+                <summary>
+                    <span class="inquiry-filter-menu__icon" aria-hidden="true"></span>
+                    <span><?php echo $sourceFilter === '' ? 'Source' : 'Source: ' . ($sourceFilter === 'walk_in' ? 'Walk-in' : 'Online'); ?></span>
+                    <span class="inquiry-filter-menu__arrow" aria-hidden="true"></span>
+                </summary>
+                <nav class="inquiry-filter-menu__panel" aria-label="Inquiry source filters">
+                    <a class="inquiry-view-link <?php echo $sourceFilter === '' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span>All sources</span></a>
+                    <a class="inquiry-view-link <?php echo $sourceFilter === 'online' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['source' => 'online', 'view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span>Online</span></a>
+                    <a class="inquiry-view-link <?php echo $sourceFilter === 'walk_in' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['source' => 'walk_in', 'view' => $view === 'archive' ? 'archive' : '', 'status' => $statusFilter, 'quotation_filter' => $quotationFilter, 'search' => $search, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span>Walk-in</span></a>
+                </nav>
+            </details>
 
         <form class="inquiry-sort-form" method="GET">
             <select id="inquirySortOrder" name="sort" aria-label="Sort inquiries">
-                <option value="oldest"<?php echo $sortOrder === 'oldest' ? ' selected' : ''; ?>>Oldest First</option>
-                <option value="newest"<?php echo $sortOrder === 'newest' ? ' selected' : ''; ?>>Newest First</option>
+                <option value="newest"<?php echo $sortOrder === 'newest' ? ' selected' : ''; ?>>Sort: Newest First</option>
+                <option value="oldest"<?php echo $sortOrder === 'oldest' ? ' selected' : ''; ?>>Sort: Oldest First</option>
             </select>
             <?php if ($view === 'archive'): ?><input type="hidden" name="view" value="archive"><?php endif; ?>
             <?php if ($statusFilter !== ''): ?><input type="hidden" name="status" value="<?php echo htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>

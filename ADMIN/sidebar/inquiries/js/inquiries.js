@@ -1926,7 +1926,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return card.dataset.inquiryCardId || '';
         }));
 
-        const oldestFirst = (inquiryRefreshUrl.searchParams.get('sort') || 'oldest') === 'oldest';
+        const oldestFirst = (inquiryRefreshUrl.searchParams.get('sort') || 'newest') === 'oldest';
         const cardsToMerge = oldestFirst ? nextCards : nextCards.slice().reverse();
         cardsToMerge.forEach(function (nextCard) {
             const inquiryId = nextCard.dataset.inquiryCardId || '';

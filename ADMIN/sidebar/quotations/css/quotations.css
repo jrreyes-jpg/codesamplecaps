@@ -67,7 +67,6 @@
 }
 
 .admin-quotation-search input[type="search"],
-.admin-quotation-search button,
 .button-primary,
 .button-secondary {
     min-height: 44px;
@@ -82,11 +81,163 @@
     padding: 0 46px 0 16px;
     border: 1px solid #cbd7e5;
     background: #fff;
+    font-weight: 400;
 }
 
 .admin-quotation-search input[type="search"]::-webkit-search-cancel-button { display: none; }
 
-.admin-quotation-search button,
+.admin-quotation-search__icon {
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    width: 13px;
+    height: 13px;
+    border: 2px solid #64748b;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translateY(-65%);
+}
+
+.admin-quotation-search__icon::after {
+    position: absolute;
+    right: -5px;
+    bottom: -4px;
+    width: 7px;
+    height: 2px;
+    background: #64748b;
+    content: '';
+    transform: rotate(45deg);
+}
+
+.admin-quotation-search .admin-quotation-search__x:not([hidden]) + .admin-quotation-search__icon {
+    display: none;
+}
+
+.admin-quotation-status-menu {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.admin-quotation-status-menu__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid #cbd7e5;
+    border-radius: 12px;
+    background: #fff;
+    color: #344258;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+}
+
+.admin-quotation-status-menu__toggle:hover,
+.admin-quotation-status-menu__toggle:focus-visible {
+    border-color: #91b9a4;
+    outline: none;
+}
+
+.admin-quotation-status-menu__icon {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    overflow: hidden;
+}
+
+.admin-quotation-status-menu__icon::before {
+    position: absolute;
+    top: 1px;
+    left: 0;
+    width: 14px;
+    height: 8px;
+    border: 2px solid #52627a;
+    border-bottom: 0;
+    border-radius: 2px 2px 0 0;
+    content: '';
+    transform: skewX(-25deg);
+}
+
+.admin-quotation-status-menu__icon::after {
+    position: absolute;
+    bottom: 0;
+    left: 5px;
+    width: 3px;
+    height: 7px;
+    background: #52627a;
+    content: '';
+}
+
+.admin-quotation-status-menu__arrow {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #52627a;
+    border-bottom: 2px solid #52627a;
+    transform: rotate(45deg) translateY(-2px);
+}
+
+.admin-quotation-status-menu__panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 210px;
+    padding: 6px;
+    border: 1px solid #d7e0e8;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(28, 74, 53, 0.12);
+}
+
+.admin-quotation-status-menu__option {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #344258;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-align: left;
+}
+
+.admin-quotation-status-menu__option:hover,
+.admin-quotation-status-menu__option:focus-visible,
+.admin-quotation-status-menu__option.is-selected {
+    background: #edf8f2;
+    color: #126c37;
+    outline: none;
+}
+
+.admin-quotation-status-menu__option small {
+    min-width: 20px;
+    color: #64748b;
+    font: inherit;
+    font-size: 0.78rem;
+    text-align: right;
+}
+
+.admin-quotation-search__feedback {
+    align-self: center;
+    min-width: 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.admin-quotation-search__feedback:empty {
+    display: none;
+}
+
 .button-primary,
 .button-secondary {
     border: 0;
@@ -136,18 +287,6 @@
 .button-primary:active {
     box-shadow: 0 2px 5px rgba(15, 143, 67, 0.14);
     transform: translateY(1px);
-}
-
-.admin-quotation-filters {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-}
-
-.admin-quotation-filters .shared-filter-chip {
-    flex: 0 0 auto;
 }
 
 .admin-quotation-layout {
@@ -642,7 +781,11 @@ body.admin-quotation-history-open { overflow: hidden; }
 
 @media (max-width: 600px) {
     .admin-quotation-search > div { flex-direction: column; }
-    .admin-quotation-search > div > button[type="submit"] { width: 100%; }
+    .admin-quotation-status-menu,
+    .admin-quotation-status-menu__toggle { width: 100%; }
+    .admin-quotation-status-menu__toggle { justify-content: space-between; }
+    .admin-quotation-status-menu__panel { left: 0; right: auto; width: 100%; }
+    .admin-quotation-search__feedback { align-self: flex-start; }
     .admin-quotation-list,
     .admin-quotation-detail { padding: 14px; border-radius: 16px; }
     .admin-quotation-details-page .admin-quotation-detail { padding: 8px; }

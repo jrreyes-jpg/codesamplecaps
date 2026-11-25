@@ -86,7 +86,7 @@ function walk_in_send_confirmed_inspection_notifications(
         'New Site Inspection Assignment',
         'Client: ' . ($clientName !== '' ? $clientName : 'Client') . ' | Schedule: ' . $schedule,
         site_inspection_engineer_link($inspectionId),
-        'site_inspection_assignment:' . $engineerId . ':' . $inspectionId
+        user_notifications_site_inspection_assignment_key($engineerId, $inspectionId, $scheduledAt, $siteNotes)
     );
 
     if (filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {

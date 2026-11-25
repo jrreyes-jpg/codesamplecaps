@@ -280,7 +280,7 @@ function inquiry_center_send_pending_schedule_notifications(mysqli $conn, int $i
             'New Site Inspection Assignment',
             'Client: ' . ($clientName !== '' ? $clientName : 'Client') . ' • Service: ' . ($service ?: 'Service request') . ' • Schedule: ' . $scheduleForEmail,
             '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $inspectionId,
-            'site_inspection_assignment:' . $engineerId . ':' . $inspectionId
+            user_notifications_site_inspection_assignment_key($engineerId, $inspectionId, $scheduleValue, $siteNotes)
         );
     }
 
@@ -1891,7 +1891,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'New Site Inspection Assignment',
                             $assignmentMessage,
                             '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' . $savedInspectionId,
-                            'site_inspection_assignment:' . $engineerId . ':' . $savedInspectionId
+                            user_notifications_site_inspection_assignment_key($engineerId, $savedInspectionId, $scheduleValue, $siteNotes)
                         );
                         if ($assignmentNotification === null) {
                             error_log('Engineer assignment notification was not saved for inspection ' . $savedInspectionId);

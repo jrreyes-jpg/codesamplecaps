@@ -31,6 +31,10 @@
     background: #d97706;
 }
 
+.shared-toast--info {
+    background: #2563eb;
+}
+
 .shared-toast a {
     display: inline-flex;
     align-items: center;

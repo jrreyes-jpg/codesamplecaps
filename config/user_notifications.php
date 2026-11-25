@@ -52,6 +52,20 @@ if (!function_exists('user_notifications_create_if_missing')) {
     }
 }
 
+if (!function_exists('user_notifications_site_inspection_assignment_key')) {
+    function user_notifications_site_inspection_assignment_key(
+        int $userId,
+        int $inspectionId,
+        string $scheduledAt,
+        string $siteNotes = ''
+    ): string {
+        $normalizedNotes = preg_replace('/\r\n?|\n/', "\n", trim($siteNotes)) ?? '';
+        $stateHash = hash('sha256', $userId . "\n" . trim($scheduledAt) . "\n" . $normalizedNotes);
+
+        return 'site_inspection_assignment:' . $userId . ':' . $inspectionId . ':' . $stateHash;
+    }
+}
+
 if (!function_exists('user_notifications_active_target_condition')) {
     function user_notifications_active_target_condition(string $alias = 'un'): string
     {

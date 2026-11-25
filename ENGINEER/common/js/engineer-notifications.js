@@ -15,13 +15,16 @@
         const countLabel = root.querySelector('[data-engineer-notification-count]');
         const list = root.querySelector('[data-engineer-notification-list]');
         let pollInProgress = false;
-        const shownAssignmentNotificationIds = new Set();
+        const shownInspectionNotificationIds = new Set();
         const notificationUserId = root.dataset.engineerNotificationUser || '0';
-        const lastToastStorageKey = 'edge:engineer:' + notificationUserId + ':last-assignment-toast-id';
+        const lastToastStorageKey = 'edge:engineer:' + notificationUserId + ':last-inspection-toast-id';
+        const legacyToastStorageKey = 'edge:engineer:' + notificationUserId + ':last-assignment-toast-id';
 
         const getLastToastId = function () {
             try {
-                return Number.parseInt(window.localStorage.getItem(lastToastStorageKey) || '0', 10) || 0;
+                const latestId = Number.parseInt(window.localStorage.getItem(lastToastStorageKey) || '0', 10) || 0;
+                const legacyId = Number.parseInt(window.localStorage.getItem(legacyToastStorageKey) || '0', 10) || 0;
+                return Math.max(latestId, legacyId);
             } catch (error) {
                 return 0;
             }
@@ -94,19 +97,23 @@
             renderList(data.items);
         };
 
-        const announceNewAssignments = function (data) {
+        const announceNewInspectionNotifications = function (data) {
             const newItems = Array.isArray(data.new_items) ? data.new_items : [];
             newItems.forEach(function (item) {
                 const notificationId = Number.parseInt(item.notification_id || '0', 10);
-                if (notificationId <= getLastToastId() || shownAssignmentNotificationIds.has(notificationId)) return;
+                if (notificationId <= getLastToastId() || shownInspectionNotificationIds.has(notificationId)) return;
 
-                shownAssignmentNotificationIds.add(notificationId);
+                shownInspectionNotificationIds.add(notificationId);
                 saveLastToastId(notificationId);
                 if (typeof window.showToast === 'function') {
                     const clientName = String(item.client_name || 'Client').trim() || 'Client';
                     const inspectionId = Number.parseInt(item.inspection_id || '0', 10);
-                    const targetUrl = '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' + inspectionId;
-                    window.showToast('New site inspection assigned: ' + clientName + '. Click to view.', 'success', {
+                    const targetUrl = String(item.target_url || '/codesamplecaps/ENGINEER/dashboards/site_inspections.php?inspection_id=' + inspectionId);
+                    const isScheduleUpdate = item.type === 'site_inspection_schedule_updated' || item.type === 'engineer_reschedule_approved';
+                    const message = isScheduleUpdate
+                        ? 'Inspection schedule updated by Admin. Click to view.'
+                        : 'New site inspection assigned: ' + clientName + '. Click to view.';
+                    window.showToast(message, isScheduleUpdate ? 'info' : 'success', {
                         duration: 5000,
                         onClick: function () {
                             markNotificationRead(notificationId, inspectionId).finally(function () {
@@ -170,7 +177,7 @@
                 .then(function (data) {
                     if (!data.success) return;
                     applyState(data);
-                    announceNewAssignments(data);
+                    announceNewInspectionNotifications(data);
                     publishNotificationUpdate(data);
                 })
                 .catch(function () {
@@ -227,7 +234,8 @@
         });
 
         pollNotifications();
-        window.setInterval(pollNotifications, 30000);
+        // Magaan lang: isang maliit na shared notification check kada 15 seconds.
+        window.setInterval(pollNotifications, 15000);
     }
 
     if (document.readyState === 'loading') {

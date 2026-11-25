@@ -29,7 +29,7 @@
     }
 
     window.showToast = function (message, type, options) {
-        var safeType = ['success', 'error', 'warning'].includes(type) ? type : 'success';
+        var safeType = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'success';
         var settings = options || {};
         var requestedDuration = Number(settings.duration);
         var delay = Number.isFinite(requestedDuration) && requestedDuration >= 1000

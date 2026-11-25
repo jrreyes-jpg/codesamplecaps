@@ -3132,7 +3132,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (inspectionPanel) {
         pollInspectionScheduleUpdates();
-        window.setInterval(pollInspectionScheduleUpdates, 5000);
 
         const modalStateObserver = new MutationObserver(function () {
             if (inspectionRefreshDeferred && !inspectionRefreshIsBlocked()) {
@@ -3145,9 +3144,6 @@ document.addEventListener('DOMContentLoaded', function () {
             attributeFilter: ['hidden'],
         });
 
-        document.addEventListener('visibilitychange', function () {
-            if (!document.hidden) pollInspectionScheduleUpdates();
-        });
     }
 
     document.addEventListener('edge:engineer-notifications-updated', function (event) {
@@ -3169,6 +3165,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!activeAssignmentIds.has(inspectionId)) pendingInspectionIds.delete(inspectionId);
         });
         refreshAssignedInspectionCards();
+
+        const toastItems = Array.isArray(event.detail?.new_items) ? event.detail.new_items : [];
+        toastItems.forEach(function (item) {
+            const inspectionId = String(Number.parseInt(item?.inspection_id || '0', 10));
+            const isScheduleUpdate = item?.type === 'site_inspection_schedule_updated' || item?.type === 'engineer_reschedule_approved';
+            const card = inspectionId === '0' ? null : document.querySelector('[data-inspection-card-id="' + CSS.escape(inspectionId) + '"]');
+            if (isScheduleUpdate && card) {
+                pollInspectionScheduleUpdates();
+            }
+        });
     });
 
     const requestedInspectionId = Number.parseInt(new URLSearchParams(window.location.search).get('inspection_id') || '0', 10);

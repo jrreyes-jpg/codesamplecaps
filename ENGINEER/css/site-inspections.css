@@ -304,6 +304,11 @@
     color: #1d4ed8;
 }
 
+.inspection-status[data-status="Waiting for Admin"] {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
 .inspection-status[data-status="Costing Approved"] {
     background: #dcfce7;
     color: #166534;
@@ -1936,6 +1941,16 @@ body.inspection-modal-open {
     pointer-events: none;
 }
 
+/* Para malinaw ang safe save at discard sa leave modal. */
+.inspection-action-confirm__discard {
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.inspection-action-confirm__save-draft {
+    background: #166534;
+}
+
 .inspection-costing-form .inspection-actions {
     align-items: flex-end;
     justify-content: flex-end;
@@ -2389,6 +2404,13 @@ body.inspection-is-submitting {
 .inspection-details-back:focus-visible {
     background: #047857;
     color: #ffffff;
+}
+
+/* Naka-lock muna ang paglipat habang sine-save ang napiling photo. */
+.inspection-navigation-is-busy {
+    pointer-events: none;
+    opacity: 0.55;
+    cursor: wait;
 }
 
 .inspection-modal--page .inspection-modal__head {

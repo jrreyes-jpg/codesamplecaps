@@ -1608,7 +1608,7 @@ $hasRequestedInspection = $requestedInspectionId > 0 && array_filter(
 ) !== [];
 $engineerPageTitle = 'Site Inspections - Engineer';
 $engineerCssFiles = [
-    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261124-5',
+    '/codesamplecaps/ENGINEER/css/site-inspections.css?v=20261125-9',
     '/codesamplecaps/SHARED/material-notes/css/material-notes.css?v=20261124-1',
     '/codesamplecaps/SHARED/admin_ui/css/surfaces.css?v=20261123-1',
     '/codesamplecaps/SHARED/list-controls/css/list-controls.css?v=20261120-2',
@@ -1715,7 +1715,7 @@ require __DIR__ . '/../layout/header.php';
                     $displayInspectionStatus = $inspectionStatus === 'Completed' && $adminReviewStatus === 'Returned'
                         ? 'Returned for Revision'
                         : ($inspectionStatus === 'Submitted'
-                            ? ($adminReviewStatus === 'Approved' ? 'Costing Approved' : 'Costing Submitted')
+                            ? ($adminReviewStatus === 'Approved' ? 'Costing Approved' : 'Waiting for Admin')
                             : $inspectionStatus);
                     $isSubmittedToAdmin = $inspectionStatus === 'Submitted';
                     $submittedMaterialCostItems = array_values(array_filter(
@@ -2532,7 +2532,7 @@ $engineerJsFiles = [
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/modal/js/modal-scroll-lock.js?v=20261120-1',
     '/codesamplecaps/SHARED/modal/js/modal-controller.js?v=20261120-1',
-    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261124-14',
+    '/codesamplecaps/ENGINEER/js/site-inspections.js?v=20261125-23',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-1',
 ];
 require __DIR__ . '/../layout/footer.php';

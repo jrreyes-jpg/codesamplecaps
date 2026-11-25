@@ -80,6 +80,12 @@
             return;
         }
 
+        // Hintayin matapos ang photo upload bago mag-log out.
+        if (document.documentElement.classList.contains('inspection-photo-uploading')) {
+            event.preventDefault();
+            return;
+        }
+
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!modal.hidden || isLoggingOut) {

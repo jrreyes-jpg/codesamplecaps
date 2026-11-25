@@ -1,5 +1,7 @@
 // Costing rows para mabilis magdagdag ng materials, labor, at notes.
 document.addEventListener('DOMContentLoaded', function () {
+    const currentInspectionId = Number.parseInt(new URLSearchParams(window.location.search).get('inspection_id') || '0', 10);
+    const isInspectionDetailsPage = currentInspectionId > 0;
     const activeModalKey = 'engineer.siteInspection.activeModal';
     const modalScrollKey = 'engineer.siteInspection.modalScroll';
     const activeTabKey = 'engineer.siteInspection.activeTab';
@@ -119,7 +121,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return `engineer.siteInspection.costing.${inspectionId}`;
     };
 
-    const saveFormDraft = function (form) {
+    const draftSaveTimers = new WeakMap();
+
+    const persistFormDraft = function (form) {
         const rows = Array.from(form.querySelectorAll('.costing-row')).map(function (row) {
             return {
                 item_type: row.querySelector('[name="item_type[]"]')?.value || 'material',
@@ -160,6 +164,27 @@ document.addEventListener('DOMContentLoaded', function () {
         window.SharedFormDraft?.save(storageKeyForForm(form), payload);
     };
 
+    // Maikling hintay lang para hindi magsulat sa browser kada pindot ng key.
+    const saveFormDraft = function (form) {
+        const oldTimer = draftSaveTimers.get(form);
+        if (oldTimer) window.clearTimeout(oldTimer);
+
+        const timer = window.setTimeout(function () {
+            persistFormDraft(form);
+            draftSaveTimers.delete(form);
+        }, 350);
+        draftSaveTimers.set(form, timer);
+    };
+
+    const flushFormDraft = function (form) {
+        const oldTimer = draftSaveTimers.get(form);
+        if (oldTimer) {
+            window.clearTimeout(oldTimer);
+            draftSaveTimers.delete(form);
+        }
+        persistFormDraft(form);
+    };
+
     const normalizeText = function (value) {
         return String(value ?? '').trim();
     };
@@ -193,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     unit: normalizeText(row.querySelector('select[name="unit[]"]')?.value).toLowerCase(),
                     unitCost: normalizeNumber(row.querySelector('input[name="unit_cost[]"]')?.value),
                     notes: normalizeText(row.querySelector('input[name="notes[]"]')?.value),
+                    nonStockChoice: normalizeText(row.querySelector('[data-non-stock-choice]')?.value),
                 };
             }),
             directCosts: Object.fromEntries(Array.from(form.querySelectorAll('[data-direct-cost]')).map(function (field) {
@@ -1572,6 +1598,50 @@ document.addEventListener('DOMContentLoaded', function () {
             previewUrls = [];
         };
 
+        const setPhotoUploadNavigationState = function (isSaving) {
+            const root = document.documentElement;
+            root.classList.toggle('inspection-photo-uploading', isSaving);
+            document.querySelectorAll('.inspection-details-back, .sidebar--engineer a[href], .brand-title-link, a[href*="/LOGIN/php/logout.php"]').forEach(function (link) {
+                link.classList.toggle('inspection-navigation-is-busy', isSaving);
+                if (isSaving) {
+                    link.setAttribute('aria-disabled', 'true');
+                } else {
+                    link.removeAttribute('aria-disabled');
+                }
+            });
+        };
+
+        const appendSavedPhotos = function (photos) {
+            if (!Array.isArray(photos) || photos.length === 0) return;
+            let savedBox = evidence.querySelector('.inspection-evidence__saved');
+            if (!savedBox) {
+                savedBox = document.createElement('div');
+                savedBox.className = 'inspection-evidence__saved';
+                savedBox.setAttribute('aria-label', 'Saved inspection photos');
+                evidence.insertBefore(savedBox, evidence.querySelector('.inspection-evidence__fields'));
+            }
+
+            photos.forEach(function (photo) {
+                const card = document.createElement('figure');
+                const image = document.createElement('img');
+                const caption = document.createElement('figcaption');
+                const remove = document.createElement('button');
+                card.dataset.savedEvidenceId = String(photo.id || '');
+                image.src = photo.url;
+                image.alt = 'Saved inspection evidence';
+                image.dataset.inspectionPhotoLightbox = '';
+                image.dataset.photoName = photo.name || 'Inspection photo';
+                image.setAttribute('role', 'button');
+                image.tabIndex = 0;
+                caption.textContent = photo.name || 'Inspection photo';
+                remove.type = 'button';
+                remove.dataset.removeSavedPhoto = '';
+                remove.textContent = 'Remove';
+                card.append(image, caption, remove);
+                savedBox.appendChild(card);
+            });
+        };
+
         const setPhotoFiles = function (files) {
             if (!photoInput || typeof DataTransfer === 'undefined') return;
             const transfer = new DataTransfer();
@@ -1610,36 +1680,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 card.append(image, caption, remove);
                 preview.appendChild(card);
-            });
-        };
-
-        const appendSavedPhotos = function (photos) {
-            if (!Array.isArray(photos) || photos.length === 0) return;
-            let savedBox = evidence.querySelector('.inspection-evidence__saved');
-            if (!savedBox) {
-                savedBox = document.createElement('div');
-                savedBox.className = 'inspection-evidence__saved';
-                savedBox.setAttribute('aria-label', 'Saved inspection photos');
-                evidence.insertBefore(savedBox, evidence.querySelector('.inspection-evidence__fields'));
-            }
-            photos.forEach(function (photo) {
-                const card = document.createElement('figure');
-                const image = document.createElement('img');
-                const caption = document.createElement('figcaption');
-                const remove = document.createElement('button');
-                card.dataset.savedEvidenceId = String(photo.id || '');
-                image.src = photo.url;
-                image.alt = 'Saved inspection evidence';
-                image.dataset.inspectionPhotoLightbox = '';
-                image.dataset.photoName = photo.name || 'Inspection photo';
-                image.setAttribute('role', 'button');
-                image.tabIndex = 0;
-                caption.textContent = photo.name || 'Inspection photo';
-                remove.type = 'button';
-                remove.dataset.removeSavedPhoto = '';
-                remove.textContent = 'Remove';
-                card.append(image, caption, remove);
-                savedBox.appendChild(card);
             });
         };
 
@@ -1703,67 +1743,17 @@ document.addEventListener('DOMContentLoaded', function () {
             deleteSavedPhoto(button);
         });
 
-        const uploadSelectedPhotos = function () {
-            const files = Array.from(photoInput?.files || []);
-            if (!photoInput || files.length === 0 || evidence.dataset.photoUploading === 'true') return;
-
-            const data = new FormData();
-            data.set('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
-            data.set('inspection_id', form.querySelector('input[name="inspection_id"]')?.value || '');
-            data.set('evidence_action', 'upload_photos');
-            files.forEach(function (file) { data.append('inspection_photos[]', file); });
-            evidence.dataset.photoUploading = 'true';
-            photoInput.disabled = true;
-            if (feedback) {
-                feedback.className = 'inspection-evidence__feedback is-saving';
-                feedback.textContent = 'Saving photo as draft...';
-                feedback.hidden = false;
-            }
-
-            fetch(form.getAttribute('action') || window.location.href, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: data,
-            })
-                .then(function (response) {
-                    return parseInspectionJsonResponse(response, 'Unable to save the photo. Please try again.');
-                })
-                .then(function (payload) {
-                    appendSavedPhotos(payload.photos || []);
-                    savedPhotoCount += (payload.photos || []).length;
-                    evidence.dataset.savedPhotoCount = String(savedPhotoCount);
-                    photoInput.value = '';
-                    renderPhotoPreview();
-                    if (feedback) {
-                        feedback.className = 'inspection-evidence__feedback is-saved';
-                        feedback.textContent = payload.message || 'Photo saved as draft.';
-                    }
-                    if (savedPhotoCount >= 3) {
-                        const uploadBox = photoInput.closest('.inspection-evidence__upload');
-                        if (uploadBox) uploadBox.hidden = true;
-                    }
-                    updateSaveDraftState(form);
-                })
-                .catch(function (error) {
-                    if (feedback) {
-                        feedback.className = 'inspection-evidence__feedback is-error';
-                        feedback.textContent = `${error.message || 'Photo not saved.'} Your selected photo is still here. `;
-                        const retry = document.createElement('button');
-                        retry.type = 'button';
-                        retry.textContent = 'Retry Upload';
-                        retry.addEventListener('click', uploadSelectedPhotos);
-                        feedback.appendChild(retry);
-                    }
-                })
-                .finally(function () {
-                    evidence.dataset.photoUploading = 'false';
-                    if (photoInput && savedPhotoCount < 3) photoInput.disabled = false;
-                });
-        };
+        // Huwag lumipat ng page habang may photo upload pa.
+        if (form.dataset.photoNavigationBlockBound !== '1') {
+            form.dataset.photoNavigationBlockBound = '1';
+            document.addEventListener('click', function (event) {
+                if (!document.documentElement.classList.contains('inspection-photo-uploading')) return;
+                const link = event.target.closest('.inspection-details-back, .sidebar--engineer a[href], .brand-title-link');
+                if (!link) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }, true);
+        }
 
         photoInput?.addEventListener('change', function () {
             const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -1789,17 +1779,73 @@ document.addEventListener('DOMContentLoaded', function () {
             renderPhotoPreview();
             updateSaveDraftState(form);
             if (message === '' && selected.length > 0) {
-                uploadSelectedPhotos();
+                form.savePendingInspectionPhotos?.();
             }
         });
 
-        window.addEventListener('beforeunload', function (event) {
-            const hasPendingPhoto = (photoInput?.files?.length || 0) > 0;
-            if (evidence.dataset.photoUploading === 'true' || hasPendingPhoto) {
-                event.preventDefault();
-                event.returnValue = '';
+        // Photo ay agad sine-save para hindi mawala kapag lumipat ng page.
+        form.savePendingInspectionPhotos = function () {
+            const files = Array.from(photoInput?.files || []);
+            if (!photoInput || files.length === 0) return Promise.resolve(true);
+
+            const data = new FormData();
+            data.set('csrf_token', form.querySelector('input[name="csrf_token"]')?.value || '');
+            data.set('inspection_id', form.querySelector('input[name="inspection_id"]')?.value || '');
+            data.set('evidence_action', 'upload_photos');
+            files.forEach(function (file) { data.append('inspection_photos[]', file); });
+            evidence.dataset.photoUploading = 'true';
+            photoInput.disabled = true;
+            setPhotoUploadNavigationState(true);
+            if (feedback) {
+                feedback.className = 'inspection-evidence__feedback is-saving';
+                feedback.textContent = 'Saving photo...';
+                feedback.hidden = false;
             }
-        });
+
+            return fetch(form.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: data,
+            })
+                .then(function (response) {
+                    return parseInspectionJsonResponse(response, 'Unable to save the selected photo. Please try again.');
+                })
+                .then(function (payload) {
+                    appendSavedPhotos(payload.photos || []);
+                    savedPhotoCount += (payload.photos || []).length;
+                    evidence.dataset.savedPhotoCount = String(savedPhotoCount);
+                    photoInput.value = '';
+                    clearPreviewUrls();
+                    if (preview) preview.innerHTML = '';
+                    if (feedback) {
+                        feedback.className = 'inspection-evidence__feedback is-saved';
+                        feedback.textContent = payload.message || 'Photo saved as draft.';
+                        feedback.hidden = false;
+                    }
+                    if (savedPhotoCount >= 3) {
+                        const uploadBox = photoInput.closest('.inspection-evidence__upload');
+                        if (uploadBox) uploadBox.hidden = true;
+                    }
+                    return true;
+                })
+                .catch(function (error) {
+                    if (feedback) {
+                        feedback.className = 'inspection-evidence__feedback is-error';
+                        feedback.textContent = error.message || 'Unable to save the selected photo.';
+                        feedback.hidden = false;
+                    }
+                    return false;
+                })
+                .finally(function () {
+                    evidence.dataset.photoUploading = 'false';
+                    setPhotoUploadNavigationState(false);
+                    photoInput.disabled = false;
+                });
+        };
 
         driveUrl?.addEventListener('input', function () {
             updateDriveUrlState(driveUrl, driveUrl.value.trim() !== '');
@@ -1810,6 +1856,25 @@ document.addEventListener('DOMContentLoaded', function () {
             updateDriveUrlState(driveUrl, true);
         });
         updateDriveUrlState(driveUrl, false);
+    };
+
+    const bindInspectionDraftAutoSave = function (form) {
+        if (form.dataset.draftAutoSaveBound === '1') return;
+        form.dataset.draftAutoSaveBound = '1';
+
+        const saveNow = function () {
+            if (form.dataset.isSaving === 'true') return;
+            flushFormDraft(form);
+        };
+
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('.inspection-details-back, .sidebar--engineer a[href], .brand-title-link');
+            if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            saveNow();
+        });
+
+        window.addEventListener('pagehide', saveNow);
+        window.addEventListener('edge:logout-complete', saveNow);
     };
 
     const bindCostingForm = function (form) {
@@ -1833,6 +1898,7 @@ document.addEventListener('DOMContentLoaded', function () {
             bindAssetRequirementRow(form, row);
         });
         bindInspectionEvidence(form);
+        bindInspectionDraftAutoSave(form);
 
         // Kunin muna ang saved server values bago mag-restore ng unsaved browser draft.
         form.dataset.savedSnapshot = formSnapshot(form);
@@ -2006,7 +2072,10 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSaveDraftState(form);
     };
 
-    document.querySelectorAll('[data-costing-form]').forEach(bindCostingForm);
+    // Sa details page lang i-restore ang draft para hindi mag-warning ang list page.
+    if (isInspectionDetailsPage) {
+        document.querySelectorAll('[data-costing-form]').forEach(bindCostingForm);
+    }
 
     const activateInspectionTab = function (modal, nextTab) {
         if (!modal || !nextTab) return;
@@ -2055,6 +2124,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionActionConfirmReasonError = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-reason-error]');
     const inspectionActionConfirmCancel = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-cancel]');
     const inspectionActionConfirmSubmit = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-submit]');
+    const inspectionActionConfirmClose = inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-close]');
     let pendingInspectionActionConfirm = null;
     const inspectionActionConfirmController = window.SharedModalController?.create({
         modal: inspectionActionConfirmModal,
@@ -2078,6 +2148,14 @@ document.addEventListener('DOMContentLoaded', function () {
         inspectionActionConfirmTitle.textContent = options.title;
         inspectionActionConfirmMessage.textContent = options.message;
         inspectionActionConfirmSubmit.textContent = options.confirm;
+        const hasSecondaryAction = typeof options.onSecondaryConfirm === 'function';
+        inspectionActionConfirmCancel.hidden = false;
+        inspectionActionConfirmCancel.textContent = hasSecondaryAction
+            ? (options.secondaryConfirm || 'Cancel')
+            : 'Cancel';
+        inspectionActionConfirmCancel.classList.toggle('inspection-action-confirm__discard', Boolean(options.secondaryDestructive));
+        inspectionActionConfirmSubmit.classList.toggle('inspection-action-confirm__save-draft', hasSecondaryAction);
+        inspectionActionConfirmClose.hidden = Boolean(options.hideClose);
         if (inspectionActionConfirmSummary) {
             inspectionActionConfirmSummary.hidden = !options.summary;
         }
@@ -2106,6 +2184,29 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     inspectionActionConfirmCancel?.addEventListener('click', function () {
+        const action = pendingInspectionActionConfirm;
+        if (action?.onSecondaryConfirm) {
+            if (inspectionActionConfirmModal?.dataset.submitting === 'true') return;
+            inspectionActionConfirmModal.dataset.submitting = 'true';
+            inspectionActionConfirmCancel.disabled = true;
+            inspectionActionConfirmSubmit.disabled = true;
+            Promise.resolve()
+                .then(function () { return action.onSecondaryConfirm(); })
+                .then(function (success) {
+                    if (success !== false) {
+                        inspectionActionConfirmController?.close({ restoreFocus: false, force: true });
+                        pendingInspectionActionConfirm = null;
+                    }
+                })
+                .finally(function () {
+                    if (!inspectionActionConfirmModal.hidden) {
+                        inspectionActionConfirmCancel.disabled = false;
+                        inspectionActionConfirmSubmit.disabled = false;
+                    }
+                    inspectionActionConfirmModal.dataset.submitting = '';
+                });
+            return;
+        }
         closeInspectionActionConfirm(true);
     });
     inspectionActionConfirmModal?.querySelector('[data-inspection-action-confirm-close]')?.addEventListener('click', function () {
@@ -2175,7 +2276,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const statusNode = card.querySelector('.inspection-status');
         if (statusNode) {
-            const displayStatus = status === 'Submitted' ? 'Costing Submitted' : status;
+            const displayStatus = status === 'Submitted' ? 'Waiting for Admin' : status;
             statusNode.dataset.status = displayStatus;
             statusNode.textContent = displayStatus;
         }
@@ -2803,7 +2904,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const inspectionMatchesFilter = function (card, filter) {
         const status = card.querySelector('.inspection-card__head .inspection-status')?.dataset.status || '';
         if (filter === 'ongoing') return status === 'Ongoing';
-        if (filter === 'waiting') return ['Submitted', 'Costing Submitted', 'Submitted to Admin', 'Submitted for Admin Review'].includes(status);
+        if (filter === 'waiting') return ['Submitted', 'Costing Submitted', 'Submitted to Admin', 'Submitted for Admin Review', 'Waiting for Admin Review', 'Waiting for Admin'].includes(status);
         if (filter === 'approved') return status === 'Costing Approved';
         if (filter === 'returned') return status === 'Returned for Revision';
         return true;

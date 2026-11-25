@@ -788,6 +788,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Unable to complete and submit the inspection. Please try again.';
                 }
             }
+        } elseif ($workflowAction === 'start') {
+            // Bagong start ito. Alisin lang ang lumang hindi pa na-submit na cost draft.
+            $conn->begin_transaction();
+            try {
+                $clearDraftItems = $conn->prepare(
+                    'DELETE FROM site_inspection_cost_items WHERE inspection_id = ?'
+                );
+                if (!$clearDraftItems) {
+                    throw new RuntimeException('Unable to reset the old cost draft.');
+                }
+                $clearDraftItems->bind_param('i', $inspectionId);
+                $clearDraftItems->execute();
+                $clearDraftItems->close();
+
+                if (!site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
+                    throw new RuntimeException('Unable to start the inspection.');
+                }
+
+                $conn->commit();
+                $message = 'Site inspection started.';
+                $savedStatus = $targetStatus;
+            } catch (Throwable $exception) {
+                $conn->rollback();
+                $error = 'Unable to start the inspection. Please try again.';
+            }
         } elseif (site_inspection_transition($conn, $inspectionId, $userId, $currentStatus, $targetStatus)) {
             $message = match ($targetStatus) {
                 'Ongoing' => 'Site inspection started.',
@@ -2171,6 +2196,14 @@ require __DIR__ . '/../layout/header.php';
                                 <summary>Cost Estimate</summary>
                             <div class="costing-rows" data-costing-rows>
                                 <?php foreach ($materialCostItems as $itemIndex => $item): ?>
+                                    <?php
+                                    $isBlankMaterialRow = (int)($item['material_id'] ?? 0) <= 0
+                                        && trim((string)($item['item_name'] ?? '')) === ''
+                                        && trim((string)($item['notes'] ?? '')) === ''
+                                        && trim((string)($item['unit'] ?? '')) === ''
+                                        && (float)($item['unit_cost'] ?? 0) <= 0;
+                                    $materialDetailsDisabled = (!$canEditCosting || $isBlankMaterialRow) ? 'disabled' : '';
+                                    ?>
                                     <div class="costing-row shared-material-cost-row" data-material-suggestion-scope>
                                         <strong class="costing-row__number" data-costing-row-number>Material <?php echo $itemIndex + 1; ?></strong>
                                         <input type="hidden" name="item_type[]" value="material">
@@ -2211,7 +2244,7 @@ require __DIR__ . '/../layout/header.php';
                                             <label>
                                                 <span data-item-name-label>Material Name <b aria-hidden="true">*</b></span>
                                                 <div class="shared-material-suggestion-field" data-material-suggestion-field>
-                                                    <input type="text" name="item_name[]" data-material-suggestion-input placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                    <input type="text" name="item_name[]" data-material-suggestion-input placeholder="Enter material name" maxlength="100" value="<?php echo htmlspecialchars((string)($item['item_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required <?php echo $materialDetailsDisabled; ?>>
                                                     <span class="shared-material-suggestions" data-material-suggestion-list hidden></span>
                                                 </div>
                                             </label>
@@ -2224,16 +2257,16 @@ require __DIR__ . '/../layout/header.php';
                                             </span>
                                             <label class="shared-material-cost-row__notes">
                                                 <span data-material-notes-label>Notes (Optional)</span>
-                                                <input type="text" name="notes[]" maxlength="200" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                                <input type="text" name="notes[]" maxlength="200" placeholder="Add a note if needed" value="<?php echo htmlspecialchars((string)($item['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $materialDetailsDisabled; ?>>
                                             </label>
                                         </div>
                                         <label class="shared-material-cost-row__quantity">
                                             <span>Qty <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars(site_inspection_format_quantity((float)($item['quantity'] ?? 1), (string)($item['unit'] ?? 'unit')), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="quantity[]" inputmode="decimal" autocomplete="off" maxlength="12" placeholder="1" value="<?php echo htmlspecialchars(site_inspection_format_quantity((float)($item['quantity'] ?? 1), (string)($item['unit'] ?? 'unit')), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo $materialDetailsDisabled; ?>>
                                         </label>
                                         <label class="shared-material-cost-row__unit">
                                             <span>Unit <b aria-hidden="true">*</b></span>
-                                            <select name="unit[]" required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <select name="unit[]" required <?php echo $materialDetailsDisabled; ?>>
                                                 <option value="" disabled<?php echo trim((string)($item['unit'] ?? '')) === '' ? ' selected' : ''; ?>>Select unit</option>
                                                 <?php foreach (['unit', 'pc', 'pcs', 'roll', 'box', 'pack', 'set', 'lot', 'bundle', 'sheet', 'pair', 'tube', 'meter', 'kg', 'liter'] as $unitOption): ?>
                                                     <option value="<?php echo htmlspecialchars($unitOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($item['unit'] ?? '') === $unitOption ? 'selected' : ''; ?>>
@@ -2244,10 +2277,10 @@ require __DIR__ . '/../layout/header.php';
                                         </label>
                                         <label class="shared-material-cost-row__cost">
                                             <span>Estimated Unit Cost (PHP) <b aria-hidden="true">*</b></span>
-                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo !$canEditCosting ? 'disabled' : ''; ?>>
+                                            <input type="text" name="unit_cost[]" inputmode="decimal" autocomplete="off" maxlength="20" placeholder="0.00" value="<?php echo htmlspecialchars(inquiry_quote_editable_unit_cost($item['unit_cost'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-costing-decimal required <?php echo $materialDetailsDisabled; ?>>
                                         </label>
                                         <?php if ($canEditCosting): ?>
-                                            <button type="button" class="btn-remove-row shared-material-cost-row__remove" data-remove-costing-row>Remove</button>
+                                            <button type="button" class="btn-remove-row shared-material-cost-row__remove" data-remove-costing-row <?php echo $isBlankMaterialRow ? 'disabled' : ''; ?>>Remove</button>
                                         <?php endif; ?>
                                         <?php if (!$canEditCosting && trim((string)($item['notes'] ?? '')) !== ''): ?>
                                             <label>

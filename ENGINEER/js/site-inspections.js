@@ -1531,18 +1531,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const removeRow = function () {
                 const rows = form.querySelectorAll('.costing-row');
                 if (rows.length <= 1) {
-                    row.querySelectorAll('input').forEach(function (field) {
-                        field.value = field.name === 'quantity[]' ? '1' : (field.name === 'item_type[]' ? 'material' : '');
-                    });
-                    row.querySelectorAll('select').forEach(function (field) {
-                        field.selectedIndex = 0;
-                    });
-                    window.EdgeMaterialSuggestions?.syncMaterialSelectionState(row, {
-                        sourceSelector: '[data-material-picker]',
-                        dependentSelector: 'input[name="item_name[]"], input[name="quantity[]"], select[name="unit[]"], input[name="unit_cost[]"], input[name="notes[]"]',
-                    });
-                    const removeButton = row.querySelector('[data-remove-costing-row]');
-                    if (removeButton) removeButton.disabled = true;
+                    // Ibalik ang huling row sa blank na default material row.
+                    resetRowForType(row);
                 } else {
                     row.remove();
                 }

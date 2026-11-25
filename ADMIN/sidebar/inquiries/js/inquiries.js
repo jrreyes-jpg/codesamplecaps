@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let pendingDiscardModal = null;
     let pendingDiscardAction = null;
     let pendingDiscardKeepAction = null;
+    let pendingQuotationDraftSave = null;
     let pendingQuotationDraftDiscard = null;
     let pendingQuotationItemRemoval = null;
     let inquiryModalIsScrolling = false;
@@ -295,10 +296,10 @@ document.addEventListener('DOMContentLoaded', function () {
     quotationDraftDiscardBox.hidden = true;
     quotationDraftDiscardBox.innerHTML = [
         '<div class="inquiry-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="quotationDraftDiscardTitle">',
-        '<h3 id="quotationDraftDiscardTitle">Leave without saving?</h3>',
-        '<p>Your latest changes are not saved. Do you want to continue editing or leave this page?</p>',
+        '<h3 id="quotationDraftDiscardTitle" data-quotation-draft-leave-title>Save quotation draft?</h3>',
+        '<p data-quotation-draft-leave-message>Save your latest changes before leaving, or discard them.</p>',
         '<div class="inquiry-confirm__actions">',
-        '<button type="button" class="btn-secondary" data-quotation-draft-discard-keep>Continue Editing</button>',
+        '<button type="button" class="btn-primary" data-quotation-draft-save-leave>Save Draft &amp; Leave</button>',
         '<button type="button" class="btn-danger" data-quotation-draft-discard-yes>Discard Changes &amp; Leave</button>',
         '</div>',
         '</div>',
@@ -306,18 +307,23 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.appendChild(quotationDraftDiscardBox);
 
     // Ikabit agad para gumana kahit quotation editor lang ang page.
-    quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-keep]')?.addEventListener('click', function () {
+    quotationDraftDiscardBox.querySelector('[data-quotation-draft-save-leave]')?.addEventListener('click', function () {
+        const saveAction = pendingQuotationDraftSave;
+        pendingQuotationDraftSave = null;
         pendingQuotationDraftDiscard = null;
         quotationDraftDiscardBox.hidden = true;
+        saveAction?.();
     });
     quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-yes]')?.addEventListener('click', function () {
         const discardAction = pendingQuotationDraftDiscard;
+        pendingQuotationDraftSave = null;
         pendingQuotationDraftDiscard = null;
         quotationDraftDiscardBox.hidden = true;
         discardAction?.();
     });
     quotationDraftDiscardBox.addEventListener('click', function (event) {
         if (event.target === quotationDraftDiscardBox) {
+            pendingQuotationDraftSave = null;
             pendingQuotationDraftDiscard = null;
             quotationDraftDiscardBox.hidden = true;
         }
@@ -656,14 +662,26 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const closeQuotationDraftDiscardConfirm = function () {
+        pendingQuotationDraftSave = null;
         pendingQuotationDraftDiscard = null;
         quotationDraftDiscardBox.hidden = true;
     };
 
-    const showQuotationDraftDiscardConfirm = function (onDiscard) {
+    const showQuotationDraftDiscardConfirm = function (onSave, onDiscard, isLogout) {
+        const title = quotationDraftDiscardBox.querySelector('[data-quotation-draft-leave-title]');
+        const message = quotationDraftDiscardBox.querySelector('[data-quotation-draft-leave-message]');
+        const saveButton = quotationDraftDiscardBox.querySelector('[data-quotation-draft-save-leave]');
+        const discardButton = quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-yes]');
+        if (title) title.textContent = isLogout ? 'Save quotation draft before logout?' : 'Save quotation draft?';
+        if (message) message.textContent = isLogout
+            ? 'Save your latest changes before logging out, or discard them.'
+            : 'Save your latest changes before leaving, or discard them.';
+        if (saveButton) saveButton.textContent = isLogout ? 'Save Draft & Logout' : 'Save Draft & Leave';
+        if (discardButton) discardButton.textContent = isLogout ? 'Discard Changes & Logout' : 'Discard Changes & Leave';
+        pendingQuotationDraftSave = onSave;
         pendingQuotationDraftDiscard = onDiscard;
         quotationDraftDiscardBox.hidden = false;
-        quotationDraftDiscardBox.querySelector('[data-quotation-draft-discard-keep]')?.focus();
+        saveButton?.focus();
     };
 
     const closePrerequisiteNotice = function () {
@@ -2777,6 +2795,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const marginInput = form?.querySelector('input[name="profit_margin_percent"]');
         const markupError = form?.querySelector('[data-quotation-markup-error]');
         const saveDraftButton = form?.querySelector('[data-quotation-save-draft]');
+        const leaveAfterSaveInput = form?.querySelector('[data-quotation-leave-after-save]');
         const isEditMode = form?.dataset.quotationEditMode === 'true';
         const quotationInquiryId = Number.parseInt(form?.dataset.quotationInquiryId || '0', 10);
         const quotationId = Number.parseInt(form?.dataset.quotationId || '0', 10);
@@ -2828,6 +2847,8 @@ document.addEventListener('DOMContentLoaded', function () {
         let quotationSavedState = '';
         let quotationSubmitAccepted = false;
         let quotationLeaveAccepted = false;
+        let quotationLeaveDestination = '';
+        let quotationSaveAndLeaveRequested = false;
         let localDraftTimer = null;
         let quotationNumberTouched = false;
 
@@ -3720,6 +3741,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const saveAndLeaveRequested = quotationSaveAndLeaveRequested;
+            quotationSaveAndLeaveRequested = false;
             const submitActionInput = form.querySelector('[data-quotation-submit-action]');
             const quotationNumberInput = document.querySelector('#quotationNumber');
             const isSendAction = event.submitter?.hasAttribute('data-confirm-quotation-send')
@@ -3830,6 +3853,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            if (leaveAfterSaveInput) {
+                leaveAfterSaveInput.value = saveAndLeaveRequested ? quotationLeaveDestination : '';
+            }
+            quotationLeaveDestination = '';
             saveLocalQuotationDraft(true);
             quotationSubmitAccepted = true;
             if (isSendAction) {
@@ -3844,15 +3871,57 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const leaveQuotationWithoutSaving = function (destination) {
+        const normalizeQuotationLeaveDestination = function (destination) {
+            try {
+                const url = new URL(destination, window.location.origin);
+                if (url.origin !== window.location.origin || !url.pathname.startsWith('/codesamplecaps/')) {
+                    return '';
+                }
+                return url.pathname + url.search;
+            } catch (error) {
+                return '';
+            }
+        };
+
+        const isQuotationLogoutLink = function (link) {
+            const destination = normalizeQuotationLeaveDestination(link?.href || '');
+            return destination === '/codesamplecaps/LOGIN/php/logout.php';
+        };
+
+        const leaveQuotationDraft = function (destination) {
+            const safeDestination = normalizeQuotationLeaveDestination(destination);
+            if (safeDestination === '') {
+                return;
+            }
+
+            const isLogout = safeDestination === '/codesamplecaps/LOGIN/php/logout.php';
             showQuotationDraftDiscardConfirm(function () {
+                if (!form || !form.reportValidity()) {
+                    return;
+                }
+                quotationLeaveDestination = safeDestination;
+                quotationSaveAndLeaveRequested = true;
+                form.requestSubmit();
+            }, function () {
                 quotationLeaveAccepted = true;
                 if (canUseLocalDraft) {
                     clearLocalQuotationDraft();
                 }
-                window.location.assign(destination);
-            });
+                window.location.assign(safeDestination);
+            }, isLogout);
         };
+
+        // Unahin ang quotation modal bago ang shared logout modal.
+        window.addEventListener('click', function (event) {
+            const link = event.target.closest('a[href]');
+            if (!link || !isQuotationLogoutLink(link) || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !isQuotationDirty()) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            leaveQuotationDraft(link.href);
+        }, true);
 
         document.addEventListener('click', function (event) {
             const link = event.target.closest('a[href]');
@@ -3860,14 +3929,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const destination = link.getAttribute('href') || '';
-            if (destination === '' || destination.startsWith('#') || destination.startsWith('javascript:')) {
+            const destination = link.href || '';
+            if (destination === '' || !normalizeQuotationLeaveDestination(destination)) {
                 return;
             }
 
             event.preventDefault();
             event.stopImmediatePropagation();
-            leaveQuotationWithoutSaving(destination);
+            leaveQuotationDraft(destination);
         }, true);
 
         window.addEventListener('beforeunload', function (event) {

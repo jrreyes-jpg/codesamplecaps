@@ -191,6 +191,19 @@ unset($directCostTypes['material']);
 $isQuotationPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 $quotationSubmitAction = (string)($_POST['quotation_submit_action'] ?? 'save_draft');
 $shouldSendToClient = $quotationSubmitAction === 'send_to_client';
+$leaveAfterSave = trim((string)($_POST['leave_after_save'] ?? ''));
+if ($leaveAfterSave !== '') {
+    $leaveAfterSaveParts = parse_url($leaveAfterSave);
+    $leaveAfterSavePath = is_array($leaveAfterSaveParts) ? (string)($leaveAfterSaveParts['path'] ?? '') : '';
+    $isAllowedAdminDestination = str_starts_with($leaveAfterSavePath, '/codesamplecaps/ADMIN/');
+    $isAllowedLogoutDestination = $leaveAfterSavePath === '/codesamplecaps/LOGIN/php/logout.php';
+    if ($isAllowedAdminDestination || $isAllowedLogoutDestination) {
+        $leaveAfterSave = $leaveAfterSavePath
+            . (isset($leaveAfterSaveParts['query']) ? '?' . $leaveAfterSaveParts['query'] : '');
+    } else {
+        $leaveAfterSave = '';
+    }
+}
 $marginPercentRaw = trim((string)($_POST['profit_margin_percent'] ?? ($quotationDraft['profit_margin_percent'] ?? 15)));
 // Kapag draft lang, blank markup ay 0% muna.
 if ($isQuotationPost && !$shouldSendToClient && $marginPercentRaw === '') {
@@ -362,7 +375,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Cannot send yet. Update stock or change ' . implode(', ', array_unique($stockBlockedItems)) . ' to Non-stock.';
         }
 
-        if ($error === '' && $quotationNo !== '') {
+        // Sa draft, huwag harangin kung parehong quotation no. lang ang naka-save na.
+        // Kapag Send to Client, laging check para unique ang official quotation no.
+        $savedDraftQuotationNo = $isEditMode ? trim((string)($quotationDraft['quotation_no'] ?? '')) : '';
+        $quotationNumberChanged = !$isEditMode || $quotationNo !== $savedDraftQuotationNo;
+        if ($error === '' && $quotationNo !== '' && ($shouldSendToClient || $quotationNumberChanged)) {
             $numberStmt = $conn->prepare(
                 'SELECT id FROM inquiry_quotation_drafts WHERE quotation_no = ? AND id <> ? LIMIT 1'
             );
@@ -486,6 +503,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ? 'Quotation saved and sent to the client.'
                         : 'Draft saved.',
                 ];
+                if (!$shouldSendToClient && $leaveAfterSave !== '') {
+                    header('Location: ' . $leaveAfterSave);
+                    exit();
+                }
                 $redirectStatus = $shouldSendToClient ? 'sent' : 'draft';
                 header('Location: /codesamplecaps/ADMIN/sidebar/quotations/php/quotations.php?status=' . $redirectStatus . '&id=' . $draftId);
                 exit();
@@ -530,7 +551,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/costing/js/costing-values.js?v=20261123-1',
     '/codesamplecaps/SHARED/material-suggestions/js/material-suggestions.js?v=20261124-4',
     '/codesamplecaps/SHARED/material-notes/js/material-notes.js?v=20261124-2',
-    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261124-13',
+    '/codesamplecaps/ADMIN/sidebar/inquiries/js/inquiries.js?v=20261125-14',
 ];
 
 include __DIR__ . '/../../../layout/header.php';
@@ -584,6 +605,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="inquiry_id" value="<?php echo $inquiryId; ?>">
                 <input type="hidden" name="quotation_submit_action" value="save_draft" data-quotation-submit-action>
+                <input type="hidden" name="leave_after_save" value="" data-quotation-leave-after-save>
                 <?php if ($isEditMode): ?>
                     <input type="hidden" name="edit_id" value="<?php echo $editId; ?>">
                 <?php endif; ?>

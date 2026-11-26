@@ -1705,7 +1705,8 @@ require __DIR__ . '/../layout/header.php';
                         $conn,
                         $inspectionId,
                         (int)($inspection['engineer_id'] ?? $userId),
-                        (string)($inspection['scheduled_at'] ?? '')
+                        (string)($inspection['scheduled_at'] ?? ''),
+                        (string)($inspection['created_at'] ?? '')
                     );
                     $visibleSiteNotes = trim((string)($inspection['site_notes'] ?? ''));
                     if ($visibleSiteNotes === 'Walk-in inspection schedule confirmed by Admin.') {

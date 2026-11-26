@@ -170,7 +170,7 @@ $adminCssFiles = [
     '/codesamplecaps/ADMIN/common/css/admin-common.css?v=20261112-3',
     '/codesamplecaps/SHARED/action-loading/css/action-loading.css?v=20261103-3',
     '/codesamplecaps/SHARED/quotation-project-confirm/css/modal.css?v=20261123-1',
-    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261125-7',
+    '/codesamplecaps/ADMIN/sidebar/quotations/css/quotations.css?v=20261126-1',
 ];
 $adminJsFiles = [
     '/codesamplecaps/ADMIN/common/js/admin-common.js',

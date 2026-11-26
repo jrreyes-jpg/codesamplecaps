@@ -160,7 +160,8 @@ $currentScheduleReason = $inspection
         $conn,
         (int)$inspection['id'],
         (int)$inspection['engineer_id'],
-        (string)$inspection['scheduled_at']
+        (string)$inspection['scheduled_at'],
+        (string)($inspection['created_at'] ?? '')
     )
     : '';
 $preferredScheduleText = $inspection && !empty($inspection['client_schedule_preferred_at'])

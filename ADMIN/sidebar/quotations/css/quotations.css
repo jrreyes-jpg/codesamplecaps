@@ -13,7 +13,8 @@
 
 .admin-quotation-list-page {
     min-height: 0;
-    padding: 0;
+    /* Pantay ang top line ng Quotation at Inquiry list. */
+    padding: 18px 0 0;
     background: transparent;
 }
 
@@ -745,7 +746,7 @@ body.admin-quotation-history-open { overflow: hidden; }
 
 @media (max-width: 760px) {
     .admin-quotation-page { padding: 20px 12px 36px; }
-    .admin-quotation-list-page { padding: 0; }
+    .admin-quotation-list-page { padding: 12px 0 0; }
     .admin-quotation-details-page { padding: 10px 10px 16px; }
     .admin-quotation-list { grid-template-columns: 1fr; }
     .admin-quotation-detail-head { flex-direction: column; }

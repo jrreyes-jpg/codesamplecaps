@@ -71,10 +71,11 @@ function site_inspection_current_admin_reschedule_reason(
     mysqli $conn,
     int $inspectionId,
     int $engineerId,
-    string $scheduledAt
+    string $scheduledAt,
+    string $inspectionCreatedAt = ''
 ): string {
     static $cache = [];
-    $cacheKey = $inspectionId . ':' . $engineerId . ':' . $scheduledAt;
+    $cacheKey = $inspectionId . ':' . $engineerId . ':' . $scheduledAt . ':' . $inspectionCreatedAt;
     if (array_key_exists($cacheKey, $cache)) {
         return $cache[$cacheKey];
     }
@@ -83,19 +84,29 @@ function site_inspection_current_admin_reschedule_reason(
     if (!function_exists('audit_log_table_exists') || !audit_log_table_exists($conn)) {
         return $cache[$cacheKey];
     }
-    $stmt = $conn->prepare(
+    $hasCreationTime = trim($inspectionCreatedAt) !== '';
+    $sql =
         "SELECT new_values
          FROM audit_logs
          WHERE entity_type = 'site_inspection'
            AND entity_id = ?
-           AND action = 'reschedule_site_inspection'
-         ORDER BY id DESC"
-    );
+           AND action = 'reschedule_site_inspection'";
+    if ($hasCreationTime) {
+        // Huwag gamitin ang lumang log kapag na-reuse ang inspection ID.
+        $sql .= ' AND created_at >= ?';
+    }
+    $sql .= ' ORDER BY id DESC';
+
+    $stmt = $conn->prepare($sql);
     if (!$stmt) {
         return $cache[$cacheKey];
     }
 
-    $stmt->bind_param('i', $inspectionId);
+    if ($hasCreationTime) {
+        $stmt->bind_param('is', $inspectionId, $inspectionCreatedAt);
+    } else {
+        $stmt->bind_param('i', $inspectionId);
+    }
     $stmt->execute();
     $rows = $stmt->get_result();
     while ($row = $rows->fetch_assoc()) {

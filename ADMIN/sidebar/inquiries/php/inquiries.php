@@ -221,7 +221,7 @@ function inquiry_center_send_pending_schedule_notifications(mysqli $conn, int $i
 {
     $result = ['client_sent' => false, 'engineer_sent' => false, 'confirmed' => false];
     $inspectionStmt = $conn->prepare(
-        'SELECT id, engineer_id, scheduled_at, site_notes, status, client_schedule_notified_at, engineer_schedule_notified_at
+        'SELECT id, engineer_id, scheduled_at, site_notes, status, created_at, client_schedule_notified_at, engineer_schedule_notified_at
          FROM site_inspections WHERE id = ? AND inquiry_id = ? LIMIT 1'
     );
     if (!$inspectionStmt) {
@@ -237,7 +237,13 @@ function inquiry_center_send_pending_schedule_notifications(mysqli $conn, int $i
     $engineerId = (int)$inspection['engineer_id'];
     $scheduleValue = (string)$inspection['scheduled_at'];
     $siteNotes = trim((string)($inspection['site_notes'] ?? ''));
-    $rescheduleReason = site_inspection_current_admin_reschedule_reason($conn, $inspectionId, $engineerId, $scheduleValue);
+    $rescheduleReason = site_inspection_current_admin_reschedule_reason(
+        $conn,
+        $inspectionId,
+        $engineerId,
+        $scheduleValue,
+        (string)($inspection['created_at'] ?? '')
+    );
     $isScheduleUpdate = $rescheduleReason !== '';
     if (!hash_equals($expectedHash, inquiry_center_schedule_notification_hash($engineerId, $scheduleValue, $siteNotes))) {
         return $result;
@@ -2635,6 +2641,7 @@ $adminJsFiles = [
     '/codesamplecaps/SHARED/action-loading/js/action-loading.js?v=20261103-2',
     '/codesamplecaps/SHARED/inspection-evidence/js/lightbox.js?v=20261102-1',
     '/codesamplecaps/SHARED/list-controls/js/list-controls.js?v=20261120-2',
+    '/codesamplecaps/SHARED/dropdown/js/single-open.js?v=20261126-1',
     '/codesamplecaps/SHARED/email-verification/js/email-verification.js?v=' . rawurlencode((string)(filemtime(__DIR__ . '/../../../../SHARED/email-verification/js/email-verification.js') ?: 1)),
     '/codesamplecaps/SHARED/location-picker/js/location-selection.js?v=20261125-1',
     '/codesamplecaps/SHARED/form-validation/js/first-invalid-focus.js?v=20261125-1',
@@ -2688,8 +2695,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
 
         <?php include __DIR__ . '/walk_in_inquiry_modal.php'; ?>
 
-        <div class="inquiry-lifecycle-toolbar">
-            <details class="inquiry-filter-menu">
+        <div class="inquiry-lifecycle-toolbar" data-single-dropdown-group>
+            <details class="inquiry-filter-menu" data-single-dropdown>
                 <summary>
                     <span class="inquiry-filter-menu__icon" aria-hidden="true"></span>
                     <span><?php echo $view === 'archive' ? 'Status: Archived' : ($statusFilter === '' ? 'Status' : 'Status: ' . htmlspecialchars(inquiry_center_status_label($statusFilter), ENT_QUOTES, 'UTF-8')); ?></span>
@@ -2704,7 +2711,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
                     <a class="inquiry-view-link <?php echo $view === 'archive' ? 'is-active' : ''; ?>" href="<?php echo htmlspecialchars(inquiry_center_filter_url(['view' => 'archive', 'search' => $search, 'source' => $sourceFilter, 'sort' => $sortOrder]), ENT_QUOTES, 'UTF-8'); ?>"><span>Archived</span><small><?php echo (int)($lifecycleFilterCounts['archived'] ?? 0); ?></small></a>
                 </nav>
             </details>
-            <details class="inquiry-filter-menu">
+            <details class="inquiry-filter-menu" data-single-dropdown>
                 <summary>
                     <span class="inquiry-filter-menu__icon" aria-hidden="true"></span>
                     <span><?php echo $sourceFilter === '' ? 'Source' : 'Source: ' . ($sourceFilter === 'walk_in' ? 'Walk-in' : 'Online'); ?></span>
@@ -2718,7 +2725,7 @@ include __DIR__ . '/../../../admin_sidebar.php';
             </details>
 
         <form class="inquiry-sort-form" method="GET">
-            <select id="inquirySortOrder" name="sort" aria-label="Sort inquiries">
+            <select id="inquirySortOrder" name="sort" aria-label="Sort inquiries" data-single-dropdown-close>
                 <option value="newest"<?php echo $sortOrder === 'newest' ? ' selected' : ''; ?>>Sort: Newest First</option>
                 <option value="oldest"<?php echo $sortOrder === 'oldest' ? ' selected' : ''; ?>>Sort: Oldest First</option>
             </select>
@@ -3172,7 +3179,8 @@ include __DIR__ . '/../../../admin_sidebar.php';
                                             $conn,
                                             (int)$latestInspection['id'],
                                             (int)$latestInspection['engineer_id'],
-                                            (string)$latestInspection['scheduled_at']
+                                            (string)$latestInspection['scheduled_at'],
+                                            (string)($latestInspection['created_at'] ?? '')
                                         );
                                         ?>
                                         <div class="inquiry-details-grid inquiry-inspection-summary-grid">
